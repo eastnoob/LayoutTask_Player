@@ -15,6 +15,7 @@ describe("LayoutTaskEncoder", () => {
     expect(decoded.hashOk).toBe(true);
     expect(decoded.headerOk).toBe(true);
     expect(decoded.header.encoding).toBe("lz-uri");
+    expect(decoded.result.context).toBeUndefined();
     expect(decoded.result.events).toEqual([]);
     expect(decoded.result.final_state_mode).toBe("relative");
     expect(decoded.result.final_state).toEqual({
@@ -64,8 +65,10 @@ describe("LayoutTaskEncoder", () => {
     const decoded = await encoder.decode(encoded.output);
 
     expect(decoded.hashOk).toBe(true);
+    expect(decoded.result.context).toBeUndefined();
     expect(decoded.result).toEqual({
       ...result,
+      context: undefined,
       final_state_mode: "absolute",
     });
   });

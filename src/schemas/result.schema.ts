@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { viewBoxSchema } from "./config.schema";
 
 export const operationCountsSchema = z.object({
   left: z.number().int().nonnegative(),
@@ -62,6 +63,37 @@ export const displayInfoSchema = z.object({
     .optional(),
 });
 
+export const resultContextObjectSchema = z.object({
+  origin: z.object({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    r: z.number().finite(),
+  }),
+  movement_step: z.number().positive(),
+  rotation_step: z.number().positive(),
+  limits: z.object({
+    left: z.number().int().nonnegative().optional(),
+    right: z.number().int().nonnegative().optional(),
+    up: z.number().int().nonnegative().optional(),
+    down: z.number().int().nonnegative().optional(),
+    cw: z.number().int().nonnegative().optional(),
+    ccw: z.number().int().nonnegative().optional(),
+  }),
+});
+
+export const resultContextSchema = z.object({
+  world: z.object({
+    viewBox: viewBoxSchema,
+    origin: z.object({
+      x: z.number().finite(),
+      y: z.number().finite(),
+    }),
+    grid_size: z.number().positive(),
+    grid_snap: z.boolean(),
+  }),
+  objects: z.record(resultContextObjectSchema),
+});
+
 export const layoutTaskEventSchema = z.object({
   i: z.number().int().nonnegative(),
   t: z.number().int().nonnegative(),
@@ -117,6 +149,7 @@ export const resultSchema = z.object({
   duration_ms: z.number().int().nonnegative(),
   display: displayInfoSchema.optional(),
   task_config_hash: z.string().optional(),
+  context: resultContextSchema.optional(),
   events: z.array(layoutTaskEventSchema),
   final_state_mode: z.enum(["absolute", "relative"]).optional(),
   final_state: z.union([z.record(finalObjectStateSchema), z.record(relativeFinalObjectStateSchema)]),

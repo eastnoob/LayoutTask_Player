@@ -47,6 +47,8 @@ async function bootstrap(): Promise<void> {
       }
 
       const transition = store.applyAction(objectId, action);
+      // We record the post-action offsets as well because later exports may choose
+      // relative final state or full trajectory. 这些 offset 是后期统计最方便的量。
       recorder.recordEvent({
         i: eventIndex,
         t: Date.now() - startTime,
@@ -102,6 +104,8 @@ async function bootstrap(): Promise<void> {
         return;
       }
 
+      // After this point the trial becomes immutable.
+      // 先 lock 再 encode/copy，确保“再次复制”拿到的是同一份 frozen result。
       store.lock();
       activeObjectId = undefined;
       renderer.setLocked(true);

@@ -1,5 +1,5 @@
 import type { LayoutTaskEvent } from "../types/events";
-import type { LayoutTaskConfigLike } from "./types-internal";
+import type { RuntimeTaskConfig } from "../types/runtime";
 import type { DisplayInfo, LayoutTaskResult } from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
@@ -10,7 +10,7 @@ export class Recorder {
 
   constructor(
     private readonly options: {
-      config: LayoutTaskConfigLike;
+      config: RuntimeTaskConfig;
       sessionId: string;
       getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
       getFinalState: () => LayoutTaskResult["final_state"];
@@ -40,6 +40,9 @@ export class Recorder {
       duration_ms: elapsedMs(this.startTime, this.endTime),
       display,
       task_config_hash: this.options.config.taskConfigHash,
+      // context is the self-describing block for downstream decoding/analysis.
+      // 把关键解释参数写进 JSON，本体拿出去单独分析时也不怕丢 header 语义。
+      context: buildResultContext(this.options.config),
       events: this.events,
       final_state: this.options.getFinalState(),
       locked: true,
@@ -47,4 +50,39 @@ export class Recorder {
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
     };
   }
+}
+
+function buildResultContext(config: RuntimeTaskConfig): LayoutTaskResult["context"] {
+  // This is not just "nice metadata"; it is analysis-critical provenance.
+  // It records the world/grid assumptions and each object's starting pose + limits.
+  return {
+    world: {
+      viewBox: config.world.viewBox,
+      origin: config.world.origin,
+      grid_size: config.world.grid.size,
+      grid_snap: config.world.grid.snap,
+    },
+    objects: Object.fromEntries(
+      config.objects.map((objectConfig) => [
+        objectConfig.id,
+        {
+          origin: {
+            x: objectConfig.x,
+            y: objectConfig.y,
+            r: objectConfig.rotation,
+          },
+          movement_step: objectConfig.behavior.movement.step ?? config.world.grid.size,
+          rotation_step: objectConfig.behavior.rotation?.step ?? 45,
+          limits: {
+            left: objectConfig.behavior.movement.max_left,
+            right: objectConfig.behavior.movement.max_right,
+            up: objectConfig.behavior.movement.max_up,
+            down: objectConfig.behavior.movement.max_down,
+            cw: objectConfig.behavior.rotation?.max_cw,
+            ccw: objectConfig.behavior.rotation?.max_ccw,
+          },
+        },
+      ]),
+    ),
+  };
 }

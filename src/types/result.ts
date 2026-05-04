@@ -1,4 +1,5 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
+import type { ViewBox } from "./config";
 
 export interface RectInfo {
   x: number;
@@ -57,6 +58,37 @@ export type AbsoluteFinalState = Record<string, FinalObjectState>;
 export type RelativeFinalState = Record<string, RelativeFinalObjectState>;
 export type FinalState = AbsoluteFinalState | RelativeFinalState;
 
+export interface ResultContextObject {
+  origin: {
+    x: number;
+    y: number;
+    r: number;
+  };
+  movement_step: number;
+  rotation_step: number;
+  limits: {
+    left?: number;
+    right?: number;
+    up?: number;
+    down?: number;
+    cw?: number;
+    ccw?: number;
+  };
+}
+
+export interface ResultContext {
+  world: {
+    viewBox: ViewBox;
+    origin: {
+      x: number;
+      y: number;
+    };
+    grid_size: number;
+    grid_snap: boolean;
+  };
+  objects: Record<string, ResultContextObject>;
+}
+
 export interface LayoutTaskResult {
   schema: "layouttask.result.v1";
   exp: string;
@@ -68,6 +100,7 @@ export interface LayoutTaskResult {
   duration_ms: number;
   display?: DisplayInfo;
   task_config_hash?: string;
+  context?: ResultContext;
   events: LayoutTaskEvent[];
   final_state_mode?: "absolute" | "relative";
   final_state: FinalState;

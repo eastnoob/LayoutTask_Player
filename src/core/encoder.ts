@@ -40,6 +40,8 @@ export class LayoutTaskEncoder {
     const encoding = options.encoding ?? "lz-uri";
     const detail = options.detail ?? "final-only";
     const finalStateMode = options.final_state ?? "relative";
+    // We transform the human-meaningful result first, then hash that exact JSON.
+    // 这样 hash 校验的是“真正发给问卷/被试的内容”，不是内部中间态。
     const resultForOutput = prepareResultForOutput(result, detail, finalStateMode);
     const json = JSON.stringify(resultForOutput);
     const hash = await sha256Hex(json);
@@ -78,6 +80,7 @@ export class LayoutTaskEncoder {
       throw new Error(`Unsupported layout task version: ${version}`);
     }
 
+    // Backward compatibility: older strings had 6 segments and implied lz-uri.
     const encoding = parts.length === 7 ? parseEncoding(parts[5]) : "lz-uri";
     const encodedData = parts.length === 7 ? parts[6] : parts[5];
     const json = decodeJson(encodedData, encoding);
@@ -110,6 +113,8 @@ function prepareResultForOutput(
   detail: OutputDetail,
   finalStateMode: FinalStateMode,
 ): LayoutTaskResult {
+  // Output detail and final-state mode are transport concerns.
+  // Recorder keeps the rich in-memory result; encoder decides what actually leaves the page.
   const resultWithFinalState = {
     ...result,
     final_state_mode: finalStateMode,
@@ -130,6 +135,8 @@ function prepareResultForOutput(
 }
 
 function toRelativeFinalState(finalState: AbsoluteFinalState): RelativeFinalState {
+  // Relative final state is intentionally net displacement, not left/right counters.
+  // 对分析者来说，dx/dy/rotation_steps 通常比绝对世界坐标更直接。
   return Object.fromEntries(
     Object.entries(finalState).map(([objectId, state]) => [
       objectId,
@@ -143,6 +150,8 @@ function toRelativeFinalState(finalState: AbsoluteFinalState): RelativeFinalStat
 }
 
 function encodeJson(json: string, encoding: EncodingMethod): string {
+  // "plain-json" here means plain transport / no compression,
+  // not security encryption. 这个命名是为了减少误解。
   switch (encoding) {
     case "lz-uri":
       return LZString.compressToEncodedURIComponent(json);
