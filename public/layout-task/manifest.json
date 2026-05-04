@@ -1,0 +1,16 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "title": "Floorplan Coherence Experiment",
+  "config_version": "0.1.0",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "tasks": [
+    {
+      "qid": "Q1",
+      "task_id": "room01",
+      "file": "tasks/room01.json"
+    }
+  ]
+}
