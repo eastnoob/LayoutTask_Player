@@ -1,0 +1,10 @@
+{
+  "schema": "layouttask.assets.backgrounds.v1",
+  "backgrounds": {
+    "room01_bg": {
+      "type": "svg",
+      "src": "assets/backgrounds/room01.svg",
+      "intrinsic_unit": "cad_unit"
+    }
+  }
+}
