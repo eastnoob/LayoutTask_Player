@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { viewBoxSchema } from "./config.schema";
 
+// Result schema validates the payload that leaves the browser.
+// 这里要兼顾当前导出模式和后续 decoder 的 backward-compatible parsing。
 export const operationCountsSchema = z.object({
   left: z.number().int().nonnegative(),
   right: z.number().int().nonnegative(),
@@ -149,6 +151,7 @@ export const resultSchema = z.object({
   duration_ms: z.number().int().nonnegative(),
   display: displayInfoSchema.optional(),
   task_config_hash: z.string().optional(),
+  // Optional for early pilot compatibility; new exports should include it.
   context: resultContextSchema.optional(),
   events: z.array(layoutTaskEventSchema),
   final_state_mode: z.enum(["absolute", "relative"]).optional(),

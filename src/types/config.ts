@@ -1,6 +1,8 @@
 export type AssetType = "svg" | "png" | "jpg" | "image";
 export type Anchor = "center" | "top_left";
 
+// Authoring-side types: close to JSON files in public/layout-task/.
+// 研究者写 manifest / task / library 时，对应的就是这一层 shape。
 export interface ViewBox {
   x: number;
   y: number;

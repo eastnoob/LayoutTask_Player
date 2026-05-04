@@ -4,6 +4,8 @@ export interface CopyResult {
   error?: string;
 }
 
+// ClipboardService hides browser copy differences behind one small API.
+// 首选 Clipboard API，失败时再 fallback 到隐藏 textarea + execCommand。
 export class ClipboardService {
   async copy(text: string): Promise<CopyResult> {
     if (!navigator.clipboard) {
@@ -28,6 +30,7 @@ export class ClipboardService {
   }
 
   private copyWithTextarea(text: string): CopyResult {
+    // Legacy fallback: still useful in restrictive browser contexts.
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.setAttribute("readonly", "true");

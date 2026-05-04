@@ -2,6 +2,8 @@ import type { DisplayInfo } from "../types/result";
 import type { RendererRefs } from "./renderer";
 import type { RuntimeTaskConfig } from "../types/runtime";
 
+// DisplayInfoCollector captures device and rendered-layout measurements.
+// 这些信息不改变交互，但对后期分析 display context 很重要。
 export class DisplayInfoCollector {
   constructor(
     private readonly refs: RendererRefs,

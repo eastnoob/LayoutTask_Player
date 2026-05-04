@@ -3,6 +3,8 @@ import type { RuntimeTaskConfig } from "../types/runtime";
 import type { DisplayInfo, LayoutTaskResult } from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
+// Recorder collects trial-time facts but does not decide export policy.
+// 它保存“实验里发生了什么”；至于导出 full 还是 final-only，由 encoder 决定。
 export class Recorder {
   private readonly events: LayoutTaskEvent[] = [];
   private startTime = 0;
@@ -41,7 +43,7 @@ export class Recorder {
       display,
       task_config_hash: this.options.config.taskConfigHash,
       // context is the self-describing block for downstream decoding/analysis.
-      // 把关键解释参数写进 JSON，本体拿出去单独分析时也不怕丢 header 语义。
+      // 把关键解释参数写进 JSON，本体单独拿出去分析时也不怕丢 header 语义。
       context: buildResultContext(this.options.config),
       events: this.events,
       final_state: this.options.getFinalState(),

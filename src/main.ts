@@ -9,6 +9,8 @@ import { StateStore } from "./core/state-store";
 import { parseLayoutTaskUrlParams } from "./utils/url";
 import { createSessionId } from "./utils/time";
 
+// main.ts is the standalone-player entry.
+// 它把 loader / store / renderer / recorder / encoder 串成一个完整页面流程。
 async function bootstrap(): Promise<void> {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
@@ -47,8 +49,8 @@ async function bootstrap(): Promise<void> {
       }
 
       const transition = store.applyAction(objectId, action);
-      // We record the post-action offsets as well because later exports may choose
-      // relative final state or full trajectory. 这些 offset 是后期统计最方便的量。
+      // Record offsets as well because later exports may choose relative final state
+      // or a full trajectory. 这些 offset 是后期统计最顺手的量。
       recorder.recordEvent({
         i: eventIndex,
         t: Date.now() - startTime,

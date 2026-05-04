@@ -3,6 +3,8 @@ import type { FinalState, ObjectRuntimeState } from "../types/result";
 import type { LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import { normalizeRotation, snapToGrid } from "../utils/geometry";
 
+// StateStore is the rule engine for object state.
+// 它管理当前位置、旋转、计数、offset，以及“这个动作现在能不能做”。
 export interface StateTransition {
   objectId: string;
   action: LayoutAction;
@@ -26,8 +28,6 @@ interface ObjectInitialState {
 export class StateStore {
   private readonly objectStates: Record<string, ObjectRuntimeState>;
   private readonly initialStates: Record<string, ObjectInitialState>;
-  // rotationOffsets tracks signed step offset from the original angle.
-  // 这里故意不只看 0-359 的绝对角度，否则 cw / ccw 的边界会丢语义。
   private readonly rotationOffsets: Record<string, number>;
   private readonly config: RuntimeTaskConfig;
   private locked = false;
@@ -44,6 +44,9 @@ export class StateStore {
         },
       ]),
     );
+
+    // rotationOffsets tracks signed step offset from the original angle.
+    // 不能只看 0-359 的绝对角度，否则 cw / ccw 的边界会丢语义。
     this.rotationOffsets = Object.fromEntries(config.objects.map((objectConfig) => [objectConfig.id, 0]));
     this.objectStates = Object.fromEntries(
       config.objects.map((objectConfig) => [
@@ -99,8 +102,7 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const offsets = this.getObjectOffsets(objectId);
 
-    // Important: limits are evaluated against offset-from-origin,
-    // not "how many times this button has ever been clicked".
+    // Limits are evaluated against offset-from-origin, not lifetime click count.
     // 这正是实验语义：先左 2 格后，仍然可以一路向右回到另一侧边界。
     if (isMoveAction(action)) {
       if (objectConfig.behavior.movement.mode !== "button") {
@@ -143,8 +145,8 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const before = toPose(state);
 
-    // Apply the action in world coordinates first, then snap back to grid if enabled.
-    // 先走一步，再吸附；movement.step 也因此能显式配置，或默认继承 grid size。
+    // Apply in world coordinates first, then snap back to grid if enabled.
+    // movement.step 可以显式配置；未配置时默认继承 grid size。
     switch (action) {
       case "move_left":
         state.x -= objectConfig.behavior.movement.step ?? this.config.world.grid.size;
@@ -201,8 +203,7 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const step = getMovementStep(this.config, objectConfig);
 
-    // Offsets are the analysis-friendly representation:
-    // x/y as signed grid steps, rotation as signed rotation steps.
+    // Offsets are analysis-friendly: signed grid steps and signed rotation steps.
     return {
       xSteps: Math.round((state.x - initial.x) / step),
       ySteps: Math.round((state.y - initial.y) / step),
@@ -264,8 +265,7 @@ function wouldExceedMovementLimit(
   action: LayoutAction,
 ): boolean {
   // Signed offsets make the bounds symmetric around origin.
-  // Example: at xSteps = -2 with max_left = 2 and max_right = 2,
-  // moving right is still legal until xSteps reaches +2.
+  // Example: xSteps = -2 can still move right until it reaches +2.
   switch (action) {
     case "move_left":
       return offsets.xSteps - 1 < -(objectConfig.behavior.movement.max_left ?? Number.POSITIVE_INFINITY);

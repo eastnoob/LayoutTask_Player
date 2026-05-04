@@ -2,6 +2,9 @@ import type { LayoutTaskResult } from "../types/result";
 import type { EncodedLayoutTask, LayoutTaskEncoder } from "./encoder";
 import type { CopyResult, ClipboardService } from "./clipboard-service";
 
+// CompletionController is a small orchestration layer:
+// result -> encode -> copy -> notify UI / caller.
+// 目前 main.ts 还在直接编排，保留它是为了后续把完成流程收拢回 core。
 export interface CompletionPayload {
   result: LayoutTaskResult;
   encoded: EncodedLayoutTask;

@@ -1,6 +1,9 @@
 import { ParameterType } from "jspsych";
 import type { JsPsych, JsPsychPlugin, TrialType } from "jspsych";
 
+// Future jsPsych bridge.
+// 当前只是 skeleton，但接口位置已经固定：后续会把 standalone player
+// 的启动逻辑包进 jsPsych trial lifecycle。
 export interface LayoutTaskPluginParams {
   title?: string;
 }

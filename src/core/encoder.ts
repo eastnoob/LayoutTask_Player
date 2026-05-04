@@ -4,6 +4,9 @@ import type { AbsoluteFinalState, LayoutTaskResult, RelativeFinalState } from ".
 import { resultSchema } from "../schemas/result.schema";
 import { sha256Hex } from "../utils/hash";
 
+// Encoder is the transport boundary.
+// Recorder keeps the rich in-memory result; encoder decides what payload
+// leaves the page and how it is packed for the survey textbox.
 export interface EncodedLayoutTask {
   version: "LAYOUTTASK1";
   qid: string;
@@ -40,8 +43,9 @@ export class LayoutTaskEncoder {
     const encoding = options.encoding ?? "lz-uri";
     const detail = options.detail ?? "final-only";
     const finalStateMode = options.final_state ?? "relative";
-    // We transform the human-meaningful result first, then hash that exact JSON.
-    // 这样 hash 校验的是“真正发给问卷/被试的内容”，不是内部中间态。
+
+    // Transform first, then hash that exact JSON.
+    // 这样 hash 校验的是“真正交给问卷的内容”，不是内部中间态。
     const resultForOutput = prepareResultForOutput(result, detail, finalStateMode);
     const json = JSON.stringify(resultForOutput);
     const hash = await sha256Hex(json);
@@ -114,7 +118,7 @@ function prepareResultForOutput(
   finalStateMode: FinalStateMode,
 ): LayoutTaskResult {
   // Output detail and final-state mode are transport concerns.
-  // Recorder keeps the rich in-memory result; encoder decides what actually leaves the page.
+  // 记录器保留完整结果；导出时才决定 full / final-only / relative。
   const resultWithFinalState = {
     ...result,
     final_state_mode: finalStateMode,
@@ -135,7 +139,7 @@ function prepareResultForOutput(
 }
 
 function toRelativeFinalState(finalState: AbsoluteFinalState): RelativeFinalState {
-  // Relative final state is intentionally net displacement, not left/right counters.
+  // Relative final state is net displacement, not left/right button counts.
   // 对分析者来说，dx/dy/rotation_steps 通常比绝对世界坐标更直接。
   return Object.fromEntries(
     Object.entries(finalState).map(([objectId, state]) => [
@@ -150,8 +154,8 @@ function toRelativeFinalState(finalState: AbsoluteFinalState): RelativeFinalStat
 }
 
 function encodeJson(json: string, encoding: EncodingMethod): string {
-  // "plain-json" here means plain transport / no compression,
-  // not security encryption. 这个命名是为了减少误解。
+  // "plain-json" means plain transport / no compression, not encryption.
+  // 这里没有安全加密，只是控制问卷文本框里放什么格式。
   switch (encoding) {
     case "lz-uri":
       return LZString.compressToEncodedURIComponent(json);

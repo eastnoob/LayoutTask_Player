@@ -9,6 +9,8 @@ export type LayoutAction =
   | "drag_move"
   | "drag_end";
 
+// Event types are transport-friendly: compact enough for JSON,
+// but still explicit enough for downstream long-table export.
 export interface OperationCounts {
   left: number;
   right: number;

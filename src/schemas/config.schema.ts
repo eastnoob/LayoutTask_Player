@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// Zod schemas define the authoring-time contract for static JSON config files.
+// 它们描述“研究者可以怎么写配置”，不是 runtime resolve 后的最终结构。
 export const viewBoxSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -79,6 +81,7 @@ export const recordingSchema = z.object({
 });
 
 export const outputSchema = z.object({
+  // Transport/export policy. "plain-json" means no compression, not encryption.
   encoding: z.enum(["lz-uri", "lz-base64", "plain-json"]).default("lz-uri"),
   detail: z.enum(["final-only", "full"]).default("final-only"),
   final_state: z.enum(["relative", "absolute"]).default("relative"),

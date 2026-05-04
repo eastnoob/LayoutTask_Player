@@ -14,6 +14,8 @@ import {
   validateTask,
 } from "./config-validator";
 
+// ConfigLoader is the authoring-config entry point.
+// 它把 manifest / task / asset / behavior 这些分散文件 resolve 成 RuntimeTaskConfig。
 export interface ConfigLoaderOptions {
   baseUrl: string;
   manifestPath?: string;
@@ -62,6 +64,8 @@ export class ConfigLoader {
   }
 
   async loadRuntimeConfig(selection: TaskSelection): Promise<RuntimeTaskConfig> {
+    // Selection rule: task_id first, then qid, then first task as fallback.
+    // 这样独立页面和问卷 URL 都可以宽松地指向同一个 task。
     const manifest = await this.loadManifest();
     const taskEntry =
       manifest.tasks.find((task) => task.task_id === selection.taskId) ??
@@ -91,6 +95,7 @@ export class ConfigLoader {
   }
 
   private async fetchJson<T>(relativePath: string): Promise<T> {
+    // All config files are static-host friendly URLs; no backend is needed.
     const url = new URL(relativePath, this.baseUrl).toString();
     const response = await this.fetchImpl(url);
     if (!response.ok) {
@@ -110,6 +115,8 @@ interface ResolveRuntimeConfigInput {
 }
 
 export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeTaskConfig {
+  // Runtime config is the fully linked version of authoring config:
+  // asset ids -> resolved assets, behavior ids -> concrete behavior blocks, defaults applied.
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
   const resolvedObjects = input.task.objects.map((objectConfig) => {
     const asset = input.objectLibrary.objects[objectConfig.asset];

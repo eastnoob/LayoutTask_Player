@@ -9,6 +9,8 @@ import type {
   WorldConfig,
 } from "./config";
 
+// Runtime types are the resolved, app-ready shape after config loading.
+// 和 config.ts 的区别在于：asset path 已解析，defaults 也已经补齐。
 export interface ResolvedAssetPath {
   srcResolved: string;
 }

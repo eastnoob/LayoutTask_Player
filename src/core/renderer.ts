@@ -3,6 +3,8 @@ import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
 
+// Renderer owns DOM/SVG creation only.
+// 它不决定实验规则，只把 runtime config + current store state 映射成界面。
 export interface RendererRefs {
   root: HTMLElement;
   svg?: SVGSVGElement;
@@ -106,6 +108,8 @@ export class LayoutTaskRenderer {
 
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
+    // Controls live in a dedicated overlay layer so they are easier to target
+    // and do not fight with the object's own hit area.
 
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -163,7 +167,7 @@ export class LayoutTaskRenderer {
     const panelTitle = document.createElement("h2");
     panelTitle.textContent = "Object Controls";
 
-      const instruction = document.createElement("p");
+    const instruction = document.createElement("p");
     instruction.textContent = "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.";
 
     const confirmButton = document.createElement("button");
@@ -283,6 +287,8 @@ export class LayoutTaskRenderer {
     group.classList.add("layout-task-controls");
     group.dataset.objectId = objectId;
 
+    // Controls are positioned around the object in world space,
+    // so they move together with the selected object.
     const gap = 30;
     const controls: Array<{
       action: LayoutAction;
@@ -397,6 +403,8 @@ export class LayoutTaskRenderer {
 }
 
 function createControlIcon(baseUrl: string, iconFile: string): SVGElement {
+  // Icons are served from public assets so the same files can be reused by
+  // the standalone page and future jsPsych integration.
   const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
   image.classList.add("layout-task-control-icon");
   image.setAttribute("href", new URL(`assets/icons/${iconFile}`, baseUrl).toString());
