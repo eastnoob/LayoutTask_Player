@@ -24,6 +24,12 @@ export interface ObjectPose {
   r: number;
 }
 
+export interface ObjectOffsets {
+  xSteps: number;
+  ySteps: number;
+  rotationSteps: number;
+}
+
 export interface LayoutTaskEvent {
   i: number;
   t: number;
@@ -34,6 +40,7 @@ export interface LayoutTaskEvent {
   before?: ObjectPose;
   after?: ObjectPose;
   counts?: OperationCounts;
+  offsets?: ObjectOffsets;
   pointer?: {
     clientX: number;
     clientY: number;

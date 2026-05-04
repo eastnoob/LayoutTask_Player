@@ -2,6 +2,7 @@ import "./styles/layout-task.css";
 import { ClipboardService } from "./core/clipboard-service";
 import { ConfigLoader } from "./core/config-loader";
 import { DisplayInfoCollector } from "./core/display-info";
+import { LayoutTaskEncoder } from "./core/encoder";
 import { Recorder } from "./core/recorder";
 import { LayoutTaskRenderer } from "./core/renderer";
 import { StateStore } from "./core/state-store";
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
 
   const store = new StateStore(config);
   const clipboard = new ClipboardService();
+  const encoder = new LayoutTaskEncoder();
   let lockedResultText = "";
   let activeObjectId: string | undefined;
 
@@ -54,6 +56,7 @@ async function bootstrap(): Promise<void> {
         before: transition.before,
         after: transition.after,
         counts: transition.counts,
+        offsets: transition.offsets,
       });
       eventIndex += 1;
       renderer.updateObject(objectId);
@@ -89,12 +92,23 @@ async function bootstrap(): Promise<void> {
         return;
       }
 
+      const ok1 = window.confirm("After confirmation, the object layout will be locked. Continue?");
+      if (!ok1) {
+        return;
+      }
+
+      const ok2 = window.confirm("Please confirm again: this will finalize the current layout.");
+      if (!ok2) {
+        return;
+      }
+
       store.lock();
       activeObjectId = undefined;
       renderer.setLocked(true);
 
       const result = await recorder.finish(Date.now());
-      lockedResultText = JSON.stringify(result);
+      const encoded = await encoder.encode(result, config.output);
+      lockedResultText = encoded.output;
       const copyResult = await clipboard.copy(lockedResultText);
       renderer.showCompletion(lockedResultText, copyResult);
     },

@@ -4,6 +4,7 @@ import type {
   BehaviorConfig,
   CompletionConfig,
   ObjectAssetConfig,
+  OutputConfig,
   RecordingConfig,
   WorldConfig,
 } from "./config";
@@ -53,4 +54,5 @@ export interface RuntimeTaskConfig {
   objects: RuntimeTaskObject[];
   completion: Required<CompletionConfig>;
   recording: Required<RecordingConfig>;
+  output: Required<OutputConfig>;
 }

@@ -1,6 +1,6 @@
 import type { RuntimeTaskConfig } from "../types/runtime";
 import type { FinalState, ObjectRuntimeState } from "../types/result";
-import type { LayoutAction, ObjectPose, OperationCounts } from "../types/events";
+import type { LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import { normalizeRotation, snapToGrid } from "../utils/geometry";
 
 export interface StateTransition {
@@ -15,12 +15,6 @@ export interface StateTransition {
 export interface CanApplyResult {
   ok: boolean;
   reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "unsupported_action";
-}
-
-export interface ObjectOffsets {
-  xSteps: number;
-  ySteps: number;
-  rotationSteps: number;
 }
 
 interface ObjectInitialState {
@@ -216,6 +210,7 @@ export class StateStore {
           y: state.y,
           r: state.r,
           counts: { ...state.counts },
+          offsets: this.getObjectOffsets(objectId),
         },
       ]),
     );

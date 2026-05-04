@@ -78,6 +78,12 @@ export const recordingSchema = z.object({
   record_blocked_events: z.boolean().optional(),
 });
 
+export const outputSchema = z.object({
+  encoding: z.enum(["lz-uri", "lz-base64", "plain-json"]).default("lz-uri"),
+  detail: z.enum(["final-only", "full"]).default("final-only"),
+  final_state: z.enum(["relative", "absolute"]).default("relative"),
+});
+
 export const taskObjectSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -106,6 +112,7 @@ export const taskSchema = z.object({
   objects: z.array(taskObjectSchema),
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),
+  output: outputSchema.optional(),
 });
 
 export const manifestSchema = z.object({

@@ -39,6 +39,12 @@ const DEFAULT_RECORDING = {
   record_blocked_events: false,
 };
 
+const DEFAULT_OUTPUT = {
+  encoding: "lz-uri" as const,
+  detail: "final-only" as const,
+  final_state: "relative" as const,
+};
+
 export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
@@ -155,6 +161,10 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
     recording: {
       ...DEFAULT_RECORDING,
       ...input.task.recording,
+    },
+    output: {
+      ...DEFAULT_OUTPUT,
+      ...input.task.output,
     },
   };
 }

@@ -1,4 +1,4 @@
-import type { LayoutTaskEvent, ObjectPose, OperationCounts } from "./events";
+import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
 
 export interface RectInfo {
   x: number;
@@ -44,9 +44,18 @@ export interface ObjectRuntimeState extends ObjectPose {
 
 export interface FinalObjectState extends ObjectPose {
   counts: OperationCounts;
+  offsets?: ObjectOffsets;
 }
 
-export type FinalState = Record<string, FinalObjectState>;
+export interface RelativeFinalObjectState {
+  dx_steps: number;
+  dy_steps: number;
+  rotation_steps: number;
+}
+
+export type AbsoluteFinalState = Record<string, FinalObjectState>;
+export type RelativeFinalState = Record<string, RelativeFinalObjectState>;
+export type FinalState = AbsoluteFinalState | RelativeFinalState;
 
 export interface LayoutTaskResult {
   schema: "layouttask.result.v1";
@@ -60,6 +69,7 @@ export interface LayoutTaskResult {
   display?: DisplayInfo;
   task_config_hash?: string;
   events: LayoutTaskEvent[];
+  final_state_mode?: "absolute" | "relative";
   final_state: FinalState;
   locked: true;
   copy_timestamp?: number;

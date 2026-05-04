@@ -79,6 +79,16 @@ export interface RecordingConfig {
   record_blocked_events?: boolean;
 }
 
+export type EncodingMethod = "lz-uri" | "lz-base64" | "plain-json";
+export type OutputDetail = "final-only" | "full";
+export type FinalStateMode = "relative" | "absolute";
+
+export interface OutputConfig {
+  encoding?: EncodingMethod;
+  detail?: OutputDetail;
+  final_state?: FinalStateMode;
+}
+
 export interface ManifestTaskEntry {
   qid: string;
   task_id: string;
@@ -141,4 +151,5 @@ export interface TaskConfig {
   objects: TaskObjectConfig[];
   completion?: CompletionConfig;
   recording?: RecordingConfig;
+  output?: OutputConfig;
 }

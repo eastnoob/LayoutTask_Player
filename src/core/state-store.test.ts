@@ -158,5 +158,10 @@ function createRuntimeConfig(): RuntimeTaskConfig {
       record_user_agent: true,
       record_blocked_events: false,
     },
+    output: {
+      encoding: "lz-uri",
+      detail: "final-only",
+      final_state: "relative",
+    },
   };
 }

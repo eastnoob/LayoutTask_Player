@@ -169,7 +169,7 @@ export class LayoutTaskRenderer {
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
     confirmButton.type = "button";
-    confirmButton.textContent = "Confirm and copy JSON";
+    confirmButton.textContent = "Confirm and copy result";
     confirmButton.addEventListener("click", () => this.options.onConfirm?.());
 
     const status = document.createElement("p");
@@ -259,8 +259,8 @@ export class LayoutTaskRenderer {
   showCompletion(outputText: string, copyResult: CopyResult): void {
     this.setStatus(
       copyResult.ok
-        ? "Locked and copied. Return to the survey and paste the JSON result."
-        : "Locked. Automatic copy failed; copy the JSON below manually.",
+        ? "Locked and copied. Return to the survey and paste the encoded result."
+        : "Locked. Automatic copy failed; copy the encoded result below manually.",
     );
 
     if (this.refs.resultOutput) {

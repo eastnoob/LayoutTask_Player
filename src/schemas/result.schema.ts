@@ -15,6 +15,12 @@ export const objectPoseSchema = z.object({
   r: z.number().finite(),
 });
 
+export const objectOffsetsSchema = z.object({
+  xSteps: z.number().int(),
+  ySteps: z.number().int(),
+  rotationSteps: z.number().int(),
+});
+
 export const rectInfoSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -78,6 +84,7 @@ export const layoutTaskEventSchema = z.object({
   before: objectPoseSchema.optional(),
   after: objectPoseSchema.optional(),
   counts: operationCountsSchema.optional(),
+  offsets: objectOffsetsSchema.optional(),
   pointer: z
     .object({
       clientX: z.number().finite(),
@@ -90,6 +97,13 @@ export const layoutTaskEventSchema = z.object({
 
 export const finalObjectStateSchema = objectPoseSchema.extend({
   counts: operationCountsSchema,
+  offsets: objectOffsetsSchema.optional(),
+});
+
+export const relativeFinalObjectStateSchema = z.object({
+  dx_steps: z.number().int(),
+  dy_steps: z.number().int(),
+  rotation_steps: z.number().int(),
 });
 
 export const resultSchema = z.object({
@@ -104,7 +118,8 @@ export const resultSchema = z.object({
   display: displayInfoSchema.optional(),
   task_config_hash: z.string().optional(),
   events: z.array(layoutTaskEventSchema),
-  final_state: z.record(finalObjectStateSchema),
+  final_state_mode: z.enum(["absolute", "relative"]).optional(),
+  final_state: z.union([z.record(finalObjectStateSchema), z.record(relativeFinalObjectStateSchema)]),
   locked: z.literal(true),
   copy_timestamp: z.number().int().positive().optional(),
   user_agent: z.string().optional(),
