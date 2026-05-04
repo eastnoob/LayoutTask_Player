@@ -25,25 +25,31 @@ async function bootstrap(): Promise<void> {
   const store = new StateStore(config);
   const clipboard = new ClipboardService();
   let lockedResultText = "";
+  let activeObjectId: string | undefined;
 
   const renderer = new LayoutTaskRenderer({
     root,
     config,
     store,
-    onObjectClick: (objectId) => {
+    onAction: (objectId, action) => {
       if (store.isLocked()) {
         renderer.setStatus("Task is locked. Use the copy button to copy the saved result.");
         return;
       }
 
-      const objectConfig = config.objects.find((item) => item.id === objectId);
-      const step = objectConfig?.behavior.rotation?.step ?? 45;
-      const transition = store.rotateClockwise(objectId, step);
+      const canApply = store.canApplyAction(objectId, action);
+      if (!canApply.ok) {
+        renderer.updateControlsDisabled(objectId);
+        renderer.setStatus(`${objectId}: ${action} is unavailable (${canApply.reason}).`);
+        return;
+      }
+
+      const transition = store.applyAction(objectId, action);
       recorder.recordEvent({
         i: eventIndex,
         t: Date.now() - startTime,
         object: objectId,
-        action: "rotate_cw",
+        action,
         valid: true,
         before: transition.before,
         after: transition.after,
@@ -51,7 +57,32 @@ async function bootstrap(): Promise<void> {
       });
       eventIndex += 1;
       renderer.updateObject(objectId);
-      renderer.setStatus(`${objectId} rotated to ${transition.after.r} degrees.`);
+      renderer.updateControlsDisabled(objectId);
+      renderer.setStatus(`${objectId}: ${action} applied.`);
+    },
+    onObjectSelect: (objectId) => {
+      if (store.isLocked()) {
+        return;
+      }
+
+      if (activeObjectId && activeObjectId !== objectId) {
+        renderer.setStatus(`Editing ${activeObjectId}. Tap the stage background to exit before selecting another object.`);
+        return;
+      }
+
+      activeObjectId = objectId;
+      renderer.activateObject(objectId);
+      renderer.updateControlsDisabled(objectId);
+      renderer.setStatus(`Editing ${objectId}. Tap the stage background to exit edit mode.`);
+    },
+    onStageBackgroundClick: () => {
+      if (!activeObjectId) {
+        return;
+      }
+
+      renderer.clearActiveObject();
+      renderer.setStatus(`Exited ${activeObjectId} edit mode.`);
+      activeObjectId = undefined;
     },
     onConfirm: async () => {
       if (store.isLocked()) {
@@ -59,6 +90,7 @@ async function bootstrap(): Promise<void> {
       }
 
       store.lock();
+      activeObjectId = undefined;
       renderer.setLocked(true);
 
       const result = await recorder.finish(Date.now());

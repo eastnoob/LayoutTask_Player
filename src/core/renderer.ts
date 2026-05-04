@@ -1,4 +1,5 @@
 import type { RuntimeTaskConfig } from "../types/runtime";
+import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
 
@@ -7,6 +8,9 @@ export interface RendererRefs {
   svg?: SVGSVGElement;
   backgroundElement?: SVGElement;
   objectElements: Map<string, SVGElement>;
+  controlElements: Map<string, SVGElement>;
+  controlButtons: Map<string, Map<LayoutAction, SVGElement>>;
+  controlsLayer?: SVGElement;
   confirmButton?: HTMLButtonElement;
   copyAgainButton?: HTMLButtonElement;
   resultOutput?: HTMLTextAreaElement;
@@ -15,13 +19,17 @@ export interface RendererRefs {
 
 export class LayoutTaskRenderer {
   readonly refs: RendererRefs;
+  private activeObjectId: string | undefined;
+  private hideControlsTimer: number | undefined;
 
   constructor(
     private readonly options: {
       root: HTMLElement;
       config: RuntimeTaskConfig;
       store: StateStore;
-      onObjectClick?: (objectId: string, event: MouseEvent) => void;
+      onAction?: (objectId: string, action: LayoutAction, event: MouseEvent | KeyboardEvent) => void;
+      onObjectSelect?: (objectId: string) => void;
+      onStageBackgroundClick?: () => void;
       onConfirm?: () => void;
       onCopyAgain?: () => void;
     },
@@ -29,6 +37,8 @@ export class LayoutTaskRenderer {
     this.refs = {
       root: options.root,
       objectElements: new Map<string, SVGElement>(),
+      controlElements: new Map<string, SVGElement>(),
+      controlButtons: new Map<string, Map<LayoutAction, SVGElement>>(),
     };
   }
 
@@ -40,6 +50,8 @@ export class LayoutTaskRenderer {
   renderAll(): void {
     this.options.root.replaceChildren();
     this.refs.objectElements.clear();
+    this.refs.controlElements.clear();
+    this.refs.controlButtons.clear();
 
     const shell = document.createElement("section");
     shell.className = "layout-task-shell";
@@ -73,6 +85,11 @@ export class LayoutTaskRenderer {
     const viewBox = this.options.config.world.viewBox;
     svg.setAttribute("viewBox", `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.addEventListener("click", (event) => {
+      if (event.target === svg || event.target === background) {
+        this.options.onStageBackgroundClick?.();
+      }
+    });
 
     const background = document.createElementNS("http://www.w3.org/2000/svg", "image");
     background.setAttribute("href", this.options.config.background.asset.srcResolved);
@@ -87,13 +104,32 @@ export class LayoutTaskRenderer {
     objectLayer.classList.add("layout-task-object-layer");
     svg.append(objectLayer);
 
+    const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    controlsLayer.classList.add("layout-task-controls-layer");
+
     for (const objectConfig of this.options.config.objects) {
+      const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      wrapper.classList.add("layout-task-object-wrapper");
+      wrapper.dataset.objectId = objectConfig.id;
+
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
       group.classList.add("layout-task-object");
-      group.dataset.objectId = objectConfig.id;
       group.setAttribute("tabindex", "0");
       group.setAttribute("role", "button");
-      group.setAttribute("aria-label", `${objectConfig.id}: click to rotate`);
+      group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
+      group.addEventListener("click", (event) => {
+        event.stopPropagation();
+        this.options.onObjectSelect?.(objectConfig.id);
+      });
+      group.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        this.options.onObjectSelect?.(objectConfig.id);
+      });
 
       const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
       image.setAttribute("href", objectConfig.asset.srcResolved);
@@ -108,21 +144,16 @@ export class LayoutTaskRenderer {
         image.setAttribute("y", "0");
       }
 
-      group.addEventListener("click", (event) => {
-        this.options.onObjectClick?.(objectConfig.id, event);
-      });
-      group.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          this.options.onObjectClick?.(objectConfig.id, new MouseEvent("click"));
-        }
-      });
-
       group.append(image);
-      objectLayer.append(group);
+      wrapper.append(group);
+      objectLayer.append(wrapper);
+      controlsLayer.append(this.createControls(objectConfig.id, objectConfig.width, objectConfig.height));
       this.refs.objectElements.set(objectConfig.id, group);
       this.updateObject(objectConfig.id);
+      this.updateControlsDisabled(objectConfig.id);
     }
+
+    svg.append(controlsLayer);
 
     stageWrap.append(svg);
 
@@ -130,15 +161,15 @@ export class LayoutTaskRenderer {
     panel.className = "layout-task-panel";
 
     const panelTitle = document.createElement("h2");
-    panelTitle.textContent = "Minimal Player";
+    panelTitle.textContent = "Object Controls";
 
-    const instruction = document.createElement("p");
-    instruction.textContent = "Click an object to rotate it by 45 degrees. Confirming locks the layout and copies the JSON result.";
+      const instruction = document.createElement("p");
+    instruction.textContent = "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.";
 
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
     confirmButton.type = "button";
-    confirmButton.textContent = "确认并复制 JSON";
+    confirmButton.textContent = "Confirm and copy JSON";
     confirmButton.addEventListener("click", () => this.options.onConfirm?.());
 
     const status = document.createElement("p");
@@ -153,7 +184,7 @@ export class LayoutTaskRenderer {
     const copyAgainButton = document.createElement("button");
     copyAgainButton.className = "layout-task-secondary-button";
     copyAgainButton.type = "button";
-    copyAgainButton.textContent = "再次复制";
+    copyAgainButton.textContent = "Copy again";
     copyAgainButton.hidden = true;
     copyAgainButton.addEventListener("click", () => this.options.onCopyAgain?.());
 
@@ -164,6 +195,7 @@ export class LayoutTaskRenderer {
 
     this.refs.svg = svg;
     this.refs.backgroundElement = background;
+    this.refs.controlsLayer = controlsLayer;
     this.refs.confirmButton = confirmButton;
     this.refs.statusElement = status;
     this.refs.resultOutput = output;
@@ -178,6 +210,25 @@ export class LayoutTaskRenderer {
 
     const state = this.options.store.getObjectState(objectId);
     element.setAttribute("transform", `translate(${state.x} ${state.y}) rotate(${state.r})`);
+    element.classList.toggle("is-active", this.activeObjectId === objectId);
+
+    const controls = this.refs.controlElements.get(objectId);
+    if (controls) {
+      controls.setAttribute("transform", `translate(${state.x} ${state.y})`);
+    }
+  }
+
+  updateControlsDisabled(objectId: string): void {
+    const buttons = this.refs.controlButtons.get(objectId);
+    if (!buttons) {
+      return;
+    }
+
+    for (const [action, button] of buttons.entries()) {
+      const canApply = this.options.store.canApplyAction(objectId, action);
+      button.classList.toggle("is-disabled", !canApply.ok);
+      button.setAttribute("aria-disabled", String(!canApply.ok));
+    }
   }
 
   setStatus(message: string): void {
@@ -188,9 +239,16 @@ export class LayoutTaskRenderer {
 
   setLocked(locked: boolean): void {
     this.options.root.classList.toggle("layout-task-locked", locked);
+    if (locked) {
+      this.clearActiveObject();
+    }
 
     for (const objectElement of this.refs.objectElements.values()) {
       objectElement.classList.toggle("is-locked", locked);
+    }
+
+    for (const controlElement of this.refs.controlElements.values()) {
+      controlElement.classList.toggle("is-locked", locked);
     }
 
     if (this.refs.confirmButton) {
@@ -201,8 +259,8 @@ export class LayoutTaskRenderer {
   showCompletion(outputText: string, copyResult: CopyResult): void {
     this.setStatus(
       copyResult.ok
-        ? "已锁定并复制 JSON。请返回问卷粘贴结果。"
-        : "已锁定。自动复制失败，请手动复制下方 JSON。",
+        ? "Locked and copied. Return to the survey and paste the JSON result."
+        : "Locked. Automatic copy failed; copy the JSON below manually.",
     );
 
     if (this.refs.resultOutput) {
@@ -216,6 +274,136 @@ export class LayoutTaskRenderer {
   }
 
   destroy(): void {
+    this.clearHideTimer();
     this.options.root.innerHTML = "";
   }
+
+  private createControls(objectId: string, objectWidth: number, objectHeight: number): SVGElement {
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.classList.add("layout-task-controls");
+    group.dataset.objectId = objectId;
+
+    const gap = 30;
+    const controls: Array<{
+      action: LayoutAction;
+      label: string;
+      x: number;
+      y: number;
+      icon: string;
+    }> = [
+      { action: "move_up", label: "Move up", x: 0, y: -objectHeight / 2 - gap, icon: "arrow-up.svg" },
+      { action: "move_down", label: "Move down", x: 0, y: objectHeight / 2 + gap, icon: "arrow-down.svg" },
+      { action: "move_left", label: "Move left", x: -objectWidth / 2 - gap, y: 0, icon: "arrow-left.svg" },
+      { action: "move_right", label: "Move right", x: objectWidth / 2 + gap, y: 0, icon: "arrow-right.svg" },
+      {
+        action: "rotate_ccw",
+        label: "Rotate counter-clockwise",
+        x: -objectWidth / 2 - gap,
+        y: -objectHeight / 2 - gap,
+        icon: "rotate-ccw.svg",
+      },
+      {
+        action: "rotate_cw",
+        label: "Rotate clockwise",
+        x: objectWidth / 2 + gap,
+        y: -objectHeight / 2 - gap,
+        icon: "rotate-cw.svg",
+      },
+    ];
+
+    const buttonMap = new Map<LayoutAction, SVGElement>();
+
+    for (const control of controls) {
+      const button = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      button.classList.add("layout-task-control-button");
+      button.dataset.action = control.action;
+      button.setAttribute("tabindex", "0");
+      button.setAttribute("role", "button");
+      button.setAttribute("aria-label", `${objectId}: ${control.label}`);
+      button.setAttribute("transform", `translate(${control.x} ${control.y})`);
+
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("r", "18");
+
+      const icon = createControlIcon(this.options.config.baseUrl, control.icon);
+
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (button.classList.contains("is-disabled")) {
+          return;
+        }
+        this.options.onAction?.(objectId, control.action, event);
+      });
+
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.classList.contains("is-disabled")) {
+          return;
+        }
+        this.options.onAction?.(objectId, control.action, event);
+      });
+
+      button.append(circle, icon);
+      group.append(button);
+      buttonMap.set(control.action, button);
+    }
+
+    this.refs.controlElements.set(objectId, group);
+    this.refs.controlButtons.set(objectId, buttonMap);
+
+    return group;
+  }
+
+  activateObject(objectId: string): void {
+    if (this.options.store.isLocked()) {
+      return;
+    }
+
+    this.clearHideTimer();
+
+    this.activeObjectId = objectId;
+    for (const [currentObjectId, objectElement] of this.refs.objectElements.entries()) {
+      objectElement.classList.toggle("is-active", currentObjectId === objectId);
+    }
+    for (const [currentObjectId, controlElement] of this.refs.controlElements.entries()) {
+      controlElement.classList.toggle("is-active", currentObjectId === objectId);
+    }
+  }
+
+  clearActiveObject(): void {
+    this.clearHideTimer();
+    this.activeObjectId = undefined;
+
+    for (const objectElement of this.refs.objectElements.values()) {
+      objectElement.classList.remove("is-active");
+    }
+
+    for (const controlElement of this.refs.controlElements.values()) {
+      controlElement.classList.remove("is-active");
+    }
+  }
+
+  private clearHideTimer(): void {
+    if (this.hideControlsTimer !== undefined) {
+      window.clearTimeout(this.hideControlsTimer);
+      this.hideControlsTimer = undefined;
+    }
+  }
+}
+
+function createControlIcon(baseUrl: string, iconFile: string): SVGElement {
+  const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  image.classList.add("layout-task-control-icon");
+  image.setAttribute("href", new URL(`assets/icons/${iconFile}`, baseUrl).toString());
+  image.setAttribute("x", "-10");
+  image.setAttribute("y", "-10");
+  image.setAttribute("width", "20");
+  image.setAttribute("height", "20");
+  image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  return image;
 }

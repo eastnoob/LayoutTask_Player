@@ -93,6 +93,10 @@ body {
   border-radius: 6px;
 }
 
+.layout-task-object-wrapper {
+  pointer-events: bounding-box;
+}
+
 .layout-task-object {
   cursor: pointer;
   outline: none;
@@ -103,13 +107,69 @@ body {
 }
 
 .layout-task-object:hover image,
-.layout-task-object:focus-visible image {
+.layout-task-object:focus-visible image,
+.layout-task-object.is-active image {
   filter: drop-shadow(0 0 0.25rem rgba(14, 116, 144, 0.9)) drop-shadow(0 8px 10px rgba(15, 23, 42, 0.22));
 }
 
 .layout-task-object.is-locked {
   cursor: default;
   opacity: 0.82;
+}
+
+.layout-task-controls {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.layout-task-controls.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.layout-task-controls.is-locked {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.layout-task-control-button {
+  cursor: pointer;
+  outline: none;
+}
+
+.layout-task-control-button circle {
+  fill: #ffffff;
+  stroke: #155e75;
+  stroke-width: 2;
+  filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.22));
+}
+
+.layout-task-control-icon {
+  pointer-events: none;
+  opacity: 0.94;
+}
+
+.layout-task-control-button:hover circle,
+.layout-task-control-button:focus-visible circle {
+  fill: #e0f2fe;
+  stroke: #0e7490;
+}
+
+.layout-task-control-button.is-disabled {
+  cursor: default;
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.layout-task-control-button.is-disabled circle {
+  fill: #e2e8f0;
+  stroke: #94a3b8;
+  filter: none;
+}
+
+.layout-task-control-button.is-disabled .layout-task-control-icon {
+  opacity: 0.48;
 }
 
 .layout-task-panel h2 {
