@@ -1,9 +1,33 @@
 #!/usr/bin/env tsx
 
-export {};
+import {
+  HelpRequested,
+  decodeSourceRecords,
+  decodedRecordsToJson,
+  parseDecoderArgs,
+  printUsage,
+  readSourceRecords,
+  writeOutput,
+} from "./decoder-utils";
 
-function main(): void {
-  console.log("Layout Task decoder placeholder: decode-results is not implemented yet.");
+// decode-results is the inspection tool:
+// it keeps the nested structure so researchers can inspect one decoded payload at a time.
+async function main(): Promise<void> {
+  try {
+    const options = parseDecoderArgs(process.argv.slice(2));
+    const records = await readSourceRecords(options);
+    const decoded = await decodeSourceRecords(records);
+    await writeOutput(decodedRecordsToJson(decoded, options.pretty), options.output);
+  } catch (error) {
+    if (error instanceof HelpRequested) {
+      process.stdout.write(`${printUsage("decode-results.ts")}\n`);
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : "Unknown decoder error";
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  }
 }
 
-main();
+void main();
