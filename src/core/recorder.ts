@@ -3,33 +3,51 @@ import type { RuntimeTaskConfig } from "../types/runtime";
 import type { DisplayInfo, LayoutTaskResult } from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
-// Recorder collects trial-time facts but does not decide export policy.
-// 它保存“实验里发生了什么”；至于导出 full 还是 final-only，由 encoder 决定。
+interface RecorderOptions {
+  config: RuntimeTaskConfig;
+  sessionId: string;
+  getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
+  getFinalState: () => LayoutTaskResult["final_state"];
+  nowImpl?: () => number;
+  getUserAgent?: () => string | undefined;
+}
+
+// Recorder collects trial-time facts but does not decide export shape.
+// 它负责生成稳定的 event timeline；encoder 再决定最终导出 full 还是 final-only。
 export class Recorder {
   private readonly events: LayoutTaskEvent[] = [];
+  private readonly nowImpl: () => number;
+  private readonly getUserAgent: () => string | undefined;
   private startTime = 0;
   private endTime = 0;
 
-  constructor(
-    private readonly options: {
-      config: RuntimeTaskConfig;
-      sessionId: string;
-      getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
-      getFinalState: () => LayoutTaskResult["final_state"];
-    },
-  ) {}
-
-  start(): void {
-    this.startTime = now();
+  constructor(private readonly options: RecorderOptions) {
+    this.nowImpl = options.nowImpl ?? now;
+    this.getUserAgent =
+      options.getUserAgent ??
+      (() => (typeof navigator !== "undefined" ? navigator.userAgent : undefined));
   }
 
-  recordEvent(event: LayoutTaskEvent): void {
-    this.events.push(event);
+  start(): void {
+    this.startTime = this.nowImpl();
+  }
+
+  recordEvent(event: Omit<LayoutTaskEvent, "i" | "t">): LayoutTaskEvent {
+    const recordedEvent: LayoutTaskEvent = {
+      ...event,
+      i: this.events.length,
+      t: elapsedMs(this.startTime, this.nowImpl()),
+    };
+
+    this.events.push(recordedEvent);
+    return recordedEvent;
   }
 
   async finish(copyTimestamp?: number): Promise<LayoutTaskResult> {
-    this.endTime = now();
-    const display = await this.options.getDisplayInfo?.();
+    this.endTime = this.nowImpl();
+    const display = this.options.config.recording.record_display_info
+      ? await this.options.getDisplayInfo?.()
+      : undefined;
 
     return {
       schema: "layouttask.result.v1",
@@ -42,21 +60,19 @@ export class Recorder {
       duration_ms: elapsedMs(this.startTime, this.endTime),
       display,
       task_config_hash: this.options.config.taskConfigHash,
-      // context is the self-describing block for downstream decoding/analysis.
-      // 把关键解释参数写进 JSON，本体单独拿出去分析时也不怕丢 header 语义。
+      // context makes the payload self-describing for offline analysis.
+      // final_state 仍然始终保留；record_final_state 目前作为 reserved toggle，不在此步改 schema。
       context: buildResultContext(this.options.config),
       events: this.events,
       final_state: this.options.getFinalState(),
       locked: true,
       copy_timestamp: copyTimestamp,
-      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      user_agent: this.options.config.recording.record_user_agent ? this.getUserAgent() : undefined,
     };
   }
 }
 
 function buildResultContext(config: RuntimeTaskConfig): LayoutTaskResult["context"] {
-  // This is not just "nice metadata"; it is analysis-critical provenance.
-  // It records the world/grid assumptions and each object's starting pose + limits.
   return {
     world: {
       viewBox: config.world.viewBox,

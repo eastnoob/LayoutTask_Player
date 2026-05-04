@@ -1912,6 +1912,7 @@ interface LayoutTaskMessages {
 ## 21. 分阶段开发计划
 
 ### v0.1 Minimal Player
+Status: done
 
 目标：
 
@@ -1930,6 +1931,7 @@ interface LayoutTaskMessages {
 - 确认后剪贴板中是 JSON。
 
 ### v0.2 Grid + Movement
+Status: done
 
 目标：
 
@@ -1945,6 +1947,7 @@ interface LayoutTaskMessages {
 - final state 坐标正确。
 
 ### v0.3 Controls + Limits
+Status: done
 
 目标：
 
@@ -1959,6 +1962,7 @@ interface LayoutTaskMessages {
 - event log 包含 before / after / counts。
 
 ### v0.4 Data Encoding
+Status: done
 
 目标：
 
@@ -1976,6 +1980,7 @@ interface LayoutTaskMessages {
 - 修改 encoded payload 后 hash 校验失败。
 
 ### v0.5 jsPsych Plugin Integration
+Status: not started
 
 目标：
 
@@ -1990,6 +1995,7 @@ interface LayoutTaskMessages {
 - autoFinishTrial 可按配置启用。
 
 ### v0.6 Modular Config
+Status: done
 
 目标：
 
@@ -2007,6 +2013,7 @@ interface LayoutTaskMessages {
 - 缺失引用会给出明确错误。
 
 ### v0.7 Decoder Tools
+Status: done
 
 目标：
 
@@ -2020,7 +2027,15 @@ interface LayoutTaskMessages {
 - 可解析问卷导出的 CSV。
 - 输出 valid/invalid。
 
+### v0.7.1 Decoder Validation
+Status: done
+
+- 已实现 decoded result validation
+- 已为 trial CSV 增加 validation columns
+- 已增加 decoder unit tests
+
 ### v0.8 Drag Interface
+Status: not started
 
 目标：
 
@@ -2033,6 +2048,13 @@ interface LayoutTaskMessages {
 
 - 不影响按钮式交互。
 - drag events 可被 decoder 识别。
+
+Current repo status / 当前实现状态
+
+- current branch: `feature/decoder-validation`
+- latest milestone commits:
+  - `3329923 feat: add layout task decoder tools`
+  - `71b5226 feat: validate decoded layout task results`
 
 ## 22. 推荐 package.json dependencies
 
