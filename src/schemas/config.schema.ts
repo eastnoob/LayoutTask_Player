@@ -46,11 +46,26 @@ export const freeDragBehaviorSchema = z.object({
   snap: z.boolean().optional(),
 });
 
-export const behaviorSchema = z.object({
-  movement: movementBehaviorSchema,
-  rotation: rotationBehaviorSchema.optional(),
-  free_drag: freeDragBehaviorSchema.default({ enabled: false }),
-});
+export const behaviorSchema = z
+  .object({
+    movement: movementBehaviorSchema,
+    rotation: rotationBehaviorSchema.optional(),
+    free_drag: freeDragBehaviorSchema.default({ enabled: false }),
+  })
+  .superRefine((value, context) => {
+    // Drag is an explicit authoring mode: movement.mode and free_drag.enabled must agree.
+    // 避免出现“看起来能拖，但运行时其实没开”的半配置状态。
+    const movementIsDrag = value.movement.mode === "drag";
+    const freeDragEnabled = value.free_drag.enabled;
+
+    if (movementIsDrag !== freeDragEnabled) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["free_drag", "enabled"],
+        message: "free_drag.enabled must match movement.mode='drag'",
+      });
+    }
+  });
 
 export const objectAssetSchema = z.object({
   type: z.enum(["svg", "png", "jpg", "image"]),

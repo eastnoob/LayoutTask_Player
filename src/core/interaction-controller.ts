@@ -1,7 +1,7 @@
-import type { LayoutTaskEvent, LayoutAction } from "../types/events";
+import type { LayoutTaskEvent, LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import type { LayoutTaskRenderer } from "./renderer";
-import type { StateStore } from "./state-store";
+import type { LayoutTaskRenderer, RendererPointer } from "./renderer";
+import type { DragTransition, StateStore } from "./state-store";
 
 export interface ActionRequest {
   objectId: string;
@@ -9,14 +9,29 @@ export interface ActionRequest {
   pointer?: { clientX: number; clientY: number; worldX?: number; worldY?: number };
 }
 
+export interface DragRequest {
+  objectId: string;
+  pointer: RendererPointer;
+}
+
 interface InteractionRecorder {
   recordEvent(event: Omit<LayoutTaskEvent, "i" | "t">): LayoutTaskEvent;
+}
+
+interface DragSession {
+  objectId: string;
+  pointerId: number;
+  startPose: ObjectPose;
+  startOffsets: ObjectOffsets;
+  startCounts: OperationCounts;
+  grabOffset: { x: number; y: number };
 }
 
 // InteractionController is the behavior layer between SVG UI and state transitions.
 // 它负责“能不能做”“做了以后记什么”“以及 UI 应该怎么响应”。
 export class InteractionController {
   private activeObjectId: string | undefined;
+  private dragSession: DragSession | undefined;
   private bound = false;
 
   constructor(
@@ -35,6 +50,7 @@ export class InteractionController {
   unbind(): void {
     this.bound = false;
     this.activeObjectId = undefined;
+    this.dragSession = undefined;
     this.options.renderer.clearActiveObject();
   }
 
@@ -57,7 +73,7 @@ export class InteractionController {
   }
 
   deselectObject(): void {
-    if (!this.bound || !this.activeObjectId) {
+    if (!this.bound || !this.activeObjectId || this.dragSession) {
       return;
     }
 
@@ -111,8 +127,134 @@ export class InteractionController {
     return { ok: true };
   }
 
+  requestDragStart(request: DragRequest): { ok: boolean; reason?: string } {
+    if (!this.bound) {
+      return { ok: false, reason: "controller_not_bound" };
+    }
+
+    const canDrag = this.options.store.canDragObject(request.objectId);
+    if (!canDrag.ok) {
+      if (canDrag.reason === "locked") {
+        this.options.renderer.setStatus("Task is locked. Use the copy button to copy the saved result.");
+      }
+      return { ok: false, reason: canDrag.reason };
+    }
+
+    if (this.activeObjectId && this.activeObjectId !== request.objectId) {
+      this.options.renderer.setStatus(
+        `Editing ${this.activeObjectId}. Tap the stage background to exit before dragging another object.`,
+      );
+      return { ok: false, reason: "object_not_active" };
+    }
+
+    const state = this.options.store.getObjectState(request.objectId);
+    this.activeObjectId = request.objectId;
+    this.dragSession = {
+      objectId: request.objectId,
+      pointerId: request.pointer.pointerId,
+      startPose: { x: state.x, y: state.y, r: state.r },
+      startCounts: { ...state.counts },
+      startOffsets: this.options.store.getObjectOffsets(request.objectId),
+      grabOffset: {
+        x: request.pointer.worldX - state.x,
+        y: request.pointer.worldY - state.y,
+      },
+    };
+
+    this.options.renderer.activateObject(request.objectId);
+    this.options.renderer.setDragging(request.objectId, true);
+    this.options.renderer.setStatus(`Dragging ${request.objectId}.`);
+    this.recordDragStart(request);
+    return { ok: true };
+  }
+
+  requestDragMove(request: DragRequest): { ok: boolean; reason?: string } {
+    const session = this.dragSession;
+    if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
+      return { ok: false, reason: "drag_not_active" };
+    }
+
+    const transition = this.applyDragFromPointer(session, request.pointer);
+    this.options.renderer.updateObject(request.objectId);
+    this.options.renderer.updateControlsDisabled(request.objectId);
+    this.options.renderer.setStatus(`${request.objectId}: dragged to ${transition.after.x}, ${transition.after.y}.`);
+    return { ok: true };
+  }
+
+  requestDragEnd(request: DragRequest): { ok: boolean; reason?: string } {
+    const session = this.dragSession;
+    if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
+      return { ok: false, reason: "drag_not_active" };
+    }
+
+    const transition = this.applyDragFromPointer(session, request.pointer);
+    this.recordDragEnd(session, request, transition);
+    this.dragSession = undefined;
+    this.options.renderer.setDragging(request.objectId, false);
+    this.options.renderer.updateObject(request.objectId);
+    this.options.renderer.updateControlsDisabled(request.objectId);
+    this.options.renderer.setStatus(`${request.objectId}: drag finished.`);
+    return { ok: true };
+  }
+
+  requestDragCancel(request: DragRequest): { ok: boolean; reason?: string } {
+    const session = this.dragSession;
+    if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
+      return { ok: false, reason: "drag_not_active" };
+    }
+
+    this.dragSession = undefined;
+    this.options.renderer.setDragging(request.objectId, false);
+    this.options.renderer.updateObject(request.objectId);
+    this.options.renderer.setStatus(`${request.objectId}: drag cancelled.`);
+    return { ok: true };
+  }
+
   getActiveObjectId(): string | undefined {
     return this.activeObjectId;
+  }
+
+  private applyDragFromPointer(session: DragSession, pointer: RendererPointer): DragTransition {
+    // Pointer world position is converted in Renderer; controller only applies grab offset.
+    // 这样拖拽开始点不会强行跳到物体中心。
+    return this.options.store.applyDragPosition(session.objectId, {
+      x: pointer.worldX - session.grabOffset.x,
+      y: pointer.worldY - session.grabOffset.y,
+    });
+  }
+
+  private recordDragStart(request: DragRequest): void {
+    if (!this.options.config.recording.record_events || !this.dragSession) {
+      return;
+    }
+
+    this.options.recorder.recordEvent({
+      object: request.objectId,
+      action: "drag_start",
+      valid: true,
+      before: this.dragSession.startPose,
+      after: this.dragSession.startPose,
+      counts: this.dragSession.startCounts,
+      offsets: this.dragSession.startOffsets,
+      pointer: request.pointer,
+    });
+  }
+
+  private recordDragEnd(session: DragSession, request: DragRequest, transition: DragTransition): void {
+    if (!this.options.config.recording.record_events) {
+      return;
+    }
+
+    this.options.recorder.recordEvent({
+      object: request.objectId,
+      action: "drag_end",
+      valid: true,
+      before: session.startPose,
+      after: transition.after,
+      counts: transition.counts,
+      offsets: transition.offsets,
+      pointer: request.pointer,
+    });
   }
 
   private recordBlockedEvent(

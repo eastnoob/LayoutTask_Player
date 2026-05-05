@@ -85,3 +85,33 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
     ...overrides,
   };
 }
+
+export function createDragRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}): RuntimeTaskConfig {
+  const base = createRuntimeConfig();
+
+  return createRuntimeConfig({
+    ...base,
+    objects: [
+      {
+        ...base.objects[0],
+        behaviorId: "drag25_rotate45_limited",
+        behavior: {
+          ...base.objects[0].behavior,
+          movement: {
+            mode: "drag",
+            step: 25,
+            max_left: 2,
+            max_right: 2,
+            max_up: 2,
+            max_down: 2,
+          },
+          free_drag: {
+            enabled: true,
+            snap: true,
+          },
+        },
+      },
+    ],
+    ...overrides,
+  });
+}

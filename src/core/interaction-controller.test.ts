@@ -3,7 +3,7 @@ import type { LayoutTaskEvent } from "../types/events";
 import type { LayoutTaskRenderer } from "./renderer";
 import { InteractionController } from "./interaction-controller";
 import { StateStore } from "./state-store";
-import { createRuntimeConfig } from "../test-support/runtime-config";
+import { createDragRuntimeConfig, createRuntimeConfig } from "../test-support/runtime-config";
 
 describe("InteractionController", () => {
   it("requires selection before applying an action", () => {
@@ -129,6 +129,79 @@ describe("InteractionController", () => {
     expect(controller.getActiveObjectId()).toBeUndefined();
     expect(renderer.clearActiveObject).toHaveBeenCalledOnce();
   });
+
+  it("records drag start and end without logging drag move events", () => {
+    const config = createDragRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    expect(
+      controller.requestDragStart({
+        objectId: "chair_01",
+        pointer: { clientX: 10, clientY: 20, pointerId: 7, worldX: 0, worldY: 0 },
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      controller.requestDragMove({
+        objectId: "chair_01",
+        pointer: { clientX: 30, clientY: 40, pointerId: 7, worldX: 37, worldY: -62 },
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      controller.requestDragEnd({
+        objectId: "chair_01",
+        pointer: { clientX: 35, clientY: 45, pointerId: 7, worldX: 37, worldY: -62 },
+      }),
+    ).toEqual({ ok: true });
+
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 25, y: -50 });
+    expect(recorder.recordEvent).toHaveBeenCalledTimes(2);
+    expect(recorder.recordEvent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ object: "chair_01", action: "drag_start", valid: true }),
+    );
+    expect(recorder.recordEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        object: "chair_01",
+        action: "drag_end",
+        valid: true,
+        after: { x: 25, y: -50, r: 0 },
+      }),
+    );
+    expect(renderer.setDragging).toHaveBeenCalledWith("chair_01", true);
+    expect(renderer.setDragging).toHaveBeenCalledWith("chair_01", false);
+  });
+
+  it("rejects drag for button-mode objects", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    const result = controller.requestDragStart({
+      objectId: "chair_01",
+      pointer: { clientX: 10, clientY: 20, pointerId: 1, worldX: 0, worldY: 0 },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "movement_disabled" });
+    expect(recorder.recordEvent).not.toHaveBeenCalled();
+  });
 });
 
 function createRendererStub(): LayoutTaskRenderer {
@@ -138,6 +211,7 @@ function createRendererStub(): LayoutTaskRenderer {
     updateControlsDisabled: vi.fn(),
     activateObject: vi.fn(),
     clearActiveObject: vi.fn(),
+    setDragging: vi.fn(),
   } as unknown as LayoutTaskRenderer;
 }
 

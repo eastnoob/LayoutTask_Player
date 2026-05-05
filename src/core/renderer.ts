@@ -3,6 +3,14 @@ import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
 
+export interface RendererPointer {
+  clientX: number;
+  clientY: number;
+  pointerId: number;
+  worldX: number;
+  worldY: number;
+}
+
 // Renderer owns DOM/SVG creation only.
 // 它不决定实验规则，只把 runtime config + current store state 映射成界面。
 export interface RendererRefs {
@@ -32,6 +40,10 @@ export class LayoutTaskRenderer {
       onAction?: (objectId: string, action: LayoutAction, event: MouseEvent | KeyboardEvent) => void;
       onObjectSelect?: (objectId: string) => void;
       onStageBackgroundClick?: () => void;
+      onDragStart?: (objectId: string, pointer: RendererPointer) => void;
+      onDragMove?: (objectId: string, pointer: RendererPointer) => void;
+      onDragEnd?: (objectId: string, pointer: RendererPointer) => void;
+      onDragCancel?: (objectId: string, pointer: RendererPointer) => void;
       onConfirm?: () => void;
       onCopyAgain?: () => void;
     },
@@ -110,8 +122,8 @@ export class LayoutTaskRenderer {
 
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
-    // Controls live in a dedicated overlay layer so they are easier to target
-    // and do not fight with the object's own hit area. 控制层和对象层分开，后续 drag 也更好接。
+    // Controls live in a dedicated overlay layer so they are easier to target.
+    // 控制层和对象层分开，后续 drag 也更好接。
 
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -120,6 +132,7 @@ export class LayoutTaskRenderer {
 
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
       group.classList.add("layout-task-object");
+      group.classList.toggle("is-draggable", objectConfig.behavior.movement.mode === "drag");
       group.setAttribute("tabindex", "0");
       group.setAttribute("role", "button");
       group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
@@ -136,6 +149,7 @@ export class LayoutTaskRenderer {
         event.stopPropagation();
         this.options.onObjectSelect?.(objectConfig.id);
       });
+      this.bindObjectPointerEvents(group, objectConfig.id);
 
       const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
       image.setAttribute("href", objectConfig.asset.srcResolved);
@@ -160,7 +174,6 @@ export class LayoutTaskRenderer {
     }
 
     svg.append(controlsLayer);
-
     stageWrap.append(svg);
 
     const panel = document.createElement("aside");
@@ -240,6 +253,11 @@ export class LayoutTaskRenderer {
     }
   }
 
+  setDragging(objectId: string, dragging: boolean): void {
+    const element = this.refs.objectElements.get(objectId);
+    element?.classList.toggle("is-dragging", dragging);
+  }
+
   setStatus(message: string): void {
     if (this.refs.statusElement) {
       this.refs.statusElement.textContent = message;
@@ -291,44 +309,66 @@ export class LayoutTaskRenderer {
     this.options.root.innerHTML = "";
   }
 
+  clientToWorld(clientX: number, clientY: number): { x: number; y: number } {
+    const svg = this.refs.svg;
+    if (!svg) {
+      return { x: clientX, y: clientY };
+    }
+
+    const matrix = svg.getScreenCTM();
+    if (!matrix) {
+      return { x: clientX, y: clientY };
+    }
+
+    // SVGPoint keeps this conversion browser-native and respects viewBox/preserveAspectRatio.
+    // 后续若有缩放或响应式布局，也不需要手写比例换算。
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    const transformed = point.matrixTransform(matrix.inverse());
+    return { x: transformed.x, y: transformed.y };
+  }
+
   private createControls(objectId: string, objectWidth: number, objectHeight: number): SVGElement {
+    const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.classList.add("layout-task-controls");
     group.dataset.objectId = objectId;
 
-    // Controls are positioned around the object in world space,
-    // so they move together with the selected object. 这也是移动端“选中后编辑”的基础。
-    const gap = 30;
-    const controls: Array<{
-      action: LayoutAction;
-      label: string;
-      x: number;
-      y: number;
-      icon: string;
-    }> = [
-      { action: "move_up", label: "Move up", x: 0, y: -objectHeight / 2 - gap, icon: "arrow-up.svg" },
-      { action: "move_down", label: "Move down", x: 0, y: objectHeight / 2 + gap, icon: "arrow-down.svg" },
-      { action: "move_left", label: "Move left", x: -objectWidth / 2 - gap, y: 0, icon: "arrow-left.svg" },
-      { action: "move_right", label: "Move right", x: objectWidth / 2 + gap, y: 0, icon: "arrow-right.svg" },
-      {
-        action: "rotate_ccw",
-        label: "Rotate counter-clockwise",
-        x: -objectWidth / 2 - gap,
-        y: -objectHeight / 2 - gap,
-        icon: "rotate-ccw.svg",
-      },
-      {
-        action: "rotate_cw",
-        label: "Rotate clockwise",
-        x: objectWidth / 2 + gap,
-        y: -objectHeight / 2 - gap,
-        icon: "rotate-cw.svg",
-      },
-    ];
+    // Drag objects do not show movement arrows; rotation controls are still allowed.
+    // 拖拽只替代平移方式，不影响旋转按钮。
+    const movementControls =
+      objectConfig?.behavior.movement.mode === "drag"
+        ? []
+        : [
+            { action: "move_up" as const, label: "Move up", x: 0, y: -objectHeight / 2 - 30, icon: "arrow-up.svg" },
+            { action: "move_down" as const, label: "Move down", x: 0, y: objectHeight / 2 + 30, icon: "arrow-down.svg" },
+            { action: "move_left" as const, label: "Move left", x: -objectWidth / 2 - 30, y: 0, icon: "arrow-left.svg" },
+            { action: "move_right" as const, label: "Move right", x: objectWidth / 2 + 30, y: 0, icon: "arrow-right.svg" },
+          ];
+
+    const rotationControls =
+      objectConfig?.behavior.rotation?.step === undefined
+        ? []
+        : [
+            {
+              action: "rotate_ccw" as const,
+              label: "Rotate counter-clockwise",
+              x: -objectWidth / 2 - 30,
+              y: -objectHeight / 2 - 30,
+              icon: "rotate-ccw.svg",
+            },
+            {
+              action: "rotate_cw" as const,
+              label: "Rotate clockwise",
+              x: objectWidth / 2 + 30,
+              y: -objectHeight / 2 - 30,
+              icon: "rotate-cw.svg",
+            },
+          ];
 
     const buttonMap = new Map<LayoutAction, SVGElement>();
-
-    for (const control of controls) {
+    for (const control of [...movementControls, ...rotationControls]) {
       const button = document.createElementNS("http://www.w3.org/2000/svg", "g");
       button.classList.add("layout-task-control-button");
       button.dataset.action = control.action;
@@ -403,6 +443,53 @@ export class LayoutTaskRenderer {
     for (const controlElement of this.refs.controlElements.values()) {
       controlElement.classList.remove("is-active");
     }
+  }
+
+  private bindObjectPointerEvents(element: SVGElement, objectId: string): void {
+    element.addEventListener("pointerdown", (event) => {
+      const pointer = this.eventToRendererPointer(event);
+      this.options.onDragStart?.(objectId, pointer);
+      if (element.classList.contains("is-dragging")) {
+        element.setPointerCapture(event.pointerId);
+      }
+    });
+
+    element.addEventListener("pointermove", (event) => {
+      if (!element.hasPointerCapture(event.pointerId)) {
+        return;
+      }
+
+      this.options.onDragMove?.(objectId, this.eventToRendererPointer(event));
+    });
+
+    element.addEventListener("pointerup", (event) => {
+      if (!element.hasPointerCapture(event.pointerId)) {
+        return;
+      }
+
+      this.options.onDragEnd?.(objectId, this.eventToRendererPointer(event));
+      element.releasePointerCapture(event.pointerId);
+    });
+
+    element.addEventListener("pointercancel", (event) => {
+      if (!element.hasPointerCapture(event.pointerId)) {
+        return;
+      }
+
+      this.options.onDragCancel?.(objectId, this.eventToRendererPointer(event));
+      element.releasePointerCapture(event.pointerId);
+    });
+  }
+
+  private eventToRendererPointer(event: PointerEvent): RendererPointer {
+    const world = this.clientToWorld(event.clientX, event.clientY);
+    return {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pointerId: event.pointerId,
+      worldX: world.x,
+      worldY: world.y,
+    };
   }
 
   private clearHideTimer(): void {

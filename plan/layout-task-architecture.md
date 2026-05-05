@@ -1980,7 +1980,7 @@ Status: done
 - 修改 encoded payload 后 hash 校验失败。
 
 ### v0.5 jsPsych Plugin Integration
-Status: not started
+Status: done
 
 目标：
 
@@ -2035,7 +2035,7 @@ Status: done
 - 已增加 decoder unit tests
 
 ### v0.8 Drag Interface
-Status: not started
+Status: done
 
 目标：
 
@@ -2055,6 +2055,8 @@ Current repo status / 当前实现状态
 - latest milestone commits:
   - `3329923 feat: add layout task decoder tools`
   - `71b5226 feat: validate decoded layout task results`
+  - `5e4322c feat: integrate layout task with jspsych`
+  - `3456c33 docs: improve bilingual code comments`
 
 ## 22. 推荐 package.json dependencies
 

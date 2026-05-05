@@ -31,6 +31,25 @@
       "free_drag": {
         "enabled": false
       }
+    },
+    "drag25_rotate45_limited": {
+      "movement": {
+        "mode": "drag",
+        "step": 25,
+        "max_left": 4,
+        "max_right": 4,
+        "max_up": 4,
+        "max_down": 4
+      },
+      "rotation": {
+        "step": 45,
+        "max_cw": 2,
+        "max_ccw": 2
+      },
+      "free_drag": {
+        "enabled": true,
+        "snap": true
+      }
     }
   }
 }

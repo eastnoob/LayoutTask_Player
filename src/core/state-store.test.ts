@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { StateStore } from "./state-store";
-import { createRuntimeConfig } from "../test-support/runtime-config";
+import { createDragRuntimeConfig, createRuntimeConfig } from "../test-support/runtime-config";
 
 describe("StateStore action limits", () => {
   it("limits movement by offset from the initial position", () => {
@@ -80,5 +80,42 @@ describe("StateStore action limits", () => {
       ok: false,
       reason: "locked",
     });
+  });
+
+  it("applies drag positions with snap and relative movement limits", () => {
+    const store = new StateStore(createDragRuntimeConfig());
+
+    const transition = store.applyDragPosition("chair_01", { x: 37, y: -62 });
+
+    expect(transition.after).toMatchObject({ x: 25, y: -50 });
+    expect(transition.offsets).toMatchObject({ xSteps: 1, ySteps: -2 });
+
+    const limited = store.applyDragPosition("chair_01", { x: 500, y: -500 });
+    expect(limited.after).toMatchObject({ x: 50, y: -50 });
+    expect(limited.offsets).toMatchObject({ xSteps: 2, ySteps: -2 });
+  });
+
+  it("clips drag positions to the world viewBox", () => {
+    const store = new StateStore(
+      createDragRuntimeConfig({
+        world: {
+          viewBox: { x: -25, y: -25, width: 50, height: 50 },
+          origin: { x: 0, y: 0 },
+          grid: { size: 25, visible: false, snap: true },
+        },
+      }),
+    );
+
+    const transition = store.applyDragPosition("chair_01", { x: 100, y: 100 });
+    expect(transition.after).toMatchObject({ x: 25, y: 25 });
+  });
+
+  it("rejects dragging for button-mode objects and locked stores", () => {
+    const buttonStore = new StateStore(createRuntimeConfig());
+    expect(buttonStore.canDragObject("chair_01")).toEqual({ ok: false, reason: "movement_disabled" });
+
+    const dragStore = new StateStore(createDragRuntimeConfig());
+    dragStore.lock();
+    expect(dragStore.canDragObject("chair_01")).toEqual({ ok: false, reason: "locked" });
   });
 });

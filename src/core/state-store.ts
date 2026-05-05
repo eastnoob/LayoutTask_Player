@@ -1,4 +1,4 @@
-import type { RuntimeTaskConfig } from "../types/runtime";
+import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 import type { FinalState, ObjectRuntimeState } from "../types/result";
 import type { LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import { normalizeRotation, snapToGrid } from "../utils/geometry";
@@ -8,6 +8,14 @@ import { normalizeRotation, snapToGrid } from "../utils/geometry";
 export interface StateTransition {
   objectId: string;
   action: LayoutAction;
+  before: ObjectPose;
+  after: ObjectPose;
+  counts: OperationCounts;
+  offsets: ObjectOffsets;
+}
+
+export interface DragTransition {
+  objectId: string;
   before: ObjectPose;
   after: ObjectPose;
   counts: OperationCounts;
@@ -131,6 +139,19 @@ export class StateStore {
     return { ok: false, reason: "unsupported_action" };
   }
 
+  canDragObject(objectId: string): CanApplyResult {
+    if (this.locked) {
+      return { ok: false, reason: "locked" };
+    }
+
+    const objectConfig = this.getObjectConfig(objectId);
+    if (objectConfig.behavior.movement.mode !== "drag" || !objectConfig.behavior.free_drag.enabled) {
+      return { ok: false, reason: "movement_disabled" };
+    }
+
+    return { ok: true };
+  }
+
   applyAction(objectId: string, action: LayoutAction): StateTransition {
     const canApply = this.canApplyAction(objectId, action);
     if (!canApply.ok) {
@@ -193,6 +214,32 @@ export class StateStore {
     };
   }
 
+  applyDragPosition(objectId: string, desired: { x: number; y: number }): DragTransition {
+    const canDrag = this.canDragObject(objectId);
+    if (!canDrag.ok) {
+      throw new Error(`Cannot drag ${objectId}: ${canDrag.reason}`);
+    }
+
+    const state = this.objectStates[objectId];
+    if (!state) {
+      throw new Error(`Unknown object: ${objectId}`);
+    }
+
+    const objectConfig = this.getObjectConfig(objectId);
+    const before = toPose(state);
+    const constrained = this.constrainDragPosition(objectConfig, desired);
+    state.x = constrained.x;
+    state.y = constrained.y;
+
+    return {
+      objectId,
+      before,
+      after: toPose(state),
+      counts: { ...state.counts },
+      offsets: this.getObjectOffsets(objectId),
+    };
+  }
+
   getObjectOffsets(objectId: string): ObjectOffsets {
     const state = this.objectStates[objectId];
     const initial = this.initialStates[objectId];
@@ -224,6 +271,35 @@ export class StateStore {
         },
       ]),
     );
+  }
+
+  private constrainDragPosition(objectConfig: RuntimeTaskObject, desired: { x: number; y: number }) {
+    const initial = this.initialStates[objectConfig.id];
+    if (!initial) {
+      throw new Error(`Unknown object initial state: ${objectConfig.id}`);
+    }
+
+    const step = getMovementStep(this.config, objectConfig);
+    const shouldSnap = objectConfig.behavior.free_drag.snap ?? this.config.world.grid.snap;
+    const snapped = shouldSnap
+      ? {
+          x: snapToGrid(desired.x, this.config.world.grid.size),
+          y: snapToGrid(desired.y, this.config.world.grid.size),
+        }
+      : desired;
+
+    // Drag uses the same relative limits as button movement.
+    // 先按原点偏移限制，再夹到 viewBox，保证最终位置始终可解释。
+    const minX = initial.x - (objectConfig.behavior.movement.max_left ?? Number.POSITIVE_INFINITY) * step;
+    const maxX = initial.x + (objectConfig.behavior.movement.max_right ?? Number.POSITIVE_INFINITY) * step;
+    const minY = initial.y - (objectConfig.behavior.movement.max_up ?? Number.POSITIVE_INFINITY) * step;
+    const maxY = initial.y + (objectConfig.behavior.movement.max_down ?? Number.POSITIVE_INFINITY) * step;
+    const view = this.config.world.viewBox;
+
+    return {
+      x: clamp(snapped.x, Math.max(view.x, minX), Math.min(view.x + view.width, maxX)),
+      y: clamp(snapped.y, Math.max(view.y, minY), Math.min(view.y + view.height, maxY)),
+    };
   }
 
   private getObjectConfig(objectId: string) {
@@ -295,4 +371,8 @@ function wouldExceedRotationLimit(
     default:
       return true;
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

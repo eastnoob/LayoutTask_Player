@@ -11,6 +11,11 @@
       "qid": "Q1",
       "task_id": "room01",
       "file": "tasks/room01.json"
+    },
+    {
+      "qid": "QDRAG",
+      "task_id": "room_drag01",
+      "file": "tasks/room_drag01.json"
     }
   ]
 }

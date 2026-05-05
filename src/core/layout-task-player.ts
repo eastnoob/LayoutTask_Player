@@ -54,6 +54,18 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     },
     onObjectSelect: (objectId) => interaction?.selectObject(objectId),
     onStageBackgroundClick: () => interaction?.deselectObject(),
+    onDragStart: (objectId, pointer) => {
+      interaction?.requestDragStart({ objectId, pointer });
+    },
+    onDragMove: (objectId, pointer) => {
+      interaction?.requestDragMove({ objectId, pointer });
+    },
+    onDragEnd: (objectId, pointer) => {
+      interaction?.requestDragEnd({ objectId, pointer });
+    },
+    onDragCancel: (objectId, pointer) => {
+      interaction?.requestDragCancel({ objectId, pointer });
+    },
     onConfirm: () => {
       void completion?.requestComplete();
     },

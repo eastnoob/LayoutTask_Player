@@ -102,6 +102,15 @@ body {
   outline: none;
 }
 
+.layout-task-object.is-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.layout-task-object.is-dragging {
+  cursor: grabbing;
+}
+
 .layout-task-object image {
   filter: drop-shadow(0 6px 8px rgba(15, 23, 42, 0.22));
 }
