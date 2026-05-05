@@ -71,7 +71,12 @@ describe("CompletionController", () => {
   });
 
   it("asks for one extra confirmation when no object has been edited", async () => {
-    const config = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      messages: {
+        ...createRuntimeConfig().messages,
+        confirm_no_edit: "Custom no-edit confirm",
+      },
+    });
     const store = new StateStore(config);
     const renderer = createCompletionRendererStub();
     const recorder = { finish: vi.fn().mockResolvedValue(createResult()) };
@@ -92,9 +97,7 @@ describe("CompletionController", () => {
     await controller.requestComplete();
 
     expect(confirmImpl).toHaveBeenCalledTimes(3);
-    expect(confirmImpl).toHaveBeenLastCalledWith(
-      "You have not edited any object. Are you sure this unchanged layout is your final answer?",
-    );
+    expect(confirmImpl).toHaveBeenLastCalledWith("Custom no-edit confirm");
     expect(store.isLocked()).toBe(true);
   });
 

@@ -104,6 +104,29 @@ export interface DisplayImageConfig {
   record_metrics?: boolean;
 }
 
+export interface LayoutTaskMessages {
+  confirm_lock_1: string;
+  confirm_lock_2: string;
+  confirm_no_edit: string;
+  status_ready: string;
+  status_copy_again_ok: string;
+  status_copy_again_fail: string;
+  instruction_edit_mode: string;
+}
+
+export type MessagesConfig = Partial<LayoutTaskMessages>;
+
+export interface MinViewportRequirement {
+  width: number;
+  height: number;
+  mode?: "warn";
+  message?: string;
+}
+
+export interface RequirementsConfig {
+  min_viewport?: MinViewportRequirement;
+}
+
 export interface ManifestTaskEntry {
   qid: string;
   task_id: string;
@@ -169,4 +192,6 @@ export interface TaskConfig {
   output?: OutputConfig;
   feedback?: FeedbackConfig;
   display_image?: DisplayImageConfig;
+  messages?: MessagesConfig;
+  requirements?: RequirementsConfig;
 }

@@ -126,6 +126,27 @@ export const displayImageSchema = z.object({
   record_metrics: z.boolean().default(true),
 });
 
+export const messagesSchema = z.object({
+  confirm_lock_1: z.string().min(1).optional(),
+  confirm_lock_2: z.string().min(1).optional(),
+  confirm_no_edit: z.string().min(1).optional(),
+  status_ready: z.string().min(1).optional(),
+  status_copy_again_ok: z.string().min(1).optional(),
+  status_copy_again_fail: z.string().min(1).optional(),
+  instruction_edit_mode: z.string().min(1).optional(),
+});
+
+export const minViewportSchema = z.object({
+  width: z.number().positive(),
+  height: z.number().positive(),
+  mode: z.literal("warn").default("warn"),
+  message: z.string().min(1).optional(),
+});
+
+export const requirementsSchema = z.object({
+  min_viewport: minViewportSchema.optional(),
+});
+
 export const taskObjectSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -157,6 +178,8 @@ export const taskSchema = z.object({
   output: outputSchema.optional(),
   feedback: feedbackSchema.optional(),
   display_image: displayImageSchema.optional(),
+  messages: messagesSchema.optional(),
+  requirements: requirementsSchema.optional(),
 });
 
 export const manifestSchema = z.object({

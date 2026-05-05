@@ -73,9 +73,10 @@ export const pageTimingSchema = z.object({
   ]),
   page_open_time: z.number().finite(),
   submit_time: z.number().finite(),
-  total_elapsed_ms: z.number().int().nonnegative(),
+  // performance.timeOrigin may be fractional. 这里保留小数毫秒，避免 decoder 拒绝真实浏览器输出。
+  total_elapsed_ms: z.number().finite().nonnegative(),
   player_start_time: z.number().finite().optional(),
-  player_elapsed_ms: z.number().int().nonnegative().optional(),
+  player_elapsed_ms: z.number().finite().nonnegative().optional(),
 });
 
 export const displayInfoSchema = z.object({

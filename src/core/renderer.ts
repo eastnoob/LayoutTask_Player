@@ -3,6 +3,7 @@ import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
 import { getMovementLimitFeedbackRect } from "../utils/geometry";
+import { getViewportWarningState } from "./viewport-requirements";
 
 export interface RendererPointer {
   clientX: number;
@@ -29,6 +30,7 @@ export interface RendererRefs {
   copyAgainButton?: HTMLButtonElement;
   resultOutput?: HTMLTextAreaElement;
   statusElement?: HTMLElement;
+  viewportWarningElement?: HTMLElement;
 }
 
 export class LayoutTaskRenderer {
@@ -36,6 +38,7 @@ export class LayoutTaskRenderer {
   private activeObjectId: string | undefined;
   private hideControlsTimer: number | undefined;
   private feedbackTimer: number | undefined;
+  private viewportListenerBound = false;
 
   constructor(
     private readonly options: {
@@ -92,7 +95,11 @@ export class LayoutTaskRenderer {
     meta.className = "layout-task-meta";
     meta.textContent = `QID: ${this.options.config.qid} - Objects: ${this.options.config.objects.length}`;
 
-    header.append(eyebrow, title, meta);
+    const viewportWarning = document.createElement("p");
+    viewportWarning.className = "layout-task-viewport-warning";
+    viewportWarning.hidden = true;
+
+    header.append(eyebrow, title, meta, viewportWarning);
 
     const workspace = document.createElement("main");
     workspace.className = "layout-task-workspace";
@@ -194,8 +201,7 @@ export class LayoutTaskRenderer {
     panelTitle.textContent = "Object Controls";
 
     const instruction = document.createElement("p");
-    instruction.textContent =
-      "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.";
+    instruction.textContent = this.options.config.messages.instruction_edit_mode;
 
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
@@ -205,7 +211,7 @@ export class LayoutTaskRenderer {
 
     const status = document.createElement("p");
     status.className = "layout-task-status";
-    status.textContent = "Ready";
+    status.textContent = this.options.config.messages.status_ready;
 
     const output = document.createElement("textarea");
     output.className = "layout-task-output";
@@ -235,6 +241,10 @@ export class LayoutTaskRenderer {
     this.refs.statusElement = status;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
+    this.refs.viewportWarningElement = viewportWarning;
+
+    this.updateViewportWarning();
+    this.bindViewportWarning();
   }
 
   private createDisplayImageFrame(): HTMLElement | undefined {
@@ -421,6 +431,7 @@ export class LayoutTaskRenderer {
   destroy(): void {
     this.clearHideTimer();
     this.clearLimitFeedback();
+    this.unbindViewportWarning();
     this.options.root.innerHTML = "";
   }
 
@@ -602,6 +613,39 @@ export class LayoutTaskRenderer {
       worldY: world.y,
     };
   }
+
+  private bindViewportWarning(): void {
+    if (this.viewportListenerBound || typeof window === "undefined") {
+      return;
+    }
+
+    window.addEventListener("resize", this.updateViewportWarning);
+    this.viewportListenerBound = true;
+  }
+
+  private unbindViewportWarning(): void {
+    if (!this.viewportListenerBound || typeof window === "undefined") {
+      return;
+    }
+
+    window.removeEventListener("resize", this.updateViewportWarning);
+    this.viewportListenerBound = false;
+  }
+
+  private readonly updateViewportWarning = () => {
+    const element = this.refs.viewportWarningElement;
+    if (!element || typeof window === "undefined") {
+      return;
+    }
+
+    const warning = getViewportWarningState(this.options.config, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+
+    element.hidden = !warning.show;
+    element.textContent = warning.message;
+  };
 
   private clearHideTimer(): void {
     if (this.hideControlsTimer !== undefined) {

@@ -2,6 +2,7 @@ import type {
   BackgroundLibraryConfig,
   BehaviorLibraryConfig,
   ManifestConfig,
+  MinViewportRequirement,
   ObjectLibraryConfig,
   TaskConfig,
 } from "../types/config";
@@ -13,6 +14,7 @@ import {
   validateManifest,
   validateTask,
 } from "./config-validator";
+import { resolveMessages } from "./messages";
 
 // ConfigLoader is the authoring-config entry point.
 // 它把 manifest / task / asset / behavior 这些分散文件 resolve 成 RuntimeTaskConfig。
@@ -66,6 +68,8 @@ const DEFAULT_DISPLAY_IMAGE = {
   record_metrics: true,
 };
 
+const DEFAULT_REQUIREMENTS = {};
+
 export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
@@ -101,7 +105,7 @@ export class ConfigLoader {
     ]);
 
     const task = validateTask(taskData);
-    const objectLibrary = objectLibrarySchema.parse(taskData ? objectData : objectData) as ObjectLibraryConfig;
+    const objectLibrary = objectLibrarySchema.parse(objectData) as ObjectLibraryConfig;
     const backgroundLibrary = validateBackgroundLibrary(backgroundData);
     const behaviorLibrary = validateBehaviorLibrary(behaviorData);
 
@@ -203,6 +207,11 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
         ...input.task.feedback?.limit_messages,
       },
     },
+    messages: resolveMessages(input.task.messages),
+    requirements: {
+      ...DEFAULT_REQUIREMENTS,
+      min_viewport: resolveMinViewportRequirement(input.task.requirements?.min_viewport),
+    },
     displayImage: input.task.display_image
       ? {
           ...DEFAULT_DISPLAY_IMAGE,
@@ -215,4 +224,19 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
 
 function resolveAssetUrl(baseUrl: string, relativePath: string): string {
   return new URL(relativePath, baseUrl).toString();
+}
+
+function resolveMinViewportRequirement(
+  requirement?: MinViewportRequirement,
+): RuntimeTaskConfig["requirements"]["min_viewport"] {
+  if (!requirement) {
+    return undefined;
+  }
+
+  return {
+    width: requirement.width,
+    height: requirement.height,
+    mode: requirement.mode ?? "warn",
+    message: requirement.message,
+  };
 }

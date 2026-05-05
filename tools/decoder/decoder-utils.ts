@@ -56,9 +56,31 @@ export interface TrialCsvRow {
   start_time: number | "";
   end_time: number | "";
   duration_ms: number | "";
+  page_timing_source: string;
+  page_open_time: number | "";
+  submit_time: number | "";
+  total_elapsed_ms: number | "";
+  player_start_time: number | "";
+  player_elapsed_ms: number | "";
   locked: boolean | "";
   final_state_mode: string;
   event_count: number | "";
+  visual_viewport_width: number | "";
+  visual_viewport_height: number | "";
+  visual_viewport_scale: number | "";
+  screen_orientation_type: string;
+  screen_orientation_angle: number | "";
+  screen_color_depth: number | "";
+  screen_pixel_depth: number | "";
+  display_image_css_width: number | "";
+  display_image_css_height: number | "";
+  display_image_effective_pixel_width: number | "";
+  display_image_effective_pixel_height: number | "";
+  display_changes_event_count: number | "";
+  display_changes_resize_count: number | "";
+  display_changes_visual_viewport_resize_count: number | "";
+  display_changes_visual_viewport_scroll_count: number | "";
+  display_changes_orientation_change_count: number | "";
   final_state_json: string;
   context_json: string;
   display_json: string;
@@ -66,10 +88,13 @@ export interface TrialCsvRow {
 
 export interface EventCsvRow {
   source_index: number;
+  hash_ok: boolean | "";
+  header_ok: boolean | "";
   exp: string;
   qid: string;
   task_id: string;
   session: string;
+  final_state_mode: string;
   event_index: number;
   t: number;
   object: string;
@@ -242,9 +267,31 @@ export function toTrialRows(records: DecodedSourceRecord[]): TrialCsvRow[] {
       start_time: result.start_time,
       end_time: result.end_time,
       duration_ms: result.duration_ms,
+      page_timing_source: result.page_timing?.source ?? "",
+      page_open_time: result.page_timing?.page_open_time ?? "",
+      submit_time: result.page_timing?.submit_time ?? "",
+      total_elapsed_ms: result.page_timing?.total_elapsed_ms ?? "",
+      player_start_time: result.page_timing?.player_start_time ?? "",
+      player_elapsed_ms: result.page_timing?.player_elapsed_ms ?? "",
       locked: result.locked,
       final_state_mode: result.final_state_mode ?? inferFinalStateMode(result.final_state),
       event_count: result.events.length,
+      visual_viewport_width: result.display?.visualViewport?.width ?? "",
+      visual_viewport_height: result.display?.visualViewport?.height ?? "",
+      visual_viewport_scale: result.display?.visualViewport?.scale ?? "",
+      screen_orientation_type: result.display?.screenOrientation?.type ?? "",
+      screen_orientation_angle: result.display?.screenOrientation?.angle ?? "",
+      screen_color_depth: result.display?.screenColor?.colorDepth ?? "",
+      screen_pixel_depth: result.display?.screenColor?.pixelDepth ?? "",
+      display_image_css_width: result.display?.displayImageRendered?.cssWidth ?? "",
+      display_image_css_height: result.display?.displayImageRendered?.cssHeight ?? "",
+      display_image_effective_pixel_width: result.display?.displayImageRendered?.effectivePixelWidth ?? "",
+      display_image_effective_pixel_height: result.display?.displayImageRendered?.effectivePixelHeight ?? "",
+      display_changes_event_count: result.display?.changes?.events.length ?? "",
+      display_changes_resize_count: result.display?.changes?.resizeCount ?? "",
+      display_changes_visual_viewport_resize_count: result.display?.changes?.visualViewportResizeCount ?? "",
+      display_changes_visual_viewport_scroll_count: result.display?.changes?.visualViewportScrollCount ?? "",
+      display_changes_orientation_change_count: result.display?.changes?.orientationChangeCount ?? "",
       final_state_json: JSON.stringify(result.final_state),
       context_json: JSON.stringify(result.context ?? null),
       display_json: JSON.stringify(result.display ?? null),
@@ -264,7 +311,7 @@ export function toEventRows(records: DecodedSourceRecord[]): EventCsvRow[] {
 
     const result = record.decoded.result;
     for (const event of result.events) {
-      rows.push(toEventRow(record.sourceIndex, result, event));
+      rows.push(toEventRow(record.sourceIndex, record.decoded.hashOk, record.decoded.headerOk, result, event));
     }
   }
 
@@ -586,13 +633,22 @@ function validateAbsoluteStateAlignmentWithoutOffsets(
   }
 }
 
-function toEventRow(sourceIndex: number, result: LayoutTaskResult, event: LayoutTaskEvent): EventCsvRow {
+function toEventRow(
+  sourceIndex: number,
+  hashOk: boolean,
+  headerOk: boolean,
+  result: LayoutTaskResult,
+  event: LayoutTaskEvent,
+): EventCsvRow {
   return {
     source_index: sourceIndex,
+    hash_ok: hashOk,
+    header_ok: headerOk,
     exp: result.exp,
     qid: result.qid,
     task_id: result.task_id,
     session: result.session,
+    final_state_mode: result.final_state_mode ?? inferFinalStateMode(result.final_state),
     event_index: event.i,
     t: event.t,
     object: event.object,
@@ -630,9 +686,31 @@ function emptyTrialRow(record: DecodedSourceRecord): TrialCsvRow {
     start_time: "",
     end_time: "",
     duration_ms: "",
+    page_timing_source: "",
+    page_open_time: "",
+    submit_time: "",
+    total_elapsed_ms: "",
+    player_start_time: "",
+    player_elapsed_ms: "",
     locked: "",
     final_state_mode: "",
     event_count: "",
+    visual_viewport_width: "",
+    visual_viewport_height: "",
+    visual_viewport_scale: "",
+    screen_orientation_type: "",
+    screen_orientation_angle: "",
+    screen_color_depth: "",
+    screen_pixel_depth: "",
+    display_image_css_width: "",
+    display_image_css_height: "",
+    display_image_effective_pixel_width: "",
+    display_image_effective_pixel_height: "",
+    display_changes_event_count: "",
+    display_changes_resize_count: "",
+    display_changes_visual_viewport_resize_count: "",
+    display_changes_visual_viewport_scroll_count: "",
+    display_changes_orientation_change_count: "",
     final_state_json: "",
     context_json: "",
     display_json: "",

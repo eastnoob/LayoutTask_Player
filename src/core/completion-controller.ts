@@ -41,12 +41,12 @@ export class CompletionController {
     if (this.options.config.completion.double_confirm) {
       // Double confirm is cheap but valuable in survey contexts.
       // 被试一旦确认就不能再改，因此这里宁可多问一次。
-      const ok1 = this.confirmImpl("After confirmation, the object layout will be locked. Continue?");
+      const ok1 = this.confirmImpl(this.options.config.messages.confirm_lock_1);
       if (!ok1) {
         return;
       }
 
-      const ok2 = this.confirmImpl("Please confirm again: this will finalize the current layout.");
+      const ok2 = this.confirmImpl(this.options.config.messages.confirm_lock_2);
       if (!ok2) {
         return;
       }
@@ -55,9 +55,7 @@ export class CompletionController {
     if (!this.options.store.hasEdits()) {
       // Detect true no-edit submission from interaction history, not from final_state zeros.
       // 这样“动过又移回原位”不会被误判成空提交。
-      const okNoEdit = this.confirmImpl(
-        "You have not edited any object. Are you sure this unchanged layout is your final answer?",
-      );
+      const okNoEdit = this.confirmImpl(this.options.config.messages.confirm_no_edit);
       if (!okNoEdit) {
         return;
       }
@@ -94,7 +92,9 @@ export class CompletionController {
 
     const copyResult = await this.options.clipboard.copy(this.lockedPayload.encoded.output);
     this.options.renderer.setStatus(
-      copyResult.ok ? "Encoded result copied again." : "Copy failed. Please copy the encoded result manually.",
+      copyResult.ok
+        ? this.options.config.messages.status_copy_again_ok
+        : this.options.config.messages.status_copy_again_fail,
     );
     return copyResult;
   }

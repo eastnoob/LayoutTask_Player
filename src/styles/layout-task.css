@@ -55,6 +55,20 @@ body {
   color: #52627a;
 }
 
+.layout-task-viewport-warning {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #f2c94c;
+  border-radius: 6px;
+  background: #fff7d6;
+  color: #7a4f00;
+  font-size: 0.875rem;
+}
+
+.layout-task-viewport-warning[hidden] {
+  display: none;
+}
+
 .layout-task-display-image-frame {
   width: 100%;
   margin: 0 auto;

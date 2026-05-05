@@ -83,3 +83,42 @@ describe("taskSchema recording", () => {
     expect(parsed.recording?.record_page_timing).toBe(false);
   });
 });
+
+describe("taskSchema release hardening fields", () => {
+  it("accepts messages and min viewport requirements", () => {
+    const parsed = taskSchema.parse({
+      schema: "layouttask.task.v1",
+      task_id: "room01",
+      qid: "Q1",
+      world: {
+        viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 25 },
+      },
+      background: {
+        asset: "room01_bg",
+        x: -400,
+        y: -300,
+        width: 800,
+        height: 600,
+      },
+      objects: [],
+      messages: {
+        confirm_no_edit: "Custom no-edit message",
+      },
+      requirements: {
+        min_viewport: {
+          width: 1024,
+          height: 720,
+        },
+      },
+    });
+
+    expect(parsed.messages?.confirm_no_edit).toBe("Custom no-edit message");
+    expect(parsed.requirements?.min_viewport).toMatchObject({
+      width: 1024,
+      height: 720,
+      mode: "warn",
+    });
+  });
+});

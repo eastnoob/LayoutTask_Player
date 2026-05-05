@@ -5,6 +5,7 @@ import type {
   CompletionConfig,
   DisplayImageConfig,
   FeedbackConfig,
+  LayoutTaskMessages,
   ObjectAssetConfig,
   OutputConfig,
   RecordingConfig,
@@ -46,6 +47,17 @@ export interface RuntimeBackground {
 
 export interface RuntimeDisplayImage extends Required<DisplayImageConfig>, ResolvedAssetPath {}
 
+export interface RuntimeMinViewportRequirement {
+  width: number;
+  height: number;
+  mode: "warn";
+  message?: string;
+}
+
+export interface RuntimeRequirements {
+  min_viewport?: RuntimeMinViewportRequirement;
+}
+
 export interface RuntimeTaskConfig {
   schema: "layouttask.runtime.v1";
   experimentId: string;
@@ -62,5 +74,7 @@ export interface RuntimeTaskConfig {
   recording: Required<RecordingConfig>;
   output: Required<OutputConfig>;
   feedback: Required<FeedbackConfig>;
+  messages: LayoutTaskMessages;
+  requirements: RuntimeRequirements;
   displayImage?: RuntimeDisplayImage;
 }
