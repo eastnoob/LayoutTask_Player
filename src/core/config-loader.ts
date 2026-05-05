@@ -37,6 +37,8 @@ const DEFAULT_RECORDING = {
   record_events: true,
   record_final_state: true,
   record_display_info: true,
+  record_display_changes: true,
+  record_page_timing: true,
   record_user_agent: true,
   record_blocked_events: false,
 };
@@ -56,6 +58,12 @@ const DEFAULT_FEEDBACK = {
     rotate_cw: "You cannot rotate further clockwise.",
     rotate_ccw: "You cannot rotate further counter-clockwise.",
   },
+};
+
+const DEFAULT_DISPLAY_IMAGE = {
+  enabled: true,
+  alt: "Reference image",
+  record_metrics: true,
 };
 
 export class ConfigLoader {
@@ -195,6 +203,13 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
         ...input.task.feedback?.limit_messages,
       },
     },
+    displayImage: input.task.display_image
+      ? {
+          ...DEFAULT_DISPLAY_IMAGE,
+          ...input.task.display_image,
+          srcResolved: resolveAssetUrl(input.baseUrl, input.task.display_image.src),
+        }
+      : undefined,
   };
 }
 

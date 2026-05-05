@@ -16,6 +16,8 @@ describe("createLayoutTaskPlayer", () => {
       objectElements: new Map(),
       controlElements: new Map(),
       controlButtons: new Map(),
+      displayImageFrameElement: undefined,
+      displayImageElement: undefined,
     });
     const destroySpy = vi.spyOn(LayoutTaskRenderer.prototype, "destroy").mockImplementation(() => undefined);
     const startSpy = vi.spyOn(Recorder.prototype, "start").mockImplementation(() => undefined);

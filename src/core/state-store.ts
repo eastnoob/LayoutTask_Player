@@ -39,6 +39,7 @@ export class StateStore {
   private readonly rotationOffsets: Record<string, number>;
   private readonly config: RuntimeTaskConfig;
   private locked = false;
+  private edited = false;
 
   constructor(config: RuntimeTaskConfig) {
     this.config = config;
@@ -83,6 +84,10 @@ export class StateStore {
 
   lock(): void {
     this.locked = true;
+  }
+
+  hasEdits(): boolean {
+    return this.edited;
   }
 
   getObjectState(objectId: string): ObjectRuntimeState {
@@ -204,6 +209,10 @@ export class StateStore {
       state.y = snapToGrid(state.y, this.config.world.grid.size);
     }
 
+    // This is an edit-history flag, not final-state comparison.
+    // 即使用户移动后又回到原点，也仍然算“做过编辑”，避免误触发空提交确认。
+    this.edited = true;
+
     return {
       objectId,
       action,
@@ -230,11 +239,18 @@ export class StateStore {
     const constrained = this.constrainDragPosition(objectConfig, desired);
     state.x = constrained.x;
     state.y = constrained.y;
+    const after = toPose(state);
+
+    if (!posesEqual(before, after)) {
+      // Drag only counts as an edit after the object actually changes pose.
+      // 只点住但没有移动，不应该被当作真正编辑。
+      this.edited = true;
+    }
 
     return {
       objectId,
       before,
-      after: toPose(state),
+      after,
       counts: { ...state.counts },
       offsets: this.getObjectOffsets(objectId),
     };
@@ -375,4 +391,8 @@ function wouldExceedRotationLimit(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function posesEqual(a: ObjectPose, b: ObjectPose): boolean {
+  return a.x === b.x && a.y === b.y && a.r === b.r;
 }

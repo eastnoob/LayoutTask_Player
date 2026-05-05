@@ -19,6 +19,14 @@ describe("Recorder", () => {
       config,
       sessionId: "SESSION1",
       getDisplayInfo,
+      getPageTiming: (submitTime, playerStartTime) => ({
+        source: "performance.timeOrigin",
+        page_open_time: 500,
+        submit_time: submitTime,
+        total_elapsed_ms: submitTime - 500,
+        player_start_time: playerStartTime,
+        player_elapsed_ms: submitTime - playerStartTime,
+      }),
       getFinalState: () => ({
         chair_01: {
           x: 0,
@@ -43,8 +51,39 @@ describe("Recorder", () => {
     expect(event).toMatchObject({ i: 0, t: 120 });
     expect(getDisplayInfo).not.toHaveBeenCalled();
     expect(result.display).toBeUndefined();
+    expect(result.page_timing).toMatchObject({
+      page_open_time: 500,
+      submit_time: 2_000,
+      total_elapsed_ms: 1_500,
+      player_start_time: 1_000,
+      player_elapsed_ms: 1_000,
+    });
     expect(result.user_agent).toBeUndefined();
     expect(result.final_state).toBeDefined();
+  });
+
+  it("skips page timing when record_page_timing is false", async () => {
+    const baseConfig = createRuntimeConfig();
+    const recorder = new Recorder({
+      config: {
+        ...baseConfig,
+        recording: {
+          ...baseConfig.recording,
+          record_page_timing: false,
+        },
+      },
+      sessionId: "SESSION1",
+      getPageTiming: () => {
+        throw new Error("should not collect page timing");
+      },
+      getFinalState: () => ({}),
+      nowImpl: createNowSequence([1_000, 2_000]),
+    });
+
+    recorder.start();
+    const result = await recorder.finish();
+
+    expect(result.page_timing).toBeUndefined();
   });
 });
 

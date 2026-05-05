@@ -3,6 +3,7 @@ import type {
   BackgroundAssetConfig,
   BehaviorConfig,
   CompletionConfig,
+  DisplayImageConfig,
   FeedbackConfig,
   ObjectAssetConfig,
   OutputConfig,
@@ -11,7 +12,7 @@ import type {
 } from "./config";
 
 // Runtime types are the resolved, app-ready shape after config loading.
-// 和 config.ts 的区别在于：asset path 已解析，defaults 也已经补齐。
+// 和 `config.ts` 的区别在于：asset path 已解析，defaults 也已经补齐。
 export interface ResolvedAssetPath {
   srcResolved: string;
 }
@@ -43,6 +44,8 @@ export interface RuntimeBackground {
   height: number;
 }
 
+export interface RuntimeDisplayImage extends Required<DisplayImageConfig>, ResolvedAssetPath {}
+
 export interface RuntimeTaskConfig {
   schema: "layouttask.runtime.v1";
   experimentId: string;
@@ -59,4 +62,5 @@ export interface RuntimeTaskConfig {
   recording: Required<RecordingConfig>;
   output: Required<OutputConfig>;
   feedback: Required<FeedbackConfig>;
+  displayImage?: RuntimeDisplayImage;
 }

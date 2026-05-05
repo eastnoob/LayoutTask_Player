@@ -55,6 +55,24 @@ body {
   color: #52627a;
 }
 
+.layout-task-display-image-frame {
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #d9e1ee;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
+}
+
+.layout-task-display-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
 .layout-task-panel {
   width: 100%;
   padding: 24px;

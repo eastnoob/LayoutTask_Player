@@ -35,6 +35,49 @@ export const rectInfoSchema = z.object({
   left: z.number().finite(),
 });
 
+export const visualViewportSchema = z.object({
+  width: z.number().nonnegative(),
+  height: z.number().nonnegative(),
+  scale: z.number().nonnegative(),
+  offsetLeft: z.number().finite(),
+  offsetTop: z.number().finite(),
+  pageLeft: z.number().finite(),
+  pageTop: z.number().finite(),
+});
+
+export const screenOrientationSchema = z.object({
+  type: z.string().optional(),
+  angle: z.number().finite().optional(),
+});
+
+export const displayChangeSnapshotSchema = z.object({
+  viewport: z.object({
+    width: z.number().nonnegative(),
+    height: z.number().nonnegative(),
+  }),
+  visualViewport: visualViewportSchema.optional(),
+  screenOrientation: screenOrientationSchema.optional(),
+  displayImageRect: z
+    .object({
+      width: z.number().nonnegative(),
+      height: z.number().nonnegative(),
+    })
+    .optional(),
+});
+
+export const pageTimingSchema = z.object({
+  source: z.enum([
+    "performance.timeOrigin",
+    "performance.timing.navigationStart",
+    "collector_created",
+  ]),
+  page_open_time: z.number().finite(),
+  submit_time: z.number().finite(),
+  total_elapsed_ms: z.number().int().nonnegative(),
+  player_start_time: z.number().finite().optional(),
+  player_elapsed_ms: z.number().int().nonnegative().optional(),
+});
+
 export const displayInfoSchema = z.object({
   viewport: z.object({
     width: z.number().nonnegative(),
@@ -61,6 +104,54 @@ export const displayInfoSchema = z.object({
       y: z.number().finite(),
       width: z.number().nonnegative(),
       height: z.number().nonnegative(),
+    })
+    .optional(),
+  visualViewport: visualViewportSchema.optional(),
+  screenOrientation: screenOrientationSchema.optional(),
+  screenColor: z
+    .object({
+      colorDepth: z.number().nonnegative().optional(),
+      pixelDepth: z.number().nonnegative().optional(),
+    })
+    .optional(),
+  displayImageFrameRect: rectInfoSchema.optional(),
+  displayImageRect: rectInfoSchema.optional(),
+  displayImageNatural: z
+    .object({
+      width: z.number().nonnegative(),
+      height: z.number().nonnegative(),
+    })
+    .optional(),
+  displayImageRendered: z
+    .object({
+      cssWidth: z.number().nonnegative(),
+      cssHeight: z.number().nonnegative(),
+      devicePixelRatio: z.number().positive(),
+      effectivePixelWidth: z.number().nonnegative(),
+      effectivePixelHeight: z.number().nonnegative(),
+    })
+    .optional(),
+  changes: z
+    .object({
+      initial: displayChangeSnapshotSchema.optional(),
+      final: displayChangeSnapshotSchema.optional(),
+      events: z.array(
+        z.object({
+          i: z.number().int().nonnegative(),
+          t: z.number().int().nonnegative(),
+          type: z.enum([
+            "window_resize",
+            "visual_viewport_resize",
+            "visual_viewport_scroll",
+            "orientation_change",
+          ]),
+          snapshot: displayChangeSnapshotSchema,
+        }),
+      ),
+      resizeCount: z.number().int().nonnegative(),
+      visualViewportResizeCount: z.number().int().nonnegative(),
+      visualViewportScrollCount: z.number().int().nonnegative(),
+      orientationChangeCount: z.number().int().nonnegative(),
     })
     .optional(),
 });
@@ -149,6 +240,7 @@ export const resultSchema = z.object({
   start_time: z.number().int().positive(),
   end_time: z.number().int().positive(),
   duration_ms: z.number().int().nonnegative(),
+  page_timing: pageTimingSchema.optional(),
   display: displayInfoSchema.optional(),
   task_config_hash: z.string().optional(),
   // Optional for early pilot compatibility; new exports should include it.

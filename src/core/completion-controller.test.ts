@@ -11,6 +11,7 @@ describe("CompletionController", () => {
   it("locks, encodes, copies, and reuses the same payload for copy again", async () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
+    store.applyAction("chair_01", "move_left");
     const result = createResult();
     const encoded = createEncoded("PAYLOAD1");
     const copyResult: CopyResult = { ok: true, method: "clipboard-api" };
@@ -39,6 +40,7 @@ describe("CompletionController", () => {
     expect(encoder.encode).toHaveBeenCalledWith(result, config.output);
     expect(renderer.showCompletion).toHaveBeenCalledWith(encoded.output, copyResult);
     expect(onComplete).toHaveBeenCalledOnce();
+    expect(encoder.encode).toHaveBeenCalledTimes(1);
 
     await controller.copyAgain();
     expect(clipboard.copy).toHaveBeenNthCalledWith(1, "PAYLOAD1");
@@ -64,6 +66,63 @@ describe("CompletionController", () => {
     });
 
     await controller.requestComplete();
+    expect(store.isLocked()).toBe(false);
+    expect(recorder.finish).not.toHaveBeenCalled();
+  });
+
+  it("asks for one extra confirmation when no object has been edited", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn().mockResolvedValue(createResult()) };
+    const encoder = { encode: vi.fn().mockResolvedValue(createEncoded("PAYLOAD1")) };
+    const clipboard = { copy: vi.fn().mockResolvedValue({ ok: true, method: "clipboard-api" }) };
+    const confirmImpl = vi.fn(() => true);
+
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: encoder as never,
+      clipboard: clipboard as never,
+      confirmImpl,
+    });
+
+    await controller.requestComplete();
+
+    expect(confirmImpl).toHaveBeenCalledTimes(3);
+    expect(confirmImpl).toHaveBeenLastCalledWith(
+      "You have not edited any object. Are you sure this unchanged layout is your final answer?",
+    );
+    expect(store.isLocked()).toBe(true);
+  });
+
+  it("does not finish when the no-edit confirmation is rejected", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn() };
+    const encoder = { encode: vi.fn() };
+    const clipboard = { copy: vi.fn() };
+    const confirmImpl = vi.fn()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
+
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: encoder as never,
+      clipboard: clipboard as never,
+      confirmImpl,
+    });
+
+    await controller.requestComplete();
+
+    expect(confirmImpl).toHaveBeenCalledTimes(3);
     expect(store.isLocked()).toBe(false);
     expect(recorder.finish).not.toHaveBeenCalled();
   });

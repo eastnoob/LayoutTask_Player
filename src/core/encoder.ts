@@ -5,7 +5,7 @@ import { resultSchema } from "../schemas/result.schema";
 import { sha256Hex } from "../utils/hash";
 
 // Encoder is the transport boundary.
-// Recorder 保留富结果对象；encoder 决定真正离开页面、进入问卷文本框的 payload 长什么样。
+// Recorder 保留富结构对象；encoder 决定真正离开页面、进入问卷文本框的 payload 长什么样。
 export interface EncodedLayoutTask {
   version: "LAYOUTTASK1";
   qid: string;
@@ -103,10 +103,7 @@ export class LayoutTaskEncoder {
       },
       result,
       hashOk: recomputedHash === hash8.toUpperCase(),
-      headerOk:
-        result.qid === qid &&
-        result.task_id === taskId &&
-        result.session === sessionId,
+      headerOk: result.qid === qid && result.task_id === taskId && result.session === sessionId,
     };
   }
 }
@@ -161,7 +158,7 @@ function encodeJson(json: string, encoding: EncodingMethod): string {
     case "lz-base64":
       return LZString.compressToBase64(json);
     case "plain-json":
-      return encodeURIComponent(json);
+      return json;
   }
 }
 
@@ -182,7 +179,7 @@ function decodeJson(encodedData: string, encoding: EncodingMethod): string {
       return json;
     }
     case "plain-json":
-      return decodeURIComponent(encodedData);
+      return encodedData;
   }
 }
 

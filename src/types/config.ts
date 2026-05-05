@@ -77,6 +77,8 @@ export interface RecordingConfig {
   record_events?: boolean;
   record_final_state?: boolean;
   record_display_info?: boolean;
+  record_display_changes?: boolean;
+  record_page_timing?: boolean;
   record_user_agent?: boolean;
   record_blocked_events?: boolean;
 }
@@ -93,6 +95,13 @@ export interface OutputConfig {
 
 export interface FeedbackConfig {
   limit_messages?: Partial<Record<"move_left" | "move_right" | "move_up" | "move_down" | "rotate_cw" | "rotate_ccw", string>>;
+}
+
+export interface DisplayImageConfig {
+  enabled?: boolean;
+  src: string;
+  alt?: string;
+  record_metrics?: boolean;
 }
 
 export interface ManifestTaskEntry {
@@ -159,4 +168,5 @@ export interface TaskConfig {
   recording?: RecordingConfig;
   output?: OutputConfig;
   feedback?: FeedbackConfig;
+  display_image?: DisplayImageConfig;
 }

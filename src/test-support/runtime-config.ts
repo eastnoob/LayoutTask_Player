@@ -74,6 +74,8 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       record_events: true,
       record_final_state: true,
       record_display_info: true,
+      record_display_changes: true,
+      record_page_timing: true,
       record_user_agent: true,
       record_blocked_events: false,
     },
@@ -92,6 +94,7 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
         rotate_ccw: "You cannot rotate further counter-clockwise.",
       },
     },
+    displayImage: undefined,
     ...overrides,
   };
 }

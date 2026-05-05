@@ -13,7 +13,7 @@ export interface CompletionPayload {
 }
 
 // CompletionController owns the irreversible part of the workflow.
-// 一旦进入 complete，它要保证结果被冻结，之后 copy again 始终复制同一份 payload。
+// 一旦进入 complete，它要保证结果被冻结，并且之后 copy again 始终复制同一份 payload。
 export class CompletionController {
   private lockedPayload: CompletionPayload | undefined;
   private readonly confirmImpl: (message: string) => boolean;
@@ -48,6 +48,17 @@ export class CompletionController {
 
       const ok2 = this.confirmImpl("Please confirm again: this will finalize the current layout.");
       if (!ok2) {
+        return;
+      }
+    }
+
+    if (!this.options.store.hasEdits()) {
+      // Detect true no-edit submission from interaction history, not from final_state zeros.
+      // 这样“动过又移回原位”不会被误判成空提交。
+      const okNoEdit = this.confirmImpl(
+        "You have not edited any object. Are you sure this unchanged layout is your final answer?",
+      );
+      if (!okNoEdit) {
         return;
       }
     }

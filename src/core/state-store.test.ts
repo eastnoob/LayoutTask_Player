@@ -5,8 +5,10 @@ import { createDragRuntimeConfig, createRuntimeConfig } from "../test-support/ru
 describe("StateStore action limits", () => {
   it("limits movement by offset from the initial position", () => {
     const store = new StateStore(createRuntimeConfig());
+    expect(store.hasEdits()).toBe(false);
 
     store.applyAction("chair_01", "move_left");
+    expect(store.hasEdits()).toBe(true);
     store.applyAction("chair_01", "move_left");
 
     expect(store.getObjectState("chair_01")).toMatchObject({ x: -50, y: 0 });
@@ -84,11 +86,13 @@ describe("StateStore action limits", () => {
 
   it("applies drag positions with snap and relative movement limits", () => {
     const store = new StateStore(createDragRuntimeConfig());
+    expect(store.hasEdits()).toBe(false);
 
     const transition = store.applyDragPosition("chair_01", { x: 37, y: -62 });
 
     expect(transition.after).toMatchObject({ x: 25, y: -50 });
     expect(transition.offsets).toMatchObject({ xSteps: 1, ySteps: -2 });
+    expect(store.hasEdits()).toBe(true);
 
     const limited = store.applyDragPosition("chair_01", { x: 500, y: -500 });
     expect(limited.after).toMatchObject({ x: 50, y: -50 });
@@ -117,5 +121,13 @@ describe("StateStore action limits", () => {
     const dragStore = new StateStore(createDragRuntimeConfig());
     dragStore.lock();
     expect(dragStore.canDragObject("chair_01")).toEqual({ ok: false, reason: "locked" });
+  });
+
+  it("does not count a no-op drag as an edit", () => {
+    const store = new StateStore(createDragRuntimeConfig());
+
+    store.applyDragPosition("chair_01", { x: 0, y: 0 });
+
+    expect(store.hasEdits()).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import type { LayoutTaskEvent } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import type { DisplayInfo, LayoutTaskResult } from "../types/result";
+import type { DisplayInfo, LayoutTaskResult, PageTimingInfo } from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
 interface RecorderOptions {
@@ -8,6 +8,7 @@ interface RecorderOptions {
   sessionId: string;
   getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
   getFinalState: () => LayoutTaskResult["final_state"];
+  getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
 }
@@ -51,6 +52,10 @@ export class Recorder {
       ? await this.options.getDisplayInfo?.()
       : undefined;
 
+    const pageTiming = this.options.config.recording.record_page_timing
+      ? this.options.getPageTiming?.(this.endTime, this.startTime)
+      : undefined;
+
     return {
       schema: "layouttask.result.v1",
       exp: this.options.config.experimentId,
@@ -60,6 +65,7 @@ export class Recorder {
       start_time: this.startTime,
       end_time: this.endTime,
       duration_ms: elapsedMs(this.startTime, this.endTime),
+      page_timing: pageTiming,
       display,
       task_config_hash: this.options.config.taskConfigHash,
       // context makes the payload self-describing for offline analysis.

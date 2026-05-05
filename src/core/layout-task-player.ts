@@ -1,10 +1,12 @@
-import type { RuntimeTaskConfig } from "../types/runtime";
 import type { FinalState } from "../types/result";
+import type { RuntimeTaskConfig } from "../types/runtime";
 import { ClipboardService } from "./clipboard-service";
 import { CompletionController, type CompletionPayload } from "./completion-controller";
+import { DisplayChangeRecorder } from "./display-change-recorder";
 import { DisplayInfoCollector } from "./display-info";
 import { LayoutTaskEncoder } from "./encoder";
 import { InteractionController } from "./interaction-controller";
+import { PageTimingCollector } from "./page-timing";
 import { Recorder } from "./recorder";
 import { LayoutTaskRenderer } from "./renderer";
 import { StateStore } from "./state-store";
@@ -24,16 +26,18 @@ export interface LayoutTaskPlayer {
 }
 
 // createLayoutTaskPlayer is the product core.
-// standalone main.ts 和 jsPsych plugin 都应该只是外层 adapter，不要把产品逻辑散回去。
+// standalone `main.ts` 和 jsPsych plugin 都应该只是外层 adapter，不要把产品逻辑散回去。
 export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): LayoutTaskPlayer {
   const sessionId = createSessionId();
   const store = new StateStore(options.config);
   const clipboard = new ClipboardService();
   const encoder = new LayoutTaskEncoder();
+  const pageTiming = new PageTimingCollector();
 
   let recorder: Recorder | undefined;
   let interaction: InteractionController | undefined;
   let completion: CompletionController | undefined;
+  let displayChangeRecorder: DisplayChangeRecorder | undefined;
 
   const renderer = new LayoutTaskRenderer({
     root: options.root,
@@ -77,14 +81,23 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   return {
     start() {
       // Render first, then wire recorder / interaction around mounted DOM refs.
-      // 先 mount 再测 display，再绑定行为，这样数据和界面生命周期是一致的。
+      // 先 mount 再测 display，再绑定行为；这样数据和界面生命周期是一致的。
       const refs = renderer.mount();
-      const displayCollector = new DisplayInfoCollector(refs, options.config);
+      // Browser-only observer: in Node unit tests there is no window, so skip it.
+      // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
+      displayChangeRecorder =
+        options.config.recording.record_display_changes && typeof window !== "undefined"
+          ? new DisplayChangeRecorder({ refs })
+          : undefined;
+      displayChangeRecorder?.start();
+
+      const displayCollector = new DisplayInfoCollector(refs, options.config, displayChangeRecorder);
       recorder = new Recorder({
         config: options.config,
         sessionId,
         getDisplayInfo: () => displayCollector.collect(),
         getFinalState: () => store.getFinalState(),
+        getPageTiming: (submitTime, playerStartTime) => pageTiming.collect(submitTime, playerStartTime),
       });
       interaction = new InteractionController({
         config: options.config,
@@ -110,6 +123,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       interaction?.unbind();
+      displayChangeRecorder?.stop();
       renderer.destroy();
     },
 

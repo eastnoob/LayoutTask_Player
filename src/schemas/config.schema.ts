@@ -91,6 +91,8 @@ export const recordingSchema = z.object({
   record_events: z.boolean().optional(),
   record_final_state: z.boolean().optional(),
   record_display_info: z.boolean().optional(),
+  record_display_changes: z.boolean().optional(),
+  record_page_timing: z.boolean().optional(),
   record_user_agent: z.boolean().optional(),
   record_blocked_events: z.boolean().optional(),
 });
@@ -114,6 +116,14 @@ export const feedbackSchema = z.object({
       rotate_ccw: z.string().min(1).optional(),
     })
     .optional(),
+});
+
+export const displayImageSchema = z.object({
+  // A standalone reference image frame. 独立展示图，不参与 SVG world 坐标。
+  enabled: z.boolean().default(true),
+  src: z.string().min(1),
+  alt: z.string().default("Reference image"),
+  record_metrics: z.boolean().default(true),
 });
 
 export const taskObjectSchema = z.object({
@@ -146,6 +156,7 @@ export const taskSchema = z.object({
   recording: recordingSchema.optional(),
   output: outputSchema.optional(),
   feedback: feedbackSchema.optional(),
+  display_image: displayImageSchema.optional(),
 });
 
 export const manifestSchema = z.object({

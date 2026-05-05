@@ -54,11 +54,13 @@
     "record_events": true,
     "record_final_state": true,
     "record_display_info": true,
+    "record_display_changes": true,
+    "record_page_timing": true,
     "record_user_agent": true,
     "record_blocked_events": false
   },
   "output": {
-    "encoding": "lz-uri",
+    "encoding": "plain-json",
     "detail": "final-only",
     "final_state": "relative"
   },
@@ -71,5 +73,11 @@
       "rotate_cw": "You cannot rotate further clockwise.",
       "rotate_ccw": "You cannot rotate further counter-clockwise."
     }
+  },
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+    "alt": "Reference image",
+    "record_metrics": true
   }
 }

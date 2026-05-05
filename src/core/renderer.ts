@@ -18,6 +18,8 @@ export interface RendererRefs {
   root: HTMLElement;
   svg?: SVGSVGElement;
   backgroundElement?: SVGElement;
+  displayImageFrameElement?: HTMLElement;
+  displayImageElement?: HTMLImageElement;
   objectElements: Map<string, SVGElement>;
   controlElements: Map<string, SVGElement>;
   controlButtons: Map<string, Map<LayoutAction, SVGElement>>;
@@ -94,6 +96,8 @@ export class LayoutTaskRenderer {
 
     const workspace = document.createElement("main");
     workspace.className = "layout-task-workspace";
+
+    const displayImageFrame = this.createDisplayImageFrame();
 
     const stageWrap = document.createElement("div");
     stageWrap.className = "layout-task-stage-wrap";
@@ -218,6 +222,9 @@ export class LayoutTaskRenderer {
     panel.append(panelTitle, instruction, confirmButton, status, output, copyAgainButton);
     workspace.append(stageWrap, panel);
     shell.append(header, workspace);
+    if (displayImageFrame) {
+      shell.insertBefore(displayImageFrame, workspace);
+    }
     this.options.root.append(shell);
 
     this.refs.svg = svg;
@@ -228,6 +235,31 @@ export class LayoutTaskRenderer {
     this.refs.statusElement = status;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
+  }
+
+  private createDisplayImageFrame(): HTMLElement | undefined {
+    const displayImage = this.options.config.displayImage;
+    if (!displayImage?.enabled) {
+      this.refs.displayImageFrameElement = undefined;
+      this.refs.displayImageElement = undefined;
+      return undefined;
+    }
+
+    // This frame is independent from SVG world coordinates.
+    // 它只负责展示参考图，并随浏览器宽度自然缩放，不参与物体交互。
+    const frame = document.createElement("section");
+    frame.className = "layout-task-display-image-frame";
+
+    const image = document.createElement("img");
+    image.className = "layout-task-display-image";
+    image.src = displayImage.srcResolved;
+    image.alt = displayImage.alt;
+    image.decoding = "async";
+
+    frame.append(image);
+    this.refs.displayImageFrameElement = frame;
+    this.refs.displayImageElement = image;
+    return frame;
   }
 
   updateObject(objectId: string): void {

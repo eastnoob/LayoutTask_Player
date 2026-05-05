@@ -14,6 +14,15 @@ export interface RectInfo {
   left: number;
 }
 
+export interface PageTimingInfo {
+  source: "performance.timeOrigin" | "performance.timing.navigationStart" | "collector_created";
+  page_open_time: number;
+  submit_time: number;
+  total_elapsed_ms: number;
+  player_start_time?: number;
+  player_elapsed_ms?: number;
+}
+
 export interface DisplayInfo {
   viewport: {
     width: number;
@@ -24,6 +33,23 @@ export interface DisplayInfo {
     height: number;
     availWidth: number;
     availHeight: number;
+  };
+  visualViewport?: {
+    width: number;
+    height: number;
+    scale: number;
+    offsetLeft: number;
+    offsetTop: number;
+    pageLeft: number;
+    pageTop: number;
+  };
+  screenOrientation?: {
+    type?: string;
+    angle?: number;
+  };
+  screenColor?: {
+    colorDepth?: number;
+    pixelDepth?: number;
   };
   devicePixelRatio: number;
   stageRect?: RectInfo;
@@ -38,6 +64,59 @@ export interface DisplayInfo {
     width: number;
     height: number;
   };
+  displayImageFrameRect?: RectInfo;
+  displayImageRect?: RectInfo;
+  displayImageNatural?: {
+    width: number;
+    height: number;
+  };
+  displayImageRendered?: {
+    cssWidth: number;
+    cssHeight: number;
+    devicePixelRatio: number;
+    effectivePixelWidth: number;
+    effectivePixelHeight: number;
+  };
+  changes?: {
+    initial?: DisplayChangeSnapshot;
+    final?: DisplayChangeSnapshot;
+    events: DisplayChangeEvent[];
+    resizeCount: number;
+    visualViewportResizeCount: number;
+    visualViewportScrollCount: number;
+    orientationChangeCount: number;
+  };
+}
+
+export interface DisplayChangeSnapshot {
+  viewport: {
+    width: number;
+    height: number;
+  };
+  visualViewport?: {
+    width: number;
+    height: number;
+    scale: number;
+    offsetLeft: number;
+    offsetTop: number;
+    pageLeft: number;
+    pageTop: number;
+  };
+  screenOrientation?: {
+    type?: string;
+    angle?: number;
+  };
+  displayImageRect?: {
+    width: number;
+    height: number;
+  };
+}
+
+export interface DisplayChangeEvent {
+  i: number;
+  t: number;
+  type: "window_resize" | "visual_viewport_resize" | "visual_viewport_scroll" | "orientation_change";
+  snapshot: DisplayChangeSnapshot;
 }
 
 export interface ObjectRuntimeState extends ObjectPose {
@@ -100,6 +179,7 @@ export interface LayoutTaskResult {
   start_time: number;
   end_time: number;
   duration_ms: number;
+  page_timing?: PageTimingInfo;
   display?: DisplayInfo;
   task_config_hash?: string;
   context?: ResultContext;
