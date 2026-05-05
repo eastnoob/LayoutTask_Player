@@ -5,8 +5,7 @@ import { resultSchema } from "../schemas/result.schema";
 import { sha256Hex } from "../utils/hash";
 
 // Encoder is the transport boundary.
-// Recorder keeps the rich in-memory result; encoder decides what payload
-// leaves the page and how it is packed for the survey textbox.
+// Recorder 保留富结果对象；encoder 决定真正离开页面、进入问卷文本框的 payload 长什么样。
 export interface EncodedLayoutTask {
   version: "LAYOUTTASK1";
   qid: string;

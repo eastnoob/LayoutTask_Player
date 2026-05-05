@@ -46,7 +46,7 @@ export class StateStore {
     );
 
     // rotationOffsets tracks signed step offset from the original angle.
-    // 不能只看 0-359 的绝对角度，否则 cw / ccw 的边界会丢语义。
+    // 不能只看 0-359 的绝对角度，否则 cw / ccw 的边界会丢失实验语义。
     this.rotationOffsets = Object.fromEntries(config.objects.map((objectConfig) => [objectConfig.id, 0]));
     this.objectStates = Object.fromEntries(
       config.objects.map((objectConfig) => [

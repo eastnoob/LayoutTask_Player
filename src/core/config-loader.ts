@@ -72,6 +72,8 @@ export class ConfigLoader {
       manifest.tasks.find((task) => task.qid === selection.qid) ??
       manifest.tasks[0];
 
+    // All config files are static JSON; fetch in parallel after the task entry is known.
+    // 这里不依赖后端 API，适合 GitHub Pages 这类纯静态部署。
     const [taskData, objectData, backgroundData, behaviorData] = await Promise.all([
       this.fetchJson<unknown>(taskEntry.file),
       this.fetchJson<unknown>(manifest.asset_library),
@@ -117,6 +119,7 @@ interface ResolveRuntimeConfigInput {
 export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeTaskConfig {
   // Runtime config is the fully linked version of authoring config:
   // asset ids -> resolved assets, behavior ids -> concrete behavior blocks, defaults applied.
+  // 也就是“浏览器真正能直接渲染和运行”的那一层 shape。
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
   const resolvedObjects = input.task.objects.map((objectConfig) => {
     const asset = input.objectLibrary.objects[objectConfig.asset];

@@ -10,7 +10,7 @@ export type LayoutAction =
   | "drag_end";
 
 // Event types are transport-friendly: compact enough for JSON,
-// but still explicit enough for downstream long-table export.
+// 但又保留足够语义，方便后续导出 long-table 和做时序分析。
 export interface OperationCounts {
   left: number;
   right: number;

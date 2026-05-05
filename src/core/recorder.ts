@@ -45,6 +45,8 @@ export class Recorder {
 
   async finish(copyTimestamp?: number): Promise<LayoutTaskResult> {
     this.endTime = this.nowImpl();
+    // Display info can be expensive / DOM-dependent, so it is gated by recording config.
+    // 关闭后直接省略，不做空对象占位。
     const display = this.options.config.recording.record_display_info
       ? await this.options.getDisplayInfo?.()
       : undefined;
@@ -61,7 +63,7 @@ export class Recorder {
       display,
       task_config_hash: this.options.config.taskConfigHash,
       // context makes the payload self-describing for offline analysis.
-      // final_state 仍然始终保留；record_final_state 目前作为 reserved toggle，不在此步改 schema。
+      // final_state 仍然始终保留；record_final_state 目前是 reserved toggle，不在这一步改 schema。
       context: buildResultContext(this.options.config),
       events: this.events,
       final_state: this.options.getFinalState(),

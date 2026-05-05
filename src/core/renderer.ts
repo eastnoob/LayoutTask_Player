@@ -55,6 +55,8 @@ export class LayoutTaskRenderer {
     this.refs.controlElements.clear();
     this.refs.controlButtons.clear();
 
+    // The shell contains the SVG stage and a persistent side panel.
+    // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
     const shell = document.createElement("section");
     shell.className = "layout-task-shell";
 
@@ -109,7 +111,7 @@ export class LayoutTaskRenderer {
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
     // Controls live in a dedicated overlay layer so they are easier to target
-    // and do not fight with the object's own hit area.
+    // and do not fight with the object's own hit area. 控制层和对象层分开，后续 drag 也更好接。
 
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -168,7 +170,8 @@ export class LayoutTaskRenderer {
     panelTitle.textContent = "Object Controls";
 
     const instruction = document.createElement("p");
-    instruction.textContent = "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.";
+    instruction.textContent =
+      "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.";
 
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
@@ -213,6 +216,8 @@ export class LayoutTaskRenderer {
     }
 
     const state = this.options.store.getObjectState(objectId);
+    // SVG world coordinates are the single source of visual position.
+    // object image stays local to its group; group transform 才是实际位姿。
     element.setAttribute("transform", `translate(${state.x} ${state.y}) rotate(${state.r})`);
     element.classList.toggle("is-active", this.activeObjectId === objectId);
 
@@ -242,6 +247,8 @@ export class LayoutTaskRenderer {
   }
 
   setLocked(locked: boolean): void {
+    // Locked mode is visual and behavioral: hide active controls and disable confirm.
+    // 真实能不能操作仍由 StateStore / InteractionController 再兜底。
     this.options.root.classList.toggle("layout-task-locked", locked);
     if (locked) {
       this.clearActiveObject();
@@ -261,6 +268,8 @@ export class LayoutTaskRenderer {
   }
 
   showCompletion(outputText: string, copyResult: CopyResult): void {
+    // Completion screen keeps the encoded text visible as a manual fallback.
+    // 剪贴板失败时，被试仍然可以手动复制同一份 locked payload。
     this.setStatus(
       copyResult.ok
         ? "Locked and copied. Return to the survey and paste the encoded result."
@@ -288,7 +297,7 @@ export class LayoutTaskRenderer {
     group.dataset.objectId = objectId;
 
     // Controls are positioned around the object in world space,
-    // so they move together with the selected object.
+    // so they move together with the selected object. 这也是移动端“选中后编辑”的基础。
     const gap = 30;
     const controls: Array<{
       action: LayoutAction;
@@ -370,6 +379,8 @@ export class LayoutTaskRenderer {
       return;
     }
 
+    // Selected-object mode keeps one control cluster visible until explicit deselect.
+    // 这比 hover-only 更适合 touch / tablet，也能减少相邻物体误触。
     this.clearHideTimer();
 
     this.activeObjectId = objectId;

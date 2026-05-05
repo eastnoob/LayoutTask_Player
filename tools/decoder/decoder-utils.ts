@@ -158,7 +158,7 @@ export async function readSourceRecords(options: DecoderCliOptions): Promise<Sou
   }
 
   // Plain mode: one encoded Layout Task string per line.
-  // 问卷单独导出 textbox 一列时，保存成 txt 后可以直接走这个分支。
+  // 问卷如果单独导出 textbox 一列，保存成 txt 后可以直接走这个分支。
   return trimmed
     .split(/\r?\n/)
     .map((line, index) => ({ sourceIndex: index, raw: line.trim() }))
@@ -195,6 +195,7 @@ export function validateDecodedResult(decoded: DecodedLayoutTask): ValidationSum
   const warnings: string[] = [];
   const { result } = decoded;
 
+  // Transport-level checks first; 后面再做 timing / event / final-state 的语义检查。
   if (!decoded.hashOk) {
     errors.push("hash_mismatch");
   }
@@ -254,6 +255,8 @@ export function toTrialRows(records: DecodedSourceRecord[]): TrialCsvRow[] {
 export function toEventRows(records: DecodedSourceRecord[]): EventCsvRow[] {
   const rows: EventCsvRow[] = [];
 
+  // Long table: one event becomes one row.
+  // 这对后续时序分析或 mixed model 会比嵌套 JSON 友好很多。
   for (const record of records) {
     if (!record.decoded) {
       continue;
@@ -340,6 +343,8 @@ function readCsvColumn(text: string, column: string): SourceRecord[] {
 }
 
 function validateTiming(result: LayoutTaskResult, errors: string[], warnings: string[]): void {
+  // Keep timing validation conservative.
+  // 这里只抓明显不可能的时间关系，不在 decoder 里过度推断被试行为。
   if (result.start_time > result.end_time) {
     errors.push("start_time_after_end_time");
   }
@@ -419,6 +424,8 @@ function validateFinalState(result: LayoutTaskResult, errors: string[], warnings
 }
 
 function validateEventVsFinalState(result: LayoutTaskResult, errors: string[], warnings: string[]): void {
+  // Compare final state with the last event per object.
+  // 目标不是重放整个 trial，而是快速抓“事件和终态互相矛盾”的记录。
   if (result.events.length === 0) {
     return;
   }
@@ -531,6 +538,8 @@ function validateAbsoluteStateWithOffsets(
     return;
   }
 
+  // Absolute mode may still carry offsets; cross-checking both makes validation stronger.
+  // 可以发现绝对坐标和相对步数其中一边被破坏的情况。
   const expectedX = objectContext.origin.x + offsets.xSteps * objectContext.movement_step;
   const expectedY = objectContext.origin.y + offsets.ySteps * objectContext.movement_step;
   const expectedR = normalizeRotation(objectContext.origin.r + offsets.rotationSteps * objectContext.rotation_step);

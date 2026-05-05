@@ -39,6 +39,8 @@ export class CompletionController {
     }
 
     if (this.options.config.completion.double_confirm) {
+      // Double confirm is cheap but valuable in survey contexts.
+      // 被试一旦确认就不能再改，因此这里宁可多问一次。
       const ok1 = this.confirmImpl("After confirmation, the object layout will be locked. Continue?");
       if (!ok1) {
         return;
@@ -51,7 +53,7 @@ export class CompletionController {
     }
 
     // The current workflow assumes confirm means freeze.
-    // lock_after_confirm remains part of config shape, but this milestone keeps the locked workflow mandatory.
+    // lock_after_confirm 仍保留在 config shape 里，但当前产品流固定为 confirm 后锁定。
     this.options.store.lock();
     this.options.renderer.setLocked(true);
 
@@ -60,6 +62,8 @@ export class CompletionController {
     const copyResult = await this.options.clipboard.copy(encoded.output);
     const payload = { result, encoded, copyResult };
 
+    // Cache the first locked payload so "copy again" is stable and reproducible.
+    // 不重新 encode，避免再次复制时出现不同 session/hash/时间语义。
     this.lockedPayload = payload;
     this.options.renderer.showCompletion(encoded.output, copyResult);
     this.options.onComplete?.(payload);
@@ -67,6 +71,7 @@ export class CompletionController {
 
   async copyAgain(): Promise<CopyResult> {
     if (!this.lockedPayload) {
+      // copy-again before lock is a usage error, not a silent no-op.
       const result: CopyResult = {
         ok: false,
         method: "manual",

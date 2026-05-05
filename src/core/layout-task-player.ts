@@ -24,7 +24,7 @@ export interface LayoutTaskPlayer {
 }
 
 // createLayoutTaskPlayer is the product core.
-// standalone main.ts and the future jsPsych plugin should both be thin adapters on top of it.
+// standalone main.ts 和 jsPsych plugin 都应该只是外层 adapter，不要把产品逻辑散回去。
 export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): LayoutTaskPlayer {
   const sessionId = createSessionId();
   const store = new StateStore(options.config);
@@ -64,6 +64,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
 
   return {
     start() {
+      // Render first, then wire recorder / interaction around mounted DOM refs.
+      // 先 mount 再测 display，再绑定行为，这样数据和界面生命周期是一致的。
       const refs = renderer.mount();
       const displayCollector = new DisplayInfoCollector(refs, options.config);
       recorder = new Recorder({
@@ -93,6 +95,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     },
 
     destroy() {
+      // Teardown stays intentionally boring and explicit.
+      // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       interaction?.unbind();
       renderer.destroy();
     },

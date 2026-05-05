@@ -11,7 +11,7 @@ import {
 } from "./decoder-utils";
 
 // decode-results is the inspection tool:
-// it keeps the nested structure so researchers can inspect one decoded payload at a time.
+// 它保留嵌套结构，适合研究者逐条查看一个 decoded payload，而不是直接压平成表。
 async function main(): Promise<void> {
   try {
     const options = parseDecoderArgs(process.argv.slice(2));
