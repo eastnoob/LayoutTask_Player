@@ -12,6 +12,8 @@ build = "npm run build"
 test = "npm run test"
 test-watch = "npm run test:watch"
 preview = "npm run preview"
+# Stable local browser task. 先 build 再 preview，避开当前 Windows 上 Vite dev/esbuild 的 spawn EPERM 问题。
+serve-local = { depends-on = ["build"], cmd = "npm run preview -- --host 127.0.0.1 --port 5173" }
 
 [dependencies]
 nodejs = ">=22,<23"
