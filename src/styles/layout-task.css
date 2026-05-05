@@ -168,7 +168,6 @@ body {
 .layout-task-control-button.is-disabled {
   cursor: default;
   opacity: 0.38;
-  pointer-events: none;
 }
 
 .layout-task-control-button.is-disabled circle {
@@ -179,6 +178,82 @@ body {
 
 .layout-task-control-button.is-disabled .layout-task-control-icon {
   opacity: 0.48;
+}
+
+.layout-task-feedback-layer {
+  pointer-events: none;
+}
+
+.layout-task-limit-feedback {
+  fill: rgba(220, 38, 38, 0.2);
+  stroke: rgba(185, 28, 28, 0.9);
+  stroke-width: 2;
+  animation: layout-task-limit-flash 900ms ease-out forwards;
+}
+
+.layout-task-limit-feedback.is-area {
+  fill: rgba(220, 38, 38, 0.12);
+  stroke-dasharray: 10 8;
+}
+
+.layout-task-limit-feedback.is-rotation-halo {
+  fill: rgba(220, 38, 38, 0.04);
+  stroke-width: 4;
+  stroke-dasharray: 10 8;
+}
+
+.layout-task-limit-feedback-marker {
+  fill: rgba(220, 38, 38, 0.8);
+  stroke: #ffffff;
+  stroke-width: 2;
+  animation: layout-task-limit-flash 900ms ease-out forwards;
+}
+
+.layout-task-feedback-icon {
+  opacity: 0.96;
+  filter: drop-shadow(0 3px 6px rgba(127, 29, 29, 0.25));
+  animation: layout-task-limit-flash 900ms ease-out forwards;
+}
+
+.layout-task-limit-label {
+  fill: #991b1b;
+  stroke: #ffffff;
+  stroke-width: 4;
+  paint-order: stroke;
+  font-size: 20px;
+  font-weight: 700;
+  animation: layout-task-limit-label 900ms ease-out forwards;
+}
+
+@keyframes layout-task-limit-flash {
+  0% {
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes layout-task-limit-label {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 .layout-task-panel h2 {

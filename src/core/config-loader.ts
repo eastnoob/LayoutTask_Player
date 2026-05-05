@@ -47,6 +47,17 @@ const DEFAULT_OUTPUT = {
   final_state: "relative" as const,
 };
 
+const DEFAULT_FEEDBACK = {
+  limit_messages: {
+    move_left: "You cannot move further left.",
+    move_right: "You cannot move further right.",
+    move_up: "You cannot move further up.",
+    move_down: "You cannot move further down.",
+    rotate_cw: "You cannot rotate further clockwise.",
+    rotate_ccw: "You cannot rotate further counter-clockwise.",
+  },
+};
+
 export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
@@ -175,6 +186,14 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
     output: {
       ...DEFAULT_OUTPUT,
       ...input.task.output,
+    },
+    feedback: {
+      ...DEFAULT_FEEDBACK,
+      ...input.task.feedback,
+      limit_messages: {
+        ...DEFAULT_FEEDBACK.limit_messages,
+        ...input.task.feedback?.limit_messages,
+      },
     },
   };
 }

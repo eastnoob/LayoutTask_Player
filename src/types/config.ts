@@ -91,6 +91,10 @@ export interface OutputConfig {
   final_state?: FinalStateMode;
 }
 
+export interface FeedbackConfig {
+  limit_messages?: Partial<Record<"move_left" | "move_right" | "move_up" | "move_down" | "rotate_cw" | "rotate_ccw", string>>;
+}
+
 export interface ManifestTaskEntry {
   qid: string;
   task_id: string;
@@ -154,4 +158,5 @@ export interface TaskConfig {
   completion?: CompletionConfig;
   recording?: RecordingConfig;
   output?: OutputConfig;
+  feedback?: FeedbackConfig;
 }

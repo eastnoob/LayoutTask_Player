@@ -102,6 +102,20 @@ export const outputSchema = z.object({
   final_state: z.enum(["relative", "absolute"]).default("relative"),
 });
 
+export const feedbackSchema = z.object({
+  // UI copy only. 提示语不进入 result data，研究者可按实验语言覆盖。
+  limit_messages: z
+    .object({
+      move_left: z.string().min(1).optional(),
+      move_right: z.string().min(1).optional(),
+      move_up: z.string().min(1).optional(),
+      move_down: z.string().min(1).optional(),
+      rotate_cw: z.string().min(1).optional(),
+      rotate_ccw: z.string().min(1).optional(),
+    })
+    .optional(),
+});
+
 export const taskObjectSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -131,6 +145,7 @@ export const taskSchema = z.object({
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),
   output: outputSchema.optional(),
+  feedback: feedbackSchema.optional(),
 });
 
 export const manifestSchema = z.object({

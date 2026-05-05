@@ -5,6 +5,9 @@ import { parseLayoutTaskUrlParams } from "./utils/url";
 
 // main.ts is the standalone-page adapter.
 // 真正的业务流已经收进 createLayoutTaskPlayer()，这里仅负责 URL + config 装配。
+const DEFAULT_TASK_ID = "room01";
+const DEFAULT_QID = "Q1";
+
 async function bootstrap(): Promise<void> {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
@@ -17,8 +20,10 @@ async function bootstrap(): Promise<void> {
   const baseUrl = new URL(params.base ?? "/layout-task/", window.location.origin).toString();
   const loader = new ConfigLoader({ baseUrl });
   const config = await loader.loadRuntimeConfig({
-    taskId: params.task,
-    qid: params.q,
+    // Default standalone mode must stay button/arrow based.
+    // 拖拽 demo 只通过显式 URL 进入，避免研究者或被试误进 drag 版本。
+    taskId: params.task ?? DEFAULT_TASK_ID,
+    qid: params.q ?? DEFAULT_QID,
   });
 
   const player = createLayoutTaskPlayer({

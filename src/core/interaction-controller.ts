@@ -28,7 +28,7 @@ interface DragSession {
 }
 
 // InteractionController is the behavior layer between SVG UI and state transitions.
-// 它负责“能不能做”“做了以后记什么”“以及 UI 应该怎么响应”。
+// 它负责“能不能做”“做了以后记什么”“UI 应该怎么响应”。
 export class InteractionController {
   private activeObjectId: string | undefined;
   private dragSession: DragSession | undefined;
@@ -102,6 +102,9 @@ export class InteractionController {
     const canApply = this.options.store.canApplyAction(request.objectId, request.action);
     if (!canApply.ok) {
       this.options.renderer.updateControlsDisabled(request.objectId);
+      if (canApply.reason === "limit_reached") {
+        this.options.renderer.showLimitFeedback(request.objectId, request.action);
+      }
       this.options.renderer.setStatus(`${request.objectId}: ${request.action} is unavailable (${canApply.reason}).`);
       this.recordBlockedEvent(request, canApply.reason);
       return { ok: false, reason: canApply.reason };

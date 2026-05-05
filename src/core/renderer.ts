@@ -2,6 +2,7 @@ import type { RuntimeTaskConfig } from "../types/runtime";
 import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
+import { getMovementLimitFeedbackRect } from "../utils/geometry";
 
 export interface RendererPointer {
   clientX: number;
@@ -20,6 +21,7 @@ export interface RendererRefs {
   objectElements: Map<string, SVGElement>;
   controlElements: Map<string, SVGElement>;
   controlButtons: Map<string, Map<LayoutAction, SVGElement>>;
+  feedbackLayer?: SVGElement;
   controlsLayer?: SVGElement;
   confirmButton?: HTMLButtonElement;
   copyAgainButton?: HTMLButtonElement;
@@ -31,6 +33,7 @@ export class LayoutTaskRenderer {
   readonly refs: RendererRefs;
   private activeObjectId: string | undefined;
   private hideControlsTimer: number | undefined;
+  private feedbackTimer: number | undefined;
 
   constructor(
     private readonly options: {
@@ -66,6 +69,7 @@ export class LayoutTaskRenderer {
     this.refs.objectElements.clear();
     this.refs.controlElements.clear();
     this.refs.controlButtons.clear();
+    this.clearLimitFeedback();
 
     // The shell contains the SVG stage and a persistent side panel.
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
@@ -120,11 +124,14 @@ export class LayoutTaskRenderer {
     objectLayer.classList.add("layout-task-object-layer");
     svg.append(objectLayer);
 
+    const feedbackLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    feedbackLayer.classList.add("layout-task-feedback-layer");
+    svg.append(feedbackLayer);
+
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
     // Controls live in a dedicated overlay layer so they are easier to target.
-    // 控制层和对象层分开，后续 drag 也更好接。
-
+    // 控制层和对象层分开，后续 drag / feedback 都更好接。
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
       wrapper.classList.add("layout-task-object-wrapper");
@@ -215,6 +222,7 @@ export class LayoutTaskRenderer {
 
     this.refs.svg = svg;
     this.refs.backgroundElement = background;
+    this.refs.feedbackLayer = feedbackLayer;
     this.refs.controlsLayer = controlsLayer;
     this.refs.confirmButton = confirmButton;
     this.refs.statusElement = status;
@@ -230,7 +238,7 @@ export class LayoutTaskRenderer {
 
     const state = this.options.store.getObjectState(objectId);
     // SVG world coordinates are the single source of visual position.
-    // object image stays local to its group; group transform 才是实际位姿。
+    // object image stays local to its group; group transform 才是真实 pose。
     element.setAttribute("transform", `translate(${state.x} ${state.y}) rotate(${state.r})`);
     element.classList.toggle("is-active", this.activeObjectId === objectId);
 
@@ -264,11 +272,85 @@ export class LayoutTaskRenderer {
     }
   }
 
+  showLimitFeedback(objectId: string, action: LayoutAction): void {
+    if (!isFeedbackAction(action)) {
+      return;
+    }
+
+    const feedbackLayer = this.refs.feedbackLayer;
+    if (!feedbackLayer) {
+      return;
+    }
+
+    const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
+    if (!objectConfig) {
+      return;
+    }
+
+    this.clearLimitFeedback();
+    const state = this.options.store.getObjectState(objectId);
+    const movementStep = objectConfig.behavior.movement.step ?? this.options.config.world.grid.size;
+    const movement = objectConfig.behavior.movement;
+    const rotation = objectConfig.behavior.rotation;
+
+    if (isMovementFeedbackAction(action)) {
+      // For movement limits we now flash the whole reachable area, not only one edge.
+      // 这样被试能直接看到“这个物体总共还能在哪些位置出现”，比一条边界线更直观。
+      const rect = getMovementLimitFeedbackRect({
+        origin: { x: objectConfig.x, y: objectConfig.y },
+        step: movementStep,
+        objectWidth: objectConfig.width,
+        objectHeight: objectConfig.height,
+        maxLeft: movement.max_left,
+        maxRight: movement.max_right,
+        maxUp: movement.max_up,
+        maxDown: movement.max_down,
+      });
+
+      const area = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      area.classList.add("layout-task-limit-feedback", "is-area");
+      area.setAttribute("x", String(rect.x));
+      area.setAttribute("y", String(rect.y));
+      area.setAttribute("width", String(rect.width));
+      area.setAttribute("height", String(rect.height));
+      area.setAttribute("rx", "10");
+      feedbackLayer.append(area);
+    } else if (isRotationFeedbackAction(action) && rotation?.step) {
+      const radius = Math.max(objectConfig.width, objectConfig.height) / 2 + 28;
+
+      // Rotation-at-limit is a warning state, not an instruction to rotate more.
+      // 所以这里不用旋转箭头，改成 alert icon + halo，避免被试误读成“继续转”。
+      const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      halo.classList.add("layout-task-limit-feedback", "is-rotation-halo");
+      halo.setAttribute("cx", String(state.x));
+      halo.setAttribute("cy", String(state.y));
+      halo.setAttribute("r", String(radius));
+      feedbackLayer.append(halo);
+
+      const icon = createFeedbackIcon(this.options.config.baseUrl, "alert-circle.svg");
+      icon.setAttribute("transform", `translate(${state.x - 13} ${state.y - radius - 36})`);
+      feedbackLayer.append(icon);
+    }
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.classList.add("layout-task-limit-label");
+    label.setAttribute("x", String(state.x));
+    label.setAttribute("y", String(state.y - objectConfig.height / 2 - 58));
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = this.options.config.feedback.limit_messages[action] ?? getDefaultLimitMessage(action);
+    feedbackLayer.append(label);
+
+    this.feedbackTimer = window.setTimeout(() => {
+      this.clearLimitFeedback();
+    }, 900);
+  }
+
   setLocked(locked: boolean): void {
     // Locked mode is visual and behavioral: hide active controls and disable confirm.
-    // 真实能不能操作仍由 StateStore / InteractionController 再兜底。
+    // 真正能不能操作仍由 StateStore / InteractionController 兜底。
     this.options.root.classList.toggle("layout-task-locked", locked);
     if (locked) {
+      this.clearLimitFeedback();
       this.clearActiveObject();
     }
 
@@ -306,6 +388,7 @@ export class LayoutTaskRenderer {
 
   destroy(): void {
     this.clearHideTimer();
+    this.clearLimitFeedback();
     this.options.root.innerHTML = "";
   }
 
@@ -384,9 +467,6 @@ export class LayoutTaskRenderer {
 
       button.addEventListener("click", (event) => {
         event.stopPropagation();
-        if (button.classList.contains("is-disabled")) {
-          return;
-        }
         this.options.onAction?.(objectId, control.action, event);
       });
 
@@ -397,9 +477,6 @@ export class LayoutTaskRenderer {
 
         event.preventDefault();
         event.stopPropagation();
-        if (button.classList.contains("is-disabled")) {
-          return;
-        }
         this.options.onAction?.(objectId, control.action, event);
       });
 
@@ -422,6 +499,7 @@ export class LayoutTaskRenderer {
     // Selected-object mode keeps one control cluster visible until explicit deselect.
     // 这比 hover-only 更适合 touch / tablet，也能减少相邻物体误触。
     this.clearHideTimer();
+    this.clearLimitFeedback();
 
     this.activeObjectId = objectId;
     for (const [currentObjectId, objectElement] of this.refs.objectElements.entries()) {
@@ -434,6 +512,7 @@ export class LayoutTaskRenderer {
 
   clearActiveObject(): void {
     this.clearHideTimer();
+    this.clearLimitFeedback();
     this.activeObjectId = undefined;
 
     for (const objectElement of this.refs.objectElements.values()) {
@@ -498,6 +577,15 @@ export class LayoutTaskRenderer {
       this.hideControlsTimer = undefined;
     }
   }
+
+  private clearLimitFeedback(): void {
+    if (this.feedbackTimer !== undefined) {
+      window.clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = undefined;
+    }
+
+    this.refs.feedbackLayer?.replaceChildren();
+  }
 }
 
 function createControlIcon(baseUrl: string, iconFile: string): SVGElement {
@@ -512,4 +600,47 @@ function createControlIcon(baseUrl: string, iconFile: string): SVGElement {
   image.setAttribute("height", "20");
   image.setAttribute("preserveAspectRatio", "xMidYMid meet");
   return image;
+}
+
+function createFeedbackIcon(baseUrl: string, iconFile: string): SVGElement {
+  const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+  image.classList.add("layout-task-feedback-icon");
+  image.setAttribute("href", new URL(`assets/icons/${iconFile}`, baseUrl).toString());
+  image.setAttribute("width", "26");
+  image.setAttribute("height", "26");
+  image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  return image;
+}
+
+function isFeedbackAction(action: LayoutAction): action is Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end"> {
+  return action !== "drag_start" && action !== "drag_move" && action !== "drag_end";
+}
+
+function isMovementFeedbackAction(
+  action: Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end">,
+): action is "move_left" | "move_right" | "move_up" | "move_down" {
+  return action === "move_left" || action === "move_right" || action === "move_up" || action === "move_down";
+}
+
+function isRotationFeedbackAction(
+  action: Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end">,
+): action is "rotate_cw" | "rotate_ccw" {
+  return action === "rotate_cw" || action === "rotate_ccw";
+}
+
+function getDefaultLimitMessage(action: Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end">): string {
+  switch (action) {
+    case "move_left":
+      return "You cannot move further left.";
+    case "move_right":
+      return "You cannot move further right.";
+    case "move_up":
+      return "You cannot move further up.";
+    case "move_down":
+      return "You cannot move further down.";
+    case "rotate_cw":
+      return "You cannot rotate further clockwise.";
+    case "rotate_ccw":
+      return "You cannot rotate further counter-clockwise.";
+  }
 }

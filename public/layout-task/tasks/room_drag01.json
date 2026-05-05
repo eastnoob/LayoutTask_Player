@@ -61,5 +61,15 @@
     "encoding": "lz-uri",
     "detail": "full",
     "final_state": "relative"
+  },
+  "feedback": {
+    "limit_messages": {
+      "move_left": "You cannot move further left.",
+      "move_right": "You cannot move further right.",
+      "move_up": "You cannot move further up.",
+      "move_down": "You cannot move further down.",
+      "rotate_cw": "You cannot rotate further clockwise.",
+      "rotate_ccw": "You cannot rotate further counter-clockwise."
+    }
   }
 }

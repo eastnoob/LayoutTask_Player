@@ -3,6 +3,7 @@ import type {
   BackgroundAssetConfig,
   BehaviorConfig,
   CompletionConfig,
+  FeedbackConfig,
   ObjectAssetConfig,
   OutputConfig,
   RecordingConfig,
@@ -57,4 +58,5 @@ export interface RuntimeTaskConfig {
   completion: Required<CompletionConfig>;
   recording: Required<RecordingConfig>;
   output: Required<OutputConfig>;
+  feedback: Required<FeedbackConfig>;
 }

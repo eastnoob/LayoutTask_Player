@@ -90,6 +90,68 @@ describe("InteractionController", () => {
     );
   });
 
+  it("shows limit feedback when an active object hits a movement limit", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    controller.requestAction({ objectId: "chair_01", action: "move_left" });
+    controller.requestAction({ objectId: "chair_01", action: "move_left" });
+    const result = controller.requestAction({ objectId: "chair_01", action: "move_left" });
+
+    expect(result).toEqual({ ok: false, reason: "limit_reached" });
+    expect(renderer.showLimitFeedback).toHaveBeenCalledWith("chair_01", "move_left");
+  });
+
+  it("does not show limit feedback for inactive objects", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    const result = controller.requestAction({ objectId: "chair_01", action: "move_left" });
+
+    expect(result).toEqual({ ok: false, reason: "object_not_active" });
+    expect(renderer.showLimitFeedback).not.toHaveBeenCalled();
+  });
+
+  it("does not show limit feedback after locking", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    store.lock();
+    const result = controller.requestAction({ objectId: "chair_01", action: "move_left" });
+
+    expect(result).toEqual({ ok: false, reason: "locked" });
+    expect(renderer.showLimitFeedback).not.toHaveBeenCalled();
+  });
+
   it("rejects actions after locking", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
@@ -209,6 +271,7 @@ function createRendererStub(): LayoutTaskRenderer {
     setStatus: vi.fn(),
     updateObject: vi.fn(),
     updateControlsDisabled: vi.fn(),
+    showLimitFeedback: vi.fn(),
     activateObject: vi.fn(),
     clearActiveObject: vi.fn(),
     setDragging: vi.fn(),
