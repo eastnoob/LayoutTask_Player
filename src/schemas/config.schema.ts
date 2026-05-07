@@ -187,6 +187,7 @@ export const manifestSchema = z.object({
   experiment_id: z.string().min(1),
   title: z.string().optional(),
   config_version: z.string().optional(),
+  asset_base_url: z.string().min(1).optional(),
   asset_library: z.string().min(1),
   background_library: z.string().min(1),
   behavior_library: z.string().min(1),

@@ -4,7 +4,7 @@ Layout Task Player is a static, browser-based spatial layout task player for res
 
 ## What it does
 
-- renders a layout task from static JSON config
+- renders a layout task from static JSON or trusted JS config
 - supports button movement, rotation, and snap drag movement
 - records final state and optional interaction/display metadata
 - copies one encoded result string for survey collection
@@ -72,7 +72,7 @@ No backend is required for runtime task delivery.
 
 Typical use:
 
-1. configure a task in `public/layout-task/tasks/*.json`
+1. configure a task in `public/layout-task/tasks/*.json` or `*.config.js`
 2. publish the page and send participants a link
 3. participant completes the task and copies the encoded result string
 4. collect those strings in your survey platform
@@ -95,6 +95,72 @@ Main config files:
 - `public/layout-task/assets/backgrounds.json`
 - `public/layout-task/behaviors/behaviors.json`
 - `public/layout-task/tasks/*.json`
+- `public/layout-task/tasks/*.config.js`
+
+JSON is the safest default and remains recommended for shared data-only config. For project-maintainer-authored tasks, a JS module config is also supported:
+
+```js
+const LIMITED_MOVE = "move25_rotate45_limited";
+
+export default {
+  schema: "layouttask.task.v1",
+  task_id: "room01",
+  qid: "Q1",
+
+  // Background / 背景图
+  background: {
+    asset: "room01_bg",
+    x: -400,
+    y: -300,
+    width: 800,
+    height: 600,
+  },
+
+  // Objects / 前景物体
+  objects: [
+    {
+      id: "chair_01",
+      asset: "chair_a",
+      x: 100,
+      y: 150,
+      rotation: 0,
+      behavior: LIMITED_MOVE,
+    },
+  ],
+};
+```
+
+Then point `manifest.json` to it:
+
+```json
+{
+  "qid": "Q1",
+  "task_id": "room01",
+  "file": "tasks/room01.config.js"
+}
+```
+
+JS config is executable code, so only use it for trusted static files maintained inside this repository. Do not use JS config for participant uploads or untrusted third-party input.
+
+## Optional Asset CDN Hook
+
+If you later want to keep the page/config on GitHub Pages but serve heavy static assets from a CDN, `manifest.json` may define:
+
+```json
+{
+  "asset_base_url": "https://cdn.example.com/layout-task/"
+}
+```
+
+Behavior:
+
+- task JSON / JS config, manifest, and behavior libraries still load from the normal site `baseUrl`
+- only asset-like paths use `asset_base_url`
+  - object SVG / PNG / JPG
+  - background SVG / image
+  - `display_image.src`
+
+This keeps the hook minimal and avoids moving the whole config-loading pipeline onto a second origin.
 
 Important task-level sections currently supported:
 

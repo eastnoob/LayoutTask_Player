@@ -12,12 +12,13 @@ Layout Task Player is a static-deployable, config-driven spatial layout task pla
 - a standalone browser page
 - a jsPsych plugin inside an experiment timeline
 
-The system loads static JSON config files, resolves them into a runtime task config, renders the scene in SVG, records interaction/result data, and exports one encoded string that can later be decoded into trial/event CSV.
+The system loads static JSON config files, and may also load trusted JS module task configs, resolves them into a runtime task config, renders the scene in SVG, records interaction/result data, and exports one encoded string that can later be decoded into trial/event CSV.
 
 Core principles:
 
 - Static hosting first: GitHub Pages / GitLab Pages / Netlify friendly
 - Config driven: task, assets, behavior, messages, and requirements are separated
+- Human-editable task config: JSON remains default; trusted `.config.js` task files are available for comments/variables
 - Reproducible result transport: encoded output carries header/meta plus structured JSON result
 - Research workflow friendly: decode/export tools exist outside the browser runtime
 
@@ -99,6 +100,7 @@ Responsibility:
 - load `manifest.json`
 - resolve task selection from `taskId` / `qid`
 - load task + object/background/behavior libraries
+- allow task files to be JSON or trusted JS modules
 - resolve asset URLs and default values
 - inject runtime messages and requirements defaults
 
@@ -106,6 +108,8 @@ Notes:
 
 - `display_image.src` is resolved to a runtime URL
 - `requirements.min_viewport` is normalized for renderer consumption
+- `.js` / `.mjs` task configs are loaded with dynamic import and still validated by the same schema
+- `manifest.asset_base_url` may optionally redirect only static asset URLs to a CDN without moving manifest/task/library loading
 - this layer stays static-host friendly and does not require a backend
 
 ### 4.2 Player Core
@@ -186,6 +190,7 @@ Main authoring files:
 - `public/layout-task/assets/backgrounds.json`
 - `public/layout-task/behaviors/behaviors.json`
 - `public/layout-task/tasks/*.json`
+- `public/layout-task/tasks/*.config.js` for trusted maintainer-authored task config
 
 Important task-level blocks already supported:
 
@@ -196,6 +201,13 @@ Important task-level blocks already supported:
 - `display_image`
 - `messages`
 - `requirements.min_viewport`
+
+Config format policy:
+
+- JSON is the safest default and should be used for shared, data-only task files.
+- Trusted JS module task config is supported when comments, constants, or small authoring helpers make a task easier to maintain.
+- JS config must not be used for untrusted uploads, because it is executable browser code.
+- Optional CDN policy: keep config files on the main site, and only move asset-like URLs through `asset_base_url` when static asset acceleration is actually needed.
 
 ## 6. Phase Status
 

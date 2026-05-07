@@ -138,6 +138,7 @@ export interface ManifestConfig {
   experiment_id: string;
   title?: string;
   config_version?: string;
+  asset_base_url?: string;
   asset_library: string;
   background_library: string;
   behavior_library: string;

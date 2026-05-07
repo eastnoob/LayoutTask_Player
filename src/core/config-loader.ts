@@ -22,6 +22,7 @@ export interface ConfigLoaderOptions {
   baseUrl: string;
   manifestPath?: string;
   fetchImpl?: typeof fetch;
+  moduleImportImpl?: (url: string) => Promise<{ default?: unknown }>;
 }
 
 export interface TaskSelection {
@@ -74,15 +75,17 @@ export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly moduleImportImpl: (url: string) => Promise<{ default?: unknown }>;
 
   constructor(options: ConfigLoaderOptions) {
     this.baseUrl = options.baseUrl;
     this.manifestPath = options.manifestPath ?? "manifest.json";
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    this.moduleImportImpl = options.moduleImportImpl ?? ((url) => import(/* @vite-ignore */ url) as Promise<{ default?: unknown }>);
   }
 
   async loadManifest(): Promise<ManifestConfig> {
-    const data = await this.fetchJson<unknown>(this.manifestPath);
+    const data = await this.loadConfigFile<unknown>(this.manifestPath);
     return validateManifest(data);
   }
 
@@ -95,13 +98,13 @@ export class ConfigLoader {
       manifest.tasks.find((task) => task.qid === selection.qid) ??
       manifest.tasks[0];
 
-    // All config files are static JSON; fetch in parallel after the task entry is known.
-    // 这里不依赖后端 API，适合 GitHub Pages 这类纯静态部署。
+    // Static config files load in parallel after the task entry is known.
+    // task file 可以是 JSON，也可以是 trusted JS module；libraries 继续推荐 JSON。
     const [taskData, objectData, backgroundData, behaviorData] = await Promise.all([
-      this.fetchJson<unknown>(taskEntry.file),
-      this.fetchJson<unknown>(manifest.asset_library),
-      this.fetchJson<unknown>(manifest.background_library),
-      this.fetchJson<unknown>(manifest.behavior_library),
+      this.loadConfigFile<unknown>(taskEntry.file),
+      this.loadConfigFile<unknown>(manifest.asset_library),
+      this.loadConfigFile<unknown>(manifest.background_library),
+      this.loadConfigFile<unknown>(manifest.behavior_library),
     ]);
 
     const task = validateTask(taskData);
@@ -119,14 +122,36 @@ export class ConfigLoader {
     });
   }
 
+  private async loadConfigFile<T>(relativePath: string): Promise<T> {
+    if (isJavaScriptConfigPath(relativePath)) {
+      return this.importConfigModule<T>(relativePath);
+    }
+
+    return this.fetchJson<T>(relativePath);
+  }
+
   private async fetchJson<T>(relativePath: string): Promise<T> {
-    // All config files are static-host friendly URLs; no backend is needed.
+    // JSON remains the safest default: static, data-only, and easy for decoder tooling to mirror.
+    // JSON 仍是默认格式；JS config 只给可信项目维护者使用。
     const url = new URL(relativePath, this.baseUrl).toString();
     const response = await this.fetchImpl(url);
     if (!response.ok) {
       throw new Error(`Failed to load ${relativePath}: ${response.status} ${response.statusText}`);
     }
     return (await response.json()) as T;
+  }
+
+  private async importConfigModule<T>(relativePath: string): Promise<T> {
+    const url = new URL(relativePath, this.baseUrl);
+    url.searchParams.set("layoutTaskConfigVersion", String(Date.now()));
+
+    // JS config is executable code. 这里明确只支持 trusted static config，不支持用户上传配置。
+    const module = await this.moduleImportImpl(url.toString());
+    if (!("default" in module)) {
+      throw new Error(`Config module ${relativePath} must export a default config object`);
+    }
+
+    return module.default as T;
   }
 }
 
@@ -143,6 +168,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
   // Runtime config is the fully linked version of authoring config:
   // asset ids -> resolved assets, behavior ids -> concrete behavior blocks, defaults applied.
   // 也就是“浏览器真正能直接渲染和运行”的那一层 shape。
+  const assetBaseUrl = input.manifest.asset_base_url ?? input.baseUrl;
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
   const resolvedObjects = input.task.objects.map((objectConfig) => {
     const asset = input.objectLibrary.objects[objectConfig.asset];
@@ -153,7 +179,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       assetId: objectConfig.asset,
       asset: {
         ...asset,
-        srcResolved: resolveAssetUrl(input.baseUrl, asset.src),
+        srcResolved: resolveAssetUrl(assetBaseUrl, asset.src),
       },
       x: objectConfig.x,
       y: objectConfig.y,
@@ -179,7 +205,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       assetId: input.task.background.asset,
       asset: {
         ...resolvedBackgroundAsset,
-        srcResolved: resolveAssetUrl(input.baseUrl, resolvedBackgroundAsset.src),
+        srcResolved: resolveAssetUrl(assetBaseUrl, resolvedBackgroundAsset.src),
       },
       x: input.task.background.x,
       y: input.task.background.y,
@@ -216,14 +242,19 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       ? {
           ...DEFAULT_DISPLAY_IMAGE,
           ...input.task.display_image,
-          srcResolved: resolveAssetUrl(input.baseUrl, input.task.display_image.src),
+          srcResolved: resolveAssetUrl(assetBaseUrl, input.task.display_image.src),
         }
       : undefined,
   };
 }
 
-function resolveAssetUrl(baseUrl: string, relativePath: string): string {
-  return new URL(relativePath, baseUrl).toString();
+function resolveAssetUrl(assetBaseUrl: string, relativePath: string): string {
+  return new URL(relativePath, assetBaseUrl).toString();
+}
+
+function isJavaScriptConfigPath(path: string): boolean {
+  const cleanPath = path.split(/[?#]/, 1)[0].toLowerCase();
+  return cleanPath.endsWith(".js") || cleanPath.endsWith(".mjs");
 }
 
 function resolveMinViewportRequirement(
