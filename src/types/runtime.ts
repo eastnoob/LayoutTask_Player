@@ -3,6 +3,7 @@ import type {
   BackgroundAssetConfig,
   BehaviorConfig,
   CompletionConfig,
+  DataPipePayloadFormat,
   DisplayImageConfig,
   FeedbackConfig,
   LayoutTaskMessages,
@@ -73,8 +74,25 @@ export interface RuntimeTaskConfig {
   completion: Required<CompletionConfig>;
   recording: Required<RecordingConfig>;
   output: Required<OutputConfig>;
+  dataSave: RuntimeDataSaveConfig;
   feedback: Required<FeedbackConfig>;
   messages: LayoutTaskMessages;
   requirements: RuntimeRequirements;
   displayImage?: RuntimeDisplayImage;
 }
+
+export interface RuntimeCopyDataSaveConfig {
+  mode: "copy";
+}
+
+export interface RuntimeDataPipeSaveConfig {
+  mode: "datapipe";
+  experiment_id: string;
+  endpoint: string;
+  filename_prefix: string;
+  payload_format: DataPipePayloadFormat;
+  save_encoded: boolean;
+  save_result: boolean;
+}
+
+export type RuntimeDataSaveConfig = RuntimeCopyDataSaveConfig | RuntimeDataPipeSaveConfig;

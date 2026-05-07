@@ -167,10 +167,83 @@ Important task-level sections currently supported:
 - `completion`
 - `recording`
 - `output`
+- `data_save`
 - `feedback`
 - `display_image`
 - `messages`
 - `requirements.min_viewport`
+
+### Optional DataPipe Saving
+
+The default save mode is copy-only. 被试完成后仍然复制 encoded result，适合所有纯静态部署：
+
+```json
+{
+  "data_save": {
+    "mode": "copy"
+  }
+}
+```
+
+If a study uses DataPipe + OSF, a task can additionally save from the browser to DataPipe:
+
+```json
+{
+  "data_save": {
+    "mode": "datapipe",
+    "experiment_id": "YOUR_DATAPIPE_EXPERIMENT_ID",
+    "filename_prefix": "layout-task",
+    "payload_format": "json-envelope",
+    "save_encoded": true,
+    "save_result": true
+  }
+}
+```
+
+DataPipe mode requires `experiment_id`. Optional fields:
+
+- `endpoint`: defaults to `https://pipe.jspsych.org/api/data/`
+- `filename_prefix`: defaults to `layout-task`
+- `payload_format`: defaults to `json-envelope`
+- `save_encoded`: defaults to `true`
+- `save_result`: defaults to `true`
+
+`payload_format` controls the file content saved to OSF:
+
+- `json-envelope`: saves a self-describing `.json` file with metadata, encoded result, and optionally the full result object
+- `encoded-only`: saves only the copied `LAYOUTTASK1|...` string as `.txt`
+- `csv-row`: saves one `.csv` row with `qid`, `task_id`, `session`, `hash8`, `encoding`, and `encoded`
+
+DataPipe saving is an extra upload step, not the only fallback. If the upload fails, the locked encoded result is still copied/shown so participants can paste it back into the survey.
+
+### Grid Origin
+
+`world.grid.origin` can shift the snap lattice without moving the background image:
+
+```json
+{
+  "world": {
+    "grid": {
+      "size": 25,
+      "visible": false,
+      "snap": true,
+      "origin": {
+        "x": 10,
+        "y": 5
+      }
+    }
+  }
+}
+```
+
+Meaning:
+
+```text
+x grid points = 10 + n * 25
+y grid points = 5 + n * 25
+```
+
+This controls where objects snap during button movement and drag. It does not auto-anchor the background SVG; background placement still comes from `background.x`, `background.y`, `background.width`, and `background.height`.
 
 ## Current Debug Encoding Policy
 

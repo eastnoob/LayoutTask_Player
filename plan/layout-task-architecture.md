@@ -45,6 +45,7 @@ Already landed capabilities:
 - `display.changes` tracking for viewport/image changes during a trial
 - `page_timing` metadata for page-open vs player-start timing
 - unchanged-submission extra confirm before final lock
+- optional DataPipe save service with copy fallback
 - decoder validation and CSV export tools
 
 Explicit non-goal for this phase:
@@ -197,10 +198,27 @@ Important task-level blocks already supported:
 - `completion`
 - `recording`
 - `output`
+- `data_save`
 - `feedback`
 - `display_image`
 - `messages`
 - `requirements.min_viewport`
+- `world.grid.origin` for shifting the movement/drag snap lattice
+
+Data save policy:
+
+- Default mode is `copy`: lock, encode, copy/show result.
+- Optional `datapipe` mode posts `{ experimentID, filename, data }` to DataPipe after the result is locked.
+- `datapipe` requires `experiment_id` in task config.
+- `datapipe.payload_format` can be `json-envelope`, `encoded-only`, or `csv-row`; default remains the self-describing JSON envelope.
+- DataPipe failures are non-fatal because copy/show remains the primary fallback.
+
+Grid policy:
+
+- `world.grid.size` controls the grid step.
+- `world.grid.snap` controls whether movement/drag snaps to grid points.
+- `world.grid.origin` is optional and shifts the snap lattice to `origin + n * size`.
+- This is not a background anchor system; background placement is still controlled by `background.x/y/width/height`.
 
 Config format policy:
 

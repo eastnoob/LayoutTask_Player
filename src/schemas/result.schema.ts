@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { viewBoxSchema } from "./config.schema";
+import { pointSchema, viewBoxSchema } from "./config.schema";
 
 // Result schema validates the payload that leaves the browser.
 // 这里要兼顾当前导出模式和后续 decoder 的 backward-compatible parsing。
@@ -184,6 +184,7 @@ export const resultContextSchema = z.object({
     }),
     grid_size: z.number().positive(),
     grid_snap: z.boolean(),
+    grid_origin: pointSchema.optional(),
   }),
   objects: z.record(resultContextObjectSchema),
 });

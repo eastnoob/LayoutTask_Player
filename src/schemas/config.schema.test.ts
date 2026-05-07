@@ -30,7 +30,7 @@ describe("taskSchema display_image", () => {
       world: {
         viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
         origin: { x: 0, y: 0 },
-        grid: { size: 25 },
+        grid: { size: 25, origin: { x: 10, y: 5 } },
       },
       background: {
         asset: "room01_bg",
@@ -45,6 +45,7 @@ describe("taskSchema display_image", () => {
       },
     });
 
+    expect(parsed.world.grid.origin).toEqual({ x: 10, y: 5 });
     expect(parsed.display_image).toMatchObject({
       enabled: true,
       src: "assets/display-images/example.jpeg",
@@ -119,6 +120,54 @@ describe("taskSchema release hardening fields", () => {
       width: 1024,
       height: 720,
       mode: "warn",
+    });
+  });
+});
+
+describe("taskSchema data_save", () => {
+  it("accepts copy mode by default and requires experiment_id for datapipe", () => {
+    const baseTask = {
+      schema: "layouttask.task.v1" as const,
+      task_id: "room01",
+      qid: "Q1",
+      world: {
+        viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 25 },
+      },
+      background: {
+        asset: "room01_bg",
+        x: -400,
+        y: -300,
+        width: 800,
+        height: 600,
+      },
+      objects: [],
+    };
+
+    expect(taskSchema.parse(baseTask).data_save).toBeUndefined();
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        data_save: {
+          mode: "datapipe",
+        },
+      }),
+    ).toThrow();
+
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        data_save: {
+          mode: "datapipe",
+          experiment_id: "EXP123",
+          payload_format: "csv-row",
+        },
+      }).data_save,
+    ).toMatchObject({
+      mode: "datapipe",
+      experiment_id: "EXP123",
+      payload_format: "csv-row",
     });
   });
 });

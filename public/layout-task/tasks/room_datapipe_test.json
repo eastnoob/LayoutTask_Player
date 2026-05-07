@@ -1,0 +1,90 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "room_datapipe_test",
+  "qid": "QPIPE",
+  "title": "Room DataPipe Test",
+  "world": {
+    "viewBox": {
+      "x": -500,
+      "y": -500,
+      "width": 1000,
+      "height": 1000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 25,
+      "visible": false,
+      "snap": true
+    }
+  },
+  "background": {
+    "asset": "room01_bg",
+    "x": -400,
+    "y": -300,
+    "width": 800,
+    "height": 600
+  },
+  "objects": [
+    {
+      "id": "chair_01",
+      "asset": "chair_a",
+      "x": 100,
+      "y": 150,
+      "rotation": 0,
+      "behavior": "move25_rotate45_limited"
+    },
+    {
+      "id": "table_01",
+      "asset": "table_a",
+      "x": 200,
+      "y": 175,
+      "rotation": 90,
+      "behavior": "rotate45_only"
+    }
+  ],
+  "completion": {
+    "double_confirm": true,
+    "lock_after_confirm": true,
+    "allow_copy_again": true
+  },
+  "recording": {
+    "record_events": true,
+    "record_final_state": true,
+    "record_display_info": true,
+    "record_display_changes": true,
+    "record_page_timing": true,
+    "record_user_agent": true,
+    "record_blocked_events": false
+  },
+  "output": {
+    "encoding": "plain-json",
+    "detail": "final-only",
+    "final_state": "relative"
+  },
+  "data_save": {
+    "mode": "datapipe",
+    "experiment_id": "mshCnq690sD5",
+    "filename_prefix": "layout-task-test",
+    "save_encoded": true,
+    "save_result": true
+  },
+  "feedback": {
+    "limit_messages": {
+      "move_left": "You cannot move further left.",
+      "move_right": "You cannot move further right.",
+      "move_up": "You cannot move further up.",
+      "move_down": "You cannot move further down.",
+      "rotate_cw": "You cannot rotate further clockwise.",
+      "rotate_ccw": "You cannot rotate further counter-clockwise."
+    }
+  },
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+    "alt": "Reference image",
+    "record_metrics": true
+  }
+}

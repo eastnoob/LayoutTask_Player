@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMovementLimitFeedbackRect, getRotationLimitFeedbackArc, normalizeRotation } from "./geometry";
+import { getMovementLimitFeedbackRect, getRotationLimitFeedbackArc, normalizeRotation, snapToGrid } from "./geometry";
 
 describe("normalizeRotation", () => {
   it("normalizes values above 360", () => {
@@ -8,6 +8,13 @@ describe("normalizeRotation", () => {
 
   it("normalizes negative values", () => {
     expect(normalizeRotation(-45)).toBe(315);
+  });
+});
+
+describe("snapToGrid", () => {
+  it("snaps to an origin-shifted grid", () => {
+    expect(snapToGrid(36, 25, 10)).toBe(35);
+    expect(snapToGrid(-3, 25, 10)).toBe(-15);
   });
 });
 

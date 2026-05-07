@@ -5,6 +5,7 @@ import { CompletionController, type CompletionPayload } from "./completion-contr
 import { DisplayChangeRecorder } from "./display-change-recorder";
 import { DisplayInfoCollector } from "./display-info";
 import { LayoutTaskEncoder } from "./encoder";
+import { DataSaveService } from "./data-save-service";
 import { InteractionController } from "./interaction-controller";
 import { PageTimingCollector } from "./page-timing";
 import { Recorder } from "./recorder";
@@ -32,6 +33,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   const store = new StateStore(options.config);
   const clipboard = new ClipboardService();
   const encoder = new LayoutTaskEncoder();
+  const dataSave = new DataSaveService({ config: options.config.dataSave });
   const pageTiming = new PageTimingCollector();
 
   let recorder: Recorder | undefined;
@@ -112,6 +114,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         renderer,
         encoder,
         clipboard,
+        dataSave,
         onComplete: options.onComplete,
       });
 

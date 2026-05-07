@@ -5,11 +5,13 @@ import type { CopyResult, ClipboardService } from "./clipboard-service";
 import type { Recorder } from "./recorder";
 import type { LayoutTaskRenderer } from "./renderer";
 import type { StateStore } from "./state-store";
+import type { DataSaveResult, DataSaveService } from "./data-save-service";
 
 export interface CompletionPayload {
   result: LayoutTaskResult;
   encoded: EncodedLayoutTask;
   copyResult: CopyResult;
+  dataSaveResult?: DataSaveResult;
 }
 
 // CompletionController owns the irreversible part of the workflow.
@@ -26,6 +28,7 @@ export class CompletionController {
       renderer: LayoutTaskRenderer;
       encoder: LayoutTaskEncoder;
       clipboard: ClipboardService;
+      dataSave?: DataSaveService;
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
     },
@@ -69,12 +72,14 @@ export class CompletionController {
     const result = await this.options.recorder.finish(Date.now());
     const encoded = await this.options.encoder.encode(result, this.options.config.output);
     const copyResult = await this.options.clipboard.copy(encoded.output);
-    const payload = { result, encoded, copyResult };
+    const payload: CompletionPayload = { result, encoded, copyResult };
+    payload.dataSaveResult = await this.options.dataSave?.save(payload);
 
     // Cache the first locked payload so "copy again" is stable and reproducible.
     // 不重新 encode，避免再次复制时出现不同 session/hash/时间语义。
     this.lockedPayload = payload;
     this.options.renderer.showCompletion(encoded.output, copyResult);
+    this.showDataSaveStatus(payload);
     this.options.onComplete?.(payload);
   }
 
@@ -101,5 +106,23 @@ export class CompletionController {
 
   getLockedPayload(): CompletionPayload | undefined {
     return this.lockedPayload;
+  }
+
+  private showDataSaveStatus(payload: CompletionPayload): void {
+    const result = payload.dataSaveResult;
+    if (!result || result.provider === "copy") {
+      return;
+    }
+
+    if (result.ok) {
+      this.options.renderer.setStatus(`Locked, copied, and saved to DataPipe: ${result.filename}`);
+      console.info("[LayoutTask] DataPipe save succeeded", result);
+      return;
+    }
+
+    this.options.renderer.setStatus(
+      `Locked and copied. DataPipe save failed: ${result.error ?? "Unknown error"}`,
+    );
+    console.warn("[LayoutTask] DataPipe save failed", result);
   }
 }

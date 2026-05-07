@@ -19,6 +19,7 @@ export interface GridConfig {
   size: number;
   visible: boolean;
   snap: boolean;
+  origin?: Point;
 }
 
 export interface WorldConfig {
@@ -92,6 +93,24 @@ export interface OutputConfig {
   detail?: OutputDetail;
   final_state?: FinalStateMode;
 }
+
+export interface CopyDataSaveConfig {
+  mode: "copy";
+}
+
+export type DataPipePayloadFormat = "json-envelope" | "encoded-only" | "csv-row";
+
+export interface DataPipeSaveConfig {
+  mode: "datapipe";
+  experiment_id: string;
+  endpoint?: string;
+  filename_prefix?: string;
+  payload_format?: DataPipePayloadFormat;
+  save_encoded?: boolean;
+  save_result?: boolean;
+}
+
+export type DataSaveConfig = CopyDataSaveConfig | DataPipeSaveConfig;
 
 export interface FeedbackConfig {
   limit_messages?: Partial<Record<"move_left" | "move_right" | "move_up" | "move_down" | "rotate_cw" | "rotate_ccw", string>>;
@@ -191,6 +210,7 @@ export interface TaskConfig {
   completion?: CompletionConfig;
   recording?: RecordingConfig;
   output?: OutputConfig;
+  data_save?: DataSaveConfig;
   feedback?: FeedbackConfig;
   display_image?: DisplayImageConfig;
   messages?: MessagesConfig;

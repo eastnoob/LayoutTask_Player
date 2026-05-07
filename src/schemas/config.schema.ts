@@ -18,6 +18,7 @@ export const gridSchema = z.object({
   size: z.number().positive(),
   visible: z.boolean().default(false),
   snap: z.boolean().default(true),
+  origin: pointSchema.optional(),
 });
 
 export const worldSchema = z.object({
@@ -104,6 +105,21 @@ export const outputSchema = z.object({
   final_state: z.enum(["relative", "absolute"]).default("relative"),
 });
 
+export const dataSaveSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("copy").default("copy"),
+  }),
+  z.object({
+    mode: z.literal("datapipe"),
+    experiment_id: z.string().min(1),
+    endpoint: z.string().url().optional(),
+    filename_prefix: z.string().min(1).optional(),
+    payload_format: z.enum(["json-envelope", "encoded-only", "csv-row"]).default("json-envelope"),
+    save_encoded: z.boolean().optional(),
+    save_result: z.boolean().optional(),
+  }),
+]);
+
 export const feedbackSchema = z.object({
   // UI copy only. 提示语不进入 result data，研究者可按实验语言覆盖。
   limit_messages: z
@@ -176,6 +192,7 @@ export const taskSchema = z.object({
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),
   output: outputSchema.optional(),
+  data_save: dataSaveSchema.optional(),
   feedback: feedbackSchema.optional(),
   display_image: displayImageSchema.optional(),
   messages: messagesSchema.optional(),

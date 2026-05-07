@@ -16,6 +16,11 @@
       "qid": "QDRAG",
       "task_id": "room_drag01",
       "file": "tasks/room_drag01.json"
+    },
+    {
+      "qid": "QPIPE",
+      "task_id": "room_datapipe_test",
+      "file": "tasks/room_datapipe_test.json"
     }
   ]
 }

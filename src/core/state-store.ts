@@ -205,8 +205,8 @@ export class StateStore {
     }
 
     if (isMoveAction(action) && this.config.world.grid.snap) {
-      state.x = snapToGrid(state.x, this.config.world.grid.size);
-      state.y = snapToGrid(state.y, this.config.world.grid.size);
+      state.x = snapToGrid(state.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
+      state.y = snapToGrid(state.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
     }
 
     // This is an edit-history flag, not final-state comparison.
@@ -299,8 +299,8 @@ export class StateStore {
     const shouldSnap = objectConfig.behavior.free_drag.snap ?? this.config.world.grid.snap;
     const snapped = shouldSnap
       ? {
-          x: snapToGrid(desired.x, this.config.world.grid.size),
-          y: snapToGrid(desired.y, this.config.world.grid.size),
+          x: snapToGrid(desired.x, this.config.world.grid.size, this.config.world.grid.origin?.x),
+          y: snapToGrid(desired.y, this.config.world.grid.size, this.config.world.grid.origin?.y),
         }
       : desired;
 

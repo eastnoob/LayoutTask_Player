@@ -84,6 +84,9 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       detail: "final-only",
       final_state: "relative",
     },
+    dataSave: {
+      mode: "copy",
+    },
     feedback: {
       limit_messages: {
         move_left: "You cannot move further left.",

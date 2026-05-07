@@ -166,6 +166,10 @@ export interface ResultContext {
     };
     grid_size: number;
     grid_snap: boolean;
+    grid_origin?: {
+      x: number;
+      y: number;
+    };
   };
   objects: Record<string, ResultContextObject>;
 }

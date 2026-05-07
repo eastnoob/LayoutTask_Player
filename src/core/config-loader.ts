@@ -52,6 +52,14 @@ const DEFAULT_OUTPUT = {
   final_state: "relative" as const,
 };
 
+const DEFAULT_DATA_PIPE_SAVE = {
+  endpoint: "https://pipe.jspsych.org/api/data/",
+  filename_prefix: "layout-task",
+  payload_format: "json-envelope" as const,
+  save_encoded: true,
+  save_result: true,
+};
+
 const DEFAULT_FEEDBACK = {
   limit_messages: {
     move_left: "You cannot move further left.",
@@ -225,6 +233,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       ...DEFAULT_OUTPUT,
       ...input.task.output,
     },
+    dataSave: resolveDataSaveConfig(input.task.data_save),
     feedback: {
       ...DEFAULT_FEEDBACK,
       ...input.task.feedback,
@@ -245,6 +254,22 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
           srcResolved: resolveAssetUrl(assetBaseUrl, input.task.display_image.src),
         }
       : undefined,
+  };
+}
+
+function resolveDataSaveConfig(dataSave: TaskConfig["data_save"]): RuntimeTaskConfig["dataSave"] {
+  if (!dataSave || dataSave.mode === "copy") {
+    return { mode: "copy" };
+  }
+
+  return {
+    mode: "datapipe",
+    experiment_id: dataSave.experiment_id,
+    endpoint: dataSave.endpoint ?? DEFAULT_DATA_PIPE_SAVE.endpoint,
+    filename_prefix: dataSave.filename_prefix ?? DEFAULT_DATA_PIPE_SAVE.filename_prefix,
+    payload_format: dataSave.payload_format ?? DEFAULT_DATA_PIPE_SAVE.payload_format,
+    save_encoded: dataSave.save_encoded ?? DEFAULT_DATA_PIPE_SAVE.save_encoded,
+    save_result: dataSave.save_result ?? DEFAULT_DATA_PIPE_SAVE.save_result,
   };
 }
 

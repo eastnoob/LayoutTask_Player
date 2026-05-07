@@ -3,8 +3,10 @@ export function normalizeRotation(rotation: number): number {
   return normalized < 0 ? normalized + 360 : normalized;
 }
 
-export function snapToGrid(value: number, gridSize: number): number {
-  return Math.round(value / gridSize) * gridSize;
+export function snapToGrid(value: number, gridSize: number, origin = 0): number {
+  // Grid origin shifts the whole lattice: origin + n * size.
+  // 这样背景视觉网格如果不是从 0 开始，物体仍能吸附到正确的 world 格点。
+  return origin + Math.round((value - origin) / gridSize) * gridSize;
 }
 
 export interface MovementLimitFeedbackInput {

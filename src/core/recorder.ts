@@ -82,12 +82,13 @@ export class Recorder {
 
 function buildResultContext(config: RuntimeTaskConfig): LayoutTaskResult["context"] {
   return {
-    world: {
-      viewBox: config.world.viewBox,
-      origin: config.world.origin,
-      grid_size: config.world.grid.size,
-      grid_snap: config.world.grid.snap,
-    },
+      world: {
+        viewBox: config.world.viewBox,
+        origin: config.world.origin,
+        grid_size: config.world.grid.size,
+        grid_snap: config.world.grid.snap,
+        grid_origin: config.world.grid.origin,
+      },
     objects: Object.fromEntries(
       config.objects.map((objectConfig) => [
         objectConfig.id,

@@ -99,6 +99,22 @@ describe("StateStore action limits", () => {
     expect(limited.offsets).toMatchObject({ xSteps: 2, ySteps: -2 });
   });
 
+  it("snaps drag positions to the configured grid origin", () => {
+    const store = new StateStore(
+      createDragRuntimeConfig({
+        world: {
+          viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+          origin: { x: 0, y: 0 },
+          grid: { size: 25, visible: false, snap: true, origin: { x: 10, y: 5 } },
+        },
+      }),
+    );
+
+    const transition = store.applyDragPosition("chair_01", { x: 36, y: 31 });
+
+    expect(transition.after).toMatchObject({ x: 35, y: 30 });
+  });
+
   it("clips drag positions to the world viewBox", () => {
     const store = new StateStore(
       createDragRuntimeConfig({
