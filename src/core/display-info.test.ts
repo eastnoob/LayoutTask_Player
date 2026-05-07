@@ -16,6 +16,7 @@ describe("DisplayInfoCollector", () => {
       {
         root: {} as HTMLElement,
         objectElements: new Map(),
+        objectVisualElements: new Map(),
         controlElements: new Map(),
         controlButtons: new Map(),
         displayImageFrameElement: frame,
@@ -59,6 +60,7 @@ describe("DisplayInfoCollector", () => {
       {
         root: {} as HTMLElement,
         objectElements: new Map(),
+        objectVisualElements: new Map(),
         controlElements: new Map(),
         controlButtons: new Map(),
         displayImageElement: image,
@@ -86,6 +88,7 @@ describe("DisplayInfoCollector", () => {
       {
         root: {} as HTMLElement,
         objectElements: new Map(),
+        objectVisualElements: new Map(),
         controlElements: new Map(),
         controlButtons: new Map(),
       },
@@ -109,6 +112,39 @@ describe("DisplayInfoCollector", () => {
     const result = await withWindowMetrics(2, () => collector.collect());
 
     expect(result.changes).toBeUndefined();
+  });
+
+  it("records stage scale from world units to CSS pixels", async () => {
+    const svg = {
+      getBoundingClientRect: vi.fn(() => createDomRect({ width: 800, height: 600 })),
+    } as unknown as SVGSVGElement;
+    const collector = new DisplayInfoCollector(
+      {
+        root: {} as HTMLElement,
+        svg,
+        objectElements: new Map(),
+        objectVisualElements: new Map(),
+        controlElements: new Map(),
+        controlButtons: new Map(),
+      },
+      createRuntimeConfig({
+        world: {
+          ...createRuntimeConfig().world,
+          viewBox: { x: 0, y: 0, width: 3200000, height: 2400000 },
+        },
+      }),
+    );
+
+    const result = await withWindowMetrics(2, () => collector.collect());
+
+    expect(result.stageScale).toEqual({
+      worldWidth: 3200000,
+      worldHeight: 2400000,
+      cssWidth: 800,
+      cssHeight: 600,
+      worldToCssScale: 0.00025,
+      cssToWorldScale: 4000,
+    });
   });
 });
 

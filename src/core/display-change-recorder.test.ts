@@ -10,6 +10,7 @@ describe("DisplayChangeRecorder", () => {
       refs: {
         root: {} as HTMLElement,
         objectElements: new Map(),
+        objectVisualElements: new Map(),
         controlElements: new Map(),
         controlButtons: new Map(),
         displayImageElement: {

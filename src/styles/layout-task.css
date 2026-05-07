@@ -107,8 +107,8 @@ body {
 }
 
 .layout-task-stage-wrap {
+  position: relative;
   min-height: 560px;
-  padding: 16px;
   background: #ffffff;
   border: 1px solid #d9e1ee;
   border-radius: 8px;
@@ -118,8 +118,6 @@ body {
 .layout-task-stage {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
-  max-height: 72vh;
   background: #eef3f8;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -143,14 +141,13 @@ body {
   cursor: grabbing;
 }
 
-.layout-task-object image {
-  filter: drop-shadow(0 6px 8px rgba(15, 23, 42, 0.22));
+.layout-task-object-selected-shadow {
+  display: none;
+  pointer-events: none;
 }
 
-.layout-task-object:hover image,
-.layout-task-object:focus-visible image,
-.layout-task-object.is-active image {
-  filter: drop-shadow(0 0 0.25rem rgba(14, 116, 144, 0.9)) drop-shadow(0 8px 10px rgba(15, 23, 42, 0.22));
+.layout-task-object-selected-shadow.is-visible {
+  display: block;
 }
 
 .layout-task-object.is-locked {
@@ -216,6 +213,13 @@ body {
   pointer-events: none;
 }
 
+.layout-task-feedback-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
 .layout-task-limit-feedback {
   fill: rgba(220, 38, 38, 0.2);
   stroke: rgba(185, 28, 28, 0.9);
@@ -241,20 +245,36 @@ body {
   animation: layout-task-limit-flash 900ms ease-out forwards;
 }
 
+.layout-task-limit-feedback-badge {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: max-content;
+  padding: 6px 10px;
+  border: 1px solid rgba(185, 28, 28, 0.55);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(127, 29, 29, 0.18);
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: layout-task-limit-label 900ms ease-out forwards;
+}
+
 .layout-task-feedback-icon {
-  opacity: 0.96;
-  filter: drop-shadow(0 3px 6px rgba(127, 29, 29, 0.25));
-  animation: layout-task-limit-flash 900ms ease-out forwards;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
 }
 
 .layout-task-limit-label {
-  fill: #991b1b;
-  stroke: #ffffff;
-  stroke-width: 4;
-  paint-order: stroke;
-  font-size: 20px;
+  color: #991b1b;
+  font-size: 18px;
+  line-height: 1.2;
   font-weight: 700;
-  animation: layout-task-limit-label 900ms ease-out forwards;
+  white-space: nowrap;
 }
 
 @keyframes layout-task-limit-flash {

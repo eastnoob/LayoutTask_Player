@@ -32,6 +32,7 @@ interface DragSession {
 export class InteractionController {
   private activeObjectId: string | undefined;
   private dragSession: DragSession | undefined;
+  private lastDragLimitFeedbackAt = 0;
   private bound = false;
 
   constructor(
@@ -180,6 +181,7 @@ export class InteractionController {
     const transition = this.applyDragFromPointer(session, request.pointer);
     this.options.renderer.updateObject(request.objectId);
     this.options.renderer.updateControlsDisabled(request.objectId);
+    this.showDragLimitFeedback(request.objectId, transition);
     this.options.renderer.setStatus(`${request.objectId}: dragged to ${transition.after.x}, ${transition.after.y}.`);
     return { ok: true };
   }
@@ -224,6 +226,20 @@ export class InteractionController {
       x: pointer.worldX - session.grabOffset.x,
       y: pointer.worldY - session.grabOffset.y,
     });
+  }
+
+  private showDragLimitFeedback(objectId: string, transition: DragTransition): void {
+    if (!transition.limitedAction) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastDragLimitFeedbackAt < 800) {
+      return;
+    }
+
+    this.lastDragLimitFeedbackAt = now;
+    this.options.renderer.showLimitFeedback(objectId, transition.limitedAction);
   }
 
   private recordDragStart(request: DragRequest): void {

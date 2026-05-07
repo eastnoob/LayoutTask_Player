@@ -97,6 +97,7 @@ describe("StateStore action limits", () => {
     const limited = store.applyDragPosition("chair_01", { x: 500, y: -500 });
     expect(limited.after).toMatchObject({ x: 50, y: -50 });
     expect(limited.offsets).toMatchObject({ xSteps: 2, ySteps: -2 });
+    expect(limited.limitedAction).toBe("move_right");
   });
 
   it("snaps drag positions to the configured grid origin", () => {

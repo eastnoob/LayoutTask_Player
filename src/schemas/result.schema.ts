@@ -92,6 +92,16 @@ export const displayInfoSchema = z.object({
   }),
   devicePixelRatio: z.number().positive(),
   stageRect: rectInfoSchema.optional(),
+  stageScale: z
+    .object({
+      worldWidth: z.number().positive(),
+      worldHeight: z.number().positive(),
+      cssWidth: z.number().nonnegative(),
+      cssHeight: z.number().nonnegative(),
+      worldToCssScale: z.number().positive(),
+      cssToWorldScale: z.number().positive(),
+    })
+    .optional(),
   backgroundRect: rectInfoSchema.optional(),
   backgroundNatural: z
     .object({

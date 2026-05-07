@@ -34,6 +34,8 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
           type: "svg",
           src: "assets/objects/chair_a.svg",
           srcResolved: "http://example.test/layout-task/assets/objects/chair_a.svg",
+          inlineSvgText:
+            '<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="8" width="34" height="34" rx="6" fill="#2f6f73" /></svg>',
           default_width: 50,
           default_height: 50,
           anchor: "center",
@@ -108,6 +110,11 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
         "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.",
     },
     requirements: {},
+    stage: {
+      fit: "contain",
+      max_height_ratio: 0.72,
+      padding: 16,
+    },
     displayImage: undefined,
     ...overrides,
   };

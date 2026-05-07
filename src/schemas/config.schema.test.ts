@@ -124,6 +124,38 @@ describe("taskSchema release hardening fields", () => {
   });
 });
 
+describe("taskSchema stage", () => {
+  it("accepts contain stage fit and applies defaults", () => {
+    const parsed = taskSchema.parse({
+      schema: "layouttask.task.v1",
+      task_id: "room01",
+      qid: "Q1",
+      world: {
+        viewBox: { x: 0, y: 0, width: 3200000, height: 2400000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 100000 },
+      },
+      background: {
+        asset: "room01_bg_x4000",
+        x: 0,
+        y: 0,
+        width: 3200000,
+        height: 2400000,
+      },
+      objects: [],
+      stage: {
+        fit: "contain",
+      },
+    });
+
+    expect(parsed.stage).toEqual({
+      fit: "contain",
+      max_height_ratio: 0.72,
+      padding: 16,
+    });
+  });
+});
+
 describe("taskSchema data_save", () => {
   it("accepts copy mode by default and requires experiment_id for datapipe", () => {
     const baseTask = {

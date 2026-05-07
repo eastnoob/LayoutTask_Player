@@ -82,6 +82,12 @@ const DEFAULT_DISPLAY_IMAGE = {
 
 const DEFAULT_REQUIREMENTS = {};
 
+const DEFAULT_STAGE = {
+  fit: "contain" as const,
+  max_height_ratio: 0.72,
+  padding: 16,
+};
+
 export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
@@ -123,7 +129,7 @@ export class ConfigLoader {
     const backgroundLibrary = validateBackgroundLibrary(backgroundData);
     const behaviorLibrary = validateBehaviorLibrary(behaviorData);
 
-    return resolveRuntimeConfig({
+    const runtimeConfig = resolveRuntimeConfig({
       baseUrl: this.baseUrl,
       manifest,
       objectLibrary,
@@ -131,6 +137,9 @@ export class ConfigLoader {
       behaviorLibrary,
       task,
     });
+
+    await this.attachInlineSvgObjectAssets(runtimeConfig);
+    return runtimeConfig;
   }
 
   private async loadConfigFile<T>(relativePath: string): Promise<T> {
@@ -150,6 +159,31 @@ export class ConfigLoader {
       throw new Error(`Failed to load ${relativePath}: ${response.status} ${response.statusText}`);
     }
     return (await response.json()) as T;
+  }
+
+  private async fetchText(relativePath: string): Promise<string> {
+    const url = new URL(relativePath, this.baseUrl).toString();
+    const response = await this.fetchImpl(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load ${relativePath}: ${response.status} ${response.statusText}`);
+    }
+    return response.text();
+  }
+
+  private async attachInlineSvgObjectAssets(config: RuntimeTaskConfig): Promise<void> {
+    const svgAssets = new Map<string, Promise<string>>();
+    for (const objectConfig of config.objects) {
+      if (objectConfig.asset.type !== "svg") {
+        continue;
+      }
+
+      let svgText = svgAssets.get(objectConfig.asset.src);
+      if (!svgText) {
+        svgText = this.fetchText(objectConfig.asset.src);
+        svgAssets.set(objectConfig.asset.src, svgText);
+      }
+      objectConfig.asset.inlineSvgText = await svgText;
+    }
   }
 
   private async importConfigModule<T>(relativePath: string): Promise<T> {
@@ -249,6 +283,10 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
     requirements: {
       ...DEFAULT_REQUIREMENTS,
       min_viewport: resolveMinViewportRequirement(input.task.requirements?.min_viewport),
+    },
+    stage: {
+      ...DEFAULT_STAGE,
+      ...input.task.stage,
     },
     displayImage: input.task.display_image
       ? {

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3200000 2400000" role="img" aria-label="Room 01 placeholder floorplan scaled 4000x">
+  <rect x="4000" y="4000" width="3192000" height="2392000" fill="#f8fafc" stroke="#1f2937" stroke-width="8000" />
+  <path d="M720000 4000v680000M720000 1000000v1396000M2080000 4000v840000M2080000 1160000v1236000" fill="none" stroke="#334155" stroke-width="16000" />
+  <path d="M4000 840000h1040000M1360000 840000h1836000M4000 1600000h520000M840000 1600000h2356000" fill="none" stroke="#334155" stroke-width="16000" />
+  <path d="M1040000 840000a320000 320000 0 0 1 320000 320000" fill="none" stroke="#64748b" stroke-width="12000" />
+  <path d="M520000 1600000a320000 320000 0 0 0 320000 320000" fill="none" stroke="#64748b" stroke-width="12000" />
+  <text x="280000" y="440000" font-family="Arial, sans-serif" font-size="112000" fill="#475569">A</text>
+  <text x="1320000" y="440000" font-family="Arial, sans-serif" font-size="112000" fill="#475569">B</text>
+  <text x="2520000" y="440000" font-family="Arial, sans-serif" font-size="112000" fill="#475569">C</text>
+  <text x="2600000" y="2020000" font-family="Arial, sans-serif" font-size="112000" fill="#475569">D</text>
+</svg>

@@ -53,6 +53,14 @@ export interface DisplayInfo {
   };
   devicePixelRatio: number;
   stageRect?: RectInfo;
+  stageScale?: {
+    worldWidth: number;
+    worldHeight: number;
+    cssWidth: number;
+    cssHeight: number;
+    worldToCssScale: number;
+    cssToWorldScale: number;
+  };
   backgroundRect?: RectInfo;
   backgroundNatural?: {
     width: number;

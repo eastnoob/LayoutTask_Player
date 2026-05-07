@@ -243,6 +243,31 @@ describe("InteractionController", () => {
     expect(renderer.setDragging).toHaveBeenCalledWith("chair_01", false);
   });
 
+  it("shows limit feedback when drag is clamped by movement limits", () => {
+    const config = createDragRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.requestDragStart({
+      objectId: "chair_01",
+      pointer: { clientX: 10, clientY: 20, pointerId: 7, worldX: 0, worldY: 0 },
+    });
+    controller.requestDragMove({
+      objectId: "chair_01",
+      pointer: { clientX: 30, clientY: 40, pointerId: 7, worldX: 500, worldY: 0 },
+    });
+
+    expect(renderer.showLimitFeedback).toHaveBeenCalledWith("chair_01", "move_right");
+  });
+
   it("rejects drag for button-mode objects", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);

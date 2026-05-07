@@ -157,6 +157,12 @@ export interface RequirementsConfig {
   min_viewport?: MinViewportRequirement;
 }
 
+export interface StageConfig {
+  fit?: "contain";
+  max_height_ratio?: number;
+  padding?: number;
+}
+
 export interface ManifestTaskEntry {
   qid: string;
   task_id: string;
@@ -226,4 +232,5 @@ export interface TaskConfig {
   display_image?: DisplayImageConfig;
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
+  stage?: StageConfig;
 }

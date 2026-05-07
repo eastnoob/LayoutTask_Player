@@ -14,6 +14,7 @@ describe("createLayoutTaskPlayer", () => {
     const mountSpy = vi.spyOn(LayoutTaskRenderer.prototype, "mount").mockReturnValue({
       root: {} as HTMLElement,
       objectElements: new Map(),
+      objectVisualElements: new Map(),
       controlElements: new Map(),
       controlButtons: new Map(),
       displayImageFrameElement: undefined,

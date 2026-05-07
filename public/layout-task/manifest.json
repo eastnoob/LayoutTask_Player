@@ -21,6 +21,11 @@
       "qid": "QPIPE",
       "task_id": "room_datapipe_test",
       "file": "tasks/room_datapipe_test.json"
+    },
+    {
+      "qid": "QFIT4000",
+      "task_id": "room01_x4000_fit_test",
+      "file": "tasks/room01_x4000_fit_test.json"
     }
   ]
 }

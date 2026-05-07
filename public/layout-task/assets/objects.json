@@ -14,6 +14,20 @@
       "default_width": 100,
       "default_height": 60,
       "anchor": "center"
+    },
+    "chair_a_x4000": {
+      "type": "svg",
+      "src": "assets/objects/chair_a_x4000.svg",
+      "default_width": 200000,
+      "default_height": 200000,
+      "anchor": "center"
+    },
+    "table_a_x4000": {
+      "type": "svg",
+      "src": "assets/objects/table_a_x4000.svg",
+      "default_width": 400000,
+      "default_height": 240000,
+      "anchor": "center"
     }
   }
 }

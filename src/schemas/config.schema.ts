@@ -183,6 +183,12 @@ export const requirementsSchema = z.object({
   min_viewport: minViewportSchema.optional(),
 });
 
+export const stageSchema = z.object({
+  fit: z.literal("contain").default("contain"),
+  max_height_ratio: z.number().positive().default(0.72),
+  padding: z.number().nonnegative().default(16),
+});
+
 export const taskObjectSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -217,6 +223,7 @@ export const taskSchema = z.object({
   display_image: displayImageSchema.optional(),
   messages: messagesSchema.optional(),
   requirements: requirementsSchema.optional(),
+  stage: stageSchema.optional(),
 });
 
 export const manifestSchema = z.object({

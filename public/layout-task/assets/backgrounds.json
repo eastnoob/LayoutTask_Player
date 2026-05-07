@@ -5,6 +5,11 @@
       "type": "svg",
       "src": "assets/backgrounds/room01.svg",
       "intrinsic_unit": "cad_unit"
+    },
+    "room01_bg_x4000": {
+      "type": "svg",
+      "src": "assets/backgrounds/room01_x4000.svg",
+      "intrinsic_unit": "cad_unit"
     }
   }
 }

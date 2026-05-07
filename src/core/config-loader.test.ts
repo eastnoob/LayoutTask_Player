@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ConfigLoader, resolveRuntimeConfig } from "./config-loader";
 
@@ -71,6 +73,11 @@ describe("resolveRuntimeConfig display image", () => {
     expect(config.dataSave).toEqual({ mode: "copy" });
     expect(config.messages.confirm_no_edit).toContain("unchanged layout");
     expect(config.requirements).toEqual({});
+    expect(config.stage).toEqual({
+      fit: "contain",
+      max_height_ratio: 0.72,
+      padding: 16,
+    });
   });
 
   it("uses manifest.asset_base_url only for static asset URLs", () => {
@@ -331,6 +338,7 @@ describe("ConfigLoader JS module task config", () => {
         status: 200,
         statusText: "OK",
         json: async () => dataByPath[path],
+        text: async () => "<svg viewBox=\"0 0 50 50\"><rect width=\"50\" height=\"50\" /></svg>",
       } as Response;
     });
 
@@ -363,6 +371,37 @@ describe("ConfigLoader JS module task config", () => {
     expect(fetchImpl).not.toHaveBeenCalledWith(expect.stringContaining("room01.config.js"));
     expect(config.taskId).toBe("room01");
     expect(config.objects[0].asset.srcResolved).toBe("https://cdn.example.test/layout-task/assets/objects/chair_a.svg");
+  });
+});
+
+describe("ConfigLoader 4000x fixture", () => {
+  it("loads the 4000x world-fit task from public config files", async () => {
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl: createPublicConfigFetch(),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01_x4000_fit_test" });
+
+    expect(config.qid).toBe("QFIT4000");
+    expect(config.world.viewBox).toEqual({ x: -2000000, y: -2000000, width: 4000000, height: 4000000 });
+    expect(config.world.grid.size).toBe(100000);
+    expect(config.background.width).toBe(3200000);
+    expect(config.objects[0].asset.inlineSvgText).toContain("viewBox=\"0 0 200000 200000\"");
+    expect(config.objects[0]).toMatchObject({
+      assetId: "chair_a_x4000",
+      width: 200000,
+      height: 200000,
+      behavior: {
+        movement: { mode: "drag", step: 100000 },
+        free_drag: { enabled: true, snap: true },
+      },
+    });
+    expect(config.stage).toEqual({
+      fit: "contain",
+      max_height_ratio: 0.72,
+      padding: 16,
+    });
   });
 });
 
@@ -471,4 +510,20 @@ function createBehaviorConfigInput(behavior: Parameters<typeof resolveRuntimeCon
       objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior }],
     },
   };
+}
+
+function createPublicConfigFetch(): typeof fetch {
+  return (async (url: string) => {
+    const path = new URL(url).pathname.replace(/^\/layout-task\//, "");
+    const filePath = join(process.cwd(), "public", "layout-task", path);
+    const body = await readFile(filePath, "utf8");
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => JSON.parse(body),
+      text: async () => body,
+    } as Response;
+  }) as typeof fetch;
 }

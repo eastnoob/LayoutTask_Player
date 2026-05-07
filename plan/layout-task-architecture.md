@@ -142,6 +142,8 @@ Important current UI behaviors:
 - object edit mode is selection-based, not hover-only
 - drag objects hide move arrows but may still expose rotation buttons
 - limit feedback flashes reachable area / rotation halo plus a short label
+- SVG object assets are inlined into the stage when possible.
+- selected-object highlighting uses a separate shadow layer behind the real object, so filters never act directly on the object body.
 
 ### 4.4 Recorder / Display Metrics
 
@@ -211,6 +213,21 @@ Behavior policy:
 - `behavior.template` references reusable entries in `behaviors.json`.
 - `behavior.config` can override a template or provide a complete object-local behavior.
 - Legacy `behavior: "template_name"` is intentionally unsupported to keep config semantics unique.
+
+Stage fit policy:
+
+- `world.viewBox` is the SVG/world coordinate source of truth.
+- `stage.fit = contain` scales the complete world into the available browser stage without changing world coordinates.
+- `grid.size`, movement steps, background placement, and object positions remain in the same world units.
+- `room01_x4000_fit_test` is a large-coordinate fixture for validating this behavior, not a default experiment task.
+
+Object rendering policy:
+
+- SVG object assets are treated as the preferred foreground asset format.
+- The loader may attach SVG source text to runtime object assets so the renderer can inline the shapes into the main SVG stage.
+- Selection glow is a renderer concern, not per-object config.
+- The real object layer must remain unfiltered; selection glow is rendered by a separate silhouette/shadow layer behind it.
+- This avoids browser differences when applying filters to external SVG images or rotated object groups.
 
 Data save policy:
 

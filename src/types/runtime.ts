@@ -10,6 +10,7 @@ import type {
   ObjectAssetConfig,
   OutputConfig,
   RecordingConfig,
+  StageConfig,
   WorldConfig,
 } from "./config";
 
@@ -19,7 +20,9 @@ export interface ResolvedAssetPath {
   srcResolved: string;
 }
 
-export type ResolvedObjectAsset = ObjectAssetConfig & ResolvedAssetPath;
+export type ResolvedObjectAsset = ObjectAssetConfig & ResolvedAssetPath & {
+  inlineSvgText?: string;
+};
 export type ResolvedBackgroundAsset = BackgroundAssetConfig & ResolvedAssetPath;
 export type ResolvedBehaviorConfig = BehaviorConfig;
 
@@ -59,6 +62,8 @@ export interface RuntimeRequirements {
   min_viewport?: RuntimeMinViewportRequirement;
 }
 
+export interface RuntimeStageConfig extends Required<StageConfig> {}
+
 export interface RuntimeTaskConfig {
   schema: "layouttask.runtime.v1";
   experimentId: string;
@@ -78,6 +83,7 @@ export interface RuntimeTaskConfig {
   feedback: Required<FeedbackConfig>;
   messages: LayoutTaskMessages;
   requirements: RuntimeRequirements;
+  stage: RuntimeStageConfig;
   displayImage?: RuntimeDisplayImage;
 }
 

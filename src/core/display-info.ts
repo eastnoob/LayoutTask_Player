@@ -16,6 +16,7 @@ export class DisplayInfoCollector {
     const displayImageMetrics = this.collectDisplayImageMetrics();
     const visualViewport = window.visualViewport;
     const orientation = window.screen.orientation;
+    const stageRect = this.refs.svg ? rectToInfo(this.refs.svg.getBoundingClientRect()) : undefined;
 
     return {
       viewport: {
@@ -50,7 +51,8 @@ export class DisplayInfoCollector {
         pixelDepth: window.screen.pixelDepth,
       },
       devicePixelRatio: window.devicePixelRatio,
-      stageRect: this.refs.svg ? rectToInfo(this.refs.svg.getBoundingClientRect()) : undefined,
+      stageRect,
+      stageScale: stageRect ? this.collectStageScale(stageRect) : undefined,
       backgroundRect: this.refs.backgroundElement
         ? rectToInfo(this.refs.backgroundElement.getBoundingClientRect())
         : undefined,
@@ -62,6 +64,20 @@ export class DisplayInfoCollector {
       },
       changes: this.config.recording.record_display_changes ? this.changeRecorder?.collect() : undefined,
       ...displayImageMetrics,
+    };
+  }
+
+  private collectStageScale(stageRect: RectInfo): DisplayInfo["stageScale"] {
+    const viewBox = this.config.world.viewBox;
+    const worldToCssScale = Math.min(stageRect.width / viewBox.width, stageRect.height / viewBox.height);
+
+    return {
+      worldWidth: viewBox.width,
+      worldHeight: viewBox.height,
+      cssWidth: stageRect.width,
+      cssHeight: stageRect.height,
+      worldToCssScale,
+      cssToWorldScale: 1 / worldToCssScale,
     };
   }
 

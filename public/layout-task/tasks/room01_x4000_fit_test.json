@@ -1,0 +1,102 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "room01_x4000_fit_test",
+  "qid": "QFIT4000",
+  "title": "Room 01 4000x Fit Test",
+  "world": {
+    "viewBox": {
+      "x": -2000000,
+      "y": -2000000,
+      "width": 4000000,
+      "height": 4000000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 100000,
+      "visible": false,
+      "snap": true
+    }
+  },
+  "background": {
+    "asset": "room01_bg_x4000",
+    "x": -1600000,
+    "y": -1200000,
+    "width": 3200000,
+    "height": 2400000
+  },
+  "objects": [
+    {
+      "id": "chair_01",
+      "asset": "chair_a_x4000",
+      "x": 400000,
+      "y": 600000,
+      "rotation": 0,
+      "behavior": {
+        "template": "drag25_rotate45_limited",
+        "config": {
+          "movement": {
+            "step": 100000
+          }
+        }
+      }
+    },
+    {
+      "id": "table_01",
+      "asset": "table_a_x4000",
+      "x": 800000,
+      "y": 700000,
+      "rotation": 90,
+      "behavior": {
+        "template": "move25_rotate45_limited",
+        "config": {
+          "movement": {
+            "step": 100000
+          }
+        }
+      }
+    }
+  ],
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16
+  },
+  "completion": {
+    "double_confirm": true,
+    "lock_after_confirm": true,
+    "allow_copy_again": true
+  },
+  "recording": {
+    "record_events": true,
+    "record_final_state": true,
+    "record_display_info": true,
+    "record_display_changes": true,
+    "record_page_timing": true,
+    "record_user_agent": true,
+    "record_blocked_events": false
+  },
+  "output": {
+    "encoding": "plain-json",
+    "detail": "final-only",
+    "final_state": "relative"
+  },
+  "feedback": {
+    "limit_messages": {
+      "move_left": "You cannot move further left.",
+      "move_right": "You cannot move further right.",
+      "move_up": "You cannot move further up.",
+      "move_down": "You cannot move further down.",
+      "rotate_cw": "You cannot rotate further clockwise.",
+      "rotate_ccw": "You cannot rotate further counter-clockwise."
+    }
+  },
+  "display_image": {
+    "enabled": false,
+    "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+    "alt": "Reference image",
+    "record_metrics": true
+  }
+}

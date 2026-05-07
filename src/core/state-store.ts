@@ -20,6 +20,7 @@ export interface DragTransition {
   after: ObjectPose;
   counts: OperationCounts;
   offsets: ObjectOffsets;
+  limitedAction?: "move_left" | "move_right" | "move_up" | "move_down";
 }
 
 export interface CanApplyResult {
@@ -253,6 +254,7 @@ export class StateStore {
       after,
       counts: { ...state.counts },
       offsets: this.getObjectOffsets(objectId),
+      limitedAction: constrained.limitedAction,
     };
   }
 
@@ -312,9 +314,17 @@ export class StateStore {
     const maxY = initial.y + (objectConfig.behavior.movement.max_down ?? Number.POSITIVE_INFINITY) * step;
     const view = this.config.world.viewBox;
 
+    const lowerX = Math.max(view.x, minX);
+    const upperX = Math.min(view.x + view.width, maxX);
+    const lowerY = Math.max(view.y, minY);
+    const upperY = Math.min(view.y + view.height, maxY);
+    const x = clamp(snapped.x, lowerX, upperX);
+    const y = clamp(snapped.y, lowerY, upperY);
+
     return {
-      x: clamp(snapped.x, Math.max(view.x, minX), Math.min(view.x + view.width, maxX)),
-      y: clamp(snapped.y, Math.max(view.y, minY), Math.min(view.y + view.height, maxY)),
+      x,
+      y,
+      limitedAction: getDragLimitedAction(snapped, { lowerX, upperX, lowerY, upperY }),
     };
   }
 
@@ -391,6 +401,29 @@ function wouldExceedRotationLimit(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function getDragLimitedAction(
+  snapped: { x: number; y: number },
+  bounds: { lowerX: number; upperX: number; lowerY: number; upperY: number },
+): DragTransition["limitedAction"] {
+  if (snapped.x < bounds.lowerX) {
+    return "move_left";
+  }
+
+  if (snapped.x > bounds.upperX) {
+    return "move_right";
+  }
+
+  if (snapped.y < bounds.lowerY) {
+    return "move_up";
+  }
+
+  if (snapped.y > bounds.upperY) {
+    return "move_down";
+  }
+
+  return undefined;
 }
 
 function posesEqual(a: ObjectPose, b: ObjectPose): boolean {

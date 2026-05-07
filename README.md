@@ -124,7 +124,9 @@ export default {
       x: 100,
       y: 150,
       rotation: 0,
-      behavior: LIMITED_MOVE,
+      behavior: {
+        template: LIMITED_MOVE,
+      },
     },
   ],
 };
@@ -216,6 +218,47 @@ Or define the full behavior directly on the object:
   }
 }
 ```
+
+### Object SVG Rendering and Selection
+
+SVG object assets are loaded as inline SVG when possible. This lets the renderer apply the same selection treatment to chairs, tables, rotated objects, and large-coordinate fixtures without relying on browser-specific filtering of external `<image href="...svg">` elements.
+
+Selection is implemented as a separate shadow layer behind the object:
+
+- the real object layer always remains visible
+- the selected shadow layer is shown only on hover, focus, or active selection
+- the shadow layer reuses the same SVG shape with a cyan silhouette and SVG filter
+- no per-object config is required for normal SVG assets
+
+For best results, object SVGs should be self-contained and use ordinary SVG shapes such as `rect`, `circle`, `path`, `polygon`, or grouped combinations of these. Complex SVGs with their own filters, masks, clip paths, or embedded external images should be checked manually.
+
+### World Units and Stage Fit
+
+The SVG stage uses `world.viewBox` as the coordinate system. Background placement, object positions, grid size, and movement steps should all use the same world units:
+
+```json
+{
+  "world": {
+    "viewBox": { "x": 0, "y": 0, "width": 3200000, "height": 2400000 },
+    "origin": { "x": 0, "y": 0 },
+    "grid": { "size": 100000, "snap": true }
+  },
+  "background": {
+    "asset": "room01_bg_x4000",
+    "x": 0,
+    "y": 0,
+    "width": 3200000,
+    "height": 2400000
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16
+  }
+}
+```
+
+`stage.fit` currently supports `contain`: the browser scales the whole world to the available stage area without changing the world coordinates. This is intended for 1:1 CAD/floorplan SVGs where grid size and movement steps are defined in drawing units. The `room01_x4000_fit_test` task is a fixture for checking very large coordinate systems; it is not the default experiment task.
 
 ### Optional DataPipe Saving
 
