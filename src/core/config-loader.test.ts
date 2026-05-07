@@ -52,7 +52,7 @@ describe("resolveRuntimeConfig display image", () => {
           grid: { size: 25, visible: false, snap: true },
         },
         background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: "move25" }],
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
         display_image: {
           src: "assets/display-images/example.jpeg",
         },
@@ -124,7 +124,7 @@ describe("resolveRuntimeConfig display image", () => {
           grid: { size: 25, visible: false, snap: true },
         },
         background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: "move25" }],
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
         display_image: {
           src: "assets/display-images/example.jpeg",
         },
@@ -187,7 +187,7 @@ describe("resolveRuntimeConfig display image", () => {
           grid: { size: 25, visible: false, snap: true },
         },
         background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: "move25" }],
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
         messages: {
           confirm_no_edit: "Custom no-edit",
         },
@@ -261,7 +261,7 @@ describe("resolveRuntimeConfig display image", () => {
           grid: { size: 25, visible: false, snap: true },
         },
         background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: "move25" }],
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
         data_save: {
           mode: "datapipe",
           experiment_id: "EXP123",
@@ -345,7 +345,7 @@ describe("ConfigLoader JS module task config", () => {
           grid: { size: 25, visible: false, snap: true },
         },
         background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: "move25" }],
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
       },
     }));
 
@@ -365,3 +365,110 @@ describe("ConfigLoader JS module task config", () => {
     expect(config.objects[0].asset.srcResolved).toBe("https://cdn.example.test/layout-task/assets/objects/chair_a.svg");
   });
 });
+
+describe("resolveRuntimeConfig object behavior", () => {
+  it("resolves template-only behavior", () => {
+    const config = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+    }));
+
+    expect(config.objects[0].behaviorTemplateId).toBe("move25");
+    expect(config.objects[0].behavior).toMatchObject({
+      movement: { mode: "button", step: 25, max_left: 2 },
+      free_drag: { enabled: false },
+    });
+  });
+
+  it("merges object behavior config over a template", () => {
+    const config = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+      config: {
+        movement: { max_left: 1, max_right: 3 },
+        rotation: { step: 90, max_cw: 1 },
+      },
+    }));
+
+    expect(config.objects[0].behavior).toMatchObject({
+      movement: { mode: "button", step: 25, max_left: 1, max_right: 3 },
+      rotation: { step: 90, max_cw: 1 },
+      free_drag: { enabled: false },
+    });
+  });
+
+  it("resolves config-only behavior when the object provides a complete behavior", () => {
+    const config = resolveRuntimeConfig(createBehaviorConfigInput({
+      config: {
+        movement: { mode: "drag", step: 25, max_left: 4, max_right: 4 },
+        rotation: { step: 45, max_cw: 2, max_ccw: 2 },
+        free_drag: { enabled: true, snap: true },
+      },
+    }));
+
+    expect(config.objects[0].behaviorTemplateId).toBeUndefined();
+    expect(config.objects[0].behavior.movement.mode).toBe("drag");
+    expect(config.objects[0].behavior.free_drag.enabled).toBe(true);
+  });
+
+  it("throws a clear error for an unknown behavior template", () => {
+    expect(() =>
+      resolveRuntimeConfig(createBehaviorConfigInput({
+        template: "missing_behavior",
+      })),
+    ).toThrow("Unknown behavior template: missing_behavior");
+  });
+});
+
+function createBehaviorConfigInput(behavior: Parameters<typeof resolveRuntimeConfig>[0]["task"]["objects"][number]["behavior"]): Parameters<typeof resolveRuntimeConfig>[0] {
+  return {
+    baseUrl: "http://example.test/layout-task/",
+    manifest: {
+      schema: "layouttask.manifest.v1",
+      experiment_id: "exp1",
+      asset_library: "assets/objects.json",
+      background_library: "assets/backgrounds.json",
+      behavior_library: "behaviors/behaviors.json",
+      tasks: [{ qid: "Q1", task_id: "room01", file: "tasks/room01.json" }],
+    },
+    objectLibrary: {
+      schema: "layouttask.assets.objects.v1",
+      objects: {
+        chair_a: {
+          type: "svg",
+          src: "assets/objects/chair_a.svg",
+          default_width: 50,
+          default_height: 50,
+        },
+      },
+    },
+    backgroundLibrary: {
+      schema: "layouttask.assets.backgrounds.v1",
+      backgrounds: {
+        room01_bg: {
+          type: "svg",
+          src: "assets/backgrounds/room01.svg",
+        },
+      },
+    },
+    behaviorLibrary: {
+      schema: "layouttask.behaviors.v1",
+      behaviors: {
+        move25: {
+          movement: { mode: "button", step: 25, max_left: 2, max_right: 2 },
+          free_drag: { enabled: false },
+        },
+      },
+    },
+    task: {
+      schema: "layouttask.task.v1",
+      task_id: "room01",
+      qid: "Q1",
+      world: {
+        viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 25, visible: false, snap: true },
+      },
+      background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
+      objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior }],
+    },
+  };
+}

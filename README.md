@@ -173,6 +173,50 @@ Important task-level sections currently supported:
 - `messages`
 - `requirements.min_viewport`
 
+### Object Behavior
+
+Each task object uses one behavior object. The legacy string form is not supported.
+
+Use a shared behavior template from `behaviors.json`:
+
+```json
+{
+  "behavior": {
+    "template": "drag25_rotate45_limited"
+  }
+}
+```
+
+Override part of a template for one object:
+
+```json
+{
+  "behavior": {
+    "template": "drag25_rotate45_limited",
+    "config": {
+      "movement": {
+        "max_left": 1,
+        "max_right": 1
+      }
+    }
+  }
+}
+```
+
+Or define the full behavior directly on the object:
+
+```json
+{
+  "behavior": {
+    "config": {
+      "movement": { "mode": "button", "step": 25 },
+      "rotation": { "step": 45, "max_cw": 2, "max_ccw": 2 },
+      "free_drag": { "enabled": false }
+    }
+  }
+}
+```
+
 ### Optional DataPipe Saving
 
 The default save mode is copy-only. 被试完成后仍然复制 encoded result，适合所有纯静态部署：

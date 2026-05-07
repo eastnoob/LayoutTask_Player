@@ -205,6 +205,13 @@ Important task-level blocks already supported:
 - `requirements.min_viewport`
 - `world.grid.origin` for shifting the movement/drag snap lattice
 
+Behavior policy:
+
+- Task objects use a single object-shaped `behavior` field.
+- `behavior.template` references reusable entries in `behaviors.json`.
+- `behavior.config` can override a template or provide a complete object-local behavior.
+- Legacy `behavior: "template_name"` is intentionally unsupported to keep config semantics unique.
+
 Data save policy:
 
 - Default mode is `copy`: lock, encode, copy/show result.

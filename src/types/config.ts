@@ -68,6 +68,17 @@ export interface BehaviorConfig {
   free_drag: FreeDragBehavior;
 }
 
+export interface PartialBehaviorConfig {
+  movement?: Partial<MovementBehavior>;
+  rotation?: Partial<RotationBehavior>;
+  free_drag?: Partial<FreeDragBehavior>;
+}
+
+export interface TaskObjectBehaviorConfig {
+  template?: string;
+  config?: PartialBehaviorConfig;
+}
+
 export interface CompletionConfig {
   double_confirm?: boolean;
   lock_after_confirm?: boolean;
@@ -188,7 +199,7 @@ export interface TaskObjectConfig {
   width?: number;
   height?: number;
   anchor?: Anchor;
-  behavior: string;
+  behavior: TaskObjectBehaviorConfig;
 }
 
 export interface TaskBackgroundConfig {

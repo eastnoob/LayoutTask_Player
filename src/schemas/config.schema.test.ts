@@ -171,3 +171,95 @@ describe("taskSchema data_save", () => {
     });
   });
 });
+
+describe("taskSchema object behavior", () => {
+  const baseObject = {
+    id: "chair_01",
+    asset: "chair_a",
+    x: 0,
+    y: 0,
+  };
+
+  const baseTask = {
+    schema: "layouttask.task.v1" as const,
+    task_id: "room01",
+    qid: "Q1",
+    world: {
+      viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+      origin: { x: 0, y: 0 },
+      grid: { size: 25 },
+    },
+    background: {
+      asset: "room01_bg",
+      x: -400,
+      y: -300,
+      width: 800,
+      height: 600,
+    },
+  };
+
+  it("accepts template-only, template-plus-config, and config-only behavior objects", () => {
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        objects: [{ ...baseObject, behavior: { template: "move25" } }],
+      }).objects[0].behavior,
+    ).toEqual({ template: "move25" });
+
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        objects: [
+          {
+            ...baseObject,
+            behavior: {
+              template: "move25",
+              config: { movement: { max_left: 1 } },
+            },
+          },
+        ],
+      }).objects[0].behavior,
+    ).toMatchObject({
+      template: "move25",
+      config: { movement: { max_left: 1 } },
+    });
+
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        objects: [
+          {
+            ...baseObject,
+            behavior: {
+              config: {
+                movement: { mode: "button", step: 25 },
+                free_drag: { enabled: false },
+              },
+            },
+          },
+        ],
+      }).objects[0].behavior,
+    ).toMatchObject({
+      config: {
+        movement: { mode: "button", step: 25 },
+        free_drag: { enabled: false },
+      },
+    });
+  });
+
+  it("rejects legacy string behavior and empty behavior objects", () => {
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        objects: [{ ...baseObject, behavior: "move25" }],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        objects: [{ ...baseObject, behavior: {} }],
+      }),
+    ).toThrow("behavior requires template or config");
+  });
+});

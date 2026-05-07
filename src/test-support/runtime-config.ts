@@ -44,7 +44,7 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
         width: 50,
         height: 50,
         anchor: "center",
-        behaviorId: "move25_rotate45_limited",
+        behaviorTemplateId: "move25_rotate45_limited",
         behavior: {
           movement: {
             mode: "button",
@@ -121,7 +121,7 @@ export function createDragRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = 
     objects: [
       {
         ...base.objects[0],
-        behaviorId: "drag25_rotate45_limited",
+        behaviorTemplateId: "drag25_rotate45_limited",
         behavior: {
           ...base.objects[0].behavior,
           movement: {

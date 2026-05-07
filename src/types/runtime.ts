@@ -33,7 +33,7 @@ export interface RuntimeTaskObject {
   width: number;
   height: number;
   anchor: Anchor;
-  behaviorId: string;
+  behaviorTemplateId?: string;
   behavior: ResolvedBehaviorConfig;
 }
 

@@ -68,6 +68,26 @@ export const behaviorSchema = z
     }
   });
 
+export const partialBehaviorSchema = z.object({
+  movement: movementBehaviorSchema.partial().optional(),
+  rotation: rotationBehaviorSchema.partial().optional(),
+  free_drag: freeDragBehaviorSchema.partial().optional(),
+});
+
+export const taskObjectBehaviorSchema = z
+  .object({
+    template: z.string().min(1).optional(),
+    config: partialBehaviorSchema.optional(),
+  })
+  .superRefine((value, context) => {
+    if (!value.template && !value.config) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "behavior requires template or config",
+      });
+    }
+  });
+
 export const objectAssetSchema = z.object({
   type: z.enum(["svg", "png", "jpg", "image"]),
   src: z.string().min(1),
@@ -172,7 +192,7 @@ export const taskObjectSchema = z.object({
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
   anchor: z.enum(["center", "top_left"]).optional(),
-  behavior: z.string().min(1),
+  behavior: taskObjectBehaviorSchema,
 });
 
 export const taskSchema = z.object({

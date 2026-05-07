@@ -1,13 +1,16 @@
 import type {
   BackgroundLibraryConfig,
+  BehaviorConfig,
   BehaviorLibraryConfig,
   ManifestConfig,
   MinViewportRequirement,
   ObjectLibraryConfig,
+  PartialBehaviorConfig,
+  TaskObjectBehaviorConfig,
   TaskConfig,
 } from "../types/config";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import { objectLibrarySchema } from "../schemas/config.schema";
+import { behaviorSchema, objectLibrarySchema } from "../schemas/config.schema";
 import {
   validateBackgroundLibrary,
   validateBehaviorLibrary,
@@ -180,7 +183,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
   const resolvedObjects = input.task.objects.map((objectConfig) => {
     const asset = input.objectLibrary.objects[objectConfig.asset];
-    const behavior = input.behaviorLibrary.behaviors[objectConfig.behavior];
+    const { behavior, templateId } = resolveObjectBehavior(objectConfig.behavior, input.behaviorLibrary);
 
     return {
       id: objectConfig.id,
@@ -195,7 +198,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       width: objectConfig.width ?? asset.default_width,
       height: objectConfig.height ?? asset.default_height,
       anchor: objectConfig.anchor ?? asset.anchor ?? "center",
-      behaviorId: objectConfig.behavior,
+      behaviorTemplateId: templateId,
       behavior,
     };
   });
@@ -270,6 +273,51 @@ function resolveDataSaveConfig(dataSave: TaskConfig["data_save"]): RuntimeTaskCo
     payload_format: dataSave.payload_format ?? DEFAULT_DATA_PIPE_SAVE.payload_format,
     save_encoded: dataSave.save_encoded ?? DEFAULT_DATA_PIPE_SAVE.save_encoded,
     save_result: dataSave.save_result ?? DEFAULT_DATA_PIPE_SAVE.save_result,
+  };
+}
+
+function resolveObjectBehavior(
+  behaviorConfig: TaskObjectBehaviorConfig,
+  behaviorLibrary: BehaviorLibraryConfig,
+): { behavior: BehaviorConfig; templateId?: string } {
+  const template = behaviorConfig.template
+    ? behaviorLibrary.behaviors[behaviorConfig.template]
+    : undefined;
+
+  if (behaviorConfig.template && !template) {
+    throw new Error(`Unknown behavior template: ${behaviorConfig.template}`);
+  }
+
+  const merged = mergeBehaviorConfig(template, behaviorConfig.config);
+  const behavior = behaviorSchema.parse(merged) as BehaviorConfig;
+
+  return {
+    behavior,
+    templateId: behaviorConfig.template,
+  };
+}
+
+function mergeBehaviorConfig(
+  template?: BehaviorConfig,
+  override?: PartialBehaviorConfig,
+): unknown {
+  // Merge only known behavior sections. 模板提供 base，object.config 只覆盖局部行为参数。
+  return {
+    movement: {
+      ...template?.movement,
+      ...override?.movement,
+    },
+    rotation:
+      template?.rotation || override?.rotation
+        ? {
+            ...template?.rotation,
+            ...override?.rotation,
+          }
+        : undefined,
+    free_drag: {
+      ...template?.free_drag,
+      ...override?.free_drag,
+    },
   };
 }
 

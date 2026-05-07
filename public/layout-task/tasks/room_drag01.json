@@ -34,7 +34,9 @@
       "x": 100,
       "y": 150,
       "rotation": 0,
-      "behavior": "drag25_rotate45_limited"
+      "behavior": {
+        "template": "drag25_rotate45_limited"
+      }
     },
     {
       "id": "table_01",
@@ -42,7 +44,9 @@
       "x": 200,
       "y": 175,
       "rotation": 90,
-      "behavior": "rotate45_only"
+      "behavior": {
+        "template": "rotate45_only"
+      }
     }
   ],
   "completion": {
