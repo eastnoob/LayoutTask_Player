@@ -1,4 +1,5 @@
 import type { RuntimeTaskConfig } from "../types/runtime";
+import type { PreviewStageMode } from "../types/config";
 import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
@@ -23,6 +24,9 @@ export interface RendererRefs {
   backgroundElement?: SVGElement;
   displayImageFrameElement?: HTMLElement;
   displayImageElement?: HTMLImageElement;
+  workspaceElement?: HTMLElement;
+  panelInstructionElement?: HTMLElement;
+  reconstructionHintElement?: HTMLElement;
   objectElements: Map<string, SVGElement>;
   objectVisualElements: Map<string, SVGElement>;
   controlElements: Map<string, SVGElement>;
@@ -35,6 +39,11 @@ export interface RendererRefs {
   resultOutput?: HTMLTextAreaElement;
   statusElement?: HTMLElement;
   viewportWarningElement?: HTMLElement;
+  flowMessageElement?: HTMLElement;
+  flowCountdownElement?: HTMLElement;
+  flowModalElement?: HTMLElement;
+  flowModalMessageElement?: HTMLElement;
+  flowModalButtonElement?: HTMLButtonElement;
 }
 
 interface LocalRect {
@@ -246,6 +255,35 @@ export class LayoutTaskRenderer {
     const instruction = document.createElement("p");
     instruction.textContent = this.options.config.messages.instruction_edit_mode;
 
+    const reconstructionHint = this.createReconstructionHint();
+
+    const flowMessage = document.createElement("p");
+    flowMessage.className = "layout-task-flow-message";
+    flowMessage.hidden = true;
+
+    const flowCountdown = document.createElement("p");
+    flowCountdown.className = "layout-task-flow-countdown";
+    flowCountdown.hidden = true;
+
+    const flowModal = document.createElement("div");
+    flowModal.className = "layout-task-flow-modal";
+    flowModal.hidden = true;
+
+    const flowModalDialog = document.createElement("div");
+    flowModalDialog.className = "layout-task-flow-modal-dialog";
+    flowModalDialog.setAttribute("role", "dialog");
+    flowModalDialog.setAttribute("aria-modal", "true");
+
+    const flowModalMessage = document.createElement("p");
+    flowModalMessage.className = "layout-task-flow-modal-message";
+
+    const flowModalButton = document.createElement("button");
+    flowModalButton.className = "layout-task-primary-button";
+    flowModalButton.type = "button";
+
+    flowModalDialog.append(flowModalMessage, flowModalButton);
+    flowModal.append(flowModalDialog);
+
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
     confirmButton.type = "button";
@@ -268,22 +306,41 @@ export class LayoutTaskRenderer {
     copyAgainButton.hidden = true;
     copyAgainButton.addEventListener("click", () => this.options.onCopyAgain?.());
 
-    panel.append(panelTitle, instruction, confirmButton, status, output, copyAgainButton);
+    panel.append(
+      panelTitle,
+      reconstructionHint,
+      instruction,
+      flowMessage,
+      flowCountdown,
+      confirmButton,
+      status,
+      output,
+      copyAgainButton,
+    );
     workspace.append(stageWrap, panel);
     shell.append(header, workspace);
     if (displayImageFrame) {
       shell.insertBefore(displayImageFrame, workspace);
     }
+    shell.append(flowModal);
     this.options.root.append(shell);
 
     this.refs.svg = svg;
+    this.refs.workspaceElement = workspace;
     this.refs.stageWrapElement = stageWrap;
     this.refs.backgroundElement = background;
     this.refs.feedbackLayer = feedbackLayer;
     this.refs.feedbackOverlayElement = feedbackOverlay;
     this.refs.controlsLayer = controlsLayer;
     this.refs.confirmButton = confirmButton;
+    this.refs.reconstructionHintElement = reconstructionHint;
+    this.refs.panelInstructionElement = instruction;
     this.refs.statusElement = status;
+    this.refs.flowMessageElement = flowMessage;
+    this.refs.flowCountdownElement = flowCountdown;
+    this.refs.flowModalElement = flowModal;
+    this.refs.flowModalMessageElement = flowModalMessage;
+    this.refs.flowModalButtonElement = flowModalButton;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
     this.refs.viewportWarningElement = viewportWarning;
@@ -315,6 +372,73 @@ export class LayoutTaskRenderer {
     this.refs.displayImageFrameElement = frame;
     this.refs.displayImageElement = image;
     return frame;
+  }
+
+  private createReconstructionHint(): HTMLElement {
+    const hint = document.createElement("section");
+    hint.className = "layout-task-reconstruction-hint";
+
+    const title = document.createElement("p");
+    title.className = "layout-task-reconstruction-hint-title";
+    title.textContent = this.options.config.messages.reconstruction_hint_title;
+
+    const list = document.createElement("ul");
+    list.className = "layout-task-reconstruction-hint-list";
+
+    for (const item of this.getReconstructionHintItems()) {
+      const row = document.createElement("li");
+      const icon = document.createElement("img");
+      icon.src = new URL(`assets/icons/${item.icon}`, this.options.config.baseUrl).toString();
+      icon.alt = "";
+      icon.setAttribute("aria-hidden", "true");
+
+      const text = document.createElement("span");
+      text.textContent = item.text;
+
+      row.append(icon, text);
+      list.append(row);
+    }
+
+    hint.append(title, list);
+    return hint;
+  }
+
+  private getReconstructionHintItems(): Array<{ icon: string; text: string }> {
+    const hasDrag = this.options.config.objects.some((objectConfig) => objectConfig.behavior.movement.mode === "drag");
+    const hasButtonMove = this.options.config.objects.some(
+      (objectConfig) => objectConfig.behavior.movement.mode === "button",
+    );
+    const hasRotation = this.options.config.objects.some((objectConfig) => objectConfig.behavior.rotation?.step);
+
+    const items: Array<{ icon: string; text: string }> = [
+      {
+        icon: "info.svg",
+        text: this.options.config.messages.reconstruction_hint_select,
+      },
+    ];
+
+    if (hasDrag) {
+      items.push({
+        icon: "hand.svg",
+        text: this.options.config.messages.reconstruction_hint_drag,
+      });
+    }
+
+    if (hasButtonMove) {
+      items.push({
+        icon: "arrow-right.svg",
+        text: this.options.config.messages.reconstruction_hint_button,
+      });
+    }
+
+    if (hasRotation) {
+      items.push({
+        icon: "rotate-cw.svg",
+        text: this.options.config.messages.reconstruction_hint_rotation,
+      });
+    }
+
+    return items;
   }
 
   updateObject(objectId: string): void {
@@ -358,6 +482,121 @@ export class LayoutTaskRenderer {
   setStatus(message: string): void {
     if (this.refs.statusElement) {
       this.refs.statusElement.textContent = message;
+    }
+  }
+
+  enterPreviewFlow(options: { stageMode: PreviewStageMode; message: string; countdownText?: string }): void {
+    this.setStatus(options.message);
+    if (this.refs.flowMessageElement) {
+      this.refs.flowMessageElement.hidden = false;
+      this.refs.flowMessageElement.textContent = options.message;
+    }
+    if (this.refs.flowCountdownElement) {
+      this.refs.flowCountdownElement.hidden = options.countdownText === undefined;
+      this.refs.flowCountdownElement.textContent = options.countdownText ?? "";
+    }
+    if (this.refs.panelInstructionElement) {
+      this.refs.panelInstructionElement.hidden = true;
+    }
+    if (this.refs.reconstructionHintElement) {
+      this.refs.reconstructionHintElement.hidden = true;
+    }
+
+    this.setDisplayImageVisible(true);
+    this.setPreviewStageMode(options.stageMode);
+  }
+
+  showPreviewAcknowledgement(options: { message: string; confirmLabel: string }): Promise<void> {
+    const modal = this.refs.flowModalElement;
+    const message = this.refs.flowModalMessageElement;
+    const button = this.refs.flowModalButtonElement;
+    if (!modal || !message || !button) {
+      return Promise.resolve();
+    }
+
+    message.textContent = options.message;
+    button.textContent = options.confirmLabel;
+    modal.hidden = false;
+
+    return new Promise((resolve) => {
+      const finish = () => {
+        button.removeEventListener("click", finish);
+        modal.hidden = true;
+        resolve();
+      };
+      button.addEventListener("click", finish);
+      button.focus();
+    });
+  }
+
+  updatePreviewCountdown(text: string): void {
+    if (this.refs.flowCountdownElement) {
+      this.refs.flowCountdownElement.hidden = false;
+      this.refs.flowCountdownElement.textContent = text;
+    }
+  }
+
+  enterReconstructionFlow(message?: string): void {
+    this.setDisplayImageVisible(false);
+    this.setPreviewStageMode(undefined);
+    if (this.refs.flowCountdownElement) {
+      this.refs.flowCountdownElement.hidden = true;
+      this.refs.flowCountdownElement.textContent = "";
+    }
+    if (this.refs.flowMessageElement) {
+      this.refs.flowMessageElement.hidden = message === undefined;
+      this.refs.flowMessageElement.textContent = message ?? "";
+    }
+    if (this.refs.panelInstructionElement) {
+      this.refs.panelInstructionElement.hidden = false;
+    }
+    if (this.refs.reconstructionHintElement) {
+      this.refs.reconstructionHintElement.hidden = false;
+    }
+    if (message) {
+      this.setStatus(message);
+    }
+  }
+
+  waitForDisplayImageReady(): Promise<void> {
+    const image = this.refs.displayImageElement;
+    if (!image || image.complete) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const finish = () => {
+        image.removeEventListener("load", finish);
+        image.removeEventListener("error", finish);
+        resolve();
+      };
+      image.addEventListener("load", finish, { once: true });
+      image.addEventListener("error", finish, { once: true });
+    });
+  }
+
+  private setDisplayImageVisible(visible: boolean): void {
+    if (this.refs.displayImageFrameElement) {
+      this.refs.displayImageFrameElement.hidden = !visible;
+    }
+  }
+
+  private setPreviewStageMode(mode: PreviewStageMode | undefined): void {
+    const hidden = mode === "hidden";
+    const locked = mode === "locked";
+    if (this.refs.workspaceElement) {
+      this.refs.workspaceElement.classList.toggle("is-flow-preview", mode !== undefined);
+      this.refs.workspaceElement.classList.toggle("is-flow-preview-hidden", hidden);
+      this.refs.workspaceElement.classList.toggle("is-flow-preview-locked", locked);
+    }
+    if (this.refs.stageWrapElement) {
+      this.refs.stageWrapElement.hidden = hidden;
+    }
+    if (this.refs.confirmButton) {
+      this.refs.confirmButton.disabled = mode !== undefined;
+    }
+    for (const controlElement of this.refs.controlElements.values()) {
+      controlElement.classList.toggle("is-locked", mode !== undefined);
     }
   }
 
@@ -1038,7 +1277,7 @@ export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement
   const scale = getWorldUiScale(config, svg);
   return {
     scale,
-    controlGap: 30 * scale,
+    controlGap: 44 * scale,
     controlRadius: 18 * scale,
     controlIconSize: 20 * scale,
     rotationHaloGap: 28 * scale,

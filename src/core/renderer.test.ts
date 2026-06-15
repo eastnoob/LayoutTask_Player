@@ -42,7 +42,7 @@ describe("LayoutTaskRenderer stage fit", () => {
     expect(getStageUiMetrics(config)).toMatchObject({
       scale: 4000,
       controlRadius: 72000,
-      controlGap: 120000,
+      controlGap: 176000,
       controlIconSize: 80000,
       feedbackIconSize: 104000,
       feedbackLabelFontSize: 80000,

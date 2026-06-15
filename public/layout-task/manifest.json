@@ -26,6 +26,16 @@
       "qid": "QFIT4000",
       "task_id": "room01_x4000_fit_test",
       "file": "tasks/room01_x4000_fit_test.json"
+    },
+    {
+      "qid": "QPREVIEW",
+      "task_id": "room_preview01",
+      "file": "tasks/room_preview01.json"
+    },
+    {
+      "qid": "QARROWPREVIEW",
+      "task_id": "room_arrow_preview01",
+      "file": "tasks/room_arrow_preview01.json"
     }
   ]
 }

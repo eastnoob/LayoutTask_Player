@@ -96,6 +96,41 @@ body {
   box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
 }
 
+.layout-task-reconstruction-hint {
+  margin: 0 0 16px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #d9e1ee;
+  border-radius: 6px;
+}
+
+.layout-task-reconstruction-hint-title {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.layout-task-reconstruction-hint-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.layout-task-reconstruction-hint-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+}
+
+.layout-task-reconstruction-hint-list img {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .layout-task-workspace {
   width: 100%;
   max-width: 1180px;
@@ -104,6 +139,11 @@ body {
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 20px;
   align-items: start;
+}
+
+.layout-task-workspace.is-flow-preview-locked .layout-task-stage-wrap {
+  opacity: 0.52;
+  pointer-events: none;
 }
 
 .layout-task-stage-wrap {
@@ -344,6 +384,49 @@ body {
   min-height: 24px;
   margin: 16px 0 0;
   color: #475569;
+}
+
+.layout-task-flow-message {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.layout-task-flow-countdown {
+  margin: 8px 0 0;
+  color: #155e75;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.layout-task-flow-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.layout-task-flow-modal[hidden] {
+  display: none;
+}
+
+.layout-task-flow-modal-dialog {
+  width: min(520px, 100%);
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #d9e1ee;
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.layout-task-flow-modal-message {
+  margin: 0 0 18px;
+  color: #0f172a;
+  font-size: 1rem;
 }
 
 .layout-task-output {

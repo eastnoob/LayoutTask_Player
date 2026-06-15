@@ -9,6 +9,7 @@ import type {
   LayoutTaskMessages,
   ObjectAssetConfig,
   OutputConfig,
+  PreviewStageMode,
   RecordingConfig,
   StageConfig,
   WorldConfig,
@@ -64,6 +65,26 @@ export interface RuntimeRequirements {
 
 export interface RuntimeStageConfig extends Required<StageConfig> {}
 
+export interface RuntimeDirectReconstructionFlow {
+  mode: "direct_reconstruction";
+}
+
+export interface RuntimePreviewThenReconstructFlow {
+  mode: "preview_then_reconstruct";
+  config: {
+    preview_duration_sec: number;
+    require_preview_ack: boolean;
+    intro_message: string;
+    intro_confirm_label: string;
+    stage_during_preview: PreviewStageMode;
+    show_countdown: boolean;
+    message_before: string;
+    message_after: string;
+  };
+}
+
+export type RuntimeFlowConfig = RuntimeDirectReconstructionFlow | RuntimePreviewThenReconstructFlow;
+
 export interface RuntimeTaskConfig {
   schema: "layouttask.runtime.v1";
   experimentId: string;
@@ -81,6 +102,7 @@ export interface RuntimeTaskConfig {
   output: Required<OutputConfig>;
   dataSave: RuntimeDataSaveConfig;
   feedback: Required<FeedbackConfig>;
+  flow: RuntimeFlowConfig;
   messages: LayoutTaskMessages;
   requirements: RuntimeRequirements;
   stage: RuntimeStageConfig;

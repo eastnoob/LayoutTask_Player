@@ -88,6 +88,18 @@ const DEFAULT_STAGE = {
   padding: 16,
 };
 
+const DEFAULT_PREVIEW_FLOW_CONFIG = {
+  preview_duration_sec: 10,
+  require_preview_ack: true,
+  intro_message:
+    "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+  intro_confirm_label: "Start preview",
+  stage_during_preview: "hidden" as const,
+  show_countdown: true,
+  message_before: "Next, you will have {seconds} seconds to study the image.",
+  message_after: "Please reconstruct the scene from memory.",
+};
+
 export class ConfigLoader {
   private readonly baseUrl: string;
   private readonly manifestPath: string;
@@ -279,6 +291,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
         ...input.task.feedback?.limit_messages,
       },
     },
+    flow: resolveFlowConfig(input.task),
     messages: resolveMessages(input.task.messages),
     requirements: {
       ...DEFAULT_REQUIREMENTS,
@@ -295,6 +308,24 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
           srcResolved: resolveAssetUrl(assetBaseUrl, input.task.display_image.src),
         }
       : undefined,
+  };
+}
+
+function resolveFlowConfig(task: TaskConfig): RuntimeTaskConfig["flow"] {
+  if (!task.flow || task.flow.mode === "direct_reconstruction") {
+    return { mode: "direct_reconstruction" };
+  }
+
+  if (!task.display_image || task.display_image.enabled === false) {
+    throw new Error("preview_then_reconstruct requires display_image.enabled=true");
+  }
+
+  return {
+    mode: "preview_then_reconstruct",
+    config: {
+      ...DEFAULT_PREVIEW_FLOW_CONFIG,
+      ...task.flow.config,
+    },
   };
 }
 

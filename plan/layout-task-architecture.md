@@ -251,6 +251,16 @@ Config format policy:
 - JS config must not be used for untrusted uploads, because it is executable browser code.
 - Optional CDN policy: keep config files on the main site, and only move asset-like URLs through `asset_base_url` when static asset acceleration is actually needed.
 
+Flow policy:
+
+- Flow is template-driven, not an open timeline DSL.
+- Default mode is `direct_reconstruction`: render and bind interaction immediately.
+- Optional `preview_then_reconstruct` reuses `display_image` as the preview stimulus.
+- `preview_then_reconstruct` defaults to an acknowledgement dialog before timed preview starts.
+- `preview_then_reconstruct` may hide or lock the reconstruction stage during preview; default is `hidden`.
+- Task authors may tune exposed flow parameters such as preview duration and prompt copy through `flow.config`, but not reorder the phase structure.
+- Persistent reconstruction hints are renderer-generated from object behaviors, while the underlying copy still lives in `messages`.
+
 ## 6. Phase Status
 
 ### v0.1 Minimal Player

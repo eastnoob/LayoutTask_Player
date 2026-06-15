@@ -134,6 +134,31 @@ export interface DisplayImageConfig {
   record_metrics?: boolean;
 }
 
+export type FlowMode = "direct_reconstruction" | "preview_then_reconstruct";
+export type PreviewStageMode = "hidden" | "locked";
+
+export interface PreviewThenReconstructFlowConfig {
+  preview_duration_sec?: number;
+  require_preview_ack?: boolean;
+  intro_message?: string;
+  intro_confirm_label?: string;
+  stage_during_preview?: PreviewStageMode;
+  show_countdown?: boolean;
+  message_before?: string;
+  message_after?: string;
+}
+
+export interface DirectReconstructionFlowConfig {
+  mode: "direct_reconstruction";
+}
+
+export interface PreviewThenReconstructFlow {
+  mode: "preview_then_reconstruct";
+  config?: PreviewThenReconstructFlowConfig;
+}
+
+export type FlowConfig = DirectReconstructionFlowConfig | PreviewThenReconstructFlow;
+
 export interface LayoutTaskMessages {
   confirm_lock_1: string;
   confirm_lock_2: string;
@@ -142,6 +167,11 @@ export interface LayoutTaskMessages {
   status_copy_again_ok: string;
   status_copy_again_fail: string;
   instruction_edit_mode: string;
+  reconstruction_hint_title: string;
+  reconstruction_hint_drag: string;
+  reconstruction_hint_button: string;
+  reconstruction_hint_rotation: string;
+  reconstruction_hint_select: string;
 }
 
 export type MessagesConfig = Partial<LayoutTaskMessages>;
@@ -230,6 +260,7 @@ export interface TaskConfig {
   data_save?: DataSaveConfig;
   feedback?: FeedbackConfig;
   display_image?: DisplayImageConfig;
+  flow?: FlowConfig;
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
   stage?: StageConfig;

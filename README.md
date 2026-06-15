@@ -172,6 +172,7 @@ Important task-level sections currently supported:
 - `data_save`
 - `feedback`
 - `display_image`
+- `flow`
 - `messages`
 - `requirements.min_viewport`
 
@@ -231,6 +232,54 @@ Selection is implemented as a separate shadow layer behind the object:
 - no per-object config is required for normal SVG assets
 
 For best results, object SVGs should be self-contained and use ordinary SVG shapes such as `rect`, `circle`, `path`, `polygon`, or grouped combinations of these. Complex SVGs with their own filters, masks, clip paths, or embedded external images should be checked manually.
+
+### Flow Modes
+
+Tasks default to direct reconstruction: participants can interact with the stage as soon as the player opens.
+
+```json
+{
+  "flow": {
+    "mode": "direct_reconstruction"
+  }
+}
+```
+
+For memory reconstruction studies, a task can first show the configured `display_image`, hide or lock the reconstruction stage, then switch into normal interaction after a timed preview:
+
+```json
+{
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/reference.jpeg"
+  },
+  "flow": {
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 10,
+      "require_preview_ack": true,
+      "intro_message": "Next, you have {seconds} seconds to study the image. Please remember the object positions and orientations. After the image disappears, reconstruct the scene from memory.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Next, you have {seconds} seconds to study the image.",
+      "message_after": "Please reconstruct the scene from memory."
+    }
+  }
+}
+```
+
+`stage_during_preview` can be `hidden` or `locked`; the default is `hidden`. Preview timing starts after the display image is ready, and the result includes a `flow` block with preview/reconstruction timing. The main `start_time` and `duration_ms` still cover the whole player session.
+
+`require_preview_ack` defaults to `true`: the player first shows an instruction dialog, replaces `{seconds}` with `preview_duration_sec`, and starts the timed preview only after the participant confirms. Set it to `false` only when the preview should begin automatically.
+
+The reconstruction panel also shows a persistent hint block. Its text comes from `messages`, but the renderer decides which rows to show from the actual object behaviors:
+
+- drag objects show the drag hint
+- button-move objects show the arrow-move hint
+- rotatable objects show the rotate hint
+
+This keeps the task copy configurable without forcing authors to hand-write separate instructions for every behavior combination.
 
 ### World Units and Stage Fit
 

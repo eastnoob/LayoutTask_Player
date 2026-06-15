@@ -1,6 +1,6 @@
 import type { LayoutTaskEvent } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import type { DisplayInfo, LayoutTaskResult, PageTimingInfo } from "../types/result";
+import type { DisplayInfo, LayoutTaskResult, PageTimingInfo, ResultFlowInfo } from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
 interface RecorderOptions {
@@ -9,6 +9,7 @@ interface RecorderOptions {
   getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
   getFinalState: () => LayoutTaskResult["final_state"];
   getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
+  getFlowInfo?: () => ResultFlowInfo;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
 }
@@ -67,6 +68,7 @@ export class Recorder {
       duration_ms: elapsedMs(this.startTime, this.endTime),
       page_timing: pageTiming,
       display,
+      flow: this.options.getFlowInfo?.() ?? { mode: this.options.config.flow.mode },
       task_config_hash: this.options.config.taskConfigHash,
       // context makes the payload self-describing for offline analysis.
       // final_state 仍然始终保留；record_final_state 目前是 reserved toggle，不在这一步改 schema。

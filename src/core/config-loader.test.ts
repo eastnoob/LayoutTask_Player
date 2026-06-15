@@ -72,6 +72,7 @@ describe("resolveRuntimeConfig display image", () => {
     expect(config.recording.record_page_timing).toBe(true);
     expect(config.dataSave).toEqual({ mode: "copy" });
     expect(config.messages.confirm_no_edit).toContain("unchanged layout");
+    expect(config.messages.reconstruction_hint_rotation).toContain("rotate");
     expect(config.requirements).toEqual({});
     expect(config.stage).toEqual({
       fit: "contain",
@@ -285,6 +286,62 @@ describe("resolveRuntimeConfig display image", () => {
       save_encoded: true,
       save_result: true,
     });
+  });
+});
+
+describe("resolveRuntimeConfig flow", () => {
+  it("defaults missing flow to direct reconstruction", () => {
+    const config = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+    }));
+
+    expect(config.flow).toEqual({ mode: "direct_reconstruction" });
+  });
+
+  it("resolves preview flow defaults and custom values", () => {
+    const input = createBehaviorConfigInput({
+      template: "move25",
+    });
+    input.task.display_image = {
+      src: "assets/display-images/example.jpeg",
+    };
+    input.task.flow = {
+      mode: "preview_then_reconstruct",
+      config: {
+        preview_duration_sec: 7,
+        intro_confirm_label: "Begin",
+        stage_during_preview: "locked",
+        message_before: "Study for {seconds}s.",
+      },
+    };
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.flow).toEqual({
+      mode: "preview_then_reconstruct",
+      config: {
+        preview_duration_sec: 7,
+        require_preview_ack: true,
+        intro_message:
+          "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+        intro_confirm_label: "Begin",
+        stage_during_preview: "locked",
+        show_countdown: true,
+        message_before: "Study for {seconds}s.",
+        message_after: "Please reconstruct the scene from memory.",
+      },
+    });
+  });
+
+  it("throws a clear error when preview flow has no enabled display image", () => {
+    const input = createBehaviorConfigInput({
+      template: "move25",
+    });
+    input.task.flow = {
+      mode: "preview_then_reconstruct",
+    };
+
+    expect(() => resolveRuntimeConfig(input)).toThrow("preview_then_reconstruct requires display_image.enabled=true");
   });
 });
 

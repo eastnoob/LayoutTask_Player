@@ -6,6 +6,7 @@ import { DisplayChangeRecorder } from "./display-change-recorder";
 import { DisplayInfoCollector } from "./display-info";
 import { LayoutTaskEncoder } from "./encoder";
 import { DataSaveService } from "./data-save-service";
+import { FlowController } from "./flow-controller";
 import { InteractionController } from "./interaction-controller";
 import { PageTimingCollector } from "./page-timing";
 import { Recorder } from "./recorder";
@@ -40,6 +41,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let interaction: InteractionController | undefined;
   let completion: CompletionController | undefined;
   let displayChangeRecorder: DisplayChangeRecorder | undefined;
+  let flow: FlowController | undefined;
 
   const renderer = new LayoutTaskRenderer({
     root: options.root,
@@ -100,6 +102,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getDisplayInfo: () => displayCollector.collect(),
         getFinalState: () => store.getFinalState(),
         getPageTiming: (submitTime, playerStartTime) => pageTiming.collect(submitTime, playerStartTime),
+        getFlowInfo: () => flow?.getFlowInfo() ?? { mode: options.config.flow.mode },
       });
       interaction = new InteractionController({
         config: options.config,
@@ -119,13 +122,21 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       });
 
       recorder.start();
-      interaction.bind();
+      flow = new FlowController({
+        flow: options.config.flow,
+        renderer,
+        onReconstructionStart: () => {
+          interaction?.bind();
+        },
+      });
+      flow.start();
     },
 
     destroy() {
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       interaction?.unbind();
+      flow?.destroy();
       displayChangeRecorder?.stop();
       renderer.destroy();
     },

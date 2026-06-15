@@ -99,6 +99,9 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
         rotate_ccw: "You cannot rotate further counter-clockwise.",
       },
     },
+    flow: {
+      mode: "direct_reconstruction",
+    },
     messages: {
       confirm_lock_1: "After confirmation, the object layout will be locked. Continue?",
       confirm_lock_2: "Please confirm again: this will finalize the current layout.",
@@ -108,6 +111,11 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       status_copy_again_fail: "Copy failed. Please copy the encoded result manually.",
       instruction_edit_mode:
         "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.",
+      reconstruction_hint_title: "Reconstruct the scene from memory.",
+      reconstruction_hint_drag: "Drag movable objects to place them.",
+      reconstruction_hint_button: "Use the arrow buttons to move selected objects.",
+      reconstruction_hint_rotation: "Use the rotate buttons to adjust orientation.",
+      reconstruction_hint_select: "Click an object to show its available controls.",
     },
     requirements: {},
     stage: {

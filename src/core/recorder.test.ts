@@ -60,6 +60,7 @@ describe("Recorder", () => {
     });
     expect(result.user_agent).toBeUndefined();
     expect(result.final_state).toBeDefined();
+    expect(result.flow).toEqual({ mode: "direct_reconstruction" });
   });
 
   it("skips page timing when record_page_timing is false", async () => {
@@ -84,6 +85,50 @@ describe("Recorder", () => {
     const result = await recorder.finish();
 
     expect(result.page_timing).toBeUndefined();
+  });
+
+  it("includes flow timing when supplied", async () => {
+    const baseConfig = createRuntimeConfig({
+      flow: {
+        mode: "preview_then_reconstruct",
+        config: {
+          preview_duration_sec: 10,
+          require_preview_ack: true,
+          intro_message: "You will have {seconds}s.",
+          intro_confirm_label: "Start",
+          stage_during_preview: "hidden",
+          show_countdown: true,
+          message_before: "Study for {seconds}s.",
+          message_after: "Reconstruct.",
+        },
+      },
+    });
+    const recorder = new Recorder({
+      config: baseConfig,
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      getFlowInfo: () => ({
+        mode: "preview_then_reconstruct",
+        preview_ack_at: 900,
+        preview_started_at: 1_000,
+        preview_ended_at: 11_000,
+        preview_duration_ms: 10_000,
+        reconstruction_started_at: 11_000,
+      }),
+      nowImpl: createNowSequence([1_000, 12_000]),
+    });
+
+    recorder.start();
+    const result = await recorder.finish();
+
+    expect(result.flow).toEqual({
+      mode: "preview_then_reconstruct",
+      preview_ack_at: 900,
+      preview_started_at: 1_000,
+      preview_ended_at: 11_000,
+      preview_duration_ms: 10_000,
+      reconstruction_started_at: 11_000,
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLayoutTaskPlayer } from "./layout-task-player";
+import { FlowController } from "./flow-controller";
 import { Recorder } from "./recorder";
 import { LayoutTaskRenderer } from "./renderer";
 import { InteractionController } from "./interaction-controller";
@@ -39,5 +40,29 @@ describe("createLayoutTaskPlayer", () => {
     player.destroy();
     expect(unbindSpy).toHaveBeenCalledOnce();
     expect(destroySpy).toHaveBeenCalledOnce();
+  });
+
+  it("starts direct reconstruction flow immediately", () => {
+    const flowStartSpy = vi.spyOn(FlowController.prototype, "start").mockImplementation(() => undefined);
+    const bindSpy = vi.spyOn(InteractionController.prototype, "bind").mockImplementation(() => undefined);
+    vi.spyOn(LayoutTaskRenderer.prototype, "mount").mockReturnValue({
+      root: {} as HTMLElement,
+      objectElements: new Map(),
+      objectVisualElements: new Map(),
+      controlElements: new Map(),
+      controlButtons: new Map(),
+      displayImageFrameElement: undefined,
+      displayImageElement: undefined,
+    });
+
+    const player = createLayoutTaskPlayer({
+      root: {} as HTMLElement,
+      config: createRuntimeConfig(),
+    });
+
+    player.start();
+
+    expect(flowStartSpy).toHaveBeenCalledOnce();
+    expect(bindSpy).not.toHaveBeenCalled();
   });
 });

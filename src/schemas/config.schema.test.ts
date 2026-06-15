@@ -156,6 +156,88 @@ describe("taskSchema stage", () => {
   });
 });
 
+describe("taskSchema flow", () => {
+  const baseTask = {
+    schema: "layouttask.task.v1" as const,
+    task_id: "room01",
+    qid: "Q1",
+    world: {
+      viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+      origin: { x: 0, y: 0 },
+      grid: { size: 25 },
+    },
+    background: {
+      asset: "room01_bg",
+      x: -400,
+      y: -300,
+      width: 800,
+      height: 600,
+    },
+    objects: [],
+  };
+
+  it("accepts direct and preview flow modes with defaults", () => {
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        flow: { mode: "direct_reconstruction" },
+      }).flow,
+    ).toEqual({ mode: "direct_reconstruction" });
+
+    expect(
+      taskSchema.parse({
+        ...baseTask,
+        display_image: { src: "assets/display-images/example.jpeg" },
+        flow: { mode: "preview_then_reconstruct" },
+      }).flow,
+    ).toMatchObject({
+      mode: "preview_then_reconstruct",
+        config: {
+          preview_duration_sec: 10,
+          require_preview_ack: true,
+          intro_confirm_label: "Start preview",
+          stage_during_preview: "hidden",
+        show_countdown: true,
+      },
+    });
+  });
+
+  it("requires display_image for preview flow and rejects invalid preview config", () => {
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        flow: { mode: "preview_then_reconstruct" },
+      }),
+    ).toThrow("preview_then_reconstruct requires display_image.enabled=true");
+
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        display_image: { src: "assets/display-images/example.jpeg" },
+        flow: {
+          mode: "preview_then_reconstruct",
+          config: {
+            preview_duration_sec: 0,
+          },
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      taskSchema.parse({
+        ...baseTask,
+        display_image: { src: "assets/display-images/example.jpeg" },
+        flow: {
+          mode: "preview_then_reconstruct",
+          config: {
+            stage_during_preview: "visible",
+          },
+        },
+      }),
+    ).toThrow();
+  });
+});
+
 describe("taskSchema data_save", () => {
   it("accepts copy mode by default and requires experiment_id for datapipe", () => {
     const baseTask = {

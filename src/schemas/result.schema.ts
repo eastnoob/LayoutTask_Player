@@ -199,6 +199,15 @@ export const resultContextSchema = z.object({
   objects: z.record(resultContextObjectSchema),
 });
 
+export const resultFlowSchema = z.object({
+  mode: z.enum(["direct_reconstruction", "preview_then_reconstruct"]),
+  preview_ack_at: z.number().finite().optional(),
+  preview_started_at: z.number().finite().optional(),
+  preview_ended_at: z.number().finite().optional(),
+  preview_duration_ms: z.number().nonnegative().optional(),
+  reconstruction_started_at: z.number().finite().optional(),
+});
+
 export const layoutTaskEventSchema = z.object({
   i: z.number().int().nonnegative(),
   t: z.number().int().nonnegative(),
@@ -254,6 +263,7 @@ export const resultSchema = z.object({
   duration_ms: z.number().int().nonnegative(),
   page_timing: pageTimingSchema.optional(),
   display: displayInfoSchema.optional(),
+  flow: resultFlowSchema.optional(),
   task_config_hash: z.string().optional(),
   // Optional for early pilot compatibility; new exports should include it.
   context: resultContextSchema.optional(),

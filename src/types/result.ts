@@ -182,6 +182,15 @@ export interface ResultContext {
   objects: Record<string, ResultContextObject>;
 }
 
+export interface ResultFlowInfo {
+  mode: "direct_reconstruction" | "preview_then_reconstruct";
+  preview_ack_at?: number;
+  preview_started_at?: number;
+  preview_ended_at?: number;
+  preview_duration_ms?: number;
+  reconstruction_started_at?: number;
+}
+
 export interface LayoutTaskResult {
   schema: "layouttask.result.v1";
   exp: string;
@@ -193,6 +202,7 @@ export interface LayoutTaskResult {
   duration_ms: number;
   page_timing?: PageTimingInfo;
   display?: DisplayInfo;
+  flow?: ResultFlowInfo;
   task_config_hash?: string;
   context?: ResultContext;
   events: LayoutTaskEvent[];

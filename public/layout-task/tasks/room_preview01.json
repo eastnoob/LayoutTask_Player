@@ -1,0 +1,90 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "room_preview01",
+  "qid": "QPREVIEW",
+  "title": "Room Preview 01",
+  "world": {
+    "viewBox": {
+      "x": -500,
+      "y": -500,
+      "width": 1000,
+      "height": 1000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 25,
+      "visible": false,
+      "snap": true
+    }
+  },
+  "background": {
+    "asset": "room01_bg",
+    "x": -400,
+    "y": -300,
+    "width": 800,
+    "height": 600
+  },
+  "objects": [
+    {
+      "id": "chair_01",
+      "asset": "chair_a",
+      "x": 100,
+      "y": 150,
+      "rotation": 0,
+      "behavior": {
+        "template": "drag25_rotate45_limited"
+      }
+    },
+    {
+      "id": "table_01",
+      "asset": "table_a",
+      "x": 200,
+      "y": 175,
+      "rotation": 90,
+      "behavior": {
+        "template": "rotate45_only"
+      }
+    }
+  ],
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+    "alt": "Reference image",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 5,
+      "require_preview_ack": true,
+      "intro_message": "Next, you have {seconds} seconds to study the image. Please remember the positions and orientations of the objects. After the image disappears, reconstruct the scene from memory.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Next, you have {seconds} seconds to study the image.",
+      "message_after": "Please reconstruct the scene from memory."
+    }
+  },
+  "completion": {
+    "double_confirm": true,
+    "lock_after_confirm": true,
+    "allow_copy_again": true
+  },
+  "recording": {
+    "record_events": true,
+    "record_final_state": true,
+    "record_display_info": true,
+    "record_display_changes": true,
+    "record_page_timing": true,
+    "record_user_agent": true,
+    "record_blocked_events": false
+  },
+  "output": {
+    "encoding": "plain-json",
+    "detail": "final-only",
+    "final_state": "relative"
+  }
+}

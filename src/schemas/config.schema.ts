@@ -162,6 +162,35 @@ export const displayImageSchema = z.object({
   record_metrics: z.boolean().default(true),
 });
 
+export const flowSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("direct_reconstruction"),
+  }),
+  z.object({
+    mode: z.literal("preview_then_reconstruct"),
+    config: z
+      .object({
+        preview_duration_sec: z.number().positive().default(10),
+        require_preview_ack: z.boolean().default(true),
+        intro_message: z
+          .string()
+          .min(1)
+          .default(
+            "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+          ),
+        intro_confirm_label: z.string().min(1).default("Start preview"),
+        stage_during_preview: z.enum(["hidden", "locked"]).default("hidden"),
+        show_countdown: z.boolean().default(true),
+        message_before: z
+          .string()
+          .min(1)
+          .default("Next, you will have {seconds} seconds to study the image."),
+        message_after: z.string().min(1).default("Please reconstruct the scene from memory."),
+      })
+      .default({}),
+  }),
+]);
+
 export const messagesSchema = z.object({
   confirm_lock_1: z.string().min(1).optional(),
   confirm_lock_2: z.string().min(1).optional(),
@@ -170,6 +199,11 @@ export const messagesSchema = z.object({
   status_copy_again_ok: z.string().min(1).optional(),
   status_copy_again_fail: z.string().min(1).optional(),
   instruction_edit_mode: z.string().min(1).optional(),
+  reconstruction_hint_title: z.string().min(1).optional(),
+  reconstruction_hint_drag: z.string().min(1).optional(),
+  reconstruction_hint_button: z.string().min(1).optional(),
+  reconstruction_hint_rotation: z.string().min(1).optional(),
+  reconstruction_hint_select: z.string().min(1).optional(),
 });
 
 export const minViewportSchema = z.object({
@@ -221,9 +255,18 @@ export const taskSchema = z.object({
   data_save: dataSaveSchema.optional(),
   feedback: feedbackSchema.optional(),
   display_image: displayImageSchema.optional(),
+  flow: flowSchema.optional(),
   messages: messagesSchema.optional(),
   requirements: requirementsSchema.optional(),
   stage: stageSchema.optional(),
+}).superRefine((value, context) => {
+  if (value.flow?.mode === "preview_then_reconstruct" && !value.display_image?.enabled) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["flow"],
+      message: "preview_then_reconstruct requires display_image.enabled=true",
+    });
+  }
 });
 
 export const manifestSchema = z.object({
