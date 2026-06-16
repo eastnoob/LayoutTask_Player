@@ -217,7 +217,7 @@ export class ConfigLoader {
       return;
     }
 
-    const svgText = await this.fetchText(config.collision.source.src);
+    const svgText = await this.fetchText(config.collision.source.srcResolved);
     config.collision.source.inlineSvgText = svgText;
     config.collision.areas = [
       ...config.collision.areas,

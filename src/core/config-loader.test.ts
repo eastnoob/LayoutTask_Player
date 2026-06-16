@@ -565,6 +565,98 @@ describe("ConfigLoader collision runtime config", () => {
       },
     ]);
   });
+
+  it("fetches SVG collision source from manifest asset_base_url", async () => {
+    const cdnCollisionSvgText =
+      "<svg viewBox=\"0 0 100 100\"><rect id=\"cdn_block\" data-collision=\"block\" x=\"5\" y=\"6\" width=\"7\" height=\"8\" /></svg>";
+    const fetchImpl = createConfigFetch({
+      manifestAssetBaseUrl: "https://cdn.example.test/layout-task/",
+      taskCollision: {
+        enabled: true,
+        source: {
+          type: "svg",
+          src: "assets/collision/room_collision.svg",
+        },
+      },
+      textByUrl: {
+        "https://cdn.example.test/layout-task/assets/collision/room_collision.svg": cdnCollisionSvgText,
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(config.collision.source?.srcResolved).toBe("https://cdn.example.test/layout-task/assets/collision/room_collision.svg");
+    expect(fetchImpl).toHaveBeenCalledWith("https://cdn.example.test/layout-task/assets/collision/room_collision.svg");
+    expect(fetchImpl).not.toHaveBeenCalledWith("http://example.test/layout-task/assets/collision/room_collision.svg");
+    expect(config.collision.source?.inlineSvgText).toBe(cdnCollisionSvgText);
+    expect(config.collision.areas).toEqual([
+      {
+        id: "cdn_block",
+        type: "block",
+        shape: "rect",
+        x: 5,
+        y: 6,
+        width: 7,
+        height: 8,
+      },
+    ]);
+  });
+
+  it("does not fetch or parse disabled collision sources", async () => {
+    const fetchImpl = createConfigFetch({
+      taskCollision: {
+        enabled: false,
+        areas: [
+          {
+            id: "inline_block",
+            type: "block",
+            shape: "rect",
+            x: 1,
+            y: 2,
+            width: 3,
+            height: 4,
+          },
+        ],
+        source: {
+          type: "svg",
+          src: "assets/collision/room_collision.svg",
+        },
+      },
+      textByPath: {
+        "/layout-task/assets/collision/room_collision.svg":
+          "<svg viewBox=\"0 0 100 100\"><rect id=\"should_not_parse\" data-collision=\"block\" width=\"10\" height=\"10\" /></svg>",
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(fetchImpl).not.toHaveBeenCalledWith("http://example.test/layout-task/assets/collision/room_collision.svg");
+    expect(config.collision.source).toMatchObject({
+      type: "svg",
+      src: "assets/collision/room_collision.svg",
+      srcResolved: "http://example.test/layout-task/assets/collision/room_collision.svg",
+    });
+    expect(config.collision.source?.inlineSvgText).toBeUndefined();
+    expect(config.collision.areas).toEqual([
+      {
+        id: "inline_block",
+        type: "block",
+        shape: "rect",
+        x: 1,
+        y: 2,
+        width: 3,
+        height: 4,
+      },
+    ]);
+  });
 });
 
 describe("ConfigLoader JS module task config", () => {
@@ -792,8 +884,10 @@ function createBehaviorConfigInput(behavior: Parameters<typeof resolveRuntimeCon
 }
 
 function createConfigFetch(options: {
+  manifestAssetBaseUrl?: string;
   taskCollision?: TaskCollisionConfig;
   textByPath?: Record<string, string>;
+  textByUrl?: Record<string, string>;
 }): typeof fetch {
   return vi.fn(async (url: string) => {
     const path = new URL(url).pathname;
@@ -801,6 +895,7 @@ function createConfigFetch(options: {
       "/layout-task/manifest.json": {
         schema: "layouttask.manifest.v1",
         experiment_id: "exp1",
+        asset_base_url: options.manifestAssetBaseUrl,
         asset_library: "assets/objects.json",
         background_library: "assets/backgrounds.json",
         behavior_library: "behaviors/behaviors.json",
@@ -849,7 +944,7 @@ function createConfigFetch(options: {
         },
       },
     };
-    const text = options.textByPath?.[path] ?? "<svg viewBox=\"0 0 50 50\"><rect width=\"50\" height=\"50\" /></svg>";
+    const text = options.textByUrl?.[url] ?? options.textByPath?.[path] ?? "<svg viewBox=\"0 0 50 50\"><rect width=\"50\" height=\"50\" /></svg>";
     const jsonData = dataByPath[path];
 
     return {
