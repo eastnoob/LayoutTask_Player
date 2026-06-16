@@ -363,6 +363,29 @@ describe("resolveRuntimeConfig collision", () => {
     });
   });
 
+  it("does not share default collision areas arrays between runtime configs", () => {
+    const first = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+    }));
+    const second = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+    }));
+
+    expect(first.collision.areas).not.toBe(second.collision.areas);
+
+    first.collision.areas.push({
+      id: "parsed_svg_area",
+      type: "block",
+      shape: "rect",
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+    });
+
+    expect(second.collision.areas).toEqual([]);
+  });
+
   it("merges authored collision values into runtime defaults", () => {
     const input = createBehaviorConfigInput({
       template: "move25",

@@ -335,7 +335,7 @@ function resolveTaskCollision(
   const collision: RuntimeTaskConfig["collision"] = {
     enabled: task.collision?.enabled ?? DEFAULT_TASK_COLLISION.enabled,
     mode: task.collision?.mode ?? DEFAULT_TASK_COLLISION.mode,
-    areas: task.collision?.areas ?? DEFAULT_TASK_COLLISION.areas,
+    areas: [...(task.collision?.areas ?? DEFAULT_TASK_COLLISION.areas)],
   };
 
   if (!task.collision?.source) {
