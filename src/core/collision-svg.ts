@@ -1,15 +1,17 @@
 import type { CollisionAreaConfig, CollisionAreaType } from "../types/config";
 
+const commentPattern = /<!--[\s\S]*?-->/g;
 const collisionElementPattern = /<(?<tag>rect|polygon|path)\b(?<attrs>[^>]*)\/?>/gi;
 const attributePattern = /(?<name>[A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"(?<double>[^"]*)"|'(?<single>[^']*)')/g;
 
 export function parseCollisionSvg(svgText: string): CollisionAreaConfig[] {
   const areas: CollisionAreaConfig[] = [];
+  const uncommentedSvgText = svgText.replace(commentPattern, "");
 
-  for (const match of svgText.matchAll(collisionElementPattern)) {
+  for (const match of uncommentedSvgText.matchAll(collisionElementPattern)) {
     const tag = match.groups?.tag?.toLowerCase();
     const attrs = parseAttributes(match.groups?.attrs ?? "");
-    const type = readCollisionType(attrs);
+    const type = readCollisionType(attrs, attrs.id || `${tag ?? "area"}_${areas.length + 1}`);
 
     if (!type) {
       continue;
@@ -61,16 +63,32 @@ function parseAttributes(raw: string): Record<string, string> {
   return attrs;
 }
 
-function readCollisionType(attrs: Record<string, string>): CollisionAreaType | undefined {
-  const value = attrs["data-collision"] ?? attrs["data-layout-collision"];
+function readCollisionType(attrs: Record<string, string>, id: string): CollisionAreaType | undefined {
+  const attributeName =
+    attrs["data-collision"] !== undefined
+      ? "data-collision"
+      : attrs["data-layout-collision"] !== undefined
+        ? "data-layout-collision"
+        : undefined;
+
+  if (!attributeName) {
+    return undefined;
+  }
+
+  const value = attrs[attributeName];
   if (value === "contain" || value === "block") {
     return value;
   }
-  return undefined;
+
+  throw new Error(`Collision element ${id} has invalid ${attributeName} value '${value}'`);
 }
 
 function readNumber(attrs: Record<string, string>, name: string, id: string, defaultValue?: number): number {
   const raw = attrs[name];
+  if (raw === "") {
+    throw new Error(`Collision element ${id} has invalid ${name}`);
+  }
+
   const value = raw === undefined && defaultValue !== undefined ? defaultValue : Number(raw);
 
   if (!Number.isFinite(value)) {
@@ -91,30 +109,28 @@ function readPositiveNumber(attrs: Record<string, string>, name: string, id: str
 }
 
 function parsePoints(raw: string, id: string): Array<{ x: number; y: number }> {
-  const points = raw
+  const values = raw
     .trim()
-    .split(/\s+/)
+    .split(/[,\s]+/)
     .filter(Boolean)
-    .map((pair) => parsePointPair(pair, id));
+    .map((value) => Number(value));
 
-  if (points.length < 3) {
+  if (values.some((value) => !Number.isFinite(value))) {
+    throw new Error(`Collision polygon ${id} has invalid points`);
+  }
+
+  if (values.length % 2 !== 0) {
+    throw new Error(`Collision polygon ${id} must contain x,y coordinate pairs`);
+  }
+
+  if (values.length < 6) {
     throw new Error(`Collision polygon ${id} must contain at least 3 points`);
   }
 
+  const points: Array<{ x: number; y: number }> = [];
+  for (let index = 0; index < values.length; index += 2) {
+    points.push({ x: values[index], y: values[index + 1] });
+  }
+
   return points;
-}
-
-function parsePointPair(pair: string, id: string): { x: number; y: number } {
-  const values = pair.split(",");
-  if (values.length !== 2 || values[0] === "" || values[1] === "") {
-    throw new Error(`Collision polygon ${id} has invalid point '${pair}'`);
-  }
-
-  const x = Number(values[0]);
-  const y = Number(values[1]);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) {
-    throw new Error(`Collision polygon ${id} has invalid point '${pair}'`);
-  }
-
-  return { x, y };
 }
