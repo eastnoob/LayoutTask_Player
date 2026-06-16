@@ -131,7 +131,8 @@ src/protocol/
 
 Responsibilities:
 
-- JSON Schema is the language-neutral validation contract.
+- JSON Schema is the language-neutral structural preflight contract.
+- `validate-batch` is the canonical semantic validator; it applies defaults and catches cross-record rules such as duplicate task/object IDs.
 - TypeScript types are the internal development contract.
 - Constants define controlled vocabularies used by schemas, compiler, and docs.
 - Examples prove the protocol with small self-authored fixtures.
@@ -317,7 +318,8 @@ The compiler pipeline is intentionally small:
 ```text
 batch.json
   -> parse JSON
-  -> validate with layouttask.batch.schema.json
+  -> optionally preflight with layouttask.batch.schema.json
+  -> validate with validate-batch / Zod schemas
   -> normalize defaults and shared values
   -> resolve asset/background/behavior references
   -> compile each trial to runtime TaskConfig
