@@ -11,4 +11,4 @@
 - [ ] Variable objects have `role: "variable"`.
 - [ ] Fixed objects have `role: "fixed"` or movement behavior set to `none`.
 - [ ] Scored variable objects include relative and absolute targets when available.
-- [ ] Run `validate-batch` before compiling.
+- [ ] When generator tooling is available, run the planned `validate-batch` tool before compiling.
