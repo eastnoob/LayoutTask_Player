@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://layout-task.local/schemas/layouttask.batch.schema.json",
+  "title": "Layout Task Batch",
+  "type": "object",
+  "required": ["schema", "experiment_id", "shared", "trials"],
+  "properties": {
+    "schema": { "const": "layouttask.batch.v1" },
+    "experiment_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string" },
+    "config_version": { "type": "string" },
+    "shared": { "type": "object" },
+    "trials": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "object" }
+    }
+  }
+}

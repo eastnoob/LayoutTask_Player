@@ -97,6 +97,10 @@ Main config files:
 - `public/layout-task/tasks/*.json`
 - `public/layout-task/tasks/*.config.js`
 
+### Protocol Kit and Batch Generation
+
+Large studies should use the protocol kit in `protocol/` rather than hand-authoring every task file. The canonical source format is standard JSON. A future Rhino exporter should produce `layouttask.batch.v1` JSON following `protocol/rhino.md` and the templates in `protocol/templates/`.
+
 JSON is the safest default and remains recommended for shared data-only config. For project-maintainer-authored tasks, a JS module config is also supported:
 
 ```js
