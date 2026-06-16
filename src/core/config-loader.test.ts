@@ -812,7 +812,7 @@ describe("ConfigLoader collision demo fixture", () => {
     expect(chair?.behaviorTemplateId).toBeUndefined();
     expect(chair?.behavior).toEqual({
       movement: {
-        mode: "drag",
+        mode: "button",
         step: 25,
         max_left: 12,
         max_right: 20,
@@ -820,7 +820,7 @@ describe("ConfigLoader collision demo fixture", () => {
         max_down: 12,
       },
       rotation: { step: 45, max_cw: 4, max_ccw: 4 },
-      free_drag: { enabled: true, snap: true },
+      free_drag: { enabled: false },
     });
 
     expect(chair).toBeDefined();

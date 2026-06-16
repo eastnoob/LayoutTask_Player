@@ -54,7 +54,7 @@
       "behavior": {
         "config": {
           "movement": {
-            "mode": "drag",
+            "mode": "button",
             "step": 25,
             "max_left": 12,
             "max_right": 20,
@@ -67,8 +67,7 @@
             "max_ccw": 4
           },
           "free_drag": {
-            "enabled": true,
-            "snap": true
+            "enabled": false
           }
         }
       },
