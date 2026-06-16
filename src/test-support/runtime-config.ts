@@ -65,6 +65,11 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
             enabled: false,
           },
         },
+        collision: {
+          enabled: true,
+          shape: "box",
+          padding: 0,
+        },
       },
     ],
     completion: {
@@ -122,6 +127,11 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       fit: "contain",
       max_height_ratio: 0.72,
       padding: 16,
+    },
+    collision: {
+      enabled: false,
+      mode: "discrete",
+      areas: [],
     },
     displayImage: undefined,
     ...overrides,

@@ -88,6 +88,18 @@ const DEFAULT_STAGE = {
   padding: 16,
 };
 
+const DEFAULT_TASK_COLLISION = {
+  enabled: false,
+  mode: "discrete" as const,
+  areas: [],
+};
+
+const DEFAULT_OBJECT_COLLISION = {
+  enabled: true,
+  shape: "box" as const,
+  padding: 0,
+};
+
 const DEFAULT_PREVIEW_FLOW_CONFIG = {
   preview_duration_sec: 10,
   require_preview_ack: true,
@@ -246,6 +258,10 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       anchor: objectConfig.anchor ?? asset.anchor ?? "center",
       behaviorTemplateId: templateId,
       behavior,
+      collision: {
+        ...DEFAULT_OBJECT_COLLISION,
+        ...objectConfig.collision,
+      },
     };
   });
 
@@ -301,6 +317,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       ...DEFAULT_STAGE,
       ...input.task.stage,
     },
+    collision: resolveTaskCollision(input.task, assetBaseUrl),
     displayImage: input.task.display_image
       ? {
           ...DEFAULT_DISPLAY_IMAGE,
@@ -308,6 +325,29 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
           srcResolved: resolveAssetUrl(assetBaseUrl, input.task.display_image.src),
         }
       : undefined,
+  };
+}
+
+function resolveTaskCollision(
+  task: TaskConfig,
+  assetBaseUrl: string,
+): RuntimeTaskConfig["collision"] {
+  const collision: RuntimeTaskConfig["collision"] = {
+    enabled: task.collision?.enabled ?? DEFAULT_TASK_COLLISION.enabled,
+    mode: task.collision?.mode ?? DEFAULT_TASK_COLLISION.mode,
+    areas: task.collision?.areas ?? DEFAULT_TASK_COLLISION.areas,
+  };
+
+  if (!task.collision?.source) {
+    return collision;
+  }
+
+  return {
+    ...collision,
+    source: {
+      ...task.collision.source,
+      srcResolved: resolveAssetUrl(assetBaseUrl, task.collision.source.src),
+    },
   };
 }
 

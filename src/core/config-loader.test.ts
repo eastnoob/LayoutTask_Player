@@ -345,6 +345,81 @@ describe("resolveRuntimeConfig flow", () => {
   });
 });
 
+describe("resolveRuntimeConfig collision", () => {
+  it("applies default runtime collision values", () => {
+    const config = resolveRuntimeConfig(createBehaviorConfigInput({
+      template: "move25",
+    }));
+
+    expect(config.collision).toEqual({
+      enabled: false,
+      mode: "discrete",
+      areas: [],
+    });
+    expect(config.objects[0].collision).toEqual({
+      enabled: true,
+      shape: "box",
+      padding: 0,
+    });
+  });
+
+  it("merges authored collision values into runtime defaults", () => {
+    const input = createBehaviorConfigInput({
+      template: "move25",
+    });
+    input.task.collision = {
+      enabled: true,
+      areas: [
+        {
+          id: "walkable",
+          type: "contain",
+          shape: "rect",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+        },
+      ],
+      source: {
+        type: "svg",
+        src: "assets/collision/room_collision.svg",
+      },
+    };
+    input.task.objects[0].collision = {
+      enabled: false,
+      padding: 4,
+    };
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.collision).toEqual({
+      enabled: true,
+      mode: "discrete",
+      areas: [
+        {
+          id: "walkable",
+          type: "contain",
+          shape: "rect",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+        },
+      ],
+      source: {
+        type: "svg",
+        src: "assets/collision/room_collision.svg",
+        srcResolved: "http://example.test/layout-task/assets/collision/room_collision.svg",
+      },
+    });
+    expect(config.objects[0].collision).toEqual({
+      enabled: false,
+      shape: "box",
+      padding: 4,
+    });
+  });
+});
+
 describe("ConfigLoader JS module task config", () => {
   it("loads a trusted .config.js task through default export and still validates it", async () => {
     const fetchImpl = vi.fn(async (url: string) => {
