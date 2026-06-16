@@ -38,7 +38,7 @@ export interface LayoutTaskEvent {
   object: string;
   action: LayoutAction;
   valid: boolean;
-  blocked_reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled";
+  blocked_reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "collision";
   before?: ObjectPose;
   after?: ObjectPose;
   counts?: OperationCounts;

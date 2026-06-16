@@ -1,6 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { pageTimingSchema, resultSchema } from "./result.schema";
 
+function createMinimalResult(): any {
+  return {
+    schema: "layouttask.result.v1",
+    exp: "EXP123",
+    qid: "Q1",
+    task_id: "room01",
+    session: "S456",
+    start_time: 1710000000000,
+    end_time: 1710000005000,
+    duration_ms: 5000,
+    events: [],
+    final_state_mode: "absolute",
+    final_state: {
+      chair_01: {
+        x: 100,
+        y: 100,
+        r: 0,
+        counts: {
+          left: 0,
+          right: 0,
+          up: 0,
+          down: 0,
+          cw: 0,
+          ccw: 0,
+        },
+      },
+    },
+    locked: true,
+  };
+}
+
 describe("pageTimingSchema", () => {
   it("accepts fractional elapsed milliseconds from performance.timeOrigin", () => {
     const parsed = pageTimingSchema.parse({
@@ -13,6 +44,26 @@ describe("pageTimingSchema", () => {
     });
 
     expect(parsed.total_elapsed_ms).toBe(279327.8000488281);
+  });
+});
+
+describe("resultSchema events", () => {
+  it("accepts collision as a blocked event reason", () => {
+    const result = createMinimalResult();
+    result.events = [
+      {
+        i: 0,
+        t: 10,
+        object: "chair_01",
+        action: "move_right",
+        valid: false,
+        blocked_reason: "collision",
+        before: { x: 100, y: 100, r: 0 },
+        after: { x: 100, y: 100, r: 0 },
+      },
+    ];
+
+    expect(resultSchema.parse(result).events?.[0].blocked_reason).toBe("collision");
   });
 });
 

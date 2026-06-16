@@ -2,12 +2,15 @@ import type {
   Anchor,
   BackgroundAssetConfig,
   BehaviorConfig,
+  CollisionAreaConfig,
+  CollisionSourceConfig,
   CompletionConfig,
   DataPipePayloadFormat,
   DisplayImageConfig,
   FeedbackConfig,
   LayoutTaskMessages,
   ObjectAssetConfig,
+  ObjectCollisionConfig,
   OutputConfig,
   PreviewStageMode,
   RecordingConfig,
@@ -39,6 +42,7 @@ export interface RuntimeTaskObject {
   anchor: Anchor;
   behaviorTemplateId?: string;
   behavior: ResolvedBehaviorConfig;
+  collision: Required<ObjectCollisionConfig>;
 }
 
 export interface RuntimeBackground {
@@ -64,6 +68,17 @@ export interface RuntimeRequirements {
 }
 
 export interface RuntimeStageConfig extends Required<StageConfig> {}
+
+export interface RuntimeCollisionSource extends CollisionSourceConfig, ResolvedAssetPath {
+  inlineSvgText?: string;
+}
+
+export interface RuntimeCollisionConfig {
+  enabled: boolean;
+  mode: "discrete";
+  areas: CollisionAreaConfig[];
+  source?: RuntimeCollisionSource;
+}
 
 export interface RuntimeDirectReconstructionFlow {
   mode: "direct_reconstruction";
@@ -106,6 +121,7 @@ export interface RuntimeTaskConfig {
   messages: LayoutTaskMessages;
   requirements: RuntimeRequirements;
   stage: RuntimeStageConfig;
+  collision: RuntimeCollisionConfig;
   displayImage?: RuntimeDisplayImage;
 }
 

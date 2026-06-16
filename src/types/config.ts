@@ -200,6 +200,51 @@ export interface StageConfig {
   padding?: number;
 }
 
+export type CollisionAreaType = "contain" | "block";
+export type CollisionShape = "rect" | "polygon";
+
+export interface CollisionPoint {
+  x: number;
+  y: number;
+}
+
+export interface CollisionRectArea {
+  id: string;
+  type: CollisionAreaType;
+  shape: "rect";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CollisionPolygonArea {
+  id: string;
+  type: CollisionAreaType;
+  shape: "polygon";
+  points: CollisionPoint[];
+}
+
+export type CollisionAreaConfig = CollisionRectArea | CollisionPolygonArea;
+
+export interface CollisionSourceConfig {
+  type: "svg";
+  src: string;
+}
+
+export interface TaskCollisionConfig {
+  enabled?: boolean;
+  mode?: "discrete";
+  areas?: CollisionAreaConfig[];
+  source?: CollisionSourceConfig;
+}
+
+export interface ObjectCollisionConfig {
+  enabled?: boolean;
+  shape?: "box";
+  padding?: number;
+}
+
 export interface ManifestTaskEntry {
   qid: string;
   task_id: string;
@@ -243,6 +288,7 @@ export interface TaskObjectConfig {
   height?: number;
   anchor?: Anchor;
   behavior: TaskObjectBehaviorConfig;
+  collision?: ObjectCollisionConfig;
 }
 
 export interface TaskBackgroundConfig {
@@ -272,4 +318,5 @@ export interface TaskConfig {
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
   stage?: StageConfig;
+  collision?: TaskCollisionConfig;
 }

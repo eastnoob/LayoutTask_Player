@@ -232,7 +232,7 @@ export const layoutTaskEventSchema = z.object({
   ]),
   valid: z.boolean(),
   blocked_reason: z
-    .enum(["locked", "limit_reached", "movement_disabled", "rotation_disabled"])
+    .enum(["locked", "limit_reached", "movement_disabled", "rotation_disabled", "collision"])
     .optional(),
   before: objectPoseSchema.optional(),
   after: objectPoseSchema.optional(),

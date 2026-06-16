@@ -96,6 +96,26 @@ describe("createAutosaveService", () => {
     expect(service.load(key)).toBeNull();
   });
 
+  it("loads drafts with collision blocked events", () => {
+    const storage = createMemoryStorage();
+    const service = createAutosaveService(storage);
+    const key = "layouttask:draft:EXP123:room01:Q1:S456";
+    const draftWithCollisionEvent: LayoutTaskDraft = {
+      ...draft,
+      events: [
+        {
+          ...draft.events[0],
+          valid: false,
+          blocked_reason: "collision",
+        },
+      ],
+    };
+
+    service.save(key, draftWithCollisionEvent);
+
+    expect(service.load(key)).toEqual(draftWithCollisionEvent);
+  });
+
   it("returns null for corrupt JSON", () => {
     const storage = createMemoryStorage();
     const service = createAutosaveService(storage);

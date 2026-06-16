@@ -230,6 +230,51 @@ export const stageSchema = z.object({
   padding: z.number().nonnegative().default(16),
 });
 
+const collisionPointSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+});
+
+const collisionRectAreaSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(["contain", "block"]),
+  shape: z.literal("rect"),
+  x: z.number().finite(),
+  y: z.number().finite(),
+  width: z.number().positive(),
+  height: z.number().positive(),
+});
+
+const collisionPolygonAreaSchema = z.object({
+  id: z.string().min(1),
+  type: z.enum(["contain", "block"]),
+  shape: z.literal("polygon"),
+  points: z.array(collisionPointSchema).min(3),
+});
+
+export const collisionAreaSchema = z.discriminatedUnion("shape", [
+  collisionRectAreaSchema,
+  collisionPolygonAreaSchema,
+]);
+
+export const collisionSourceSchema = z.object({
+  type: z.literal("svg"),
+  src: z.string().min(1),
+});
+
+export const taskCollisionSchema = z.object({
+  enabled: z.boolean().default(false),
+  mode: z.literal("discrete").default("discrete"),
+  areas: z.array(collisionAreaSchema).default([]),
+  source: collisionSourceSchema.optional(),
+});
+
+export const objectCollisionSchema = z.object({
+  enabled: z.boolean().default(true),
+  shape: z.literal("box").default("box"),
+  padding: z.number().nonnegative().default(0),
+});
+
 export const taskObjectSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -240,6 +285,7 @@ export const taskObjectSchema = z.object({
   height: z.number().positive().optional(),
   anchor: z.enum(["center", "top_left"]).optional(),
   behavior: taskObjectBehaviorSchema,
+  collision: objectCollisionSchema.optional(),
 });
 
 export const taskSchema = z.object({
@@ -267,6 +313,7 @@ export const taskSchema = z.object({
   messages: messagesSchema.optional(),
   requirements: requirementsSchema.optional(),
   stage: stageSchema.optional(),
+  collision: taskCollisionSchema.optional(),
 }).superRefine((value, context) => {
   if (value.flow?.mode === "preview_then_reconstruct" && !value.display_image?.enabled) {
     context.addIssue({

@@ -1,6 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { behaviorSchema, taskSchema } from "./config.schema";
 
+function createMinimalTask(): any {
+  return {
+    schema: "layouttask.task.v1",
+    task_id: "room01",
+    qid: "Q1",
+    world: {
+      viewBox: { x: 0, y: 0, width: 1000, height: 1000 },
+      origin: { x: 0, y: 0 },
+      grid: { size: 25, visible: true, snap: true },
+    },
+    background: { asset: "room_bg", x: 0, y: 0, width: 1000, height: 1000 },
+    objects: [
+      {
+        id: "chair_01",
+        asset: "chair_a",
+        x: 100,
+        y: 100,
+        rotation: 0,
+        behavior: { template: "drag25_rotate45_limited" },
+      },
+    ],
+  };
+}
+
 describe("behaviorSchema", () => {
   it("requires movement.mode drag to match free_drag.enabled", () => {
     // Drag authoring must be explicit in both places.
@@ -437,5 +461,80 @@ describe("taskSchema object behavior", () => {
         objects: [{ ...baseObject, behavior: {} }],
       }),
     ).toThrow("behavior requires template or config");
+  });
+});
+
+describe("taskSchema collision", () => {
+  it("accepts inline collision contain and block areas", () => {
+    const task = createMinimalTask();
+    task.collision = {
+      enabled: true,
+      mode: "discrete",
+      areas: [
+        {
+          id: "room_walkable",
+          type: "contain",
+          shape: "polygon",
+          points: [
+            { x: 0, y: 0 },
+            { x: 1000, y: 0 },
+            { x: 1000, y: 1000 },
+            { x: 0, y: 1000 },
+          ],
+        },
+        {
+          id: "pillar_01",
+          type: "block",
+          shape: "rect",
+          x: 400,
+          y: 400,
+          width: 100,
+          height: 100,
+        },
+      ],
+    };
+    task.objects[0].collision = { enabled: true, shape: "box", padding: 0 };
+
+    const parsed = taskSchema.parse(task);
+
+    expect(parsed.collision?.enabled).toBe(true);
+    expect(parsed.collision?.areas).toHaveLength(2);
+    expect(parsed.objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 0 });
+  });
+
+  it("accepts an SVG collision source", () => {
+    const task = createMinimalTask();
+    task.collision = {
+      enabled: true,
+      source: {
+        type: "svg",
+        src: "assets/collision/room_collision.svg",
+      },
+    };
+
+    expect(taskSchema.parse(task).collision?.source).toEqual({
+      type: "svg",
+      src: "assets/collision/room_collision.svg",
+    });
+  });
+
+  it("rejects invalid collision polygons", () => {
+    const task = createMinimalTask();
+    task.collision = {
+      enabled: true,
+      areas: [
+        {
+          id: "bad_poly",
+          type: "contain",
+          shape: "polygon",
+          points: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+          ],
+        },
+      ],
+    };
+
+    expect(() => taskSchema.parse(task)).toThrow();
   });
 });

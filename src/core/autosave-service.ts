@@ -101,7 +101,8 @@ function isLayoutTaskEvent(value: unknown): value is LayoutTaskEvent {
       value.blocked_reason === "locked" ||
       value.blocked_reason === "limit_reached" ||
       value.blocked_reason === "movement_disabled" ||
-      value.blocked_reason === "rotation_disabled") &&
+      value.blocked_reason === "rotation_disabled" ||
+      value.blocked_reason === "collision") &&
     (value.before === undefined || isObjectPose(value.before)) &&
     (value.after === undefined || isObjectPose(value.after)) &&
     (value.counts === undefined || isOperationCounts(value.counts)) &&
