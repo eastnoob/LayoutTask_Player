@@ -50,6 +50,14 @@ Typical standalone debug URL:
 http://127.0.0.1:5173/?task=room01&q=Q1
 ```
 
+Collision demo:
+
+```text
+http://127.0.0.1:5173/?task=room_collision_demo&q=QCOLLISION
+```
+
+Collision constraints are optional and use world-unit `contain`/`block` areas or a hidden SVG analysis layer. See `protocol/rhino.md`.
+
 ## Static Deployment
 
 This project is designed for pure static hosting.

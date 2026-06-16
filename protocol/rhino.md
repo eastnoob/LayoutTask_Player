@@ -261,6 +261,65 @@ Use a full inline config:
 
 For fixed objects, either set `role: "fixed"` for analysis or set movement behavior to `"none"` to prevent interaction. In most generated tasks, fixed objects should do both.
 
+## Collision Protocol
+
+Collision is optional task rule data, not a visual background. It is expressed in the same world units as `world.viewBox`, object positions, background placement, and movement steps.
+
+Recommended minimal config:
+
+```json
+"collision": {
+  "enabled": true,
+  "areas": [
+    {
+      "id": "room_walkable",
+      "type": "contain",
+      "shape": "polygon",
+      "points": [
+        { "x": 0, "y": 0 },
+        { "x": 4000, "y": 0 },
+        { "x": 4000, "y": 3000 },
+        { "x": 0, "y": 3000 }
+      ]
+    }
+  ]
+}
+```
+
+`contain` defines allowed placement areas. If any contain areas exist, an object's collision box must be fully inside at least one of them. If no contain areas exist, `world.viewBox` is used as the default contain area.
+
+`block` defines optional forbidden areas such as walls, columns, holes, and internal obstacles. Objects cannot overlap block areas. Simple rooms can use contain only and omit block.
+
+Objects participate in collision with an object-level box:
+
+```json
+{
+  "id": "chair_variable_001",
+  "asset": "chair_a",
+  "x": 100,
+  "y": 150,
+  "rotation": 0,
+  "behavior": { "template": "drag25_rotate45_limited" },
+  "collision": { "enabled": true, "shape": "box", "padding": 0 }
+}
+```
+
+SVG analysis layer:
+
+```json
+"collision": {
+  "enabled": true,
+  "source": {
+    "type": "svg",
+    "src": "assets/collision/room001_collision.svg"
+  }
+}
+```
+
+Only SVG `rect` and `polygon` elements with `data-collision="contain"` or `data-collision="block"` are parsed. `data-layout-collision` is accepted as an equivalent marker for exporters that reserve `data-collision`.
+
+Do not use arbitrary SVG paths, masks, raster images, strokes, or visual-only artwork for collision. Split concave rooms, curved walls, or complex blocked regions into multiple convex rects or polygons before export. The collision SVG should be a hidden analysis layer or sidecar asset: it may share the same `viewBox` as the visual room SVG, but it should contain only the marked collision geometry.
+
 ## Flow
 
 Default behavior is direct reconstruction:

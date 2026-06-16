@@ -36,6 +36,11 @@
       "qid": "QARROWPREVIEW",
       "task_id": "room_arrow_preview01",
       "file": "tasks/room_arrow_preview01.json"
+    },
+    {
+      "qid": "QCOLLISION",
+      "task_id": "room_collision_demo",
+      "file": "tasks/room_collision_demo.json"
     }
   ]
 }

@@ -28,6 +28,20 @@
       "default_width": 400000,
       "default_height": 240000,
       "anchor": "center"
+    },
+    "collision_demo_chair": {
+      "type": "svg",
+      "src": "assets/objects/collision_demo_chair.svg",
+      "default_width": 50,
+      "default_height": 50,
+      "anchor": "center"
+    },
+    "collision_demo_table": {
+      "type": "svg",
+      "src": "assets/objects/collision_demo_table.svg",
+      "default_width": 75,
+      "default_height": 75,
+      "anchor": "center"
     }
   }
 }

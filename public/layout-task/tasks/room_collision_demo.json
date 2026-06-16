@@ -1,0 +1,94 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "room_collision_demo",
+  "qid": "QCOLLISION",
+  "title": "Collision demo",
+  "world": {
+    "viewBox": {
+      "x": -500,
+      "y": -500,
+      "width": 1000,
+      "height": 1000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 25,
+      "visible": true,
+      "snap": true,
+      "origin": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16
+  },
+  "background": {
+    "asset": "collision_demo_bg",
+    "x": -500,
+    "y": -500,
+    "width": 1000,
+    "height": 1000
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "source": {
+      "type": "svg",
+      "src": "assets/collision/room_collision_demo.svg"
+    }
+  },
+  "objects": [
+    {
+      "id": "chair_01",
+      "asset": "collision_demo_chair",
+      "x": -150,
+      "y": 0,
+      "rotation": 0,
+      "behavior": {
+        "template": "drag25_rotate45_limited"
+      },
+      "collision": {
+        "enabled": true,
+        "shape": "box",
+        "padding": 0
+      }
+    },
+    {
+      "id": "table_01",
+      "asset": "collision_demo_table",
+      "x": 150,
+      "y": 0,
+      "rotation": 0,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "collision": {
+        "enabled": true,
+        "shape": "box",
+        "padding": 0
+      }
+    }
+  ],
+  "recording": {
+    "record_blocked_events": true
+  },
+  "output": {
+    "encoding": "plain-json",
+    "detail": "full",
+    "final_state": "relative"
+  }
+}

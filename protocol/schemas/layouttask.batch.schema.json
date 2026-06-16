@@ -149,6 +149,79 @@
       },
       "additionalProperties": true
     },
+    "collisionPoint": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "collisionArea": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["id", "type", "shape", "x", "y", "width", "height"],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonEmptyString" },
+            "type": { "enum": ["contain", "block"] },
+            "shape": { "const": "rect" },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["id", "type", "shape", "points"],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonEmptyString" },
+            "type": { "enum": ["contain", "block"] },
+            "shape": { "const": "polygon" },
+            "points": {
+              "type": "array",
+              "minItems": 3,
+              "items": { "$ref": "#/$defs/collisionPoint" }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "collisionSource": {
+      "type": "object",
+      "required": ["type", "src"],
+      "properties": {
+        "type": { "const": "svg" },
+        "src": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": true
+    },
+    "collision": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "const": "discrete" },
+        "areas": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/collisionArea" }
+        },
+        "source": { "$ref": "#/$defs/collisionSource" }
+      },
+      "additionalProperties": true
+    },
+    "objectCollision": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "shape": { "const": "box" },
+        "padding": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
     "completion": {
       "type": "object",
       "properties": {
@@ -448,7 +521,8 @@
         "group_id": { "$ref": "#/$defs/nonEmptyString" },
         "initial_state_label": { "$ref": "#/$defs/nonEmptyString" },
         "target": { "$ref": "#/$defs/objectTarget" },
-        "scoring": { "$ref": "#/$defs/objectScoring" }
+        "scoring": { "$ref": "#/$defs/objectScoring" },
+        "collision": { "$ref": "#/$defs/objectCollision" }
       },
       "additionalProperties": true
     },
@@ -519,6 +593,7 @@
         "messages": { "$ref": "#/$defs/messages" },
         "requirements": { "$ref": "#/$defs/requirements" },
         "scoring": { "$ref": "#/$defs/scoring" },
+        "collision": { "$ref": "#/$defs/collision" },
         "metadata": { "$ref": "#/$defs/metadata" }
       },
       "additionalProperties": true

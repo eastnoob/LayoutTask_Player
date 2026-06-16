@@ -10,6 +10,11 @@
       "type": "svg",
       "src": "assets/backgrounds/room01_x4000.svg",
       "intrinsic_unit": "cad_unit"
+    },
+    "collision_demo_bg": {
+      "type": "svg",
+      "src": "assets/backgrounds/collision_demo_bg.svg",
+      "intrinsic_unit": "cad_unit"
     }
   }
 }

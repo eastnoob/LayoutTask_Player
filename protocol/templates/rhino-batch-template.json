@@ -30,6 +30,31 @@
         "width": 1000,
         "height": 1000
       },
+      "collision": {
+        "enabled": true,
+        "areas": [
+          {
+            "id": "room_walkable",
+            "type": "contain",
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "width": 1000,
+            "height": 1000
+          },
+          {
+            "id": "column_block",
+            "type": "block",
+            "shape": "polygon",
+            "points": [
+              { "x": 460, "y": 460 },
+              { "x": 540, "y": 460 },
+              { "x": 540, "y": 540 },
+              { "x": 460, "y": 540 }
+            ]
+          }
+        ]
+      },
       "objects": [
         {
           "id": "object_variable_001",
@@ -40,6 +65,7 @@
           "y": 150,
           "rotation": 0,
           "behavior": { "template": "drag25_rotate45_limited" },
+          "collision": { "enabled": true, "shape": "box", "padding": 0 },
           "target": {
             "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 },
             "absolute": { "x": 100, "y": 150, "rotation_deg": 0 }
