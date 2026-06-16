@@ -1,0 +1,55 @@
+{
+  "schema": "layouttask.batch.v1",
+  "experiment_id": "REPLACE_WITH_EXPERIMENT_ID",
+  "title": "REPLACE_WITH_BATCH_TITLE",
+  "shared": {
+    "asset_library": "assets/objects.json",
+    "background_library": "assets/backgrounds.json",
+    "behavior_library": "behaviors/behaviors.json",
+    "world": {
+      "viewBox": { "x": 0, "y": 0, "width": 1000, "height": 1000 },
+      "origin": { "x": 0, "y": 0 },
+      "grid": { "size": 25, "visible": true, "snap": true, "origin": { "x": 0, "y": 0 } }
+    },
+    "stage": { "fit": "contain", "max_height_ratio": 0.72, "padding": 16 },
+    "flow": { "mode": "direct_reconstruction" }
+  },
+  "trials": [
+    {
+      "qid": "Q001",
+      "task_id": "room_generated_001",
+      "display_image": {
+        "enabled": true,
+        "src": "assets/display-images/room_generated_001.jpg",
+        "alt": "Reference image"
+      },
+      "background": {
+        "asset": "room_generated_001_bg",
+        "x": 0,
+        "y": 0,
+        "width": 1000,
+        "height": 1000
+      },
+      "objects": [
+        {
+          "id": "object_variable_001",
+          "role": "variable",
+          "group_id": "REPLACE_WITH_GROUP",
+          "asset": "chair_a",
+          "x": 100,
+          "y": 150,
+          "rotation": 0,
+          "behavior": { "template": "drag25_rotate45_limited" },
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 },
+            "absolute": { "x": 100, "y": 150, "rotation_deg": 0 }
+          }
+        }
+      ],
+      "metadata": {
+        "source": "rhino",
+        "condition": "REPLACE_WITH_CONDITION"
+      }
+    }
+  ]
+}

@@ -208,6 +208,13 @@ export const resultFlowSchema = z.object({
   reconstruction_started_at: z.number().finite().optional(),
 });
 
+export const resultRestoreSchema = z.object({
+  recovered: z.boolean(),
+  restore_count: z.number().int().nonnegative().optional(),
+  draft_saved_at: z.number().finite().optional(),
+  restored_at: z.number().finite().optional(),
+});
+
 export const layoutTaskEventSchema = z.object({
   i: z.number().int().nonnegative(),
   t: z.number().int().nonnegative(),
@@ -264,6 +271,7 @@ export const resultSchema = z.object({
   page_timing: pageTimingSchema.optional(),
   display: displayInfoSchema.optional(),
   flow: resultFlowSchema.optional(),
+  restore: resultRestoreSchema.optional(),
   task_config_hash: z.string().optional(),
   // Optional for early pilot compatibility; new exports should include it.
   context: resultContextSchema.optional(),

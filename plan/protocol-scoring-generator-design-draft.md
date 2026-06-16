@@ -1,8 +1,9 @@
 # Protocol, Scoring, and Batch Generator Design Draft
 
 Date: 2026-06-16
-Status: Draft for review
-Branch: `feature/flow-preview-reconstruct`
+Status: Implemented on branch `feature/protocol-scoring-generator`
+Implementation plan: `docs/superpowers/plans/2026-06-16-protocol-scoring-generator.md`
+Branch: `feature/protocol-scoring-generator`
 
 ## 1. Purpose
 
@@ -130,7 +131,8 @@ src/protocol/
 
 Responsibilities:
 
-- JSON Schema is the language-neutral validation contract.
+- JSON Schema is the language-neutral structural preflight contract.
+- `validate-batch` is the canonical semantic validator; it applies defaults and catches cross-record rules such as duplicate task/object IDs.
 - TypeScript types are the internal development contract.
 - Constants define controlled vocabularies used by schemas, compiler, and docs.
 - Examples prove the protocol with small self-authored fixtures.
@@ -316,7 +318,8 @@ The compiler pipeline is intentionally small:
 ```text
 batch.json
   -> parse JSON
-  -> validate with layouttask.batch.schema.json
+  -> optionally preflight with layouttask.batch.schema.json
+  -> validate with validate-batch / Zod schemas
   -> normalize defaults and shared values
   -> resolve asset/background/behavior references
   -> compile each trial to runtime TaskConfig
@@ -552,6 +555,16 @@ Target/scoring data can be emitted separately:
   }
 }
 ```
+
+## Static Deployment Interruption Recovery
+
+Static deployment does not prevent local recovery. A follow-up player feature should use localStorage autosave keyed by experiment, task, qid, and session. Submit confirmation prevents accidental final submission; autosave/restore prevents losing progress after refresh, crash, or black screen.
+
+For `preview_then_reconstruct`, recommended recovery policy is:
+
+- if preview did not finish, restarting preview is allowed;
+- if reconstruction already started, restore reconstruction state and do not show the reference image again;
+- final result records restore metadata.
 
 ## 10. Open Questions
 

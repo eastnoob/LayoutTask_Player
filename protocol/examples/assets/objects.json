@@ -1,0 +1,19 @@
+{
+  "schema": "layouttask.assets.objects.v1",
+  "objects": {
+    "mock_chair": {
+      "type": "svg",
+      "src": "assets/objects/mock_chair.svg",
+      "default_width": 100,
+      "default_height": 120,
+      "anchor": "center"
+    },
+    "mock_table": {
+      "type": "svg",
+      "src": "assets/objects/mock_table.svg",
+      "default_width": 180,
+      "default_height": 110,
+      "anchor": "center"
+    }
+  }
+}

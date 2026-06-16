@@ -118,6 +118,13 @@ export const recordingSchema = z.object({
   record_blocked_events: z.boolean().optional(),
 });
 
+export const autosaveSchema = z.object({
+  enabled: z.boolean().default(false),
+  storage: z.literal("localStorage").default("localStorage"),
+  restore_prompt: z.boolean().default(true),
+  save_on: z.literal("state_change").default("state_change"),
+});
+
 export const outputSchema = z.object({
   // Transport/export policy. "plain-json" means no compression, not encryption.
   encoding: z.enum(["lz-uri", "lz-base64", "plain-json"]).default("lz-uri"),
@@ -251,6 +258,7 @@ export const taskSchema = z.object({
   objects: z.array(taskObjectSchema),
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),
+  autosave: autosaveSchema.optional(),
   output: outputSchema.optional(),
   data_save: dataSaveSchema.optional(),
   feedback: feedbackSchema.optional(),

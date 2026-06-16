@@ -1,0 +1,89 @@
+{
+  "schema": "layouttask.batch.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "title": "Scoring example batch",
+  "shared": {
+    "asset_library": "assets/objects.json",
+    "background_library": "assets/backgrounds.json",
+    "behavior_library": "behaviors/behaviors.json",
+    "world": {
+      "viewBox": { "x": -500, "y": -500, "width": 1000, "height": 1000 },
+      "origin": { "x": 0, "y": 0 },
+      "grid": { "size": 25, "visible": true, "snap": true, "origin": { "x": 0, "y": 0 } }
+    },
+    "stage": { "fit": "contain", "max_height_ratio": 0.72, "padding": 16 },
+    "flow": { "mode": "direct_reconstruction" }
+  },
+  "trials": [
+    {
+      "qid": "Q001",
+      "task_id": "room_generated_001",
+      "display_image": {
+        "enabled": true,
+        "src": "assets/display-images/mock_stimulus.svg",
+        "alt": "Room memory stimulus"
+      },
+      "background": {
+        "asset": "mock_room_bg",
+        "x": -400,
+        "y": -300,
+        "width": 800,
+        "height": 600
+      },
+      "objects": [
+        {
+          "id": "table_fixed_01",
+          "role": "fixed",
+          "asset": "mock_table",
+          "x": -100,
+          "y": 50,
+          "rotation": 0,
+          "behavior": {
+            "config": {
+              "movement": { "mode": "none" },
+              "free_drag": { "enabled": false }
+            }
+          }
+        },
+        {
+          "id": "chair_variable_01",
+          "role": "variable",
+          "group_id": "chairs",
+          "asset": "mock_chair",
+          "x": 100,
+          "y": 150,
+          "rotation": 0,
+          "behavior": {
+            "template": "drag25_rotate45_limited"
+          },
+          "target": {
+            "relative": {
+              "dx_steps": 1,
+              "dy_steps": -2,
+              "rotation_steps": 1
+            },
+            "absolute": {
+              "x": 125,
+              "y": 100,
+              "rotation_deg": 45
+            }
+          },
+          "scoring": {
+            "enabled": true,
+            "tolerance": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0,
+              "distance_world": 12.5,
+              "rotation_deg": 5
+            }
+          }
+        }
+      ],
+      "metadata": {
+        "source": "mock-json",
+        "condition": "A"
+      }
+    }
+  ]
+}

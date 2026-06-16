@@ -95,6 +95,13 @@ export interface RecordingConfig {
   record_blocked_events?: boolean;
 }
 
+export interface AutosaveConfig {
+  enabled?: boolean;
+  storage?: "localStorage";
+  restore_prompt?: boolean;
+  save_on?: "state_change";
+}
+
 export type EncodingMethod = "lz-uri" | "lz-base64" | "plain-json";
 export type OutputDetail = "final-only" | "full";
 export type FinalStateMode = "relative" | "absolute";
@@ -256,6 +263,7 @@ export interface TaskConfig {
   objects: TaskObjectConfig[];
   completion?: CompletionConfig;
   recording?: RecordingConfig;
+  autosave?: AutosaveConfig;
   output?: OutputConfig;
   data_save?: DataSaveConfig;
   feedback?: FeedbackConfig;

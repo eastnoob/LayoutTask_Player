@@ -1,0 +1,527 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://layout-task.local/schemas/layouttask.batch.schema.json",
+  "title": "Layout Task Batch",
+  "type": "object",
+  "required": ["schema", "experiment_id", "shared", "trials"],
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "shared": { "required": ["world"] }
+          }
+        },
+        {
+          "properties": {
+            "trials": {
+              "items": { "required": ["world"] }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "shared": {
+            "type": "object",
+            "required": ["flow"],
+            "properties": {
+              "flow": {
+                "type": "object",
+                "required": ["mode"],
+                "properties": {
+                  "mode": { "const": "preview_then_reconstruct" }
+                }
+              }
+            }
+          }
+        },
+        "required": ["shared"]
+      },
+      "then": {
+        "properties": {
+          "trials": {
+            "items": {
+              "anyOf": [
+                {
+                  "required": ["flow"],
+                  "properties": {
+                    "flow": {
+                      "type": "object",
+                      "required": ["mode"],
+                      "properties": {
+                        "mode": { "const": "direct_reconstruction" }
+                      }
+                    }
+                  }
+                },
+                {
+                  "required": ["display_image"],
+                  "properties": {
+                    "display_image": { "$ref": "#/$defs/requiredPreviewDisplayImage" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema": { "const": "layouttask.batch.v1" },
+    "experiment_id": { "$ref": "#/$defs/nonEmptyString" },
+    "title": { "type": "string" },
+    "config_version": { "type": "string" },
+    "output_dir": { "$ref": "#/$defs/nonEmptyString" },
+    "shared": { "$ref": "#/$defs/shared" },
+    "trials": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trial" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metadataValue": {
+      "type": ["string", "number", "boolean", "null"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/metadataValue" }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "viewBox": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "grid": {
+      "type": "object",
+      "required": ["size"],
+      "properties": {
+        "size": { "type": "number", "exclusiveMinimum": 0 },
+        "visible": { "type": "boolean" },
+        "snap": { "type": "boolean" },
+        "origin": { "$ref": "#/$defs/point" }
+      },
+      "additionalProperties": true
+    },
+    "world": {
+      "type": "object",
+      "required": ["viewBox", "origin", "grid"],
+      "properties": {
+        "viewBox": { "$ref": "#/$defs/viewBox" },
+        "origin": { "$ref": "#/$defs/point" },
+        "grid": { "$ref": "#/$defs/grid" }
+      },
+      "additionalProperties": true
+    },
+    "stage": {
+      "type": "object",
+      "properties": {
+        "fit": { "const": "contain" },
+        "max_height_ratio": { "type": "number", "exclusiveMinimum": 0 },
+        "padding": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "completion": {
+      "type": "object",
+      "properties": {
+        "double_confirm": { "type": "boolean" },
+        "lock_after_confirm": { "type": "boolean" },
+        "allow_copy_again": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "recording": {
+      "type": "object",
+      "properties": {
+        "record_events": { "type": "boolean" },
+        "record_final_state": { "type": "boolean" },
+        "record_display_info": { "type": "boolean" },
+        "record_display_changes": { "type": "boolean" },
+        "record_page_timing": { "type": "boolean" },
+        "record_user_agent": { "type": "boolean" },
+        "record_blocked_events": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "encoding": { "enum": ["lz-uri", "lz-base64", "plain-json"] },
+        "detail": { "enum": ["final-only", "full"] },
+        "final_state": { "enum": ["relative", "absolute"] }
+      },
+      "additionalProperties": true
+    },
+    "dataSave": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": { "const": "copy" }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["mode", "experiment_id"],
+          "properties": {
+            "mode": { "const": "datapipe" },
+            "experiment_id": { "$ref": "#/$defs/nonEmptyString" },
+            "endpoint": { "type": "string", "format": "uri" },
+            "filename_prefix": { "$ref": "#/$defs/nonEmptyString" },
+            "payload_format": { "enum": ["json-envelope", "encoded-only", "csv-row"] },
+            "save_encoded": { "type": "boolean" },
+            "save_result": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "displayImage": {
+      "type": "object",
+      "required": ["src"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "src": { "$ref": "#/$defs/nonEmptyString" },
+        "alt": { "type": "string" },
+        "record_metrics": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "requiredPreviewDisplayImage": {
+      "allOf": [
+        { "$ref": "#/$defs/displayImage" },
+        {
+          "not": {
+            "required": ["enabled"],
+            "properties": {
+              "enabled": { "const": false }
+            }
+          }
+        }
+      ]
+    },
+    "flow": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": { "const": "direct_reconstruction" }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": { "const": "preview_then_reconstruct" },
+            "config": {
+              "type": "object",
+              "properties": {
+                "preview_duration_sec": { "type": "number", "exclusiveMinimum": 0 },
+                "require_preview_ack": { "type": "boolean" },
+                "intro_message": { "$ref": "#/$defs/nonEmptyString" },
+                "intro_confirm_label": { "$ref": "#/$defs/nonEmptyString" },
+                "stage_during_preview": { "enum": ["hidden", "locked"] },
+                "show_countdown": { "type": "boolean" },
+                "message_before": { "$ref": "#/$defs/nonEmptyString" },
+                "message_after": { "$ref": "#/$defs/nonEmptyString" }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "messages": {
+      "type": "object",
+      "properties": {
+        "confirm_lock_1": { "$ref": "#/$defs/nonEmptyString" },
+        "confirm_lock_2": { "$ref": "#/$defs/nonEmptyString" },
+        "confirm_no_edit": { "$ref": "#/$defs/nonEmptyString" },
+        "status_ready": { "$ref": "#/$defs/nonEmptyString" },
+        "status_copy_again_ok": { "$ref": "#/$defs/nonEmptyString" },
+        "status_copy_again_fail": { "$ref": "#/$defs/nonEmptyString" },
+        "instruction_edit_mode": { "$ref": "#/$defs/nonEmptyString" },
+        "reconstruction_hint_title": { "$ref": "#/$defs/nonEmptyString" },
+        "reconstruction_hint_drag": { "$ref": "#/$defs/nonEmptyString" },
+        "reconstruction_hint_button": { "$ref": "#/$defs/nonEmptyString" },
+        "reconstruction_hint_rotation": { "$ref": "#/$defs/nonEmptyString" },
+        "reconstruction_hint_select": { "$ref": "#/$defs/nonEmptyString" }
+      },
+      "additionalProperties": true
+    },
+    "requirements": {
+      "type": "object",
+      "properties": {
+        "min_viewport": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 },
+            "mode": { "const": "warn" },
+            "message": { "$ref": "#/$defs/nonEmptyString" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "background": {
+      "type": "object",
+      "required": ["asset", "x", "y", "width", "height"],
+      "properties": {
+        "asset": { "$ref": "#/$defs/nonEmptyString" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "movementBehavior": {
+      "type": "object",
+      "properties": {
+        "mode": { "enum": ["none", "button", "drag"] },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "max_left": { "type": "integer", "minimum": 0 },
+        "max_right": { "type": "integer", "minimum": 0 },
+        "max_up": { "type": "integer", "minimum": 0 },
+        "max_down": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "rotationBehavior": {
+      "type": "object",
+      "properties": {
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "max_cw": { "type": "integer", "minimum": 0 },
+        "max_ccw": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "freeDragBehavior": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "snap": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "partialBehavior": {
+      "type": "object",
+      "properties": {
+        "movement": { "$ref": "#/$defs/movementBehavior" },
+        "rotation": { "$ref": "#/$defs/rotationBehavior" },
+        "free_drag": { "$ref": "#/$defs/freeDragBehavior" }
+      },
+      "additionalProperties": true
+    },
+    "objectBehavior": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["template"] },
+        { "required": ["config"] }
+      ],
+      "properties": {
+        "template": { "$ref": "#/$defs/nonEmptyString" },
+        "config": { "$ref": "#/$defs/partialBehavior" }
+      },
+      "additionalProperties": true
+    },
+    "relativeTarget": {
+      "type": "object",
+      "required": ["dx_steps", "dy_steps", "rotation_steps"],
+      "properties": {
+        "dx_steps": { "type": "integer" },
+        "dy_steps": { "type": "integer" },
+        "rotation_steps": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "absoluteTarget": {
+      "type": "object",
+      "required": ["x", "y", "rotation_deg"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "rotation_deg": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "objectTarget": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["relative"] },
+        { "required": ["absolute"] }
+      ],
+      "properties": {
+        "relative": { "$ref": "#/$defs/relativeTarget" },
+        "absolute": { "$ref": "#/$defs/absoluteTarget" }
+      },
+      "additionalProperties": true
+    },
+    "scoringTolerance": {
+      "type": "object",
+      "properties": {
+        "dx_steps": { "type": "integer", "minimum": 0 },
+        "dy_steps": { "type": "integer", "minimum": 0 },
+        "rotation_steps": { "type": "integer", "minimum": 0 },
+        "distance_world": { "type": "number", "minimum": 0 },
+        "x_world": { "type": "number", "minimum": 0 },
+        "y_world": { "type": "number", "minimum": 0 },
+        "rotation_deg": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "objectScoring": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "target": { "$ref": "#/$defs/objectTarget" },
+        "tolerance": { "$ref": "#/$defs/scoringTolerance" },
+        "labels": { "$ref": "#/$defs/labels" }
+      },
+      "additionalProperties": true
+    },
+    "scoring": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "include_objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "default_tolerance": { "$ref": "#/$defs/scoringTolerance" },
+        "objects": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/objectScoring" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "object": {
+      "type": "object",
+      "required": ["id", "asset", "x", "y", "behavior"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "asset": { "$ref": "#/$defs/nonEmptyString" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "rotation": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "anchor": { "enum": ["center", "top_left"] },
+        "behavior": { "$ref": "#/$defs/objectBehavior" },
+        "role": { "enum": ["fixed", "variable"] },
+        "group_id": { "$ref": "#/$defs/nonEmptyString" },
+        "initial_state_label": { "$ref": "#/$defs/nonEmptyString" },
+        "target": { "$ref": "#/$defs/objectTarget" },
+        "scoring": { "$ref": "#/$defs/objectScoring" }
+      },
+      "additionalProperties": true
+    },
+    "shared": {
+      "type": "object",
+      "required": ["asset_library", "background_library", "behavior_library"],
+      "properties": {
+        "asset_library": { "$ref": "#/$defs/nonEmptyString" },
+        "background_library": { "$ref": "#/$defs/nonEmptyString" },
+        "behavior_library": { "$ref": "#/$defs/nonEmptyString" },
+        "world": { "$ref": "#/$defs/world" },
+        "stage": { "$ref": "#/$defs/stage" },
+        "completion": { "$ref": "#/$defs/completion" },
+        "recording": { "$ref": "#/$defs/recording" },
+        "output": { "$ref": "#/$defs/output" },
+        "data_save": { "$ref": "#/$defs/dataSave" },
+        "flow": { "$ref": "#/$defs/flow" },
+        "messages": { "$ref": "#/$defs/messages" },
+        "requirements": { "$ref": "#/$defs/requirements" }
+      },
+      "additionalProperties": true
+    },
+    "trial": {
+      "type": "object",
+      "required": ["qid", "task_id", "background", "objects"],
+      "allOf": [
+        {
+          "if": {
+            "required": ["flow"],
+            "properties": {
+              "flow": {
+                "type": "object",
+                "required": ["mode"],
+                "properties": {
+                  "mode": { "const": "preview_then_reconstruct" }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": ["display_image"],
+            "properties": {
+              "display_image": { "$ref": "#/$defs/requiredPreviewDisplayImage" }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "qid": { "$ref": "#/$defs/nonEmptyString" },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "title": { "type": "string" },
+        "display_image": { "$ref": "#/$defs/displayImage" },
+        "world": { "$ref": "#/$defs/world" },
+        "background": { "$ref": "#/$defs/background" },
+        "objects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/object" }
+        },
+        "completion": { "$ref": "#/$defs/completion" },
+        "recording": { "$ref": "#/$defs/recording" },
+        "output": { "$ref": "#/$defs/output" },
+        "data_save": { "$ref": "#/$defs/dataSave" },
+        "flow": { "$ref": "#/$defs/flow" },
+        "stage": { "$ref": "#/$defs/stage" },
+        "messages": { "$ref": "#/$defs/messages" },
+        "requirements": { "$ref": "#/$defs/requirements" },
+        "scoring": { "$ref": "#/$defs/scoring" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

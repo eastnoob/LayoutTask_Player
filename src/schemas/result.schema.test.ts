@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageTimingSchema } from "./result.schema";
+import { pageTimingSchema, resultSchema } from "./result.schema";
 
 describe("pageTimingSchema", () => {
   it("accepts fractional elapsed milliseconds from performance.timeOrigin", () => {
@@ -13,5 +13,51 @@ describe("pageTimingSchema", () => {
     });
 
     expect(parsed.total_elapsed_ms).toBe(279327.8000488281);
+  });
+});
+
+describe("resultSchema restore", () => {
+  it("accepts optional restore metadata", () => {
+    const parsed = resultSchema.parse({
+      schema: "layouttask.result.v1",
+      exp: "EXP123",
+      qid: "Q1",
+      task_id: "room01",
+      session: "S456",
+      start_time: 1710000000000,
+      end_time: 1710000005000,
+      duration_ms: 5000,
+      restore: {
+        recovered: true,
+        restore_count: 2,
+        draft_saved_at: 1710000002500.5,
+        restored_at: 1710000003000.25,
+      },
+      events: [],
+      final_state_mode: "absolute",
+      final_state: {
+        chair: {
+          x: 10,
+          y: 20,
+          r: 90,
+          counts: {
+            left: 0,
+            right: 1,
+            up: 0,
+            down: 0,
+            cw: 1,
+            ccw: 0,
+          },
+        },
+      },
+      locked: true,
+    });
+
+    expect(parsed.restore).toEqual({
+      recovered: true,
+      restore_count: 2,
+      draft_saved_at: 1710000002500.5,
+      restored_at: 1710000003000.25,
+    });
   });
 });
