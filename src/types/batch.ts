@@ -3,6 +3,7 @@ import type {
   DataSaveConfig,
   DisplayImageConfig,
   FlowConfig,
+  ManifestConfig,
   MessagesConfig,
   OutputConfig,
   RecordingConfig,
@@ -130,16 +131,7 @@ export interface ScoringReferenceObject {
 }
 
 export interface CompiledBatch {
-  manifest: {
-    schema: "layouttask.manifest.v1";
-    experiment_id: string;
-    title?: string;
-    config_version?: string;
-    asset_library: string;
-    background_library: string;
-    behavior_library: string;
-    tasks: Array<{ qid: string; task_id: string; file: string }>;
-  };
+  manifest: ManifestConfig;
   tasks: Array<{ file: string; config: TaskConfig }>;
   scoringReference: ScoringReferenceConfig;
   report: BatchGenerationReport;
