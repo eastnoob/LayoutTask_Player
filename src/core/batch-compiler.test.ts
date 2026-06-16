@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { compileBatch } from "./batch-compiler";
 import { manifestSchema, taskSchema } from "../schemas/config.schema";
 import { scoringReferenceSchema } from "../schemas/batch.schema";
@@ -67,6 +69,36 @@ const createBatch = (): BatchConfig => ({
       metadata: { condition: "A" },
     },
   ],
+});
+
+describe("protocol examples", () => {
+  it("uses asset src paths that exist from the player base root", () => {
+    const protocolRoot = path.resolve("protocol/examples");
+    const batch = JSON.parse(
+      readFileSync(path.join(protocolRoot, "scoring-example.json"), "utf8"),
+    ) as BatchConfig;
+    const objectLibrary = JSON.parse(
+      readFileSync(path.join(protocolRoot, batch.shared.asset_library), "utf8"),
+    ) as {
+      objects: Record<string, { src: string }>;
+    };
+    const backgroundLibrary = JSON.parse(
+      readFileSync(path.join(protocolRoot, batch.shared.background_library), "utf8"),
+    ) as {
+      backgrounds: Record<string, { src: string }>;
+    };
+
+    const referencedPaths = [
+      batch.trials[0].display_image?.src,
+      backgroundLibrary.backgrounds[batch.trials[0].background.asset].src,
+      ...batch.trials[0].objects.map((object) => objectLibrary.objects[object.asset].src),
+    ];
+
+    for (const relativePath of referencedPaths) {
+      expect(relativePath, "example should not contain empty asset paths").toBeTruthy();
+      expect(existsSync(path.join(protocolRoot, relativePath as string)), relativePath).toBe(true);
+    }
+  });
 });
 
 describe("compileBatch", () => {

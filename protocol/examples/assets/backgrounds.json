@@ -3,7 +3,7 @@
   "backgrounds": {
     "mock_room_bg": {
       "type": "svg",
-      "src": "backgrounds/mock_room.svg",
+      "src": "assets/backgrounds/mock_room.svg",
       "intrinsic_unit": "unknown"
     }
   }

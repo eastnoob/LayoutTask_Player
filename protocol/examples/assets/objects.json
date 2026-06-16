@@ -3,14 +3,14 @@
   "objects": {
     "mock_chair": {
       "type": "svg",
-      "src": "objects/mock_chair.svg",
+      "src": "assets/objects/mock_chair.svg",
       "default_width": 100,
       "default_height": 120,
       "anchor": "center"
     },
     "mock_table": {
       "type": "svg",
-      "src": "objects/mock_table.svg",
+      "src": "assets/objects/mock_table.svg",
       "default_width": 180,
       "default_height": 110,
       "anchor": "center"
