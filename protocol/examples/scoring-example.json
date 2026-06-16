@@ -20,11 +20,11 @@
       "task_id": "room_generated_001",
       "display_image": {
         "enabled": true,
-        "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+        "src": "assets/display-images/mock_stimulus.svg",
         "alt": "Room memory stimulus"
       },
       "background": {
-        "asset": "room01_bg",
+        "asset": "mock_room_bg",
         "x": -400,
         "y": -300,
         "width": 800,
@@ -34,7 +34,7 @@
         {
           "id": "table_fixed_01",
           "role": "fixed",
-          "asset": "table_a",
+          "asset": "mock_table",
           "x": -100,
           "y": 50,
           "rotation": 0,
@@ -49,7 +49,7 @@
           "id": "chair_variable_01",
           "role": "variable",
           "group_id": "chairs",
-          "asset": "chair_a",
+          "asset": "mock_chair",
           "x": 100,
           "y": 150,
           "rotation": 0,
