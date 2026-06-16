@@ -13,6 +13,7 @@ test = "npm run test"
 test-watch = "npm run test:watch"
 validate-batch = "npm exec tsx -- tools/generator/validate-batch.ts"
 compile-batch = "npm exec tsx -- tools/generator/compile-batch.ts"
+export-object-states = "npm exec tsx -- tools/scoring/export-object-states.ts"
 preview = "npm run preview"
 # Stable local browser task. 先 build 再 preview，避开部分 Windows 环境下 Vite dev/esbuild 的 spawn EPERM 问题。
 serve-local = { depends-on = ["build"], cmd = "npm run preview -- --host 127.0.0.1 --port 5173" }
