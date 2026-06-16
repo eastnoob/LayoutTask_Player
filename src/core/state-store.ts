@@ -22,6 +22,7 @@ export interface DragTransition {
   counts: OperationCounts;
   offsets: ObjectOffsets;
   limitedAction?: "move_left" | "move_right" | "move_up" | "move_down";
+  blockedReason?: "collision";
 }
 
 export interface CanApplyResult {
@@ -257,6 +258,7 @@ export class StateStore {
         counts: { ...state.counts },
         offsets: this.getObjectOffsets(objectId),
         limitedAction: constrained.limitedAction ?? getDragCollisionLimitedAction(before, candidate),
+        blockedReason: "collision",
       };
     }
 

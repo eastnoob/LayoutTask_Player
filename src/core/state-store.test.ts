@@ -191,6 +191,7 @@ describe("StateStore action limits", () => {
     expect(transition.before).toEqual({ x: 0, y: 0, r: 0 });
     expect(transition.after).toEqual({ x: 0, y: 0, r: 0 });
     expect(transition.limitedAction).toBe("move_right");
+    expect(transition.blockedReason).toBe("collision");
     expect(store.getObjectState("chair_01")).toMatchObject({ x: 0, y: 0 });
     expect(store.hasEdits()).toBe(false);
   });

@@ -182,6 +182,7 @@ export class InteractionController {
     this.options.renderer.updateObject(request.objectId);
     this.options.renderer.updateControlsDisabled(request.objectId);
     this.showDragLimitFeedback(request.objectId, transition);
+    this.recordBlockedDragMove(request, transition);
     this.options.renderer.setStatus(`${request.objectId}: dragged to ${transition.after.x}, ${transition.after.y}.`);
     return { ok: true };
   }
@@ -193,6 +194,7 @@ export class InteractionController {
     }
 
     const transition = this.applyDragFromPointer(session, request.pointer);
+    this.recordBlockedDragMove(request, transition);
     this.recordDragEnd(session, request, transition);
     this.dragSession = undefined;
     this.options.renderer.setDragging(request.objectId, false);
@@ -269,6 +271,24 @@ export class InteractionController {
       action: "drag_end",
       valid: true,
       before: session.startPose,
+      after: transition.after,
+      counts: transition.counts,
+      offsets: transition.offsets,
+      pointer: request.pointer,
+    });
+  }
+
+  private recordBlockedDragMove(request: DragRequest, transition: DragTransition): void {
+    if (!this.options.config.recording.record_blocked_events || transition.blockedReason !== "collision") {
+      return;
+    }
+
+    this.options.recorder.recordEvent({
+      object: request.objectId,
+      action: "drag_move",
+      valid: false,
+      blocked_reason: transition.blockedReason,
+      before: transition.before,
       after: transition.after,
       counts: transition.counts,
       offsets: transition.offsets,

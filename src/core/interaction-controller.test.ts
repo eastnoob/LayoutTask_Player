@@ -320,6 +320,84 @@ describe("InteractionController", () => {
     expect(renderer.showLimitFeedback).toHaveBeenCalledWith("chair_01", "move_right");
   });
 
+  it("records blocked drag collision events when enabled", () => {
+    const base = createDragRuntimeConfig();
+    const config = createDragRuntimeConfig({
+      collision: {
+        ...base.collision,
+        enabled: true,
+      },
+      objects: [
+        base.objects[0],
+        {
+          ...base.objects[0],
+          id: "table_01",
+          x: 55,
+          y: 0,
+          width: 20,
+          height: 50,
+        },
+      ],
+      recording: {
+        ...base.recording,
+        record_blocked_events: true,
+      },
+    });
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    expect(
+      controller.requestDragStart({
+        objectId: "chair_01",
+        pointer: { clientX: 10, clientY: 20, pointerId: 7, worldX: 0, worldY: 0 },
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      controller.requestDragMove({
+        objectId: "chair_01",
+        pointer: { clientX: 30, clientY: 40, pointerId: 7, worldX: 25, worldY: 0 },
+      }),
+    ).toEqual({ ok: true });
+    expect(
+      controller.requestDragEnd({
+        objectId: "chair_01",
+        pointer: { clientX: 35, clientY: 45, pointerId: 7, worldX: 0, worldY: 0 },
+      }),
+    ).toEqual({ ok: true });
+
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 0, y: 0 });
+    expect(recorder.recordEvent).toHaveBeenCalledTimes(3);
+    expect(recorder.recordEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        object: "chair_01",
+        action: "drag_move",
+        valid: false,
+        blocked_reason: "collision",
+        before: { x: 0, y: 0, r: 0 },
+        after: { x: 0, y: 0, r: 0 },
+        pointer: { clientX: 30, clientY: 40, pointerId: 7, worldX: 25, worldY: 0 },
+      }),
+    );
+    expect(recorder.recordEvent).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        object: "chair_01",
+        action: "drag_end",
+        valid: true,
+        after: { x: 0, y: 0, r: 0 },
+      }),
+    );
+  });
+
   it("rejects drag for button-mode objects", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
