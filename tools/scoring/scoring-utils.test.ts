@@ -3,9 +3,13 @@ import type { ObjectTargetState, ScoringReferenceConfig } from "../../src/types/
 import type { OperationCounts } from "../../src/types/events";
 import type { LayoutTaskResult } from "../../src/types/result";
 import type { DecodedSourceRecord } from "../decoder/decoder-utils";
-import { toObjectStateRows } from "./scoring-utils";
+import { parseScoringReference, toObjectStateRows } from "./scoring-utils";
 
 describe("object-level scoring export rows", () => {
+  it("rejects invalid scoring references", () => {
+    expect(() => parseScoringReference({ schema: "layouttask.scoring-reference.v1" })).toThrow(/experiment_id|tasks/);
+  });
+
   it("exports absolute final states with offsets, targets, and zero errors", () => {
     const rows = toObjectStateRows([sourceRecord(createResult())], scoringReference());
 

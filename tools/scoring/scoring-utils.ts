@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { scoringReferenceSchema } from "../../src/schemas/batch.schema";
 import type { ScoringReferenceConfig, ScoringReferenceObject } from "../../src/types/batch";
 import type { FinalObjectState, FinalState, RelativeFinalObjectState, ResultContextObject } from "../../src/types/result";
 import {
@@ -56,7 +57,11 @@ export interface ObjectStateCsvRow {
 }
 
 export async function readScoringReference(path: string): Promise<ScoringReferenceConfig> {
-  return JSON.parse(await readFile(path, "utf8")) as ScoringReferenceConfig;
+  return parseScoringReference(JSON.parse(await readFile(path, "utf8")));
+}
+
+export function parseScoringReference(value: unknown): ScoringReferenceConfig {
+  return scoringReferenceSchema.parse(value);
 }
 
 export function toObjectStateRows(
