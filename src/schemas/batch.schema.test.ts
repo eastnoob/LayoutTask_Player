@@ -165,6 +165,32 @@ describe("batchSchema", () => {
     });
   });
 
+  it("preserves trial collision and object collision config", () => {
+    const batch = cloneMinimalBatch();
+    batch.trials[0].collision = {
+      enabled: true,
+      mode: "discrete",
+      source: { type: "svg", src: "assets/collision/room_generated_001_collision.svg" },
+      areas: [
+        {
+          id: "room_walkable",
+          type: "contain",
+          shape: "rect",
+          x: -400,
+          y: -300,
+          width: 800,
+          height: 600,
+        },
+      ],
+    };
+    batch.trials[0].objects[0].collision = { enabled: true, shape: "box", padding: 5 };
+
+    const parsed = batchSchema.parse(batch);
+
+    expect(parsed.trials[0].collision).toEqual(batch.trials[0].collision);
+    expect(parsed.trials[0].objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 5 });
+  });
+
   it("rejects empty scoring object keys", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].scoring = {

@@ -10,6 +10,7 @@ import type {
   RequirementsConfig,
   StageConfig,
   TaskBackgroundConfig,
+  TaskCollisionConfig,
   TaskConfig,
   TaskObjectConfig,
   WorldConfig,
@@ -61,6 +62,7 @@ export interface BatchTrialConfig {
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
   scoring?: ScoringConfig;
+  collision?: TaskCollisionConfig;
   metadata?: BatchMetadata;
 }
 

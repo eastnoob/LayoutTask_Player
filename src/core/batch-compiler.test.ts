@@ -149,6 +149,43 @@ describe("compileBatch", () => {
     expect(runtimeObject).not.toHaveProperty("initial_state_label");
   });
 
+  it("emits trial collision and object collision into runtime task config", () => {
+    const batch = createBatch();
+    batch.trials[0].collision = {
+      enabled: true,
+      mode: "discrete",
+      source: { type: "svg", src: "assets/collision/room_generated_001_collision.svg" },
+      areas: [
+        {
+          id: "room_walkable",
+          type: "contain",
+          shape: "rect",
+          x: -400,
+          y: -300,
+          width: 800,
+          height: 600,
+        },
+        {
+          id: "column",
+          type: "block",
+          shape: "polygon",
+          points: [
+            { x: -50, y: -50 },
+            { x: 50, y: -50 },
+            { x: 50, y: 50 },
+            { x: -50, y: 50 },
+          ],
+        },
+      ],
+    };
+    batch.trials[0].objects[0].collision = { enabled: true, shape: "box", padding: 5 };
+
+    const task = compileBatch(batch).tasks[0].config;
+
+    expect(task.collision).toEqual(batch.trials[0].collision);
+    expect(task.objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 5 });
+  });
+
   it("emits private scoring references with role, group_id, target, tolerance, and labels", () => {
     const compiled = compileBatch(createBatch());
 

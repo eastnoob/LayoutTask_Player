@@ -84,6 +84,7 @@ function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
   assignIfDefined(task, "stage", mergeConfig(batch.shared.stage, trial.stage));
   assignIfDefined(task, "messages", mergeConfig(batch.shared.messages, trial.messages));
   assignIfDefined(task, "requirements", mergeConfig(batch.shared.requirements, trial.requirements));
+  assignIfDefined(task, "collision", trial.collision);
 
   return task;
 }
@@ -101,6 +102,7 @@ function toRuntimeObject(object: BatchObjectConfig): TaskObjectConfig {
   assignIfDefined(runtimeObject, "width", object.width);
   assignIfDefined(runtimeObject, "height", object.height);
   assignIfDefined(runtimeObject, "anchor", object.anchor);
+  assignIfDefined(runtimeObject, "collision", object.collision);
 
   return runtimeObject;
 }

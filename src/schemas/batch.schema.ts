@@ -9,6 +9,7 @@ import {
   recordingSchema,
   requirementsSchema,
   stageSchema,
+  taskCollisionSchema,
   taskObjectSchema,
   worldSchema,
 } from "./config.schema";
@@ -111,6 +112,7 @@ export const batchTrialSchema = z.object({
   messages: messagesSchema.optional(),
   requirements: requirementsSchema.optional(),
   scoring: scoringSchema.optional(),
+  collision: taskCollisionSchema.optional(),
   metadata: metadataSchema.optional(),
 });
 
