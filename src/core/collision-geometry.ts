@@ -10,6 +10,10 @@ export interface CollisionPoint {
 
 export type CollisionPolygon = CollisionPoint[];
 
+/**
+ * Collision polygon helpers expect convex polygons. Concave areas should be decomposed
+ * into convex polygons before runtime collision evaluation.
+ */
 export type CollisionResult =
   | { ok: true }
   | { ok: false; reason: "outside_contain"; areaId: string }
