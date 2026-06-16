@@ -99,12 +99,36 @@ Main config files:
 
 ### Protocol Kit and Batch Generation
 
-Large studies should use the protocol kit in `protocol/` rather than hand-authoring every task file. The canonical source format is standard JSON. A future Rhino exporter should produce `layouttask.batch.v1` JSON following `protocol/rhino.md` and the templates in `protocol/templates/`.
+Large studies should use the protocol kit in `protocol/` rather than hand-authoring every task file. The canonical source format is standard JSON, not JSON5 or executable code. A future Rhino exporter should produce `layouttask.batch.v1` JSON following `protocol/rhino.md` and the templates in `protocol/templates/`.
 
 ```bash
 pixi run validate-batch --input protocol/examples/minimal-batch.json
 pixi run compile-batch --input protocol/examples/minimal-batch.json --out public/layout-task-generated
 ```
+
+Rhino v1 support is dictionaries, conventions, templates, and export checklists only. This repository does not ship or require Rhino scripts, Grasshopper components, Rhino Python, Rhino C#, or Rhino plugins for the protocol workflow. The protocol examples and assets under `protocol/examples/` are self-authored fixtures for validation, compilation, visual checks, and scoring tests; they are not exported from Rhino.
+
+#### Batch Generator Commands
+
+Validate canonical batch JSON:
+
+```bash
+pixi run npm exec tsx -- tools/generator/validate-batch.ts --input protocol/examples/minimal-batch.json
+```
+
+Compile batch JSON into static player files:
+
+```bash
+pixi run npm exec tsx -- tools/generator/compile-batch.ts --input protocol/examples/minimal-batch.json --out public/layout-task-generated
+```
+
+Export object-level rows with explicit relative and absolute columns:
+
+```bash
+pixi run npm exec tsx -- tools/scoring/export-object-states.ts --input results.txt --scoring public/layout-task-generated/scoring/scoring-reference.json --output object-states.csv
+```
+
+The object-state CSV uses explicit observed, target, and error columns for both scoring models, including `relative_dx_steps`, `relative_dy_steps`, `relative_rotation_steps`, `absolute_x`, `absolute_y`, and `absolute_rotation_deg`.
 
 JSON is the safest default and remains recommended for shared data-only config. For project-maintainer-authored tasks, a JS module config is also supported:
 

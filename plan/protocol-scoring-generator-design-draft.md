@@ -1,8 +1,9 @@
 # Protocol, Scoring, and Batch Generator Design Draft
 
 Date: 2026-06-16
-Status: Draft for review
-Branch: `feature/flow-preview-reconstruct`
+Status: Implemented on branch `feature/protocol-scoring-generator`
+Implementation plan: `docs/superpowers/plans/2026-06-16-protocol-scoring-generator.md`
+Branch: `feature/protocol-scoring-generator`
 
 ## 1. Purpose
 
