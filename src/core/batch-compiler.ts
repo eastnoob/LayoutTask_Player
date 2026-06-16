@@ -75,15 +75,15 @@ function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
   };
 
   assignIfDefined(task, "title", trial.title);
-  assignIfDefined(task, "completion", trial.completion ?? batch.shared.completion);
-  assignIfDefined(task, "recording", trial.recording ?? batch.shared.recording);
-  assignIfDefined(task, "output", trial.output ?? batch.shared.output);
+  assignIfDefined(task, "completion", mergeConfig(batch.shared.completion, trial.completion));
+  assignIfDefined(task, "recording", mergeConfig(batch.shared.recording, trial.recording));
+  assignIfDefined(task, "output", mergeConfig(batch.shared.output, trial.output));
   assignIfDefined(task, "data_save", trial.data_save ?? batch.shared.data_save);
   assignIfDefined(task, "display_image", trial.display_image);
   assignIfDefined(task, "flow", trial.flow ?? batch.shared.flow);
-  assignIfDefined(task, "stage", trial.stage ?? batch.shared.stage);
-  assignIfDefined(task, "messages", trial.messages ?? batch.shared.messages);
-  assignIfDefined(task, "requirements", trial.requirements ?? batch.shared.requirements);
+  assignIfDefined(task, "stage", mergeConfig(batch.shared.stage, trial.stage));
+  assignIfDefined(task, "messages", mergeConfig(batch.shared.messages, trial.messages));
+  assignIfDefined(task, "requirements", mergeConfig(batch.shared.requirements, trial.requirements));
 
   return task;
 }
@@ -107,18 +107,27 @@ function toRuntimeObject(object: BatchObjectConfig): TaskObjectConfig {
 
 function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringReferenceObject> {
   const objects: Record<string, ScoringReferenceObject> = {};
+  const includedObjectIds = new Set(trial.scoring?.include_objects ?? []);
 
   for (const object of trial.objects) {
-    const scoring = mergeObjectScoring(trial.scoring?.objects?.[object.id], object.scoring);
+    const trialObjectScoring = trial.scoring?.objects?.[object.id];
+    const scoring = mergeObjectScoring(trialObjectScoring, object.scoring);
     const target = object.target ?? scoring?.target;
-    const hasReference =
+    const hasAnnotation =
       object.role !== undefined ||
       object.group_id !== undefined ||
       target !== undefined ||
       scoring?.tolerance !== undefined ||
       scoring?.labels !== undefined;
 
-    if (!hasReference) {
+    if (
+      !shouldIncludeScoringObject({
+        hasAnnotation,
+        includedByTrial: includedObjectIds.has(object.id),
+        objectEnabled: object.scoring?.enabled ?? trialObjectScoring?.enabled,
+        trialEnabled: trial.scoring?.enabled,
+      })
+    ) {
       continue;
     }
 
@@ -133,6 +142,27 @@ function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringR
   }
 
   return objects;
+}
+
+function shouldIncludeScoringObject(input: {
+  hasAnnotation: boolean;
+  includedByTrial: boolean;
+  objectEnabled?: boolean;
+  trialEnabled?: boolean;
+}): boolean {
+  if (input.objectEnabled === false) {
+    return false;
+  }
+
+  if (input.objectEnabled === true || input.includedByTrial) {
+    return true;
+  }
+
+  if (input.trialEnabled === false) {
+    return false;
+  }
+
+  return input.hasAnnotation;
 }
 
 function mergeObjectScoring(
@@ -166,6 +196,10 @@ function assignIfDefined<T extends object, K extends keyof T>(target: T, key: K,
   if (value !== undefined) {
     target[key] = value;
   }
+}
+
+function mergeConfig<T extends object>(sharedValue: T | undefined, trialValue: T | undefined): T | undefined {
+  return sharedValue && trialValue ? { ...sharedValue, ...trialValue } : (trialValue ?? sharedValue);
 }
 
 function requireSharedWorld(world: WorldConfig | undefined): WorldConfig {

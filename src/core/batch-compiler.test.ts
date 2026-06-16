@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileBatch } from "./batch-compiler";
+import { manifestSchema, taskSchema } from "../schemas/config.schema";
+import { scoringReferenceSchema } from "../schemas/batch.schema";
 import type { BatchConfig } from "../types/batch";
 
 const sharedWorld = {
@@ -175,6 +177,36 @@ describe("compileBatch", () => {
     expect(task.display_image).toEqual({ src: "assets/display-images/room01.jpeg" });
   });
 
+  it("shallow merges shared partial configs with trial overrides", () => {
+    const batch = createBatch();
+    batch.shared.recording = {
+      record_events: true,
+      record_final_state: true,
+      record_display_info: true,
+    };
+    batch.shared.stage = { fit: "contain", max_height_ratio: 0.72, padding: 16 };
+    batch.shared.messages = {
+      status_ready: "Ready.",
+      confirm_no_edit: "Nothing changed.",
+    };
+    batch.trials[0].recording = { record_events: false };
+    batch.trials[0].stage = { padding: 24 };
+    batch.trials[0].messages = { status_ready: "Begin." };
+
+    const task = compileBatch(batch).tasks[0].config;
+
+    expect(task.recording).toEqual({
+      record_events: false,
+      record_final_state: true,
+      record_display_info: true,
+    });
+    expect(task.stage).toEqual({ fit: "contain", max_height_ratio: 0.72, padding: 24 });
+    expect(task.messages).toEqual({
+      status_ready: "Begin.",
+      confirm_no_edit: "Nothing changed.",
+    });
+  });
+
   it("applies trial scoring default tolerance when an object has a reference but no object tolerance", () => {
     const batch = createBatch();
     delete batch.trials[0].objects[0].scoring;
@@ -186,6 +218,52 @@ describe("compileBatch", () => {
       compileBatch(batch).scoringReference.tasks.room_generated_001.objects.chair_variable_01;
 
     expect(objectReference.tolerance).toEqual({ distance_world: 25, rotation_deg: 10 });
+  });
+
+  it("suppresses annotated objects when trial scoring is disabled", () => {
+    const batch = createBatch();
+    batch.trials[0].scoring = { enabled: false };
+    delete batch.trials[0].objects[0].scoring;
+
+    const objectReferences = compileBatch(batch).scoringReference.tasks.room_generated_001.objects;
+
+    expect(objectReferences).not.toHaveProperty("chair_variable_01");
+  });
+
+  it("includes an object with object scoring enabled even when trial scoring is disabled", () => {
+    const batch = createBatch();
+    batch.trials[0].scoring = { enabled: false };
+    batch.trials[0].objects[0].scoring = { enabled: true };
+
+    const objectReferences = compileBatch(batch).scoringReference.tasks.room_generated_001.objects;
+
+    expect(objectReferences.chair_variable_01).toMatchObject({
+      role: "variable",
+      group_id: "chairs",
+    });
+  });
+
+  it("excludes an object with object scoring disabled despite target and include_objects", () => {
+    const batch = createBatch();
+    batch.trials[0].scoring = { include_objects: ["chair_variable_01"] };
+    batch.trials[0].objects[0].scoring = { enabled: false };
+
+    const objectReferences = compileBatch(batch).scoringReference.tasks.room_generated_001.objects;
+
+    expect(objectReferences).not.toHaveProperty("chair_variable_01");
+  });
+
+  it("includes an otherwise unannotated object listed in include_objects", () => {
+    const batch = createBatch();
+    batch.trials[0].scoring = {
+      include_objects: ["rug_unannotated_01"],
+      default_tolerance: { distance_world: 25 },
+    };
+
+    const objectReference =
+      compileBatch(batch).scoringReference.tasks.room_generated_001.objects.rug_unannotated_01;
+
+    expect(objectReference).toEqual({ tolerance: { distance_world: 25 } });
   });
 
   it("includes manifest, tasks, scoring reference, and generation report in generated_files", () => {
@@ -209,5 +287,18 @@ describe("compileBatch", () => {
     const objectReferences = compileBatch(createBatch()).scoringReference.tasks.room_generated_001.objects;
 
     expect(objectReferences).not.toHaveProperty("rug_unannotated_01");
+  });
+
+  it("emits outputs that parse through runtime schemas", () => {
+    const compiled = compileBatch(createBatch());
+
+    expect(manifestSchema.parse(compiled.manifest)).toEqual(compiled.manifest);
+    for (const task of compiled.tasks) {
+      const parsedTask = taskSchema.parse(task.config);
+      expect(parsedTask.schema).toBe(task.config.schema);
+      expect(parsedTask.task_id).toBe(task.config.task_id);
+      expect(parsedTask.qid).toBe(task.config.qid);
+    }
+    expect(scoringReferenceSchema.parse(compiled.scoringReference)).toEqual(compiled.scoringReference);
   });
 });
