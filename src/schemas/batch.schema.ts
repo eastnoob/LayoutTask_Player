@@ -12,8 +12,9 @@ import {
   taskObjectSchema,
   worldSchema,
 } from "./config.schema";
+import { OBJECT_ROLES } from "../protocol/constants";
 
-const objectRoleSchema = z.enum(["fixed", "variable"]);
+const objectRoleSchema = z.enum(OBJECT_ROLES);
 
 const backgroundSchema = z.object({
   asset: z.string().min(1),
@@ -160,6 +161,18 @@ export const batchSchema = z
         });
       }
 
+      const resolvedFlow = trial.flow ?? value.shared.flow;
+      if (
+        resolvedFlow?.mode === "preview_then_reconstruct" &&
+        trial.display_image?.enabled !== true
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["trials", trialIndex, "display_image"],
+          message: "preview_then_reconstruct requires trial.display_image.enabled=true",
+        });
+      }
+
       const objectIds = new Set<string>();
       trial.objects.forEach((object, objectIndex) => {
         if (objectIds.has(object.id)) {
@@ -196,3 +209,4 @@ export const scoringReferenceSchema = z.object({
 });
 
 export type ParsedBatchConfig = z.infer<typeof batchSchema>;
+export type ParsedScoringReferenceConfig = z.infer<typeof scoringReferenceSchema>;
