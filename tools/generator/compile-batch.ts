@@ -12,6 +12,21 @@ interface CliArgs {
   out: string;
 }
 
+interface OutputFile {
+  target: string;
+  value: unknown;
+}
+
+function requireValue(args: string[], index: number, option: string): string {
+  const value = args[index + 1];
+
+  if (!value || value.startsWith("-")) {
+    throw new Error(`${option} requires a value`);
+  }
+
+  return value;
+}
+
 function parseArgs(args: string[]): CliArgs {
   const parsed: CliArgs = { out: defaultOutDir };
 
@@ -19,36 +34,53 @@ function parseArgs(args: string[]): CliArgs {
     const arg = args[index];
 
     if (arg === "--input") {
-      parsed.input = args[index + 1];
+      parsed.input = requireValue(args, index, "--input");
       index += 1;
       continue;
     }
 
     if (arg.startsWith("--input=")) {
-      parsed.input = arg.slice("--input=".length);
+      const value = arg.slice("--input=".length);
+      if (!value || value.startsWith("-")) {
+        throw new Error("--input requires a value");
+      }
+      parsed.input = value;
       continue;
     }
 
     if (arg === "--out") {
-      parsed.out = args[index + 1] ?? parsed.out;
+      parsed.out = requireValue(args, index, "--out");
       index += 1;
       continue;
     }
 
     if (arg.startsWith("--out=")) {
-      parsed.out = arg.slice("--out=".length);
+      const value = arg.slice("--out=".length);
+      if (!value || value.startsWith("-")) {
+        throw new Error("--out requires a value");
+      }
+      parsed.out = value;
       continue;
+    }
+
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
     }
 
     if (!arg.startsWith("-") && parsed.input === undefined) {
       parsed.input = arg;
+      continue;
+    }
+
+    if (!arg.startsWith("-")) {
+      throw new Error(`Unexpected argument: ${arg}`);
     }
   }
 
   return parsed;
 }
 
-async function writeJsonWithinOut(outDir: string, relativeFile: string, value: unknown): Promise<void> {
+function resolveOutputFile(outDir: string, relativeFile: string, value: unknown): OutputFile {
   const root = path.resolve(outDir);
   const target = path.resolve(root, relativeFile);
   const relativeToRoot = path.relative(root, target);
@@ -57,12 +89,26 @@ async function writeJsonWithinOut(outDir: string, relativeFile: string, value: u
     throw new Error(`Refusing to write outside output directory: ${relativeFile}`);
   }
 
-  await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  return { target, value };
+}
+
+async function writeJsonFile(file: OutputFile): Promise<void> {
+  await mkdir(path.dirname(file.target), { recursive: true });
+  await writeFile(file.target, `${JSON.stringify(file.value, null, 2)}\n`, "utf8");
 }
 
 async function main(): Promise<void> {
-  const { input, out } = parseArgs(process.argv.slice(2));
+  let input: string | undefined;
+  let out = defaultOutDir;
+
+  try {
+    ({ input, out } = parseArgs(process.argv.slice(2)));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error(usage);
+    process.exitCode = 1;
+    return;
+  }
 
   if (!input) {
     console.error(usage);
@@ -74,13 +120,16 @@ async function main(): Promise<void> {
     const raw = await readFile(input, "utf8");
     const batch = batchSchema.parse(JSON.parse(raw));
     const compiled = compileBatch(batch);
+    const outputFiles = [
+      resolveOutputFile(out, "manifest.json", compiled.manifest),
+      ...compiled.tasks.map((task) => resolveOutputFile(out, task.file, task.config)),
+      resolveOutputFile(out, "scoring/scoring-reference.json", compiled.scoringReference),
+      resolveOutputFile(out, "generation-report.json", compiled.report),
+    ];
 
-    await writeJsonWithinOut(out, "manifest.json", compiled.manifest);
-    for (const task of compiled.tasks) {
-      await writeJsonWithinOut(out, task.file, task.config);
+    for (const file of outputFiles) {
+      await writeJsonFile(file);
     }
-    await writeJsonWithinOut(out, "scoring/scoring-reference.json", compiled.scoringReference);
-    await writeJsonWithinOut(out, "generation-report.json", compiled.report);
 
     console.log(`Compiled ${compiled.tasks.length} task(s) to ${out}`);
   } catch (error) {

@@ -8,6 +8,16 @@ interface CliArgs {
   input?: string;
 }
 
+function requireValue(args: string[], index: number, option: string): string {
+  const value = args[index + 1];
+
+  if (!value || value.startsWith("-")) {
+    throw new Error(`${option} requires a value`);
+  }
+
+  return value;
+}
+
 function parseArgs(args: string[]): CliArgs {
   const parsed: CliArgs = {};
 
@@ -15,18 +25,31 @@ function parseArgs(args: string[]): CliArgs {
     const arg = args[index];
 
     if (arg === "--input") {
-      parsed.input = args[index + 1];
+      parsed.input = requireValue(args, index, "--input");
       index += 1;
       continue;
     }
 
     if (arg.startsWith("--input=")) {
-      parsed.input = arg.slice("--input=".length);
+      const value = arg.slice("--input=".length);
+      if (!value || value.startsWith("-")) {
+        throw new Error("--input requires a value");
+      }
+      parsed.input = value;
       continue;
+    }
+
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown option: ${arg}`);
     }
 
     if (!arg.startsWith("-") && parsed.input === undefined) {
       parsed.input = arg;
+      continue;
+    }
+
+    if (!arg.startsWith("-")) {
+      throw new Error(`Unexpected argument: ${arg}`);
     }
   }
 
@@ -34,7 +57,16 @@ function parseArgs(args: string[]): CliArgs {
 }
 
 async function main(): Promise<void> {
-  const { input } = parseArgs(process.argv.slice(2));
+  let input: string | undefined;
+
+  try {
+    ({ input } = parseArgs(process.argv.slice(2)));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error(usage);
+    process.exitCode = 1;
+    return;
+  }
 
   if (!input) {
     console.error(usage);
