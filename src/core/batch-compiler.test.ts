@@ -179,32 +179,70 @@ describe("compileBatch", () => {
 
   it("shallow merges shared partial configs with trial overrides", () => {
     const batch = createBatch();
+    batch.shared.completion = {
+      double_confirm: true,
+      lock_after_confirm: true,
+      allow_copy_again: true,
+    };
     batch.shared.recording = {
       record_events: true,
       record_final_state: true,
       record_display_info: true,
+    };
+    batch.shared.output = {
+      encoding: "plain-json",
+      detail: "full",
+      final_state: "absolute",
     };
     batch.shared.stage = { fit: "contain", max_height_ratio: 0.72, padding: 16 };
     batch.shared.messages = {
       status_ready: "Ready.",
       confirm_no_edit: "Nothing changed.",
     };
+    batch.shared.requirements = {
+      min_viewport: { width: 800, height: 600, message: "Use a larger display." },
+    };
+    batch.trials[0].completion = { double_confirm: false };
     batch.trials[0].recording = { record_events: false };
+    batch.trials[0].output = { detail: "final-only" };
     batch.trials[0].stage = { padding: 24 };
     batch.trials[0].messages = { status_ready: "Begin." };
+    batch.trials[0].requirements = {
+      min_viewport: { width: 1024, height: 768 },
+    };
 
     const task = compileBatch(batch).tasks[0].config;
 
+    expect(task.completion).toEqual({
+      double_confirm: false,
+      lock_after_confirm: true,
+      allow_copy_again: true,
+    });
     expect(task.recording).toEqual({
       record_events: false,
       record_final_state: true,
       record_display_info: true,
+    });
+    expect(task.output).toEqual({
+      encoding: "plain-json",
+      detail: "final-only",
+      final_state: "absolute",
     });
     expect(task.stage).toEqual({ fit: "contain", max_height_ratio: 0.72, padding: 24 });
     expect(task.messages).toEqual({
       status_ready: "Begin.",
       confirm_no_edit: "Nothing changed.",
     });
+    expect(task.requirements).toEqual({
+      min_viewport: { width: 1024, height: 768 },
+    });
+  });
+
+  it("throws a clear error when neither shared nor trial world exists", () => {
+    const batch = createBatch();
+    delete batch.shared.world;
+
+    expect(() => compileBatch(batch)).toThrow(/Missing shared world/);
   });
 
   it("applies trial scoring default tolerance when an object has a reference but no object tolerance", () => {
