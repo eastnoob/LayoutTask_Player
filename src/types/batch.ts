@@ -16,6 +16,9 @@ import type {
 } from "./config";
 import type { ObjectRole } from "../protocol/constants";
 
+export type BatchMetadataValue = string | number | boolean | null;
+export type BatchMetadata = Record<string, BatchMetadataValue>;
+
 export interface BatchConfig {
   schema: "layouttask.batch.v1";
   experiment_id: string;
@@ -58,7 +61,7 @@ export interface BatchTrialConfig {
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
   scoring?: ScoringConfig;
-  metadata?: Record<string, string | number | boolean | null>;
+  metadata?: BatchMetadata;
 }
 
 export interface BatchObjectConfig extends TaskObjectConfig {
@@ -76,10 +79,9 @@ export interface ScoringConfig {
   objects?: Record<string, ObjectScoringConfig>;
 }
 
-export interface ObjectTargetState {
-  relative?: RelativeTargetState;
-  absolute?: AbsoluteTargetState;
-}
+export type ObjectTargetState =
+  | { relative: RelativeTargetState; absolute?: AbsoluteTargetState }
+  | { relative?: RelativeTargetState; absolute: AbsoluteTargetState };
 
 export interface RelativeTargetState {
   dx_steps: number;
@@ -118,7 +120,7 @@ export interface ScoringReferenceConfig {
 
 export interface ScoringReferenceTask {
   qid: string;
-  metadata?: Record<string, string | number | boolean | null>;
+  metadata?: BatchMetadata;
   objects: Record<string, ScoringReferenceObject>;
 }
 
@@ -132,9 +134,14 @@ export interface ScoringReferenceObject {
 
 export interface CompiledBatch {
   manifest: ManifestConfig;
-  tasks: Array<{ file: string; config: TaskConfig }>;
+  tasks: CompiledBatchTask[];
   scoringReference: ScoringReferenceConfig;
   report: BatchGenerationReport;
+}
+
+export interface CompiledBatchTask {
+  file: string;
+  config: TaskConfig;
 }
 
 export interface BatchGenerationReport {
