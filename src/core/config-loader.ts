@@ -17,6 +17,7 @@ import {
   validateManifest,
   validateTask,
 } from "./config-validator";
+import { parseCollisionSvg } from "./collision-svg";
 import { resolveMessages } from "./messages";
 
 // ConfigLoader is the authoring-config entry point.
@@ -163,6 +164,7 @@ export class ConfigLoader {
     });
 
     await this.attachInlineSvgObjectAssets(runtimeConfig);
+    await this.attachCollisionSource(runtimeConfig);
     return runtimeConfig;
   }
 
@@ -208,6 +210,19 @@ export class ConfigLoader {
       }
       objectConfig.asset.inlineSvgText = await svgText;
     }
+  }
+
+  private async attachCollisionSource(config: RuntimeTaskConfig): Promise<void> {
+    if (!config.collision.enabled || !config.collision.source) {
+      return;
+    }
+
+    const svgText = await this.fetchText(config.collision.source.src);
+    config.collision.source.inlineSvgText = svgText;
+    config.collision.areas = [
+      ...config.collision.areas,
+      ...parseCollisionSvg(svgText),
+    ];
   }
 
   private async importConfigModule<T>(relativePath: string): Promise<T> {

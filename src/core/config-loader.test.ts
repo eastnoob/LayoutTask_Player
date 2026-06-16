@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { ConfigLoader, resolveRuntimeConfig } from "./config-loader";
+import type { TaskCollisionConfig } from "../types/config";
 
 describe("resolveRuntimeConfig display image", () => {
   it("resolves display image paths and default flags", () => {
@@ -443,6 +444,129 @@ describe("resolveRuntimeConfig collision", () => {
   });
 });
 
+describe("ConfigLoader collision runtime config", () => {
+  it("resolves inline collision areas and object collision defaults", async () => {
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl: createConfigFetch({
+        taskCollision: {
+          enabled: true,
+          areas: [
+            {
+              id: "inline_contain",
+              type: "contain",
+              shape: "rect",
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 80,
+            },
+          ],
+        },
+      }),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(config.collision).toEqual({
+      enabled: true,
+      mode: "discrete",
+      areas: [
+        {
+          id: "inline_contain",
+          type: "contain",
+          shape: "rect",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 80,
+        },
+      ],
+    });
+    expect(config.objects[0].collision).toEqual({
+      enabled: true,
+      shape: "box",
+      padding: 0,
+    });
+  });
+
+  it("fetches SVG collision source and appends parsed areas to runtime collision areas", async () => {
+    const collisionSvgText = [
+      "<svg viewBox=\"0 0 200 200\">",
+      "  <rect id=\"svg_block\" data-collision=\"block\" x=\"10\" y=\"20\" width=\"30\" height=\"40\" />",
+      "  <polygon id=\"svg_contain\" data-layout-collision=\"contain\" points=\"0,0 20,0 20,20\" />",
+      "</svg>",
+    ].join("");
+    const fetchImpl = createConfigFetch({
+      taskCollision: {
+        enabled: true,
+        areas: [
+          {
+            id: "inline_block",
+            type: "block",
+            shape: "rect",
+            x: 1,
+            y: 2,
+            width: 3,
+            height: 4,
+          },
+        ],
+        source: {
+          type: "svg",
+          src: "assets/collision/room_collision.svg",
+        },
+      },
+      textByPath: {
+        "/layout-task/assets/collision/room_collision.svg": collisionSvgText,
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(fetchImpl).toHaveBeenCalledWith("http://example.test/layout-task/assets/collision/room_collision.svg");
+    expect(config.collision.source).toMatchObject({
+      type: "svg",
+      src: "assets/collision/room_collision.svg",
+      srcResolved: "http://example.test/layout-task/assets/collision/room_collision.svg",
+      inlineSvgText: collisionSvgText,
+    });
+    expect(config.collision.areas).toEqual([
+      {
+        id: "inline_block",
+        type: "block",
+        shape: "rect",
+        x: 1,
+        y: 2,
+        width: 3,
+        height: 4,
+      },
+      {
+        id: "svg_block",
+        type: "block",
+        shape: "rect",
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 40,
+      },
+      {
+        id: "svg_contain",
+        type: "contain",
+        shape: "polygon",
+        points: [
+          { x: 0, y: 0 },
+          { x: 20, y: 0 },
+          { x: 20, y: 20 },
+        ],
+      },
+    ]);
+  });
+});
+
 describe("ConfigLoader JS module task config", () => {
   it("loads a trusted .config.js task through default export and still validates it", async () => {
     const fetchImpl = vi.fn(async (url: string) => {
@@ -665,6 +789,77 @@ function createBehaviorConfigInput(behavior: Parameters<typeof resolveRuntimeCon
       objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior }],
     },
   };
+}
+
+function createConfigFetch(options: {
+  taskCollision?: TaskCollisionConfig;
+  textByPath?: Record<string, string>;
+}): typeof fetch {
+  return vi.fn(async (url: string) => {
+    const path = new URL(url).pathname;
+    const dataByPath: Record<string, unknown> = {
+      "/layout-task/manifest.json": {
+        schema: "layouttask.manifest.v1",
+        experiment_id: "exp1",
+        asset_library: "assets/objects.json",
+        background_library: "assets/backgrounds.json",
+        behavior_library: "behaviors/behaviors.json",
+        tasks: [{ qid: "Q1", task_id: "room01", file: "tasks/room01.json" }],
+      },
+      "/layout-task/tasks/room01.json": {
+        schema: "layouttask.task.v1",
+        task_id: "room01",
+        qid: "Q1",
+        world: {
+          viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+          origin: { x: 0, y: 0 },
+          grid: { size: 25, visible: false, snap: true },
+        },
+        background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
+        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
+        collision: options.taskCollision,
+      },
+      "/layout-task/assets/objects.json": {
+        schema: "layouttask.assets.objects.v1",
+        objects: {
+          chair_a: {
+            type: "svg",
+            src: "assets/objects/chair_a.svg",
+            default_width: 50,
+            default_height: 50,
+          },
+        },
+      },
+      "/layout-task/assets/backgrounds.json": {
+        schema: "layouttask.assets.backgrounds.v1",
+        backgrounds: {
+          room01_bg: {
+            type: "svg",
+            src: "assets/backgrounds/room01.svg",
+          },
+        },
+      },
+      "/layout-task/behaviors/behaviors.json": {
+        schema: "layouttask.behaviors.v1",
+        behaviors: {
+          move25: {
+            movement: { mode: "button", step: 25 },
+            free_drag: { enabled: false },
+          },
+        },
+      },
+    };
+    const text = options.textByPath?.[path] ?? "<svg viewBox=\"0 0 50 50\"><rect width=\"50\" height=\"50\" /></svg>";
+    const jsonData = dataByPath[path];
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => jsonData,
+      text: async () => text,
+    } as Response;
+  }) as unknown as typeof fetch;
 }
 
 function createPublicConfigFetch(): typeof fetch {
