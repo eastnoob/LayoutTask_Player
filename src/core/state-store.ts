@@ -2,6 +2,7 @@ import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 import type { FinalState, ObjectRuntimeState } from "../types/result";
 import type { LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import { normalizeRotation, snapToGrid } from "../utils/geometry";
+import { evaluateCollision } from "./collision-geometry";
 
 // StateStore is the rule engine for object state.
 // 它管理当前位置、旋转、计数、offset，以及“这个动作现在能不能做”。
@@ -25,7 +26,7 @@ export interface DragTransition {
 
 export interface CanApplyResult {
   ok: boolean;
-  reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "unsupported_action";
+  reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "unsupported_action" | "collision";
 }
 
 interface ObjectInitialState {
@@ -127,6 +128,10 @@ export class StateStore {
         return { ok: false, reason: "limit_reached" };
       }
 
+      if (this.wouldCollide(objectConfig, this.createCandidatePose(state, objectConfig, action))) {
+        return { ok: false, reason: "collision" };
+      }
+
       return { ok: true };
     }
 
@@ -137,6 +142,10 @@ export class StateStore {
 
       if (wouldExceedRotationLimit(offsets, objectConfig, action)) {
         return { ok: false, reason: "limit_reached" };
+      }
+
+      if (this.wouldCollide(objectConfig, this.createCandidatePose(state, objectConfig, action))) {
+        return { ok: false, reason: "collision" };
       }
 
       return { ok: true };
@@ -238,6 +247,19 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const before = toPose(state);
     const constrained = this.constrainDragPosition(objectConfig, desired);
+    const candidate = { x: constrained.x, y: constrained.y, r: state.r };
+
+    if (this.wouldCollide(objectConfig, candidate)) {
+      return {
+        objectId,
+        before,
+        after: before,
+        counts: { ...state.counts },
+        offsets: this.getObjectOffsets(objectId),
+        limitedAction: constrained.limitedAction ?? getDragCollisionLimitedAction(before, candidate),
+      };
+    }
+
     state.x = constrained.x;
     state.y = constrained.y;
     const after = toPose(state);
@@ -336,6 +358,73 @@ export class StateStore {
 
     return objectConfig;
   }
+
+  private createCandidatePose(
+    state: ObjectRuntimeState,
+    objectConfig: RuntimeTaskObject,
+    action: LayoutAction,
+  ): ObjectPose {
+    const candidate = toPose(state);
+    const movementStep = getMovementStep(this.config, objectConfig);
+
+    switch (action) {
+      case "move_left":
+        candidate.x -= movementStep;
+        break;
+      case "move_right":
+        candidate.x += movementStep;
+        break;
+      case "move_up":
+        candidate.y -= movementStep;
+        break;
+      case "move_down":
+        candidate.y += movementStep;
+        break;
+      case "rotate_cw":
+        candidate.r = normalizeRotation(candidate.r + (objectConfig.behavior.rotation?.step ?? 45));
+        break;
+      case "rotate_ccw":
+        candidate.r = normalizeRotation(candidate.r - (objectConfig.behavior.rotation?.step ?? 45));
+        break;
+      default:
+        return candidate;
+    }
+
+    if (isMoveAction(action) && this.config.world.grid.snap) {
+      candidate.x = snapToGrid(candidate.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
+      candidate.y = snapToGrid(candidate.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
+    }
+
+    return candidate;
+  }
+
+  private getObjectPoses(): Record<string, ObjectPose> {
+    return Object.fromEntries(
+      Object.entries(this.objectStates).map(([objectId, state]) => [
+        objectId,
+        {
+          x: state.x,
+          y: state.y,
+          r: state.r,
+        },
+      ]),
+    );
+  }
+
+  private wouldCollide(objectConfig: RuntimeTaskObject, candidatePose: ObjectPose): boolean {
+    if (!this.config.collision.enabled || !objectConfig.collision.enabled) {
+      return false;
+    }
+
+    return !evaluateCollision({
+      movingObject: objectConfig,
+      candidatePose,
+      objects: this.config.objects,
+      objectPoses: this.getObjectPoses(),
+      areas: this.config.collision.areas,
+      worldViewBox: this.config.world.viewBox,
+    }).ok;
+  }
 }
 
 function toPose(state: ObjectRuntimeState): ObjectPose {
@@ -421,6 +510,21 @@ function getDragLimitedAction(
 
   if (snapped.y > bounds.upperY) {
     return "move_down";
+  }
+
+  return undefined;
+}
+
+function getDragCollisionLimitedAction(before: ObjectPose, candidate: ObjectPose): DragTransition["limitedAction"] {
+  const dx = candidate.x - before.x;
+  const dy = candidate.y - before.y;
+
+  if (Math.abs(dx) >= Math.abs(dy) && dx !== 0) {
+    return dx < 0 ? "move_left" : "move_right";
+  }
+
+  if (dy !== 0) {
+    return dy < 0 ? "move_up" : "move_down";
   }
 
   return undefined;

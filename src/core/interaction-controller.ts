@@ -103,7 +103,7 @@ export class InteractionController {
     const canApply = this.options.store.canApplyAction(request.objectId, request.action);
     if (!canApply.ok) {
       this.options.renderer.updateControlsDisabled(request.objectId);
-      if (canApply.reason === "limit_reached") {
+      if (canApply.reason === "limit_reached" || canApply.reason === "collision") {
         this.options.renderer.showLimitFeedback(request.objectId, request.action);
       }
       this.options.renderer.setStatus(`${request.objectId}: ${request.action} is unavailable (${canApply.reason}).`);
@@ -318,6 +318,7 @@ function isRecordableBlockedReason(
     reason === "locked" ||
     reason === "limit_reached" ||
     reason === "movement_disabled" ||
-    reason === "rotation_disabled"
+    reason === "rotation_disabled" ||
+    reason === "collision"
   );
 }

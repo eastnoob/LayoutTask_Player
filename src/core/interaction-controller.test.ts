@@ -112,6 +112,58 @@ describe("InteractionController", () => {
     expect(renderer.showLimitFeedback).toHaveBeenCalledWith("chair_01", "move_left");
   });
 
+  it("records collision blocked events and shows limit feedback", () => {
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      collision: {
+        ...base.collision,
+        enabled: true,
+      },
+      objects: [
+        base.objects[0],
+        {
+          ...base.objects[0],
+          id: "table_01",
+          x: 55,
+          y: 0,
+          width: 20,
+          height: 50,
+        },
+      ],
+      recording: {
+        ...base.recording,
+        record_events: false,
+        record_blocked_events: true,
+      },
+    });
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    const result = controller.requestAction({ objectId: "chair_01", action: "move_right" });
+
+    expect(result).toEqual({ ok: false, reason: "collision" });
+    expect(renderer.showLimitFeedback).toHaveBeenCalledWith("chair_01", "move_right");
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 0, y: 0 });
+    expect(recorder.recordEvent).toHaveBeenCalledOnce();
+    expect(recorder.recordEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        object: "chair_01",
+        action: "move_right",
+        valid: false,
+        blocked_reason: "collision",
+      }),
+    );
+  });
+
   it("does not show limit feedback for inactive objects", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);

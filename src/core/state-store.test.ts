@@ -147,4 +147,109 @@ describe("StateStore action limits", () => {
 
     expect(store.hasEdits()).toBe(false);
   });
+
+  it("blocks button movement when the next step overlaps another collision-enabled object", () => {
+    const store = new StateStore(createCollisionRuntimeConfig());
+
+    expect(store.canApplyAction("chair_01", "move_right")).toEqual({
+      ok: false,
+      reason: "collision",
+    });
+    expect(() => store.applyAction("chair_01", "move_right")).toThrow(
+      "Cannot apply move_right to chair_01: collision",
+    );
+    expect(store.getObjectState("chair_01")).toMatchObject({
+      x: 0,
+      y: 0,
+      counts: {
+        right: 0,
+      },
+    });
+    expect(store.hasEdits()).toBe(false);
+  });
+
+  it("blocks rotation when the next rotation overlaps another collision-enabled object", () => {
+    const store = new StateStore(createCollisionRuntimeConfig({ rotationalObject: true }));
+
+    expect(store.canApplyAction("chair_01", "rotate_cw")).toEqual({
+      ok: false,
+      reason: "collision",
+    });
+    expect(store.getObjectState("chair_01")).toMatchObject({
+      r: 0,
+      counts: {
+        cw: 0,
+      },
+    });
+  });
+
+  it("keeps the last valid drag position when the dragged candidate collides", () => {
+    const store = new StateStore(createCollisionDragRuntimeConfig());
+
+    const transition = store.applyDragPosition("chair_01", { x: 25, y: 0 });
+
+    expect(transition.before).toEqual({ x: 0, y: 0, r: 0 });
+    expect(transition.after).toEqual({ x: 0, y: 0, r: 0 });
+    expect(transition.limitedAction).toBe("move_right");
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 0, y: 0 });
+    expect(store.hasEdits()).toBe(false);
+  });
 });
+
+function createCollisionRuntimeConfig(options: { rotationalObject?: boolean } = {}) {
+  const base = createRuntimeConfig();
+  const movingObject = options.rotationalObject
+    ? {
+        ...base.objects[0],
+        width: 80,
+        height: 20,
+      }
+    : base.objects[0];
+  const blockingObject = options.rotationalObject
+    ? {
+        ...base.objects[0],
+        id: "table_01",
+        x: 35,
+        y: 20,
+        width: 20,
+        height: 20,
+      }
+    : {
+        ...base.objects[0],
+        id: "table_01",
+        x: 55,
+        y: 0,
+        width: 20,
+        height: 50,
+      };
+
+  return createRuntimeConfig({
+    collision: {
+      ...base.collision,
+      enabled: true,
+    },
+    objects: [movingObject, blockingObject],
+  });
+}
+
+function createCollisionDragRuntimeConfig() {
+  const base = createDragRuntimeConfig();
+
+  return createDragRuntimeConfig({
+    collision: {
+      ...base.collision,
+      enabled: true,
+    },
+    objects: [
+      base.objects[0],
+      {
+        ...base.objects[0],
+        id: "table_01",
+        x: 55,
+        y: 0,
+        width: 20,
+        height: 50,
+      },
+    ],
+  });
+}
