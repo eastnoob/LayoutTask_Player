@@ -776,6 +776,71 @@ describe("ConfigLoader 4000x fixture", () => {
   });
 });
 
+describe("ConfigLoader collision demo fixture", () => {
+  it("loads explicit chair drag limits that reach demo collision targets", async () => {
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl: createPublicConfigFetch(),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room_collision_demo" });
+    const chair = config.objects.find((object) => object.id === "chair_01");
+    const table = config.objects.find((object) => object.id === "table_01");
+
+    expect(config.qid).toBe("QCOLLISION");
+    expect(config.collision.enabled).toBe(true);
+    expect(config.collision.areas).toEqual([
+      {
+        id: "walkable_room",
+        type: "contain",
+        shape: "rect",
+        x: -400,
+        y: -300,
+        width: 800,
+        height: 600,
+      },
+      {
+        id: "center_block",
+        type: "block",
+        shape: "rect",
+        x: -50,
+        y: -50,
+        width: 100,
+        height: 100,
+      },
+    ]);
+    expect(chair?.behaviorTemplateId).toBeUndefined();
+    expect(chair?.behavior).toEqual({
+      movement: {
+        mode: "drag",
+        step: 25,
+        max_left: 12,
+        max_right: 20,
+        max_up: 12,
+        max_down: 12,
+      },
+      rotation: { step: 45, max_cw: 4, max_ccw: 4 },
+      free_drag: { enabled: true, snap: true },
+    });
+
+    expect(chair).toBeDefined();
+    expect(table).toBeDefined();
+    const chairHalfWidth = (chair?.width ?? 0) / 2;
+    const chairHalfHeight = (chair?.height ?? 0) / 2;
+    const step = chair?.behavior.movement.step ?? 0;
+    const minReachX = (chair?.x ?? 0) - step * (chair?.behavior.movement.max_left ?? 0);
+    const maxReachX = (chair?.x ?? 0) + step * (chair?.behavior.movement.max_right ?? 0);
+    const minReachY = (chair?.y ?? 0) - step * (chair?.behavior.movement.max_up ?? 0);
+    const maxReachY = (chair?.y ?? 0) + step * (chair?.behavior.movement.max_down ?? 0);
+
+    expect(maxReachX).toBeGreaterThanOrEqual(50 + chairHalfWidth);
+    expect(maxReachX).toBeGreaterThanOrEqual(table?.x ?? Number.POSITIVE_INFINITY);
+    expect(minReachX - chairHalfWidth).toBeLessThan(-400);
+    expect(minReachY - chairHalfHeight).toBeLessThan(-300);
+    expect(maxReachY + chairHalfHeight).toBeGreaterThan(300);
+  });
+});
+
 describe("resolveRuntimeConfig object behavior", () => {
   it("resolves template-only behavior", () => {
     const config = resolveRuntimeConfig(createBehaviorConfigInput({

@@ -52,7 +52,25 @@
       "y": 0,
       "rotation": 0,
       "behavior": {
-        "template": "drag25_rotate45_limited"
+        "config": {
+          "movement": {
+            "mode": "drag",
+            "step": 25,
+            "max_left": 12,
+            "max_right": 20,
+            "max_up": 12,
+            "max_down": 12
+          },
+          "rotation": {
+            "step": 45,
+            "max_cw": 4,
+            "max_ccw": 4
+          },
+          "free_drag": {
+            "enabled": true,
+            "snap": true
+          }
+        }
       },
       "collision": {
         "enabled": true,
