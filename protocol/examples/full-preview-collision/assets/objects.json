@@ -1,0 +1,19 @@
+{
+  "schema": "layouttask.assets.objects.v1",
+  "objects": {
+    "full_chair": {
+      "type": "svg",
+      "src": "assets/objects/full_chair.svg",
+      "default_width": 50,
+      "default_height": 50,
+      "anchor": "center"
+    },
+    "full_table": {
+      "type": "svg",
+      "src": "assets/objects/full_table.svg",
+      "default_width": 75,
+      "default_height": 75,
+      "anchor": "center"
+    }
+  }
+}

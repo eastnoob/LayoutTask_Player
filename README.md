@@ -58,6 +58,14 @@ http://127.0.0.1:5173/?task=room_collision_demo&q=QCOLLISION
 
 Collision constraints are optional and use world-unit `contain`/`block` areas or a hidden SVG analysis layer. See `protocol/rhino.md`.
 
+Complete preview + collision demo:
+
+```text
+http://127.0.0.1:5173/?task=room_collision_preview_demo&q=QCOLLISIONPREVIEW
+```
+
+This demo first shows a reference `display_image`, then switches to a button-controlled reconstruction scene with collision constraints.
+
 ## Static Deployment
 
 This project is designed for pure static hosting.

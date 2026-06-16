@@ -1,0 +1,119 @@
+{
+  "schema": "layouttask.batch.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "title": "Full preview collision example",
+  "shared": {
+    "asset_library": "assets/objects.json",
+    "background_library": "assets/backgrounds.json",
+    "behavior_library": "behaviors/behaviors.json",
+    "world": {
+      "viewBox": { "x": -500, "y": -500, "width": 1000, "height": 1000 },
+      "origin": { "x": 0, "y": 0 },
+      "grid": { "size": 25, "visible": true, "snap": true, "origin": { "x": 0, "y": 0 } }
+    },
+    "stage": { "fit": "contain", "max_height_ratio": 0.72, "padding": 16 },
+    "flow": {
+      "mode": "preview_then_reconstruct",
+      "config": {
+        "preview_duration_sec": 5,
+        "require_preview_ack": true,
+        "intro_message": "Next, you have {seconds} seconds to study the scene. After it disappears, reconstruct it while avoiding collisions.",
+        "intro_confirm_label": "Start preview",
+        "stage_during_preview": "hidden",
+        "show_countdown": true,
+        "message_before": "Study the reference scene for {seconds} seconds.",
+        "message_after": "Reconstruct the scene from memory."
+      }
+    },
+    "recording": {
+      "record_events": true,
+      "record_final_state": true,
+      "record_display_info": true,
+      "record_display_changes": true,
+      "record_page_timing": true,
+      "record_user_agent": true,
+      "record_blocked_events": true
+    },
+    "output": { "encoding": "plain-json", "detail": "full", "final_state": "relative" }
+  },
+  "trials": [
+    {
+      "qid": "QFULLCOLLISION",
+      "task_id": "full_preview_collision_001",
+      "display_image": {
+        "enabled": true,
+        "src": "assets/display-images/full_room_stimulus.svg",
+        "alt": "Full preview collision reference scene"
+      },
+      "background": {
+        "asset": "full_room_bg",
+        "x": -500,
+        "y": -500,
+        "width": 1000,
+        "height": 1000
+      },
+      "collision": {
+        "enabled": true,
+        "mode": "discrete",
+        "source": { "type": "svg", "src": "assets/collision/full_room_collision.svg" }
+      },
+      "objects": [
+        {
+          "id": "chair_01",
+          "asset": "full_chair",
+          "x": -150,
+          "y": 0,
+          "rotation": 0,
+          "behavior": {
+            "config": {
+              "movement": {
+                "mode": "button",
+                "step": 25,
+                "max_left": 12,
+                "max_right": 20,
+                "max_up": 12,
+                "max_down": 12
+              },
+              "rotation": { "step": 45, "max_cw": 4, "max_ccw": 4 },
+              "free_drag": { "enabled": false }
+            }
+          },
+          "collision": { "enabled": true, "shape": "box", "padding": 0 },
+          "target": {
+            "absolute": { "x": -225, "y": 125, "rotation_deg": 45 },
+            "relative": { "dx_steps": -3, "dy_steps": 5, "rotation_steps": 1 }
+          },
+          "scoring": {
+            "enabled": true,
+            "tolerance": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0,
+              "distance_world": 12.5,
+              "rotation_deg": 5
+            }
+          }
+        },
+        {
+          "id": "table_01",
+          "role": "fixed",
+          "asset": "full_table",
+          "x": 150,
+          "y": 0,
+          "rotation": 0,
+          "behavior": {
+            "config": {
+              "movement": { "mode": "none" },
+              "free_drag": { "enabled": false }
+            }
+          },
+          "collision": { "enabled": true, "shape": "box", "padding": 0 }
+        }
+      ],
+      "metadata": {
+        "source": "full-preview-collision-example",
+        "condition": "preview_collision"
+      }
+    }
+  ]
+}

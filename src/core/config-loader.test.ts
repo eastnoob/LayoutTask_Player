@@ -841,6 +841,47 @@ describe("ConfigLoader collision demo fixture", () => {
   });
 });
 
+describe("ConfigLoader complete preview collision demo fixture", () => {
+  it("loads the preview stimulus, flow, collision layer, and button reconstruction controls", async () => {
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl: createPublicConfigFetch(),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room_collision_preview_demo" });
+    const chair = config.objects.find((object) => object.id === "chair_01");
+
+    expect(config.qid).toBe("QCOLLISIONPREVIEW");
+    expect(config.displayImage).toMatchObject({
+      enabled: true,
+      src: "assets/display-images/collision_demo_stimulus.svg",
+      srcResolved: "http://example.test/layout-task/assets/display-images/collision_demo_stimulus.svg",
+      alt: "Collision demo reference scene",
+      record_metrics: true,
+    });
+    expect(config.flow).toMatchObject({
+      mode: "preview_then_reconstruct",
+      config: {
+        preview_duration_sec: 5,
+        require_preview_ack: true,
+        stage_during_preview: "hidden",
+        show_countdown: true,
+      },
+    });
+    expect(config.collision.enabled).toBe(true);
+    expect(config.collision.source).toMatchObject({
+      type: "svg",
+      src: "assets/collision/room_collision_demo.svg",
+      srcResolved: "http://example.test/layout-task/assets/collision/room_collision_demo.svg",
+    });
+    expect(config.collision.source?.inlineSvgText).toContain("data-collision");
+    expect(config.collision.areas.map((area) => area.id)).toEqual(["walkable_room", "center_block"]);
+    expect(chair?.behavior.movement.mode).toBe("button");
+    expect(chair?.behavior.free_drag.enabled).toBe(false);
+    expect(config.recording.record_blocked_events).toBe(true);
+  });
+});
+
 describe("resolveRuntimeConfig object behavior", () => {
   it("resolves template-only behavior", () => {
     const config = resolveRuntimeConfig(createBehaviorConfigInput({

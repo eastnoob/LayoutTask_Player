@@ -9,6 +9,7 @@ Main files:
 - `schemas/layouttask.batch.schema.json`: language-neutral structural preflight schema.
 - `examples/minimal-batch.json`: smallest working batch fixture.
 - `examples/scoring-example.json`: batch fixture with relative and absolute targets.
+- `examples/full-preview-collision/batch.json`: complete preview stimulus plus collision reconstruction fixture.
 - `rhino.md`: Rhino-facing field dictionary and conventions.
 - `templates/`: fill-in templates and export checklist.
 

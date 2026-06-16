@@ -1,0 +1,141 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "room_collision_preview_demo",
+  "qid": "QCOLLISIONPREVIEW",
+  "title": "Collision preview demo",
+  "world": {
+    "viewBox": {
+      "x": -500,
+      "y": -500,
+      "width": 1000,
+      "height": 1000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 25,
+      "visible": true,
+      "snap": true,
+      "origin": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16
+  },
+  "background": {
+    "asset": "collision_demo_bg",
+    "x": -500,
+    "y": -500,
+    "width": 1000,
+    "height": 1000
+  },
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/collision_demo_stimulus.svg",
+    "alt": "Collision demo reference scene",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 5,
+      "require_preview_ack": true,
+      "intro_message": "Next, you have {seconds} seconds to study the scene. Remember the object positions and orientations. After the image disappears, reconstruct the scene while avoiding collisions.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Study the reference scene for {seconds} seconds.",
+      "message_after": "Reconstruct the scene. Objects cannot overlap walls, blocked areas, or each other."
+    }
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "source": {
+      "type": "svg",
+      "src": "assets/collision/room_collision_demo.svg"
+    }
+  },
+  "objects": [
+    {
+      "id": "chair_01",
+      "asset": "collision_demo_chair",
+      "x": -150,
+      "y": 0,
+      "rotation": 0,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "button",
+            "step": 25,
+            "max_left": 12,
+            "max_right": 20,
+            "max_up": 12,
+            "max_down": 12
+          },
+          "rotation": {
+            "step": 45,
+            "max_cw": 4,
+            "max_ccw": 4
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "collision": {
+        "enabled": true,
+        "shape": "box",
+        "padding": 0
+      }
+    },
+    {
+      "id": "table_01",
+      "asset": "collision_demo_table",
+      "x": 150,
+      "y": 0,
+      "rotation": 0,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "collision": {
+        "enabled": true,
+        "shape": "box",
+        "padding": 0
+      }
+    }
+  ],
+  "completion": {
+    "double_confirm": true,
+    "lock_after_confirm": true,
+    "allow_copy_again": true
+  },
+  "recording": {
+    "record_events": true,
+    "record_final_state": true,
+    "record_display_info": true,
+    "record_display_changes": true,
+    "record_page_timing": true,
+    "record_user_agent": true,
+    "record_blocked_events": true
+  },
+  "output": {
+    "encoding": "plain-json",
+    "detail": "full",
+    "final_state": "relative"
+  }
+}

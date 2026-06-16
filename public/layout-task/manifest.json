@@ -41,6 +41,11 @@
       "qid": "QCOLLISION",
       "task_id": "room_collision_demo",
       "file": "tasks/room_collision_demo.json"
+    },
+    {
+      "qid": "QCOLLISIONPREVIEW",
+      "task_id": "room_collision_preview_demo",
+      "file": "tasks/room_collision_preview_demo.json"
     }
   ]
 }
