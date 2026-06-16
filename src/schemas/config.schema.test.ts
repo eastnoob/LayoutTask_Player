@@ -156,6 +156,39 @@ describe("taskSchema stage", () => {
   });
 });
 
+describe("taskSchema autosave", () => {
+  it("accepts enabled autosave and applies storage prompt and trigger defaults", () => {
+    const parsed = taskSchema.parse({
+      schema: "layouttask.task.v1",
+      task_id: "room01",
+      qid: "Q1",
+      world: {
+        viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 25 },
+      },
+      background: {
+        asset: "room01_bg",
+        x: -400,
+        y: -300,
+        width: 800,
+        height: 600,
+      },
+      objects: [],
+      autosave: {
+        enabled: true,
+      },
+    });
+
+    expect(parsed.autosave).toEqual({
+      enabled: true,
+      storage: "localStorage",
+      restore_prompt: true,
+      save_on: "state_change",
+    });
+  });
+});
+
 describe("taskSchema flow", () => {
   const baseTask = {
     schema: "layouttask.task.v1" as const,

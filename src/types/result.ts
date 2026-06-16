@@ -191,6 +191,13 @@ export interface ResultFlowInfo {
   reconstruction_started_at?: number;
 }
 
+export interface ResultRestoreInfo {
+  recovered: boolean;
+  restore_count?: number;
+  draft_saved_at?: number;
+  restored_at?: number;
+}
+
 export interface LayoutTaskResult {
   schema: "layouttask.result.v1";
   exp: string;
@@ -203,6 +210,7 @@ export interface LayoutTaskResult {
   page_timing?: PageTimingInfo;
   display?: DisplayInfo;
   flow?: ResultFlowInfo;
+  restore?: ResultRestoreInfo;
   task_config_hash?: string;
   context?: ResultContext;
   events: LayoutTaskEvent[];

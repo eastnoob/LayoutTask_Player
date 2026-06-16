@@ -553,6 +553,16 @@ Target/scoring data can be emitted separately:
 }
 ```
 
+## Static Deployment Interruption Recovery
+
+Static deployment does not prevent local recovery. A follow-up player feature should use localStorage autosave keyed by experiment, task, qid, and session. Submit confirmation prevents accidental final submission; autosave/restore prevents losing progress after refresh, crash, or black screen.
+
+For `preview_then_reconstruct`, recommended recovery policy is:
+
+- if preview did not finish, restarting preview is allowed;
+- if reconstruction already started, restore reconstruction state and do not show the reference image again;
+- final result records restore metadata.
+
 ## 10. Open Questions
 
 1. Should `role: "fixed" | "variable"` be added to runtime task objects, or remain only in batch/scoring metadata?
