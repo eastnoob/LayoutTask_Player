@@ -1,5 +1,20 @@
+import type { z } from "zod";
+import type { ObjectTargetState } from "../types/batch";
 import { describe, expect, it } from "vitest";
-import { batchSchema, scoringReferenceSchema } from "./batch.schema";
+import { batchSchema, objectTargetSchema, scoringReferenceSchema } from "./batch.schema";
+
+type AssertExtends<Actual extends Expected, Expected> = [Actual] extends [Expected] ? true : never;
+
+export const objectTargetSchemaMatchesObjectTargetState: AssertExtends<
+  z.infer<typeof objectTargetSchema>,
+  ObjectTargetState
+> = true;
+
+describe("objectTargetSchema", () => {
+  it("infers object targets as ObjectTargetState", () => {
+    expect(objectTargetSchemaMatchesObjectTargetState).toBe(true);
+  });
+});
 
 const minimalBatch = {
   schema: "layouttask.batch.v1",
@@ -77,7 +92,7 @@ describe("batchSchema", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0].target = {};
 
-    expect(() => batchSchema.parse(batch)).toThrow("target requires relative or absolute");
+    expect(() => batchSchema.parse(batch)).toThrow();
   });
 
   it("rejects duplicate task IDs", () => {
@@ -139,6 +154,21 @@ describe("batchSchema", () => {
       src: "assets/display-images/room01.jpeg",
     });
   });
+
+  it("rejects empty scoring object keys", () => {
+    const batch = cloneMinimalBatch();
+    batch.trials[0].scoring = {
+      objects: {
+        "": {
+          target: {
+            relative: { dx_steps: 1, dy_steps: -2, rotation_steps: 1 },
+          },
+        },
+      },
+    };
+
+    expect(() => batchSchema.parse(batch)).toThrow();
+  });
 });
 
 const validScoringReference = {
@@ -193,9 +223,7 @@ describe("scoringReferenceSchema", () => {
     const reference = cloneScoringReference();
     reference.tasks.room_generated_001.objects.chair_variable_01.target = {};
 
-    expect(() => scoringReferenceSchema.parse(reference)).toThrow(
-      "target requires relative or absolute",
-    );
+    expect(() => scoringReferenceSchema.parse(reference)).toThrow();
   });
 
   it("rejects invalid object roles", () => {
@@ -226,5 +254,23 @@ describe("scoringReferenceSchema", () => {
     };
 
     expect(() => scoringReferenceSchema.parse(referenceWithInvalidLabels)).toThrow();
+  });
+
+  it("rejects empty task keys", () => {
+    const reference = cloneScoringReference();
+    reference.tasks = {
+      "": reference.tasks.room_generated_001,
+    };
+
+    expect(() => scoringReferenceSchema.parse(reference)).toThrow();
+  });
+
+  it("rejects empty object keys", () => {
+    const reference = cloneScoringReference();
+    reference.tasks.room_generated_001.objects = {
+      "": reference.tasks.room_generated_001.objects.chair_variable_01,
+    };
+
+    expect(() => scoringReferenceSchema.parse(reference)).toThrow();
   });
 });

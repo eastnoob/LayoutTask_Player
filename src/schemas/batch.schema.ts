@@ -47,19 +47,16 @@ export const absoluteTargetSchema = z.object({
   rotation_deg: z.number().finite(),
 });
 
-export const objectTargetSchema = z
-  .object({
-    relative: relativeTargetSchema.optional(),
+export const objectTargetSchema = z.union([
+  z.object({
+    relative: relativeTargetSchema,
     absolute: absoluteTargetSchema.optional(),
-  })
-  .superRefine((value, context) => {
-    if (!value.relative && !value.absolute) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "target requires relative or absolute",
-      });
-    }
-  });
+  }),
+  z.object({
+    relative: relativeTargetSchema.optional(),
+    absolute: absoluteTargetSchema,
+  }),
+]);
 
 export const scoringToleranceSchema = z.object({
   dx_steps: z.number().int().nonnegative().optional(),
@@ -82,7 +79,7 @@ export const scoringSchema = z.object({
   enabled: z.boolean().optional(),
   include_objects: z.array(z.string().min(1)).optional(),
   default_tolerance: scoringToleranceSchema.optional(),
-  objects: z.record(objectScoringSchema).optional(),
+  objects: z.record(z.string().min(1), objectScoringSchema).optional(),
 });
 
 export const batchObjectSchema = taskObjectSchema.extend({
@@ -192,10 +189,12 @@ export const scoringReferenceSchema = z.object({
   schema: z.literal("layouttask.scoring-reference.v1"),
   experiment_id: z.string().min(1),
   tasks: z.record(
+    z.string().min(1),
     z.object({
       qid: z.string().min(1),
       metadata: metadataSchema.optional(),
       objects: z.record(
+        z.string().min(1),
         z.object({
           role: objectRoleSchema.optional(),
           group_id: z.string().min(1).optional(),
