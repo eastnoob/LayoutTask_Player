@@ -1,0 +1,10 @@
+{
+  "schema": "layouttask.assets.backgrounds.v1",
+  "backgrounds": {
+    "mock_room_bg": {
+      "type": "svg",
+      "src": "backgrounds/mock_room.svg",
+      "intrinsic_unit": "unknown"
+    }
+  }
+}
