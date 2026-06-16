@@ -105,6 +105,16 @@ describe("batchSchema", () => {
     expect(() => batchSchema.parse(batch)).toThrow("duplicate task_id");
   });
 
+  it.each(["../sibling_task", "nested/task", "bad:name", "", "   "])(
+    "rejects task IDs that are not filename-safe: %s",
+    (taskId) => {
+      const batch = cloneMinimalBatch();
+      batch.trials[0].task_id = taskId;
+
+      expect(() => batchSchema.parse(batch)).toThrow();
+    },
+  );
+
   it("rejects duplicate object IDs within a trial", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects.push(structuredClone(batch.trials[0].objects[0]));

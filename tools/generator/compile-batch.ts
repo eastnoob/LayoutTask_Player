@@ -80,13 +80,21 @@ function parseArgs(args: string[]): CliArgs {
   return parsed;
 }
 
+function isInside(root: string, target: string): boolean {
+  const relativeToRoot = path.relative(root, target);
+  return relativeToRoot === "" || (!relativeToRoot.startsWith("..") && !path.isAbsolute(relativeToRoot));
+}
+
 function resolveOutputFile(outDir: string, relativeFile: string, value: unknown): OutputFile {
   const root = path.resolve(outDir);
   const target = path.resolve(root, relativeFile);
-  const relativeToRoot = path.relative(root, target);
 
-  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+  if (!isInside(root, target)) {
     throw new Error(`Refusing to write outside output directory: ${relativeFile}`);
+  }
+
+  if (relativeFile.startsWith("tasks/") && !isInside(path.resolve(root, "tasks"), target)) {
+    throw new Error(`Refusing to write task outside tasks directory: ${relativeFile}`);
   }
 
   return { target, value };

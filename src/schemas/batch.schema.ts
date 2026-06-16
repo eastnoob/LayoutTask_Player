@@ -35,6 +35,10 @@ const metadataSchema = z.record(metadataValueSchema);
 
 const labelsSchema = z.record(z.string());
 
+const filenameSafeIdSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]+$/, "must contain only letters, numbers, underscores, and hyphens");
+
 export const relativeTargetSchema = z.object({
   dx_steps: z.number().int(),
   dy_steps: z.number().int(),
@@ -92,7 +96,7 @@ export const batchObjectSchema = taskObjectSchema.extend({
 
 export const batchTrialSchema = z.object({
   qid: z.string().min(1),
-  task_id: z.string().min(1),
+  task_id: filenameSafeIdSchema,
   title: z.string().optional(),
   display_image: displayImageSchema.optional(),
   world: worldSchema.optional(),
