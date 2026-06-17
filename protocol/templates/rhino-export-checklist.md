@@ -13,6 +13,8 @@
 - [ ] Object SVG assets are registered in `objects.json`.
 - [ ] Background assets are registered in `backgrounds.json`.
 - [ ] Variable objects have `role: "variable"`.
-- [ ] Fixed objects have `role: "fixed"` or movement behavior set to `none`.
-- [ ] Scored variable objects include relative and absolute targets when available.
+- [ ] Fixed context objects have `role: "fixed"` or movement behavior set to `none`.
+- [ ] For every variable object, `x`, `y`, and `rotation` are the reconstruction initial pose, not the stimulus-correct pose.
+- [ ] For every scored variable object, `target.absolute` stores the correct stimulus pose.
+- [ ] For every step-based scored variable object, `target.relative` stores signed steps from the initial pose to `target.absolute`.
 - [ ] Run `validate-batch` before compiling.

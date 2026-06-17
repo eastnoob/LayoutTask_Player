@@ -69,7 +69,9 @@ export interface BatchTrialConfig {
 export interface BatchObjectConfig extends TaskObjectConfig {
   role?: ObjectRole;
   group_id?: string;
+  /** Optional authoring label for the reconstruction initial pose stored in x/y/rotation. */
   initial_state_label?: string;
+  /** Correct answer pose for analysis; usually the pose shown in the memory stimulus. */
   target?: ObjectTargetState;
   scoring?: ObjectScoringConfig;
 }
@@ -86,14 +88,20 @@ export type ObjectTargetState =
   | { relative?: RelativeTargetState; absolute: AbsoluteTargetState };
 
 export interface RelativeTargetState {
+  /** Signed movement steps from the reconstruction initial x to the correct target x. */
   dx_steps: number;
+  /** Signed movement steps from the reconstruction initial y to the correct target y. */
   dy_steps: number;
+  /** Signed rotation steps from the reconstruction initial rotation to the correct target rotation. */
   rotation_steps: number;
 }
 
 export interface AbsoluteTargetState {
+  /** Correct target anchor x in world units, usually exported from the stimulus scene. */
   x: number;
+  /** Correct target anchor y in world units, usually exported from the stimulus scene. */
   y: number;
+  /** Correct target clockwise rotation in degrees, usually exported from the stimulus scene. */
   rotation_deg: number;
 }
 

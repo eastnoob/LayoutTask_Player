@@ -115,6 +115,19 @@ The Player treats coordinates as unitless world units. Rhino can choose millimet
 
 If Rhino exports a 1:1 drawing in millimeters, keep all fields in millimeters. The Player scales the whole world to fit the screen; it does not change the stored coordinates or grid step.
 
+## Initial State vs Target State
+
+Every object can have two different poses:
+
+- Reconstruction initial pose: `objects[].x`, `objects[].y`, and `objects[].rotation`.
+- Correct target pose: `objects[].target.absolute`, usually exported from the stimulus scene.
+
+For `role: "fixed"` objects, the reconstruction initial pose usually already equals the correct target pose. Fixed objects are displayed as context and normally do not need a separate `target`.
+
+For `role: "variable"` objects, the reconstruction initial pose is usually a displaced or rotated starting pose for the participant. The correct pose shown in the stimulus should be written to `target.absolute`. If the task uses step-based movement, also write `target.relative` as the signed step delta from the initial pose to the correct pose.
+
+Rhino exporters should treat the designed stimulus scene as the source of truth for `target.absolute`. The generator may then derive each variable object's reconstruction initial pose by applying the planned offset/rotation perturbation, and write that perturbed pose into `x`, `y`, and `rotation`.
+
 ## Asset Libraries
 
 Object library:
@@ -216,14 +229,16 @@ Required:
 
 - `id`: unique within the trial.
 - `asset`: key from `assets/objects.json`.
-- `x`, `y`: initial anchor position in world units.
+- `x`, `y`: reconstruction initial anchor position in world units.
 - `behavior`: movement/rotation behavior.
 
 Recommended:
 
-- `rotation`: initial clockwise rotation in degrees; defaults to `0` if omitted.
-- `role`: `"fixed"` or `"variable"` for analysis/scoring.
+- `rotation`: reconstruction initial clockwise rotation in degrees; defaults to `0` if omitted.
+- `role`: `"fixed"` or `"variable"` for analysis/scoring. Fixed objects are context objects; variable objects are restored by the participant.
 - `group_id`: optional grouping label such as `"chairs"`.
+- `initial_state_label`: optional authoring label for the reconstruction initial pose.
+- `target`: correct answer state for variable objects. Use `target.absolute` for the stimulus pose and `target.relative` for step deltas from the initial pose.
 
 ## Behavior
 
@@ -366,7 +381,9 @@ When possible, export both relative and absolute targets. Analysts can choose ei
 }
 ```
 
-Relative targets are expressed in movement/rotation steps from the initial object pose. Absolute targets are final world coordinates and final rotation degrees.
+Relative targets are expressed in movement/rotation steps from the reconstruction initial object pose (`x`, `y`, `rotation`) to the correct target pose. Absolute targets are correct final world coordinates and final rotation degrees, usually copied from the stimulus scene.
+
+If both are available, export both. Relative targets make step-based scoring simple; absolute targets preserve the stimulus geometry and let analysts compute distance/angle errors later.
 
 Optional tolerance:
 

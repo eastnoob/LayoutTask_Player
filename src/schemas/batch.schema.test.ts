@@ -66,6 +66,30 @@ describe("batchSchema", () => {
     });
   });
 
+  it("treats object x/y/rotation as reconstruction initial pose and target as correct pose", () => {
+    const batch = cloneMinimalBatch();
+    batch.trials[0].objects[0] = {
+      ...batch.trials[0].objects[0],
+      x: 100,
+      y: 150,
+      rotation: 0,
+      target: {
+        relative: { dx_steps: 1, dy_steps: -2, rotation_steps: 1 },
+        absolute: { x: 125, y: 100, rotation_deg: 45 },
+      },
+    };
+
+    const object = batchSchema.parse(batch).trials[0].objects[0];
+
+    expect(object.x).toBe(100);
+    expect(object.y).toBe(150);
+    expect(object.rotation).toBe(0);
+    expect(object.target).toEqual({
+      relative: { dx_steps: 1, dy_steps: -2, rotation_steps: 1 },
+      absolute: { x: 125, y: 100, rotation_deg: 45 },
+    });
+  });
+
   it("accepts a target with only relative", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0].target = {

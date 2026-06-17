@@ -8,6 +8,8 @@ This package shows one complete generated trial:
 4. enforce object, wall, and blocked-area collision
 5. preserve target/scoring metadata for analysis
 
+In `batch.json`, `chair_01.x/y/rotation` are the reconstruction initial pose. `chair_01.target.absolute` is the correct stimulus pose, and `chair_01.target.relative` is the signed step delta from the initial pose to that target.
+
 Validate it:
 
 ```bash

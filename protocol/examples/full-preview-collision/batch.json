@@ -60,6 +60,8 @@
       "objects": [
         {
           "id": "chair_01",
+          "role": "variable",
+          "initial_state_label": "reconstruction_start",
           "asset": "full_chair",
           "x": -150,
           "y": 0,

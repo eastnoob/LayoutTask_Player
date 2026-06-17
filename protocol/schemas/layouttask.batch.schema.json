@@ -434,6 +434,7 @@
       "additionalProperties": true
     },
     "relativeTarget": {
+      "description": "Correct answer expressed as signed movement/rotation steps from the reconstruction initial pose stored in object x/y/rotation.",
       "type": "object",
       "required": ["dx_steps", "dy_steps", "rotation_steps"],
       "properties": {
@@ -444,6 +445,7 @@
       "additionalProperties": true
     },
     "absoluteTarget": {
+      "description": "Correct answer pose in world units/degrees, usually the object pose shown in the memory stimulus.",
       "type": "object",
       "required": ["x", "y", "rotation_deg"],
       "properties": {
@@ -454,6 +456,7 @@
       "additionalProperties": true
     },
     "objectTarget": {
+      "description": "Correct answer state for scoring. It is separate from object x/y/rotation, which define the reconstruction initial pose.",
       "type": "object",
       "anyOf": [
         { "required": ["relative"] },
@@ -510,17 +513,32 @@
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "asset": { "$ref": "#/$defs/nonEmptyString" },
-        "x": { "type": "number" },
-        "y": { "type": "number" },
-        "rotation": { "type": "number" },
+        "x": {
+          "description": "Reconstruction initial anchor x in world units.",
+          "type": "number"
+        },
+        "y": {
+          "description": "Reconstruction initial anchor y in world units.",
+          "type": "number"
+        },
+        "rotation": {
+          "description": "Reconstruction initial clockwise rotation in degrees.",
+          "type": "number"
+        },
         "width": { "type": "number", "exclusiveMinimum": 0 },
         "height": { "type": "number", "exclusiveMinimum": 0 },
         "anchor": { "enum": ["center", "top_left"] },
         "behavior": { "$ref": "#/$defs/objectBehavior" },
         "role": { "enum": ["fixed", "variable"] },
         "group_id": { "$ref": "#/$defs/nonEmptyString" },
-        "initial_state_label": { "$ref": "#/$defs/nonEmptyString" },
-        "target": { "$ref": "#/$defs/objectTarget" },
+        "initial_state_label": {
+          "description": "Optional authoring label for the reconstruction initial pose stored in x/y/rotation.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "target": {
+          "description": "Correct answer state for variable objects; fixed objects usually have no separate target because their initial pose already matches the stimulus.",
+          "$ref": "#/$defs/objectTarget"
+        },
         "scoring": { "$ref": "#/$defs/objectScoring" },
         "collision": { "$ref": "#/$defs/objectCollision" }
       },

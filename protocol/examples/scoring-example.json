@@ -49,6 +49,7 @@
           "id": "chair_variable_01",
           "role": "variable",
           "group_id": "chairs",
+          "initial_state_label": "reconstruction_start",
           "asset": "mock_chair",
           "x": 100,
           "y": 150,

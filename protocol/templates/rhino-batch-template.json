@@ -64,11 +64,12 @@
           "x": 100,
           "y": 150,
           "rotation": 0,
+          "initial_state_label": "reconstruction_start",
           "behavior": { "template": "drag25_rotate45_limited" },
           "collision": { "enabled": true, "shape": "box", "padding": 0 },
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 },
-            "absolute": { "x": 100, "y": 150, "rotation_deg": 0 }
+            "relative": { "dx_steps": 1, "dy_steps": -2, "rotation_steps": 1 },
+            "absolute": { "x": 125, "y": 100, "rotation_deg": 45 }
           }
         }
       ],

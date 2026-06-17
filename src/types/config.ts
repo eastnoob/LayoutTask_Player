@@ -281,8 +281,11 @@ export interface BehaviorLibraryConfig {
 export interface TaskObjectConfig {
   id: string;
   asset: string;
+  /** Reconstruction initial anchor x in world units. */
   x: number;
+  /** Reconstruction initial anchor y in world units. */
   y: number;
+  /** Reconstruction initial clockwise rotation in degrees. */
   rotation?: number;
   width?: number;
   height?: number;
