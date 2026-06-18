@@ -34,8 +34,9 @@ export interface ObjectAssetConfig {
   type: AssetType;
   src: string;
   intrinsic_unit?: WorldUnit;
-  default_width: number;
-  default_height: number;
+  default_width?: number;
+  default_height?: number;
+  viewbox_scale?: number;
   anchor?: Anchor;
 }
 
@@ -43,6 +44,7 @@ export interface BackgroundAssetConfig {
   type: "image" | "svg";
   src: string;
   intrinsic_unit?: WorldUnit;
+  viewbox_scale?: number;
 }
 
 export interface MovementBehavior {
@@ -299,10 +301,10 @@ export interface TaskObjectConfig {
 
 export interface TaskBackgroundConfig {
   asset: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface TaskConfig {

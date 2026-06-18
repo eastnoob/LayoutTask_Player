@@ -9,21 +9,15 @@ import {
   recordingSchema,
   requirementsSchema,
   stageSchema,
+  taskBackgroundSchema,
   taskCollisionSchema,
-  taskObjectSchema,
+  taskObjectBaseSchema,
+  refineObjectDimensions,
   worldSchema,
 } from "./config.schema";
 import { OBJECT_ROLES } from "../protocol/constants";
 
 const objectRoleSchema = z.enum(OBJECT_ROLES);
-
-const backgroundSchema = z.object({
-  asset: z.string().min(1),
-  x: z.number().finite(),
-  y: z.number().finite(),
-  width: z.number().positive(),
-  height: z.number().positive(),
-});
 
 const metadataValueSchema = z.union([
   z.string(),
@@ -87,13 +81,15 @@ export const scoringSchema = z.object({
   objects: z.record(z.string().min(1), objectScoringSchema).optional(),
 });
 
-export const batchObjectSchema = taskObjectSchema.extend({
-  role: objectRoleSchema.optional(),
-  group_id: z.string().min(1).optional(),
-  initial_state_label: z.string().min(1).optional(),
-  target: objectTargetSchema.optional(),
-  scoring: objectScoringSchema.optional(),
-});
+export const batchObjectSchema = taskObjectBaseSchema
+  .extend({
+    role: objectRoleSchema.optional(),
+    group_id: z.string().min(1).optional(),
+    initial_state_label: z.string().min(1).optional(),
+    target: objectTargetSchema.optional(),
+    scoring: objectScoringSchema.optional(),
+  })
+  .superRefine(refineObjectDimensions);
 
 export const batchTrialSchema = z.object({
   qid: z.string().min(1),
@@ -101,7 +97,7 @@ export const batchTrialSchema = z.object({
   title: z.string().optional(),
   display_image: displayImageSchema.optional(),
   world: worldSchema.optional(),
-  background: backgroundSchema,
+  background: taskBackgroundSchema,
   objects: z.array(batchObjectSchema),
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),

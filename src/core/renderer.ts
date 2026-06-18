@@ -918,6 +918,7 @@ export class LayoutTaskRenderer {
       shadowLayer.setAttribute("filter", `url(#${filterId})`);
 
       const shadowShape = this.createInlineObjectSvgElement(inlineSvgText, width, height, anchor, {
+        idPrefix: `${escapeSvgId(objectId)}-shadow`,
         forceFill: "#0e7490",
         opacity: "0.92",
       });
@@ -925,7 +926,9 @@ export class LayoutTaskRenderer {
     }
 
     const image = inlineSvgText
-      ? this.createInlineObjectSvgElement(inlineSvgText, width, height, anchor)
+      ? this.createInlineObjectSvgElement(inlineSvgText, width, height, anchor, {
+          idPrefix: `${escapeSvgId(objectId)}-image`,
+        })
       : this.createObjectImageElement(src, width, height, anchor);
     image.classList.add("layout-task-object-image");
 
@@ -955,16 +958,17 @@ export class LayoutTaskRenderer {
     width: number,
     height: number,
     anchor: string,
-    options: { forceFill?: string; opacity?: string } = {},
+    options: { idPrefix?: string; forceFill?: string; opacity?: string } = {},
   ): SVGElement {
     const parser = new DOMParser();
     const parsedDocument = parser.parseFromString(svgText, "image/svg+xml");
-    const sourceSvg = parsedDocument.documentElement;
+    const sourceSvg = parsedDocument.documentElement as unknown as SVGElement;
     if (sourceSvg.nodeName.toLowerCase() !== "svg" || sourceSvg.querySelector("parsererror")) {
       return this.createObjectImageElement("", width, height, anchor);
     }
 
     const viewBox = parseSvgViewBox(sourceSvg.getAttribute("viewBox"));
+    namespaceInlineSvgIds(sourceSvg, options.idPrefix ?? `inline-${nextInlineSvgNamespaceId()}`);
     const x = anchor === "center" ? -width / 2 : 0;
     const y = anchor === "center" ? -height / 2 : 0;
     const scaleX = width / viewBox.width;
@@ -1320,6 +1324,62 @@ function parseSvgViewBox(value: string | null): { x: number; y: number; width: n
   }
 
   return { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
+}
+
+let inlineSvgNamespaceCounter = 0;
+
+function nextInlineSvgNamespaceId(): number {
+  inlineSvgNamespaceCounter += 1;
+  return inlineSvgNamespaceCounter;
+}
+
+function namespaceInlineSvgIds(sourceSvg: SVGElement, prefix: string): void {
+  const idMap = new Map<string, string>();
+
+  for (const element of Array.from(sourceSvg.querySelectorAll<SVGElement>("[id]"))) {
+    const id = element.getAttribute("id");
+    if (!id || idMap.has(id)) {
+      continue;
+    }
+    idMap.set(id, `${prefix}-${id}`);
+  }
+
+  if (idMap.size === 0) {
+    return;
+  }
+
+  for (const element of Array.from(sourceSvg.querySelectorAll<SVGElement>("*"))) {
+    const id = element.getAttribute("id");
+    if (id) {
+      const mappedId = idMap.get(id);
+      if (mappedId) {
+        element.setAttribute("id", mappedId);
+      }
+    }
+
+    for (const attribute of Array.from(element.attributes)) {
+      const value = rewriteSvgReferenceValue(attribute.value, idMap);
+      if (value !== attribute.value) {
+        element.setAttribute(attribute.name, value);
+      }
+    }
+  }
+}
+
+function rewriteSvgReferenceValue(value: string, idMap: Map<string, string>): string {
+  let rewritten = value.replace(/url\(\s*(['"]?)#([^)'" ]+)\1\s*\)/g, (match, quote: string, id: string) => {
+    const mappedId = idMap.get(id);
+    return mappedId ? `url(${quote}#${mappedId}${quote})` : match;
+  });
+
+  if (rewritten.startsWith("#")) {
+    const mappedId = idMap.get(rewritten.slice(1));
+    if (mappedId) {
+      rewritten = `#${mappedId}`;
+    }
+  }
+
+  return rewritten;
 }
 
 function getSvgBBoxSafe(element: SVGElement): LocalRect | undefined {

@@ -1,13 +1,16 @@
 import type {
   BackgroundLibraryConfig,
+  BackgroundAssetConfig,
   BehaviorConfig,
   BehaviorLibraryConfig,
   ManifestConfig,
   MinViewportRequirement,
   ObjectLibraryConfig,
+  ObjectAssetConfig,
   PartialBehaviorConfig,
   TaskObjectBehaviorConfig,
   TaskConfig,
+  ViewBox,
 } from "../types/config";
 import type { RuntimeTaskConfig } from "../types/runtime";
 import { behaviorSchema, objectLibrarySchema } from "../schemas/config.schema";
@@ -154,6 +157,12 @@ export class ConfigLoader {
     const backgroundLibrary = validateBackgroundLibrary(backgroundData);
     const behaviorLibrary = validateBehaviorLibrary(behaviorData);
 
+    await this.attachInlineSvgLibraryAssets({
+      task,
+      objectLibrary,
+      backgroundLibrary,
+    });
+
     const runtimeConfig = resolveRuntimeConfig({
       baseUrl: this.baseUrl,
       manifest,
@@ -203,6 +212,10 @@ export class ConfigLoader {
         continue;
       }
 
+      if (objectConfig.asset.inlineSvgText) {
+        continue;
+      }
+
       let svgText = svgAssets.get(objectConfig.asset.src);
       if (!svgText) {
         svgText = this.fetchText(objectConfig.asset.src);
@@ -210,6 +223,43 @@ export class ConfigLoader {
       }
       objectConfig.asset.inlineSvgText = await svgText;
     }
+  }
+
+  private async attachInlineSvgLibraryAssets(input: {
+    task: TaskConfig;
+    objectLibrary: ObjectLibraryConfig;
+    backgroundLibrary: BackgroundLibraryConfig;
+  }): Promise<void> {
+    const svgAssets = new Map<string, Promise<string>>();
+    const attachObjectAsset = async (assetId: string): Promise<void> => {
+      const asset = input.objectLibrary.objects[assetId] as ObjectAssetConfig & { inlineSvgText?: string };
+      if (!asset || asset.type !== "svg" || asset.inlineSvgText) {
+        return;
+      }
+
+      let svgText = svgAssets.get(asset.src);
+      if (!svgText) {
+        svgText = this.fetchText(asset.src);
+        svgAssets.set(asset.src, svgText);
+      }
+      asset.inlineSvgText = await svgText;
+    };
+
+    await Promise.all(input.task.objects.map((objectConfig) => attachObjectAsset(objectConfig.asset)));
+
+    const backgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset] as
+      | (BackgroundAssetConfig & { inlineSvgText?: string })
+      | undefined;
+    if (!backgroundAsset || backgroundAsset.type !== "svg" || backgroundAsset.inlineSvgText) {
+      return;
+    }
+
+    let svgText = svgAssets.get(backgroundAsset.src);
+    if (!svgText) {
+      svgText = this.fetchText(backgroundAsset.src);
+      svgAssets.set(backgroundAsset.src, svgText);
+    }
+    backgroundAsset.inlineSvgText = await svgText;
   }
 
   private async attachCollisionSource(config: RuntimeTaskConfig): Promise<void> {
@@ -254,9 +304,11 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
   // 也就是“浏览器真正能直接渲染和运行”的那一层 shape。
   const assetBaseUrl = input.manifest.asset_base_url ?? input.baseUrl;
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
+  const backgroundPlacement = resolveBackgroundPlacement(input.task, resolvedBackgroundAsset);
   const resolvedObjects = input.task.objects.map((objectConfig) => {
-    const asset = input.objectLibrary.objects[objectConfig.asset];
+    const asset = input.objectLibrary.objects[objectConfig.asset] as ObjectAssetConfig & { inlineSvgText?: string };
     const { behavior, templateId } = resolveObjectBehavior(objectConfig.behavior, input.behaviorLibrary);
+    const dimensions = resolveObjectDimensions(objectConfig, asset);
 
     return {
       id: objectConfig.id,
@@ -268,8 +320,8 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       x: objectConfig.x,
       y: objectConfig.y,
       rotation: objectConfig.rotation ?? 0,
-      width: objectConfig.width ?? asset.default_width,
-      height: objectConfig.height ?? asset.default_height,
+      width: dimensions.width,
+      height: dimensions.height,
       anchor: objectConfig.anchor ?? asset.anchor ?? "center",
       behaviorTemplateId: templateId,
       behavior,
@@ -295,10 +347,10 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
         ...resolvedBackgroundAsset,
         srcResolved: resolveAssetUrl(assetBaseUrl, resolvedBackgroundAsset.src),
       },
-      x: input.task.background.x,
-      y: input.task.background.y,
-      width: input.task.background.width,
-      height: input.task.background.height,
+      x: backgroundPlacement.x,
+      y: backgroundPlacement.y,
+      width: backgroundPlacement.width,
+      height: backgroundPlacement.height,
     },
     objects: resolvedObjects,
     completion: {
@@ -341,6 +393,84 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
         }
       : undefined,
   };
+}
+
+function resolveObjectDimensions(
+  objectConfig: TaskConfig["objects"][number],
+  asset: ObjectAssetConfig & { inlineSvgText?: string },
+): { width: number; height: number } {
+  if (objectConfig.width !== undefined || objectConfig.height !== undefined) {
+    if (objectConfig.width === undefined || objectConfig.height === undefined) {
+      throw new Error(`Object ${objectConfig.id} must supply both width and height when overriding dimensions`);
+    }
+
+    return { width: objectConfig.width, height: objectConfig.height };
+  }
+
+  if (asset.default_width !== undefined || asset.default_height !== undefined) {
+    if (asset.default_width === undefined || asset.default_height === undefined) {
+      throw new Error(`Object asset ${objectConfig.asset} must supply both default_width and default_height`);
+    }
+
+    return { width: asset.default_width, height: asset.default_height };
+  }
+
+  if (asset.type === "svg" && asset.inlineSvgText) {
+    const viewBox = parseSvgViewBox(asset.inlineSvgText);
+    if (viewBox) {
+      const scale = asset.viewbox_scale ?? 1;
+      return { width: viewBox.width * scale, height: viewBox.height * scale };
+    }
+  }
+
+  throw new Error(
+    `Object ${objectConfig.id} asset ${objectConfig.asset} requires explicit dimensions or a valid SVG viewBox`,
+  );
+}
+
+function resolveBackgroundPlacement(
+  task: TaskConfig,
+  asset: BackgroundAssetConfig & { inlineSvgText?: string },
+): ViewBox {
+  const background = task.background;
+  const hasExplicitPlacement =
+    background.x !== undefined ||
+    background.y !== undefined ||
+    background.width !== undefined ||
+    background.height !== undefined;
+
+  if (hasExplicitPlacement) {
+    if (
+      background.x === undefined ||
+      background.y === undefined ||
+      background.width === undefined ||
+      background.height === undefined
+    ) {
+      throw new Error("Background placement must include all of x, y, width, and height or omit all of them");
+    }
+
+    return {
+      x: background.x,
+      y: background.y,
+      width: background.width,
+      height: background.height,
+    };
+  }
+
+  if (asset.type === "svg" && asset.inlineSvgText) {
+    const viewBox = parseSvgViewBox(asset.inlineSvgText);
+    if (viewBox) {
+      const scale = asset.viewbox_scale ?? 1;
+      return {
+        x: viewBox.x * scale,
+        y: viewBox.y * scale,
+        width: viewBox.width * scale,
+        height: viewBox.height * scale,
+      };
+    }
+  }
+
+  throw new Error(`Background asset ${background.asset} requires explicit placement or a valid SVG viewBox`);
 }
 
 function resolveTaskCollision(
@@ -466,5 +596,28 @@ function resolveMinViewportRequirement(
     height: requirement.height,
     mode: requirement.mode ?? "warn",
     message: requirement.message,
+  };
+}
+
+function parseSvgViewBox(svgText: string): ViewBox | undefined {
+  const match = svgText.match(/<svg\b[^>]*\bviewBox\s*=\s*["']([^"']+)["']/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const parts = match[1]
+    .trim()
+    .split(/[\s,]+/)
+    .map((part) => Number(part));
+
+  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part)) || parts[2] <= 0 || parts[3] <= 0) {
+    return undefined;
+  }
+
+  return {
+    x: parts[0],
+    y: parts[1],
+    width: parts[2],
+    height: parts[3],
   };
 }

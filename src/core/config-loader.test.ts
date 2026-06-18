@@ -346,6 +346,177 @@ describe("resolveRuntimeConfig flow", () => {
   });
 });
 
+describe("resolveRuntimeConfig SVG viewBox sizing", () => {
+  it("uses object SVG viewBox when object and asset dimensions are omitted", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const asset = input.objectLibrary.objects.chair_a as any;
+    delete asset.default_width;
+    delete asset.default_height;
+    asset.inlineSvgText = "<svg viewBox=\"10 20 11555 2633\"><rect width=\"11555\" height=\"2633\" /></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.objects[0].width).toBe(11555);
+    expect(config.objects[0].height).toBe(2633);
+  });
+
+  it("scales inferred object SVG viewBox dimensions when viewbox_scale is configured", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const asset = input.objectLibrary.objects.chair_a as any;
+    delete asset.default_width;
+    delete asset.default_height;
+    asset.viewbox_scale = 40;
+    asset.inlineSvgText = "<svg viewBox=\"10 20 11555 2633\"><rect width=\"11555\" height=\"2633\" /></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.objects[0].width).toBe(462200);
+    expect(config.objects[0].height).toBe(105320);
+  });
+
+  it("lets object instance dimensions override asset defaults and SVG viewBox", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const asset = input.objectLibrary.objects.chair_a as any;
+    asset.default_width = 80;
+    asset.default_height = 90;
+    asset.inlineSvgText = "<svg viewBox=\"0 0 11555 2633\"></svg>";
+    input.task.objects[0].width = 120;
+    input.task.objects[0].height = 130;
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.objects[0].width).toBe(120);
+    expect(config.objects[0].height).toBe(130);
+  });
+
+  it("lets object asset defaults override SVG viewBox", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const asset = input.objectLibrary.objects.chair_a as any;
+    asset.default_width = 80;
+    asset.default_height = 90;
+    asset.inlineSvgText = "<svg viewBox=\"0 0 11555 2633\"></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.objects[0].width).toBe(80);
+    expect(config.objects[0].height).toBe(90);
+  });
+
+  it("throws when an SVG object has no explicit dimensions and no valid viewBox", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const asset = input.objectLibrary.objects.chair_a as any;
+    delete asset.default_width;
+    delete asset.default_height;
+    asset.inlineSvgText = "<svg><rect width=\"50\" height=\"50\" /></svg>";
+
+    expect(() => resolveRuntimeConfig(input)).toThrow(
+      "Object chair_01 asset chair_a requires explicit dimensions or a valid SVG viewBox",
+    );
+  });
+
+  it("uses background SVG viewBox when explicit placement is omitted", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    input.task.background = { asset: "room01_bg" };
+    (input.backgroundLibrary.backgrounds.room01_bg as any).inlineSvgText =
+      "<svg viewBox=\"-1600000 -1200000 3200000 2400000\"></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.background).toMatchObject({
+      x: -1600000,
+      y: -1200000,
+      width: 3200000,
+      height: 2400000,
+    });
+  });
+
+  it("scales inferred background SVG viewBox placement when viewbox_scale is configured", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    input.task.background = { asset: "room01_bg" };
+    (input.backgroundLibrary.backgrounds.room01_bg as any).viewbox_scale = 40;
+    (input.backgroundLibrary.backgrounds.room01_bg as any).inlineSvgText = "<svg viewBox=\"10 20 2519 1031\"></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.background).toMatchObject({
+      x: 400,
+      y: 800,
+      width: 100760,
+      height: 41240,
+    });
+  });
+
+  it("lets explicit background placement override SVG viewBox", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    (input.backgroundLibrary.backgrounds.room01_bg as any).inlineSvgText =
+      "<svg viewBox=\"-1600000 -1200000 3200000 2400000\"></svg>";
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.background).toMatchObject({
+      x: -400,
+      y: -300,
+      width: 800,
+      height: 600,
+    });
+  });
+
+  it("throws when a background has no explicit placement and no valid SVG viewBox", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    input.task.background = { asset: "room01_bg" };
+    (input.backgroundLibrary.backgrounds.room01_bg as any).inlineSvgText = "<svg></svg>";
+
+    expect(() => resolveRuntimeConfig(input)).toThrow(
+      "Background asset room01_bg requires explicit placement or a valid SVG viewBox",
+    );
+  });
+});
+
+describe("ConfigLoader SVG viewBox sizing", () => {
+  it("fetches SVG assets before resolving omitted object dimensions and background placement", async () => {
+    const fetchImpl = createConfigFetch({
+      taskBackground: { asset: "room01_bg" },
+      objectAssets: {
+        chair_a: {
+          type: "svg",
+          src: "assets/objects/chair_a.svg",
+        },
+      },
+      backgroundAssets: {
+        room01_bg: {
+          type: "svg",
+          src: "assets/backgrounds/room01.svg",
+        },
+      },
+      textByPath: {
+        "/layout-task/assets/objects/chair_a.svg":
+          "<svg viewBox=\"0 0 11555 2633\"><rect width=\"11555\" height=\"2633\" /></svg>",
+        "/layout-task/assets/backgrounds/room01.svg":
+          "<svg viewBox=\"-1600000 -1200000 3200000 2400000\"></svg>",
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(config.objects[0]).toMatchObject({
+      width: 11555,
+      height: 2633,
+    });
+    expect(config.background).toMatchObject({
+      x: -1600000,
+      y: -1200000,
+      width: 3200000,
+      height: 2400000,
+    });
+    expect(config.objects[0].asset.inlineSvgText).toContain("11555");
+    expect(config.background.asset.inlineSvgText).toContain("3200000");
+  });
+});
+
 describe("resolveRuntimeConfig collision", () => {
   it("applies default runtime collision values", () => {
     const config = resolveRuntimeConfig(createBehaviorConfigInput({
@@ -992,6 +1163,10 @@ function createBehaviorConfigInput(behavior: Parameters<typeof resolveRuntimeCon
 function createConfigFetch(options: {
   manifestAssetBaseUrl?: string;
   taskCollision?: TaskCollisionConfig;
+  taskBackground?: Parameters<typeof resolveRuntimeConfig>[0]["task"]["background"];
+  taskObjects?: Parameters<typeof resolveRuntimeConfig>[0]["task"]["objects"];
+  objectAssets?: Record<string, unknown>;
+  backgroundAssets?: Record<string, unknown>;
   textByPath?: Record<string, string>;
   textByUrl?: Record<string, string>;
 }): typeof fetch {
@@ -1016,13 +1191,13 @@ function createConfigFetch(options: {
           origin: { x: 0, y: 0 },
           grid: { size: 25, visible: false, snap: true },
         },
-        background: { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
-        objects: [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
+        background: options.taskBackground ?? { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
+        objects: options.taskObjects ?? [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
         collision: options.taskCollision,
       },
       "/layout-task/assets/objects.json": {
         schema: "layouttask.assets.objects.v1",
-        objects: {
+        objects: options.objectAssets ?? {
           chair_a: {
             type: "svg",
             src: "assets/objects/chair_a.svg",
@@ -1033,7 +1208,7 @@ function createConfigFetch(options: {
       },
       "/layout-task/assets/backgrounds.json": {
         schema: "layouttask.assets.backgrounds.v1",
-        backgrounds: {
+        backgrounds: options.backgroundAssets ?? {
           room01_bg: {
             type: "svg",
             src: "assets/backgrounds/room01.svg",

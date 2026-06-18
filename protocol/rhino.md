@@ -121,7 +121,7 @@ The following fields inherit `world.unit`:
 - `world.grid.size`
 - `background.x/y/width/height`
 - `objects[].x/y`
-- object asset `default_width/default_height`
+- object asset `default_width/default_height` when explicitly authored
 - movement behavior `step`
 - `objects[].target.absolute.x/y`
 - collision `areas`
@@ -158,9 +158,7 @@ Object library:
     "chair_a": {
       "type": "svg",
       "src": "assets/objects/chair_a.svg",
-      "intrinsic_unit": "px",
-      "default_width": 500,
-      "default_height": 500,
+      "intrinsic_unit": "mm",
       "anchor": "center"
     }
   }
@@ -186,7 +184,9 @@ Rules:
 
 - Library keys such as `chair_a` and `room_001_bg` are what trials reference.
 - SVG files should be self-contained.
-- `default_width` and `default_height` are in world units.
+- For 1:1 SVG/CAD/Rhino exports, prefer omitting `default_width/default_height`. The Player will read the SVG root `viewBox` and use `viewBox.width/viewBox.height` as the object's world size.
+- If `default_width/default_height` are present, they are in world units and override the SVG `viewBox`.
+- Raster object assets (`png`, `jpg`, `image`) must define `default_width/default_height`; their natural pixel dimensions are not treated as world units.
 - `intrinsic_unit` describes the asset file's internal coordinate system only. It does not change the task-space size or placement values.
 - `anchor` is usually `"center"` for furniture.
 
@@ -199,11 +199,7 @@ Each trial must have:
   "qid": "Q001",
   "task_id": "room_generated_001",
   "background": {
-    "asset": "room_001_bg",
-    "x": 0,
-    "y": 0,
-    "width": 1000,
-    "height": 1000
+    "asset": "room_001_bg"
   },
   "objects": []
 }
@@ -214,7 +210,9 @@ Rules:
 - `task_id` must be filename-safe: letters, numbers, `_`, and `-`; lowercase is recommended.
 - `qid` should match the survey/question identifier used by the study.
 - `background.asset` references `assets/backgrounds.json`.
-- `background.x/y/width/height` place the background in world units.
+- For 1:1 SVG backgrounds, prefer omitting `background.x/y/width/height`. The Player will read the background SVG root `viewBox` and use `viewBox.x/y/width/height` as the world placement.
+- If `background.x/y/width/height` are present, all four must be present and they override the SVG `viewBox`.
+- Raster/image backgrounds must provide explicit `x/y/width/height`.
 - `display_image` is optional for direct reconstruction but required for preview flows.
 
 Reference image:
@@ -256,6 +254,7 @@ Required:
 Recommended:
 
 - `rotation`: reconstruction initial clockwise rotation in degrees; defaults to `0` if omitted.
+- `width` and `height`: optional per-instance world-size override. Omit both for normal 1:1 SVG assets; if one is present, both must be present.
 - `role`: `"fixed"` or `"variable"` for analysis/scoring. Fixed objects are context objects; variable objects are restored by the participant.
 - `group_id`: optional grouping label such as `"chairs"`.
 - `initial_state_label`: optional authoring label for the reconstruction initial pose.

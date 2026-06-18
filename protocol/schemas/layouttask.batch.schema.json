@@ -378,7 +378,13 @@
     },
     "background": {
       "type": "object",
-      "required": ["asset", "x", "y", "width", "height"],
+      "required": ["asset"],
+      "allOf": [
+        {
+          "if": { "anyOf": [{ "required": ["x"] }, { "required": ["y"] }, { "required": ["width"] }, { "required": ["height"] }] },
+          "then": { "required": ["x", "y", "width", "height"] }
+        }
+      ],
       "properties": {
         "asset": { "$ref": "#/$defs/nonEmptyString" },
         "x": { "type": "number" },
@@ -515,6 +521,16 @@
     "object": {
       "type": "object",
       "required": ["id", "asset", "x", "y", "behavior"],
+      "allOf": [
+        {
+          "if": { "required": ["width"] },
+          "then": { "required": ["height"] }
+        },
+        {
+          "if": { "required": ["height"] },
+          "then": { "required": ["width"] }
+        }
+      ],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "asset": { "$ref": "#/$defs/nonEmptyString" },

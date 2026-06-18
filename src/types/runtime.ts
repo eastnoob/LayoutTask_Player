@@ -27,7 +27,9 @@ export interface ResolvedAssetPath {
 export type ResolvedObjectAsset = ObjectAssetConfig & ResolvedAssetPath & {
   inlineSvgText?: string;
 };
-export type ResolvedBackgroundAsset = BackgroundAssetConfig & ResolvedAssetPath;
+export type ResolvedBackgroundAsset = BackgroundAssetConfig & ResolvedAssetPath & {
+  inlineSvgText?: string;
+};
 export type ResolvedBehaviorConfig = BehaviorConfig;
 
 export interface RuntimeTaskObject {

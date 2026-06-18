@@ -231,6 +231,75 @@ describe("asset library intrinsic units", () => {
       }).backgrounds.room_001_bg.intrinsic_unit,
     ).toBe("mm");
   });
+
+  it("allows SVG object assets to omit default dimensions for viewBox inference", () => {
+    const parsed = objectLibrarySchema.parse({
+      schema: "layouttask.assets.objects.v1",
+      objects: {
+        chair_a: {
+          type: "svg",
+          src: "assets/objects/chair_a.svg",
+        },
+      },
+    });
+
+    expect(parsed.objects.chair_a.default_width).toBeUndefined();
+    expect(parsed.objects.chair_a.default_height).toBeUndefined();
+  });
+
+  it("requires explicit dimensions for non-SVG object assets", () => {
+    expect(() =>
+      objectLibrarySchema.parse({
+        schema: "layouttask.assets.objects.v1",
+        objects: {
+          chair_png: {
+            type: "png",
+            src: "assets/objects/chair.png",
+          },
+        },
+      }),
+    ).toThrow("non-SVG object assets require default_width and default_height");
+  });
+
+  it("requires object asset dimensions to be supplied as a pair", () => {
+    expect(() =>
+      objectLibrarySchema.parse({
+        schema: "layouttask.assets.objects.v1",
+        objects: {
+          chair_a: {
+            type: "svg",
+            src: "assets/objects/chair_a.svg",
+            default_width: 500,
+          },
+        },
+      }),
+    ).toThrow("default_width and default_height must be supplied together");
+  });
+});
+
+describe("taskSchema SVG viewBox sizing hooks", () => {
+  it("allows background placement to be omitted for SVG viewBox inference", () => {
+    const task = createMinimalTask();
+    task.background = { asset: "room_bg" };
+
+    expect(taskSchema.parse(task).background).toEqual({ asset: "room_bg" });
+  });
+
+  it("rejects partial background placement", () => {
+    const task = createMinimalTask();
+    task.background = { asset: "room_bg", width: 1000, height: 1000 };
+
+    expect(() => taskSchema.parse(task)).toThrow(
+      "background placement must include all of x, y, width, and height or omit all of them",
+    );
+  });
+
+  it("requires object instance dimensions to be supplied as a pair", () => {
+    const task = createMinimalTask();
+    task.objects[0].width = 120;
+
+    expect(() => taskSchema.parse(task)).toThrow("object width and height must be supplied together");
+  });
 });
 
 describe("taskSchema autosave", () => {

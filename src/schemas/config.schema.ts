@@ -91,19 +91,42 @@ export const taskObjectBehaviorSchema = z
     }
   });
 
-export const objectAssetSchema = z.object({
-  type: z.enum(["svg", "png", "jpg", "image"]),
-  src: z.string().min(1),
-  intrinsic_unit: worldUnitSchema.optional(),
-  default_width: z.number().positive(),
-  default_height: z.number().positive(),
-  anchor: z.enum(["center", "top_left"]).optional(),
-});
+export const objectAssetSchema = z
+  .object({
+    type: z.enum(["svg", "png", "jpg", "image"]),
+    src: z.string().min(1),
+    intrinsic_unit: worldUnitSchema.optional(),
+    default_width: z.number().positive().optional(),
+    default_height: z.number().positive().optional(),
+    viewbox_scale: z.number().positive().optional(),
+    anchor: z.enum(["center", "top_left"]).optional(),
+  })
+  .superRefine((value, context) => {
+    const hasWidth = value.default_width !== undefined;
+    const hasHeight = value.default_height !== undefined;
+
+    if (hasWidth !== hasHeight) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: hasWidth ? ["default_height"] : ["default_width"],
+        message: "default_width and default_height must be supplied together",
+      });
+    }
+
+    if (value.type !== "svg" && (!hasWidth || !hasHeight)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["default_width"],
+        message: "non-SVG object assets require default_width and default_height",
+      });
+    }
+  });
 
 export const backgroundAssetSchema = z.object({
   type: z.enum(["image", "svg"]),
   src: z.string().min(1),
   intrinsic_unit: worldUnitSchema.optional(),
+  viewbox_scale: z.number().positive().optional(),
 });
 
 export const completionSchema = z.object({
@@ -279,7 +302,7 @@ export const objectCollisionSchema = z.object({
   padding: z.number().nonnegative().default(0),
 });
 
-export const taskObjectSchema = z.object({
+export const taskObjectBaseSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
   x: z.number().finite(),
@@ -292,19 +315,52 @@ export const taskObjectSchema = z.object({
   collision: objectCollisionSchema.optional(),
 });
 
+export function refineObjectDimensions(
+  value: { width?: number; height?: number },
+  context: z.RefinementCtx,
+): void {
+  const hasWidth = value.width !== undefined;
+  const hasHeight = value.height !== undefined;
+
+  if (hasWidth !== hasHeight) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: hasWidth ? ["height"] : ["width"],
+      message: "object width and height must be supplied together",
+    });
+  }
+}
+
+export const taskObjectSchema = taskObjectBaseSchema.superRefine(refineObjectDimensions);
+
+export const taskBackgroundSchema = z
+  .object({
+    asset: z.string().min(1),
+    x: z.number().finite().optional(),
+    y: z.number().finite().optional(),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
+  })
+  .superRefine((value, context) => {
+    const placementFields = ["x", "y", "width", "height"] as const;
+    const presentFields = placementFields.filter((field) => value[field] !== undefined);
+
+    if (presentFields.length > 0 && presentFields.length < placementFields.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["width"],
+        message: "background placement must include all of x, y, width, and height or omit all of them",
+      });
+    }
+  });
+
 export const taskSchema = z.object({
   schema: z.literal("layouttask.task.v1"),
   task_id: z.string().min(1),
   qid: z.string().min(1),
   title: z.string().optional(),
   world: worldSchema,
-  background: z.object({
-    asset: z.string().min(1),
-    x: z.number().finite(),
-    y: z.number().finite(),
-    width: z.number().positive(),
-    height: z.number().positive(),
-  }),
+  background: taskBackgroundSchema,
   objects: z.array(taskObjectSchema),
   completion: completionSchema.optional(),
   recording: recordingSchema.optional(),
