@@ -66,6 +66,13 @@ describe("batchSchema", () => {
     });
   });
 
+  it("accepts shared world.unit metadata", () => {
+    const batch = cloneMinimalBatch();
+    batch.shared.world.unit = "mm";
+
+    expect(batchSchema.parse(batch).shared.world?.unit).toBe("mm");
+  });
+
   it("treats object x/y/rotation as reconstruction initial pose and target as correct pose", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0] = {

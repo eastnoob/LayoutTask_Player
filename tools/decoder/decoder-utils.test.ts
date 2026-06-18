@@ -51,6 +51,7 @@ describe("decoder validation", () => {
       total_elapsed_ms: 1100,
       player_start_time: 1000,
       player_elapsed_ms: 1000,
+      world_unit: "mm",
       visual_viewport_width: 1200,
       visual_viewport_height: 800,
       visual_viewport_scale: 1,
@@ -178,6 +179,7 @@ function createDecodedRecord(): DecodedLayoutTask {
       },
       context: {
         world: {
+          unit: "mm",
           viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
           origin: { x: 0, y: 0 },
           grid_size: 25,

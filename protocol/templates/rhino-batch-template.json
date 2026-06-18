@@ -7,6 +7,7 @@
     "background_library": "assets/backgrounds.json",
     "behavior_library": "behaviors/behaviors.json",
     "world": {
+      "unit": "mm",
       "viewBox": { "x": 0, "y": 0, "width": 1000, "height": 1000 },
       "origin": { "x": 0, "y": 0 },
       "grid": { "size": 25, "visible": true, "snap": true, "origin": { "x": 0, "y": 0 } }

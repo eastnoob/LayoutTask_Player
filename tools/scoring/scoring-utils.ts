@@ -32,6 +32,7 @@ export interface ObjectStateCsvRow {
   qid: string;
   task_id: string;
   session: string;
+  world_unit: string;
   object_id: string;
   object_role: string;
   object_group_id: string;
@@ -93,6 +94,7 @@ export function toObjectStateRows(
         qid: result.qid,
         task_id: result.task_id,
         session: result.session,
+        world_unit: result.context?.world.unit ?? "",
         object_id: objectId,
         object_role: objectReference?.role ?? "",
         object_group_id: objectReference?.group_id ?? "",

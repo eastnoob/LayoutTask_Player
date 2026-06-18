@@ -2,6 +2,8 @@ import { z } from "zod";
 
 // Zod schemas define the authoring-time contract for static JSON config files.
 // 它们描述“研究者可以怎么写配置”，不是 runtime resolve 后的最终结构。
+export const worldUnitSchema = z.enum(["mm", "cm", "m", "px", "cad_unit", "unknown"]);
+
 export const viewBoxSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -22,6 +24,7 @@ export const gridSchema = z.object({
 });
 
 export const worldSchema = z.object({
+  unit: worldUnitSchema.optional(),
   viewBox: viewBoxSchema,
   origin: pointSchema,
   grid: gridSchema,
@@ -91,6 +94,7 @@ export const taskObjectBehaviorSchema = z
 export const objectAssetSchema = z.object({
   type: z.enum(["svg", "png", "jpg", "image"]),
   src: z.string().min(1),
+  intrinsic_unit: worldUnitSchema.optional(),
   default_width: z.number().positive(),
   default_height: z.number().positive(),
   anchor: z.enum(["center", "top_left"]).optional(),
@@ -99,7 +103,7 @@ export const objectAssetSchema = z.object({
 export const backgroundAssetSchema = z.object({
   type: z.enum(["image", "svg"]),
   src: z.string().min(1),
-  intrinsic_unit: z.enum(["cad_unit", "px", "unknown"]).optional(),
+  intrinsic_unit: worldUnitSchema.optional(),
 });
 
 export const completionSchema = z.object({

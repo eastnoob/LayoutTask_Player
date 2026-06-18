@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { behaviorSchema, taskSchema } from "./config.schema";
+import {
+  backgroundLibrarySchema,
+  behaviorSchema,
+  objectLibrarySchema,
+  taskSchema,
+} from "./config.schema";
 
 function createMinimalTask(): any {
   return {
@@ -177,6 +182,54 @@ describe("taskSchema stage", () => {
       max_height_ratio: 0.72,
       padding: 16,
     });
+  });
+});
+
+describe("taskSchema world units", () => {
+  it("accepts optional world.unit metadata", () => {
+    const task = createMinimalTask();
+    task.world.unit = "mm";
+
+    expect(taskSchema.parse(task).world.unit).toBe("mm");
+  });
+
+  it("rejects unsupported world.unit values", () => {
+    const task = createMinimalTask();
+    task.world.unit = "inch";
+
+    expect(() => taskSchema.parse(task)).toThrow();
+  });
+});
+
+describe("asset library intrinsic units", () => {
+  it("accepts object and background intrinsic_unit metadata", () => {
+    expect(
+      objectLibrarySchema.parse({
+        schema: "layouttask.assets.objects.v1",
+        objects: {
+          chair_a: {
+            type: "svg",
+            src: "assets/objects/chair_a.svg",
+            intrinsic_unit: "px",
+            default_width: 500,
+            default_height: 500,
+          },
+        },
+      }).objects.chair_a.intrinsic_unit,
+    ).toBe("px");
+
+    expect(
+      backgroundLibrarySchema.parse({
+        schema: "layouttask.assets.backgrounds.v1",
+        backgrounds: {
+          room_001_bg: {
+            type: "svg",
+            src: "assets/backgrounds/room_001_bg.svg",
+            intrinsic_unit: "mm",
+          },
+        },
+      }).backgrounds.room_001_bg.intrinsic_unit,
+    ).toBe("mm");
   });
 });
 

@@ -64,6 +64,7 @@ export interface TrialCsvRow {
   player_elapsed_ms: number | "";
   locked: boolean | "";
   final_state_mode: string;
+  world_unit: string;
   event_count: number | "";
   visual_viewport_width: number | "";
   visual_viewport_height: number | "";
@@ -275,6 +276,7 @@ export function toTrialRows(records: DecodedSourceRecord[]): TrialCsvRow[] {
       player_elapsed_ms: result.page_timing?.player_elapsed_ms ?? "",
       locked: result.locked,
       final_state_mode: result.final_state_mode ?? inferFinalStateMode(result.final_state),
+      world_unit: result.context?.world.unit ?? "",
       event_count: result.events.length,
       visual_viewport_width: result.display?.visualViewport?.width ?? "",
       visual_viewport_height: result.display?.visualViewport?.height ?? "",
@@ -694,6 +696,7 @@ function emptyTrialRow(record: DecodedSourceRecord): TrialCsvRow {
     player_elapsed_ms: "",
     locked: "",
     final_state_mode: "",
+    world_unit: "",
     event_count: "",
     visual_viewport_width: "",
     visual_viewport_height: "",

@@ -4,7 +4,14 @@ import { createRuntimeConfig } from "../test-support/runtime-config";
 
 describe("Recorder", () => {
   it("stamps event index/time and respects display/user-agent toggles", async () => {
-    const baseConfig = createRuntimeConfig();
+    const baseConfig = createRuntimeConfig({
+      world: {
+        unit: "mm",
+        viewBox: { x: -500, y: -500, width: 1000, height: 1000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 25, visible: false, snap: true },
+      },
+    });
     const config = {
       ...baseConfig,
       recording: {
@@ -61,6 +68,7 @@ describe("Recorder", () => {
     expect(result.user_agent).toBeUndefined();
     expect(result.final_state).toBeDefined();
     expect(result.flow).toEqual({ mode: "direct_reconstruction" });
+    expect(result.context?.world.unit).toBe("mm");
   });
 
   it("skips page timing when record_page_timing is false", async () => {

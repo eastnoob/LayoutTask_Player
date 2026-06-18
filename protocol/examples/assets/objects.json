@@ -4,6 +4,7 @@
     "mock_chair": {
       "type": "svg",
       "src": "assets/objects/mock_chair.svg",
+      "intrinsic_unit": "px",
       "default_width": 100,
       "default_height": 120,
       "anchor": "center"
@@ -11,6 +12,7 @@
     "mock_table": {
       "type": "svg",
       "src": "assets/objects/mock_table.svg",
+      "intrinsic_unit": "px",
       "default_width": 180,
       "default_height": 110,
       "anchor": "center"

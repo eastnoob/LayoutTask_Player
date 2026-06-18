@@ -1,5 +1,6 @@
 export type AssetType = "svg" | "png" | "jpg" | "image";
 export type Anchor = "center" | "top_left";
+export type WorldUnit = "mm" | "cm" | "m" | "px" | "cad_unit" | "unknown";
 
 // Authoring-side types: close to JSON files in public/layout-task/.
 // 研究者写 manifest / task / library 时，对应的就是这一层 shape。
@@ -23,6 +24,7 @@ export interface GridConfig {
 }
 
 export interface WorldConfig {
+  unit?: WorldUnit;
   viewBox: ViewBox;
   origin: Point;
   grid: GridConfig;
@@ -31,6 +33,7 @@ export interface WorldConfig {
 export interface ObjectAssetConfig {
   type: AssetType;
   src: string;
+  intrinsic_unit?: WorldUnit;
   default_width: number;
   default_height: number;
   anchor?: Anchor;
@@ -39,7 +42,7 @@ export interface ObjectAssetConfig {
 export interface BackgroundAssetConfig {
   type: "image" | "svg";
   src: string;
-  intrinsic_unit?: "cad_unit" | "px" | "unknown";
+  intrinsic_unit?: WorldUnit;
 }
 
 export interface MovementBehavior {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pointSchema, viewBoxSchema } from "./config.schema";
+import { pointSchema, viewBoxSchema, worldUnitSchema } from "./config.schema";
 
 // Result schema validates the payload that leaves the browser.
 // 这里要兼顾当前导出模式和后续 decoder 的 backward-compatible parsing。
@@ -187,6 +187,7 @@ export const resultContextObjectSchema = z.object({
 
 export const resultContextSchema = z.object({
   world: z.object({
+    unit: worldUnitSchema.optional(),
     viewBox: viewBoxSchema,
     origin: z.object({
       x: z.number().finite(),

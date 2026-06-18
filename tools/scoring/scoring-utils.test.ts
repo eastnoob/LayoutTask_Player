@@ -22,6 +22,7 @@ describe("object-level scoring export rows", () => {
       qid: "Q1",
       task_id: "task1",
       session: "session1",
+      world_unit: "mm",
       object_id: "chair_01",
       object_role: "variable",
       object_group_id: "chairs",
@@ -177,6 +178,7 @@ function createResult(overrides: Partial<LayoutTaskResult> = {}): LayoutTaskResu
     duration_ms: 1_000,
     context: {
       world: {
+        unit: "mm",
         viewBox: { x: 0, y: 0, width: 400, height: 400 },
         origin: { x: 0, y: 0 },
         grid_size: 25,

@@ -85,6 +85,7 @@ export class Recorder {
 function buildResultContext(config: RuntimeTaskConfig): LayoutTaskResult["context"] {
   return {
       world: {
+        unit: config.world.unit,
         viewBox: config.world.viewBox,
         origin: config.world.origin,
         grid_size: config.world.grid.size,

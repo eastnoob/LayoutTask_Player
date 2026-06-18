@@ -91,6 +91,7 @@ Recommended shared world:
 ```json
 {
   "world": {
+    "unit": "mm",
     "viewBox": { "x": 0, "y": 0, "width": 1000, "height": 1000 },
     "origin": { "x": 0, "y": 0 },
     "grid": { "size": 25, "visible": true, "snap": true }
@@ -102,7 +103,18 @@ If `shared.world` is omitted, every trial must define its own `world`.
 
 ## World Units
 
-The Player treats coordinates as unitless world units. Rhino can choose millimeters, centimeters, CAD units, or pixels, but the same unit must be used consistently for:
+The Player treats coordinates as numeric world units. `world.unit` is metadata for the task-space coordinate system. It does not trigger automatic conversion. If omitted, consumers should treat the unit as unknown.
+
+Allowed values are:
+
+- `mm`
+- `cm`
+- `m`
+- `px`
+- `cad_unit`
+- `unknown`
+
+The following fields inherit `world.unit`:
 
 - `world.viewBox`
 - `world.origin`
@@ -111,9 +123,16 @@ The Player treats coordinates as unitless world units. Rhino can choose millimet
 - `objects[].x/y`
 - object asset `default_width/default_height`
 - movement behavior `step`
-- absolute scoring targets
+- `objects[].target.absolute.x/y`
+- collision `areas`
 
 If Rhino exports a 1:1 drawing in millimeters, keep all fields in millimeters. The Player scales the whole world to fit the screen; it does not change the stored coordinates or grid step.
+
+### Local Unit Overrides
+
+Local task-space unit overrides are reserved but not implemented in v1. Do not emit fields such as `object.unit`, `background.unit`, `movement.unit`, or `collision.unit`.
+
+If future conversion support is added, local unit fields will override `world.unit` only for their own object/section. Until then, every task-space coordinate should use `world.unit`.
 
 ## Initial State vs Target State
 
@@ -139,6 +158,7 @@ Object library:
     "chair_a": {
       "type": "svg",
       "src": "assets/objects/chair_a.svg",
+      "intrinsic_unit": "px",
       "default_width": 500,
       "default_height": 500,
       "anchor": "center"
@@ -167,6 +187,7 @@ Rules:
 - Library keys such as `chair_a` and `room_001_bg` are what trials reference.
 - SVG files should be self-contained.
 - `default_width` and `default_height` are in world units.
+- `intrinsic_unit` describes the asset file's internal coordinate system only. It does not change the task-space size or placement values.
 - `anchor` is usually `"center"` for furniture.
 
 ## Trial Fields

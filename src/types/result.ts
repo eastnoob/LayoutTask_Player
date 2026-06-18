@@ -1,5 +1,5 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
-import type { ViewBox } from "./config";
+import type { ViewBox, WorldUnit } from "./config";
 
 // Result types describe what can be serialized and exported out of the task.
 // 这一层既服务浏览器端编码，也服务后续 decoder / analysis 脚本。
@@ -167,6 +167,7 @@ export interface ResultContextObject {
 
 export interface ResultContext {
   world: {
+    unit?: WorldUnit;
     viewBox: ViewBox;
     origin: {
       x: number;
