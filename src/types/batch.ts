@@ -71,7 +71,7 @@ export interface BatchObjectConfig extends TaskObjectConfig {
   group_id?: string;
   /** Optional authoring label for the reconstruction initial pose stored in x/y/rotation. */
   initial_state_label?: string;
-  /** Correct answer pose for analysis; usually the pose shown in the memory stimulus. */
+  /** Correct answer for analysis. The canonical authored answer is relative action steps. */
   target?: ObjectTargetState;
   scoring?: ObjectScoringConfig;
 }
@@ -83,25 +83,28 @@ export interface ScoringConfig {
   objects?: Record<string, ObjectScoringConfig>;
 }
 
-export type ObjectTargetState =
-  | { relative: RelativeTargetState; absolute?: AbsoluteTargetState }
-  | { relative?: RelativeTargetState; absolute: AbsoluteTargetState };
+export interface ObjectTargetState {
+  /** Canonical correct answer: signed action steps from reconstruction initial pose. */
+  relative: RelativeTargetState;
+  /** Optional derived analysis pose in world coordinates. Not required for authored answers. */
+  absolute?: AbsoluteTargetState;
+}
 
 export interface RelativeTargetState {
-  /** Signed movement steps from the reconstruction initial x to the correct target x. */
+  /** Signed movement steps along x from the reconstruction initial pose to the correct answer. */
   dx_steps: number;
-  /** Signed movement steps from the reconstruction initial y to the correct target y. */
+  /** Signed movement steps along y from the reconstruction initial pose to the correct answer. */
   dy_steps: number;
-  /** Signed rotation steps from the reconstruction initial rotation to the correct target rotation. */
+  /** Signed rotation steps from the reconstruction initial pose to the correct answer. */
   rotation_steps: number;
 }
 
 export interface AbsoluteTargetState {
-  /** Correct target anchor x in world units, usually exported from the stimulus scene. */
+  /** Optional derived target anchor x in world units. */
   x: number;
-  /** Correct target anchor y in world units, usually exported from the stimulus scene. */
+  /** Optional derived target anchor y in world units. */
   y: number;
-  /** Correct target clockwise rotation in degrees, usually exported from the stimulus scene. */
+  /** Optional derived target clockwise rotation in degrees. */
   rotation_deg: number;
 }
 

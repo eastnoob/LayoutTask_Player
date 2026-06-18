@@ -219,6 +219,8 @@ def assemble(rows, experiment_id, title, trust_svg_viewbox=False):
             raise ValueError(f"Row {index} has protocol_status={protocol_status!r}: {get_cell(row, 'protocol_notes')}")
 
         task_id = row_task_id(row, index)
+        # Preserve target.relative from metric_trial_protocol_json as the canonical answer.
+        # Do not synthesize target.absolute here; absolute pose is optional analysis data.
         trial = parse_json_cell(row, "trial_protocol_json")
         trial = replace_scene_placeholder(trial, task_id)
         if trial.get("task_id") in ("", PLACEHOLDER_TASK_ID, None):

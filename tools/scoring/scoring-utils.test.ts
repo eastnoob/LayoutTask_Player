@@ -115,10 +115,54 @@ describe("object-level scoring export rows", () => {
           }),
         ),
       ],
-      scoringReference({ absolute: { x: 150, y: 75, rotation_deg: 10 } }),
+      scoringReference({
+        relative: { dx_steps: 2, dy_steps: -1, rotation_steps: 1 },
+        absolute: { x: 150, y: 75, rotation_deg: 10 },
+      }),
     );
 
     expect(rows[0].error_absolute_rotation_deg).toBe(20);
+  });
+
+  it("scores relative-only targets and leaves target absolute columns blank", () => {
+    const result = createResult({
+      final_state_mode: "relative",
+      final_state: {
+        chair_01: {
+          dx_steps: -1,
+          dy_steps: 2,
+          rotation_steps: -2,
+        },
+      },
+    });
+    const rows = toObjectStateRows(
+      [sourceRecord(result)],
+      scoringReference({
+        relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
+      }),
+    );
+
+    expect(rows[0]).toMatchObject({
+      relative_dx_steps: -1,
+      relative_dy_steps: 2,
+      relative_rotation_steps: -2,
+      target_relative_dx_steps: -1,
+      target_relative_dy_steps: 2,
+      target_relative_rotation_steps: -2,
+      error_relative_dx_steps: 0,
+      error_relative_dy_steps: 0,
+      error_relative_rotation_steps: 0,
+      absolute_x: 75,
+      absolute_y: 150,
+      absolute_rotation_deg: 260,
+      target_absolute_x: "",
+      target_absolute_y: "",
+      target_absolute_rotation_deg: "",
+      error_absolute_x: "",
+      error_absolute_y: "",
+      error_absolute_distance: "",
+      error_absolute_rotation_deg: "",
+    });
   });
 
   it("leaves absolute columns blank for relative final states without context", () => {

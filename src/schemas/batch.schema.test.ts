@@ -73,7 +73,7 @@ describe("batchSchema", () => {
     expect(batchSchema.parse(batch).shared.world?.unit).toBe("mm");
   });
 
-  it("treats object x/y/rotation as reconstruction initial pose and target as correct pose", () => {
+  it("treats object x/y/rotation as reconstruction initial pose and target.relative as correct answer", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0] = {
       ...batch.trials[0].objects[0],
@@ -97,26 +97,24 @@ describe("batchSchema", () => {
     });
   });
 
-  it("accepts a target with only relative", () => {
+  it("accepts relative-only object targets as the canonical answer", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0].target = {
-      relative: { dx_steps: 1, dy_steps: -2, rotation_steps: 1 },
+      relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
     };
 
     expect(batchSchema.parse(batch).trials[0].objects[0].target).toEqual({
-      relative: { dx_steps: 1, dy_steps: -2, rotation_steps: 1 },
+      relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
     });
   });
 
-  it("accepts a target with only absolute", () => {
+  it("rejects absolute-only object targets in authored batch config", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0].target = {
       absolute: { x: 125, y: 100, rotation_deg: 45 },
     };
 
-    expect(batchSchema.parse(batch).trials[0].objects[0].target).toEqual({
-      absolute: { x: 125, y: 100, rotation_deg: 45 },
-    });
+    expect(() => batchSchema.parse(batch)).toThrow();
   });
 
   it("rejects empty target object", () => {

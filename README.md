@@ -138,13 +138,13 @@ Compile batch JSON into static player files:
 pixi run npm exec tsx -- tools/generator/compile-batch.ts --input protocol/examples/minimal-batch.json --out public/layout-task-generated
 ```
 
-Export object-level rows with explicit relative and absolute columns:
+Export object-level rows with explicit observed, target, and error columns:
 
 ```bash
 pixi run npm exec tsx -- tools/scoring/export-object-states.ts --input results.txt --scoring public/layout-task-generated/scoring/scoring-reference.json --output object-states.csv
 ```
 
-The object-state CSV uses explicit observed, target, and error columns for both scoring models, including `relative_dx_steps`, `relative_dy_steps`, `relative_rotation_steps`, `absolute_x`, `absolute_y`, and `absolute_rotation_deg`.
+The object-state CSV uses explicit observed, target, and error columns. Relative target columns come from the canonical `target.relative`; absolute target columns are populated only when optional `target.absolute` is present.
 
 JSON is the safest default and remains recommended for shared data-only config. For project-maintainer-authored tasks, a JS module config is also supported:
 

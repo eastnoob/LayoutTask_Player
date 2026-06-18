@@ -46,16 +46,10 @@ export const absoluteTargetSchema = z.object({
   rotation_deg: z.number().finite(),
 });
 
-export const objectTargetSchema = z.union([
-  z.object({
-    relative: relativeTargetSchema,
-    absolute: absoluteTargetSchema.optional(),
-  }),
-  z.object({
-    relative: relativeTargetSchema.optional(),
-    absolute: absoluteTargetSchema,
-  }),
-]);
+export const objectTargetSchema = z.object({
+  relative: relativeTargetSchema,
+  absolute: absoluteTargetSchema.optional(),
+});
 
 export const scoringToleranceSchema = z.object({
   dx_steps: z.number().int().nonnegative().optional(),

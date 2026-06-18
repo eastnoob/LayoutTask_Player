@@ -6,7 +6,7 @@
 - [ ] `world.viewBox` covers the full reconstruction area.
 - [ ] `world.unit` is declared when the generator knows the task-space unit.
 - [ ] `grid.size` uses the same unit as object coordinates.
-- [ ] All task-space coordinates, dimensions, grid sizes, movement steps, target coordinates, and collision areas use `world.unit`.
+- [ ] All task-space coordinates, dimensions, grid sizes, movement steps, optional absolute target coordinates, and collision areas use `world.unit`.
 - [ ] Background SVG and background placement use the same world units.
 - [ ] Asset `intrinsic_unit` is used only to describe SVG/image source coordinates.
 - [ ] Collision `contain` and `block` geometry uses the same world units as `world.viewBox`.
@@ -18,7 +18,7 @@
 - [ ] Variable objects have `role: "variable"`.
 - [ ] Fixed context objects have `role: "fixed"` or movement behavior set to `none`.
 - [ ] For every variable object, `x`, `y`, and `rotation` are the reconstruction initial pose, not the stimulus-correct pose.
-- [ ] For every scored variable object, `target.absolute` stores the correct stimulus pose.
-- [ ] For every step-based scored variable object, `target.relative` stores signed steps from the initial pose to `target.absolute`.
+- [ ] For every scored variable object, `target.relative` stores the canonical correct answer as signed movement/rotation steps.
+- [ ] `target.absolute` is omitted unless it is intentionally exported as optional derived/analysis data.
 - [ ] No local unit override fields are emitted; they are reserved and not implemented in v1.
 - [ ] Run `validate-batch` before compiling.

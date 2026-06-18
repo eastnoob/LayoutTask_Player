@@ -83,7 +83,6 @@
           },
           "collision": { "enabled": true, "shape": "box", "padding": 0 },
           "target": {
-            "absolute": { "x": -225, "y": 125, "rotation_deg": 45 },
             "relative": { "dx_steps": -3, "dy_steps": 5, "rotation_steps": 1 }
           },
           "scoring": {

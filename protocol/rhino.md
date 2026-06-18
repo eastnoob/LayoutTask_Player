@@ -123,7 +123,7 @@ The following fields inherit `world.unit`:
 - `objects[].x/y`
 - object asset `default_width/default_height` when explicitly authored
 - movement behavior `step`
-- `objects[].target.absolute.x/y`
+- optional `objects[].target.absolute.x/y` when explicitly authored as derived analysis data
 - collision `areas`
 
 If Rhino exports a 1:1 drawing in millimeters, keep all fields in millimeters. The Player scales the whole world to fit the screen; it does not change the stored coordinates or grid step.
@@ -134,18 +134,33 @@ Local task-space unit overrides are reserved but not implemented in v1. Do not e
 
 If future conversion support is added, local unit fields will override `world.unit` only for their own object/section. Until then, every task-space coordinate should use `world.unit`.
 
-## Initial State vs Target State
+## Initial Pose vs Relative Answer
 
-Every object can have two different poses:
+Every object has a reconstruction initial pose:
 
-- Reconstruction initial pose: `objects[].x`, `objects[].y`, and `objects[].rotation`.
-- Correct target pose: `objects[].target.absolute`, usually exported from the stimulus scene.
+- `objects[].x`
+- `objects[].y`
+- `objects[].rotation`
 
-For `role: "fixed"` objects, the reconstruction initial pose usually already equals the correct target pose. Fixed objects are displayed as context and normally do not need a separate `target`.
+These fields are in the room/world coordinate system declared by `world.viewBox`. For Rhino/CAD exports, use the object's own bbox center in the 2D room coordinate system and ignore Z. Do not write SVG-local coordinates here.
 
-For `role: "variable"` objects, the reconstruction initial pose is usually a displaced or rotated starting pose for the participant. The correct pose shown in the stimulus should be written to `target.absolute`. If the task uses step-based movement, also write `target.relative` as the signed step delta from the initial pose to the correct pose.
+For `role: "fixed"` objects, this initial pose is the displayed context pose. Fixed objects usually have no `target`.
 
-Rhino exporters should treat the designed stimulus scene as the source of truth for `target.absolute`. The generator may then derive each variable object's reconstruction initial pose by applying the planned offset/rotation perturbation, and write that perturbed pose into `x`, `y`, and `rotation`.
+For `role: "variable"` objects, this initial pose is the starting state shown to the participant. The canonical correct answer is `target.relative`, which records the action steps required from the initial pose:
+
+```json
+{
+  "target": {
+    "relative": {
+      "dx_steps": -1,
+      "dy_steps": 1,
+      "rotation_steps": -2
+    }
+  }
+}
+```
+
+`target.absolute` is optional derived/analysis data. It may be emitted if the generator already has it, but the Player protocol does not require it for authored answers.
 
 ## Asset Libraries
 
@@ -258,7 +273,7 @@ Recommended:
 - `role`: `"fixed"` or `"variable"` for analysis/scoring. Fixed objects are context objects; variable objects are restored by the participant.
 - `group_id`: optional grouping label such as `"chairs"`.
 - `initial_state_label`: optional authoring label for the reconstruction initial pose.
-- `target`: correct answer state for variable objects. Use `target.absolute` for the stimulus pose and `target.relative` for step deltas from the initial pose.
+- `target`: correct answer state for variable objects. Use `target.relative` as the canonical answer: signed movement/rotation steps from the reconstruction initial pose. `target.absolute` is optional derived/analysis data.
 
 ## Behavior
 
@@ -382,7 +397,21 @@ Preview mode requires an enabled `display_image`.
 
 ## Scoring Targets
 
-When possible, export both relative and absolute targets. Analysts can choose either model later.
+Export `target.relative` for scored variable objects. This is the canonical answer.
+
+```json
+{
+  "target": {
+    "relative": {
+      "dx_steps": 1,
+      "dy_steps": -2,
+      "rotation_steps": 1
+    }
+  }
+}
+```
+
+Optional derived absolute pose:
 
 ```json
 {
@@ -401,9 +430,9 @@ When possible, export both relative and absolute targets. Analysts can choose ei
 }
 ```
 
-Relative targets are expressed in movement/rotation steps from the reconstruction initial object pose (`x`, `y`, `rotation`) to the correct target pose. Absolute targets are correct final world coordinates and final rotation degrees, usually copied from the stimulus scene.
+Relative targets are expressed in movement/rotation steps from the reconstruction initial object pose (`x`, `y`, `rotation`) to the correct answer.
 
-If both are available, export both. Relative targets make step-based scoring simple; absolute targets preserve the stimulus geometry and let analysts compute distance/angle errors later.
+If both are available, analysts can use both. If only `relative` is available, scoring still works and absolute target columns remain blank unless derived later by analysis tooling.
 
 Optional tolerance:
 

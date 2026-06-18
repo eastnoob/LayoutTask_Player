@@ -396,6 +396,8 @@ function assemble(rows: CsvRow[], experimentId: string, title: string, trustSvgV
     }
 
     const taskId = rowTaskId(row, rowNumber);
+    // The adaptor treats metric_trial_protocol_json as the source of truth.
+    // Preserve target.relative as authored and do not synthesize target.absolute.
     const parsedTrial = parseJsonCell(row, "trial_protocol_json");
     let trial = replaceScenePlaceholder(parsedTrial, taskId) as JsonObject;
 

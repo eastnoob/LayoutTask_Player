@@ -162,18 +162,17 @@ For each variable object, the Player-side data model preserves three states.
 
 This is what the participant starts from in the reconstruction stage.
 
-2. Correct target state:
+2. Correct answer:
 
 ```json
 {
   "target": {
-    "absolute": { "x": 200, "y": 150, "rotation_deg": 45 },
     "relative": { "dx_steps": 4, "dy_steps": 0, "rotation_steps": 1 }
   }
 }
 ```
 
-`absolute` is the correct stimulus pose in world coordinates. `relative` is the signed step delta from the initial pose to the target pose.
+`relative` is the canonical answer: signed action steps from the initial pose. `absolute` may be present as optional analysis data, but is not required.
 
 3. User answer:
 
@@ -230,8 +229,10 @@ The scoring output preserves:
 - observed relative answer
 - observed absolute answer
 - target relative values
-- target absolute values
+- target absolute values when explicitly provided
 - relative, distance, and rotation errors
+
+When `target.absolute` is omitted, scoring does not synthesize target absolute columns. Observed absolute values can still be derived from the user's relative answer and the recorded initial pose.
 
 ## Collision Consumption
 

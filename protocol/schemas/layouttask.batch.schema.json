@@ -456,7 +456,7 @@
       "additionalProperties": true
     },
     "absoluteTarget": {
-      "description": "Correct answer pose in world units/degrees, usually the object pose shown in the memory stimulus.",
+      "description": "Optional derived analysis pose in world units/degrees. Authored source packages should treat relativeTarget as the canonical answer.",
       "type": "object",
       "required": ["x", "y", "rotation_deg"],
       "properties": {
@@ -467,12 +467,9 @@
       "additionalProperties": true
     },
     "objectTarget": {
-      "description": "Correct answer state for scoring. It is separate from object x/y/rotation, which define the reconstruction initial pose.",
+      "description": "Correct answer state for scoring. target.relative is canonical and is separate from object x/y/rotation, which define the reconstruction initial pose. target.absolute is optional analysis data.",
       "type": "object",
-      "anyOf": [
-        { "required": ["relative"] },
-        { "required": ["absolute"] }
-      ],
+      "required": ["relative"],
       "properties": {
         "relative": { "$ref": "#/$defs/relativeTarget" },
         "absolute": { "$ref": "#/$defs/absoluteTarget" }

@@ -213,6 +213,19 @@ describe("compileBatch", () => {
     });
   });
 
+  it("preserves relative-only targets in scoring reference without synthesizing absolute targets", () => {
+    const batch = createBatch();
+    batch.trials[0].objects[0].target = {
+      relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
+    };
+
+    const compiled = compileBatch(batch);
+
+    expect(compiled.scoringReference.tasks.room_generated_001.objects.chair_variable_01.target).toEqual({
+      relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
+    });
+  });
+
   it("inherits shared config into each task", () => {
     const task = compileBatch(createBatch()).tasks[0].config;
 

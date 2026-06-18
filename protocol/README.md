@@ -8,15 +8,18 @@ Main files:
 
 - `schemas/layouttask.batch.schema.json`: language-neutral structural preflight schema.
 - `examples/minimal-batch.json`: smallest working batch fixture.
-- `examples/scoring-example.json`: batch fixture with relative and absolute targets.
+- `examples/scoring-example.json`: batch fixture with canonical relative targets.
 - `examples/full-preview-collision/batch.json`: complete preview stimulus plus collision reconstruction fixture.
 - `rhino.md`: Rhino-facing field dictionary and conventions.
 - `player-ingestion.md`: Player-side validation, compilation, runtime loading, result, and scoring workflow.
+- `relative-target-coordinate-semantics.md`: compact report for object pose coordinates, relative answers, and optional absolute analysis data.
 - `templates/`: fill-in templates and export checklist.
 
-Important state rule: in batch objects, `x`, `y`, and `rotation` define the reconstruction initial pose shown to the participant. Correct answers belong in `target.absolute` and, for step tasks, `target.relative`.
+Important state rule: in batch objects, `x`, `y`, and `rotation` define the reconstruction initial pose shown to the participant. For variable objects, the canonical correct answer is `target.relative`: signed movement and rotation steps from that initial pose. `target.absolute` is optional derived/analysis data and is not required in authored source packages.
 
 Unit rule: `world.unit` labels the task-space unit for coordinates, grid size, movement step, collision geometry, and targets. Asset `intrinsic_unit` labels only the source SVG/image's internal coordinate system. Local unit override fields are reserved and not implemented in v1.
+
+Coordinate rule: object `x/y` is the object's anchor pose in the room/world coordinate system. For `anchor: "center"`, this should normally be the object's Rhino/CAD bbox center after projection into the same 2D coordinate system used by `world.viewBox` and the background SVG. SVG `viewBox` is asset-local and does not define object room position.
 
 SVG sizing rule: for 1:1 SVG/CAD/Rhino exports, object asset dimensions and background placement may be omitted. The Player then reads the SVG root `viewBox`; object SVGs use `viewBox.width/height`, and background SVGs use `viewBox.x/y/width/height`. Explicit JSON values still override viewBox inference. Raster assets still need explicit dimensions.
 
