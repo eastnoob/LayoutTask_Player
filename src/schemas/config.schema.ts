@@ -299,27 +299,27 @@ export const taskCollisionSchema = z.object({
 const objectCollisionPolygonSchema = z.object({
   id: z.string().min(1).optional(),
   points: z.array(collisionPointSchema).min(3),
-});
+}).strict();
 
 const boxObjectCollisionSchema = z.object({
   enabled: z.boolean().default(true),
   shape: z.literal("box").default("box"),
   padding: z.number().nonnegative().default(0),
-});
+}).strict();
 
 const polygonObjectCollisionSchema = z.object({
   enabled: z.boolean().default(true),
   shape: z.literal("polygons"),
   polygons: z.array(objectCollisionPolygonSchema).min(1),
   padding: z.number().nonnegative().default(0),
-});
+}).strict();
 
 const assetOutlineObjectCollisionSchema = z.object({
   enabled: z.boolean().default(true),
   shape: z.literal("asset_outline"),
   source: collisionSourceSchema,
   padding: z.number().nonnegative().default(0),
-});
+}).strict();
 
 export const objectCollisionSchema = z.union([
   boxObjectCollisionSchema,

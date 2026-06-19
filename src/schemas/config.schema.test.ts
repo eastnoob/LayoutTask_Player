@@ -665,6 +665,37 @@ describe("taskSchema collision", () => {
     });
   });
 
+  it("rejects object collision polygons when shape is missing", () => {
+    const task = createMinimalTask();
+    task.objects[0].collision = {
+      enabled: true,
+      polygons: [
+        {
+          points: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 0, y: 100 },
+          ],
+        },
+      ],
+    };
+
+    expect(() => taskSchema.parse(task)).toThrow();
+  });
+
+  it("rejects object collision source when shape is missing", () => {
+    const task = createMinimalTask();
+    task.objects[0].collision = {
+      enabled: true,
+      source: {
+        type: "svg",
+        src: "assets/collision/objects/chair_COLLIDER.svg",
+      },
+    };
+
+    expect(() => taskSchema.parse(task)).toThrow();
+  });
+
   it("accepts an SVG collision source", () => {
     const task = createMinimalTask();
     task.collision = {

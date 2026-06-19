@@ -236,6 +236,29 @@ describe("batchSchema", () => {
     });
   });
 
+  it("accepts polygon collision declarations in batch objects", () => {
+    const batch = cloneMinimalBatch();
+    batch.trials[0].objects[0].collision = {
+      enabled: true,
+      shape: "polygons",
+      polygons: [
+        {
+          id: "seat",
+          points: [
+            { x: -50, y: -25 },
+            { x: 50, y: -25 },
+            { x: 50, y: 25 },
+            { x: -50, y: 25 },
+          ],
+        },
+      ],
+    };
+
+    expect(batchSchema.parse(batch).trials[0].objects[0].collision).toMatchObject({
+      shape: "polygons",
+    });
+  });
+
   it("rejects empty scoring object keys", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].scoring = {
