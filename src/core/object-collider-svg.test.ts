@@ -65,6 +65,39 @@ describe("parseObjectColliderSvg", () => {
     expect(polygon.points).toContainEqual(expect.not.objectContaining({ x: 0, y: 0 }));
   });
 
+  it("flattens smooth cubic paths with S commands", () => {
+    const svg = `<svg><path id="smooth-cubic" d="M 0 0 C 4 0 8 10 12 10 S 20 20 24 10 Z" /></svg>`;
+
+    const [polygon] = parseObjectColliderSvg(svg);
+
+    expect(polygon.id).toBe("smooth-cubic");
+    expect(polygon.points[0]).toEqual({ x: 0, y: 0 });
+    expect(polygon.points.at(-1)).toEqual({ x: 24, y: 10 });
+    expect(polygon.points.length).toBeGreaterThan(14);
+  });
+
+  it("flattens quadratic paths with Q commands", () => {
+    const svg = `<svg><path id="quadratic" d="M 0 0 Q 6 12 12 0 Z" /></svg>`;
+
+    const [polygon] = parseObjectColliderSvg(svg);
+
+    expect(polygon.id).toBe("quadratic");
+    expect(polygon.points[0]).toEqual({ x: 0, y: 0 });
+    expect(polygon.points.at(-1)).toEqual({ x: 12, y: 0 });
+    expect(polygon.points.length).toBeGreaterThan(2);
+  });
+
+  it("flattens smooth quadratic paths with T commands", () => {
+    const svg = `<svg><path id="smooth-quadratic" d="M 0 0 Q 6 12 12 0 T 24 0 Z" /></svg>`;
+
+    const [polygon] = parseObjectColliderSvg(svg);
+
+    expect(polygon.id).toBe("smooth-quadratic");
+    expect(polygon.points[0]).toEqual({ x: 0, y: 0 });
+    expect(polygon.points.at(-1)).toEqual({ x: 24, y: 0 });
+    expect(polygon.points.length).toBeGreaterThan(14);
+  });
+
   it("rejects unsupported SVG elements that can hide or reference geometry", () => {
     for (const tag of ["image", "use", "mask", "clipPath", "filter"]) {
       const svg = `<svg><${tag} id="bad" /></svg>`;
