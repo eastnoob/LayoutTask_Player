@@ -54,6 +54,68 @@ describe("InteractionController", () => {
     expect(renderer.updateObject).toHaveBeenCalledWith("chair_01");
   });
 
+  it("does not select static context objects", () => {
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      objects: [
+        {
+          ...base.objects[0],
+          behavior: {
+            movement: { mode: "none" },
+            free_drag: { enabled: false },
+          },
+        },
+      ],
+    });
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+
+    expect(controller.getActiveObjectId()).toBeUndefined();
+    expect(renderer.activateObject).not.toHaveBeenCalled();
+    expect(renderer.updateControlsDisabled).not.toHaveBeenCalled();
+  });
+
+  it("still selects rotation-only objects", () => {
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      objects: [
+        {
+          ...base.objects[0],
+          behavior: {
+            movement: { mode: "none" },
+            rotation: { step: 90 },
+            free_drag: { enabled: false },
+          },
+        },
+      ],
+    });
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+
+    expect(controller.getActiveObjectId()).toBe("chair_01");
+    expect(renderer.activateObject).toHaveBeenCalledWith("chair_01");
+  });
+
   it("records blocked actions when record_blocked_events is enabled", () => {
     const config = createRuntimeConfig({
       recording: {

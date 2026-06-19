@@ -1,6 +1,6 @@
 import type { LayoutTaskEvent, LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import type { LayoutTaskRenderer, RendererPointer } from "./renderer";
+import { isObjectInteractive, type LayoutTaskRenderer, type RendererPointer } from "./renderer";
 import type { DragTransition, StateStore } from "./state-store";
 
 export interface ActionRequest {
@@ -57,6 +57,11 @@ export class InteractionController {
 
   selectObject(objectId: string): void {
     if (!this.bound || this.options.store.isLocked()) {
+      return;
+    }
+
+    const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
+    if (!objectConfig || !isObjectInteractive(objectConfig)) {
       return;
     }
 
