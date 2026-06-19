@@ -10,7 +10,7 @@ export interface ObjectColliderPolygon {
 
 const CURVE_SUBDIVISIONS = 12;
 const commentPattern = /<!--[\s\S]*?-->/g;
-const openingTagPattern = /<(?<tag>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>[^>]*)>/g;
+const tagPattern = /<(?<closing>\/)?(?<tag>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>[^>]*)>/g;
 const attributePattern = /(?<name>[A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"(?<double>[^"]*)"|'(?<single>[^']*)')/g;
 const pathTokenPattern = /[AaCcHhLlMmQqSsTtVvZz]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
 const unsupportedTags = new Set(["image", "use", "mask", "clippath", "filter"]);
@@ -19,28 +19,50 @@ const supportedShapeTags = new Set(["rect", "polygon", "path"]);
 export function parseObjectColliderSvg(svgText: string): ObjectColliderPolygon[] {
   const polygons: ObjectColliderPolygon[] = [];
   const uncommentedSvgText = svgText.replace(commentPattern, "");
+  const groupVisibilityStack: boolean[] = [];
 
-  for (const match of uncommentedSvgText.matchAll(openingTagPattern)) {
+  for (const match of uncommentedSvgText.matchAll(tagPattern)) {
     const rawTag = match.groups?.tag;
     const tag = rawTag?.toLowerCase();
-    if (!tag || tag.startsWith("/")) {
+    if (!tag) {
       continue;
     }
 
+    const closing = match.groups?.closing === "/";
+    if (closing) {
+      if (tag === "g") {
+        groupVisibilityStack.pop();
+      }
+      continue;
+    }
+
+    const rawAttrs = match.groups?.attrs ?? "";
+    const attrs = parseAttributes(rawAttrs);
+
     if (unsupportedTags.has(tag)) {
       throw new Error(`Unsupported object collider SVG element: ${rawTag}`);
+    }
+
+    if (tag === "g") {
+      const id = attrs.id || `group_${groupVisibilityStack.length + 1}`;
+      rejectTransform(attrs, `Object collider group ${id}`);
+      if (!isSelfClosingTag(rawAttrs)) {
+        groupVisibilityStack.push(isVisible(groupVisibilityStack) && isSolidVisibleShape(attrs));
+      }
+      continue;
     }
 
     if (!supportedShapeTags.has(tag)) {
       continue;
     }
 
-    const attrs = parseAttributes(match.groups?.attrs ?? "");
-    if (!isSolidVisibleShape(attrs)) {
+    const id = attrs.id || `${tag}_${polygons.length + 1}`;
+    rejectTransform(attrs, `Object collider element ${id}`);
+
+    if (!isVisible(groupVisibilityStack) || !isSolidVisibleShape(attrs)) {
       continue;
     }
 
-    const id = attrs.id || `${tag}_${polygons.length + 1}`;
     if (tag === "rect") {
       polygons.push({ id, points: parseRect(attrs, id) });
       continue;
@@ -59,6 +81,20 @@ export function parseObjectColliderSvg(svgText: string): ObjectColliderPolygon[]
   }
 
   return polygons;
+}
+
+function isVisible(groupVisibilityStack: boolean[]): boolean {
+  return groupVisibilityStack.every(Boolean);
+}
+
+function isSelfClosingTag(rawAttrs: string): boolean {
+  return rawAttrs.trimEnd().endsWith("/");
+}
+
+function rejectTransform(attrs: Record<string, string>, label: string): void {
+  if (attrs.transform !== undefined) {
+    throw new Error(`${label} uses unsupported transform`);
+  }
 }
 
 function parseAttributes(raw: string): Record<string, string> {
@@ -129,6 +165,10 @@ function isZeroOpacity(raw: string | undefined): boolean {
 }
 
 function parseRect(attrs: Record<string, string>, id: string): ObjectColliderPoint[] {
+  if (attrs.rx !== undefined || attrs.ry !== undefined) {
+    throw new Error(`Object collider rect ${id} uses unsupported rounded corners`);
+  }
+
   const x = readNumber(attrs, "x", id, 0);
   const y = readNumber(attrs, "y", id, 0);
   const width = readPositiveNumber(attrs, "width", id);
@@ -166,7 +206,7 @@ function parsePolygon(raw: string, id: string): ObjectColliderPoint[] {
 }
 
 function parsePath(raw: string, id: string): ObjectColliderPoint[] {
-  const tokens = raw.match(pathTokenPattern) ?? [];
+  const tokens = tokenizePath(raw, id);
   if (tokens.length === 0) {
     throw new Error(`Object collider path ${id} has empty d attribute`);
   }
@@ -331,6 +371,27 @@ function parsePath(raw: string, id: string): ObjectColliderPoint[] {
   }
 
   return requirePolygonPoints(points, `Object collider path ${id}`);
+}
+
+function tokenizePath(raw: string, id: string): string[] {
+  const tokens: string[] = [];
+  let previousEnd = 0;
+
+  for (const match of raw.matchAll(pathTokenPattern)) {
+    const index = match.index ?? 0;
+    rejectInvalidPathText(raw.slice(previousEnd, index), id);
+    tokens.push(match[0]);
+    previousEnd = index + match[0].length;
+  }
+
+  rejectInvalidPathText(raw.slice(previousEnd), id);
+  return tokens;
+}
+
+function rejectInvalidPathText(text: string, id: string): void {
+  if (text.trim().replaceAll(",", "") !== "") {
+    throw new Error(`Object collider path ${id} has invalid d attribute`);
+  }
 }
 
 function readNumber(attrs: Record<string, string>, name: string, id: string, defaultValue?: number): number {
