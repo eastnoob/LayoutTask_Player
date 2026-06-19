@@ -22,6 +22,7 @@ import {
 } from "./config-validator";
 import { parseCollisionSvg } from "./collision-svg";
 import { resolveMessages } from "./messages";
+import { parseObjectColliderSvg } from "./object-collider-svg";
 
 // ConfigLoader is the authoring-config entry point.
 // 它把 manifest / task / asset / behavior 这些分散文件 resolve 成 RuntimeTaskConfig。
@@ -174,6 +175,7 @@ export class ConfigLoader {
 
     await this.attachInlineSvgObjectAssets(runtimeConfig);
     await this.attachCollisionSource(runtimeConfig);
+    await this.attachObjectCollisionSources(runtimeConfig);
     return runtimeConfig;
   }
 
@@ -275,6 +277,26 @@ export class ConfigLoader {
     ];
   }
 
+  private async attachObjectCollisionSources(config: RuntimeTaskConfig): Promise<void> {
+    const svgSources = new Map<string, Promise<string>>();
+
+    for (const objectConfig of config.objects) {
+      if (objectConfig.collision.shape !== "polygons" || !objectConfig.collision.source) {
+        continue;
+      }
+
+      let svgText = svgSources.get(objectConfig.collision.source.srcResolved);
+      if (!svgText) {
+        svgText = this.fetchText(objectConfig.collision.source.srcResolved);
+        svgSources.set(objectConfig.collision.source.srcResolved, svgText);
+      }
+
+      const inlineSvgText = await svgText;
+      objectConfig.collision.source.inlineSvgText = inlineSvgText;
+      objectConfig.collision.polygons = parseObjectColliderSvg(inlineSvgText);
+    }
+  }
+
   private async importConfigModule<T>(relativePath: string): Promise<T> {
     const url = new URL(relativePath, this.baseUrl);
     url.searchParams.set("layoutTaskConfigVersion", String(Date.now()));
@@ -325,10 +347,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
       anchor: objectConfig.anchor ?? asset.anchor ?? "center",
       behaviorTemplateId: templateId,
       behavior,
-      collision: {
-        ...DEFAULT_OBJECT_COLLISION,
-        ...objectConfig.collision,
-      },
+      collision: resolveObjectCollision(objectConfig.collision, assetBaseUrl),
     };
   });
 
@@ -392,6 +411,50 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
           srcResolved: resolveAssetUrl(assetBaseUrl, input.task.display_image.src),
         }
       : undefined,
+  };
+}
+
+function resolveObjectCollision(
+  collision: TaskConfig["objects"][number]["collision"],
+  assetBaseUrl: string,
+): RuntimeTaskConfig["objects"][number]["collision"] {
+  const enabled = collision?.enabled ?? DEFAULT_OBJECT_COLLISION.enabled;
+  const padding = collision?.padding ?? DEFAULT_OBJECT_COLLISION.padding;
+
+  if (!collision || collision.shape === undefined || collision.shape === "box") {
+    return {
+      enabled,
+      shape: "box",
+      padding,
+    };
+  }
+
+  if (collision.shape === "polygons") {
+    return {
+      enabled,
+      shape: "polygons",
+      polygons: collision.polygons,
+      padding,
+    };
+  }
+
+  if (collision.shape === "asset_outline") {
+    return {
+      enabled,
+      shape: "polygons",
+      polygons: [],
+      padding,
+      source: {
+        ...collision.source,
+        srcResolved: resolveAssetUrl(assetBaseUrl, collision.source.src),
+      },
+    };
+  }
+
+  return {
+    enabled,
+    shape: "box",
+    padding,
   };
 }
 

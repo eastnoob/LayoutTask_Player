@@ -613,6 +613,35 @@ describe("resolveRuntimeConfig collision", () => {
       padding: 4,
     });
   });
+
+  it("normalizes authored object asset_outline collision to runtime polygons with a resolved source", () => {
+    const input = createBehaviorConfigInput({
+      template: "move25",
+    });
+    input.task.objects[0].collision = {
+      enabled: true,
+      shape: "asset_outline",
+      source: {
+        type: "svg",
+        src: "assets/collision/chair_outline.svg",
+      },
+      padding: 3,
+    };
+
+    const config = resolveRuntimeConfig(input);
+
+    expect(config.objects[0].collision).toEqual({
+      enabled: true,
+      shape: "polygons",
+      polygons: [],
+      padding: 3,
+      source: {
+        type: "svg",
+        src: "assets/collision/chair_outline.svg",
+        srcResolved: "http://example.test/layout-task/assets/collision/chair_outline.svg",
+      },
+    });
+  });
 });
 
 describe("ConfigLoader collision runtime config", () => {
@@ -827,6 +856,99 @@ describe("ConfigLoader collision runtime config", () => {
         height: 4,
       },
     ]);
+  });
+
+  it("fetches each object asset_outline collision source once and fills runtime polygons", async () => {
+    const outlineSvgText = [
+      "<svg viewBox=\"0 0 50 50\">",
+      "  <rect id=\"seat_outline\" x=\"5\" y=\"10\" width=\"20\" height=\"15\" />",
+      "</svg>",
+    ].join("");
+    const colliderSourceUrl = "https://cdn.example.test/layout-task/assets/collision/chair_outline.svg";
+    const fetchImpl = createConfigFetch({
+      manifestAssetBaseUrl: "https://cdn.example.test/layout-task/",
+      taskObjects: [
+        {
+          id: "chair_01",
+          asset: "chair_a",
+          x: 0,
+          y: 0,
+          behavior: { template: "move25" },
+          collision: {
+            enabled: true,
+            shape: "asset_outline",
+            source: {
+              type: "svg",
+              src: "assets/collision/chair_outline.svg",
+            },
+            padding: 2,
+          },
+        },
+        {
+          id: "chair_02",
+          asset: "chair_a",
+          x: 50,
+          y: 0,
+          behavior: { template: "move25" },
+          collision: {
+            enabled: true,
+            shape: "asset_outline",
+            source: {
+              type: "svg",
+              src: "assets/collision/chair_outline.svg",
+            },
+          },
+        },
+      ],
+      textByUrl: {
+        [colliderSourceUrl]: outlineSvgText,
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(fetchImpl).toHaveBeenCalledWith(colliderSourceUrl);
+    expect(fetchImpl).not.toHaveBeenCalledWith("http://example.test/layout-task/assets/collision/chair_outline.svg");
+    expect(
+      vi.mocked(fetchImpl).mock.calls.filter(
+        ([url]) => url === colliderSourceUrl,
+      ),
+    ).toHaveLength(1);
+    expect(config.objects[0].collision).toEqual({
+      enabled: true,
+      shape: "polygons",
+      padding: 2,
+      source: {
+        type: "svg",
+        src: "assets/collision/chair_outline.svg",
+        srcResolved: colliderSourceUrl,
+        inlineSvgText: outlineSvgText,
+      },
+      polygons: [
+        {
+          id: "seat_outline",
+          points: [
+            { x: 5, y: 10 },
+            { x: 25, y: 10 },
+            { x: 25, y: 25 },
+            { x: 5, y: 25 },
+          ],
+        },
+      ],
+    });
+    expect(config.objects[1].collision).toMatchObject({
+      enabled: true,
+      shape: "polygons",
+      padding: 0,
+      source: {
+        inlineSvgText: outlineSvgText,
+      },
+      polygons: config.objects[0].collision.shape === "polygons" ? config.objects[0].collision.polygons : [],
+    });
   });
 });
 
