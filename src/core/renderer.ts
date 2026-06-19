@@ -1,4 +1,4 @@
-import type { RuntimeTaskConfig } from "../types/runtime";
+import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 import type { PreviewStageMode } from "../types/config";
 import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
@@ -58,6 +58,14 @@ interface VisualBounds {
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+type ControlButtonAction = Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end">;
+
+interface ControlLayoutInput {
+  bounds: VisualBounds;
+  ui: ReturnType<typeof getStageUiMetrics>;
+  viewBox?: { x: number; y: number; width: number; height: number };
 }
 
 export class LayoutTaskRenderer {
@@ -193,36 +201,41 @@ export class LayoutTaskRenderer {
 
       const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
       group.classList.add("layout-task-object");
-      group.classList.toggle("is-draggable", objectConfig.behavior.movement.mode === "drag");
-      group.setAttribute("tabindex", "0");
-      group.setAttribute("role", "button");
-      group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
-      group.addEventListener("click", (event) => {
-        event.stopPropagation();
-        this.options.onObjectSelect?.(objectConfig.id);
-      });
-      group.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") {
-          return;
-        }
+      const interactive = isObjectInteractive(objectConfig);
+      group.classList.toggle("is-draggable", interactive && objectConfig.behavior.movement.mode === "drag");
+      group.classList.toggle("is-static-context", !interactive);
 
-        event.preventDefault();
-        event.stopPropagation();
-        this.options.onObjectSelect?.(objectConfig.id);
-      });
-      group.addEventListener("pointerenter", () => {
-        this.setObjectVisualHighlight(objectConfig.id, true);
-      });
-      group.addEventListener("pointerleave", () => {
-        this.setObjectVisualHighlight(objectConfig.id, this.activeObjectId === objectConfig.id);
-      });
-      group.addEventListener("focus", () => {
-        this.setObjectVisualHighlight(objectConfig.id, true);
-      });
-      group.addEventListener("blur", () => {
-        this.setObjectVisualHighlight(objectConfig.id, this.activeObjectId === objectConfig.id);
-      });
-      this.bindObjectPointerEvents(group, objectConfig.id);
+      if (interactive) {
+        group.setAttribute("tabindex", "0");
+        group.setAttribute("role", "button");
+        group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
+        group.addEventListener("click", (event) => {
+          event.stopPropagation();
+          this.options.onObjectSelect?.(objectConfig.id);
+        });
+        group.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+          this.options.onObjectSelect?.(objectConfig.id);
+        });
+        group.addEventListener("pointerenter", () => {
+          this.setObjectVisualHighlight(objectConfig.id, true);
+        });
+        group.addEventListener("pointerleave", () => {
+          this.setObjectVisualHighlight(objectConfig.id, this.activeObjectId === objectConfig.id);
+        });
+        group.addEventListener("focus", () => {
+          this.setObjectVisualHighlight(objectConfig.id, true);
+        });
+        group.addEventListener("blur", () => {
+          this.setObjectVisualHighlight(objectConfig.id, this.activeObjectId === objectConfig.id);
+        });
+        this.bindObjectPointerEvents(group, objectConfig.id);
+      }
 
       const visual = this.createObjectVisual(
         objectConfig.id,
@@ -825,20 +838,14 @@ export class LayoutTaskRenderer {
 
     const bounds = this.getObjectVisualBounds(objectId);
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
-    const centerX = (bounds.minX + bounds.maxX) / 2;
-    const centerY = (bounds.minY + bounds.maxY) / 2;
-
-    const positions: Partial<Record<LayoutAction, { x: number; y: number }>> = {
-      move_up: { x: centerX, y: bounds.minY - ui.controlGap },
-      move_down: { x: centerX, y: bounds.maxY + ui.controlGap },
-      move_left: { x: bounds.minX - ui.controlGap, y: centerY },
-      move_right: { x: bounds.maxX + ui.controlGap, y: centerY },
-      rotate_ccw: { x: bounds.minX - ui.controlGap, y: bounds.minY - ui.controlGap },
-      rotate_cw: { x: bounds.maxX + ui.controlGap, y: bounds.minY - ui.controlGap },
-    };
+    const positions = getObjectControlLayout({
+      bounds,
+      ui,
+      viewBox: this.options.config.world.viewBox,
+    });
 
     for (const [action, button] of buttons.entries()) {
-      const position = positions[action];
+      const position = positions[action as ControlButtonAction];
       if (!position) {
         continue;
       }
@@ -1246,6 +1253,77 @@ export class LayoutTaskRenderer {
     this.refs.feedbackLayer?.replaceChildren();
     this.refs.feedbackOverlayElement?.replaceChildren();
   }
+}
+
+export function isObjectInteractive(objectConfig: RuntimeTaskObject): boolean {
+  const movement = objectConfig.behavior.movement;
+  const hasButtonMovement = movement.mode === "button";
+  const hasDragMovement = movement.mode === "drag" && objectConfig.behavior.free_drag.enabled;
+  const hasRotation = objectConfig.behavior.rotation?.step !== undefined;
+  return hasButtonMovement || hasDragMovement || hasRotation;
+}
+
+export function clampControlPoint(
+  point: { x: number; y: number },
+  viewBox: { x: number; y: number; width: number; height: number } | undefined,
+  inset: number,
+): { x: number; y: number } {
+  if (
+    !viewBox ||
+    !Number.isFinite(viewBox.x) ||
+    !Number.isFinite(viewBox.y) ||
+    !Number.isFinite(viewBox.width) ||
+    !Number.isFinite(viewBox.height) ||
+    viewBox.width <= inset * 2 ||
+    viewBox.height <= inset * 2
+  ) {
+    return point;
+  }
+
+  const minX = viewBox.x + inset;
+  const maxX = viewBox.x + viewBox.width - inset;
+  const minY = viewBox.y + inset;
+  const maxY = viewBox.y + viewBox.height - inset;
+
+  return {
+    x: Math.min(Math.max(point.x, minX), maxX),
+    y: Math.min(Math.max(point.y, minY), maxY),
+  };
+}
+
+export function getObjectControlLayout(input: ControlLayoutInput): Record<ControlButtonAction, { x: number; y: number }> {
+  const { bounds, ui, viewBox } = input;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const width = Math.max(bounds.maxX - bounds.minX, 0);
+  const height = Math.max(bounds.maxY - bounds.minY, 0);
+  const shortSide = Math.min(width, height);
+
+  const moveGap = clamp(shortSide * 0.22, 20 * ui.scale, 44 * ui.scale);
+  const rotateGap = clamp(shortSide * 0.28, 28 * ui.scale, 56 * ui.scale);
+  const inset = ui.controlRadius + 8 * ui.scale;
+
+  const positions: Record<ControlButtonAction, { x: number; y: number }> = {
+    move_up: { x: centerX, y: bounds.minY - moveGap },
+    move_down: { x: centerX, y: bounds.maxY + moveGap },
+    move_left: { x: bounds.minX - moveGap, y: centerY },
+    move_right: { x: bounds.maxX + moveGap, y: centerY },
+    rotate_ccw: { x: bounds.minX - rotateGap, y: bounds.minY - rotateGap },
+    rotate_cw: { x: bounds.maxX + rotateGap, y: bounds.minY - rotateGap },
+  };
+
+  return {
+    move_up: clampControlPoint(positions.move_up, viewBox, inset),
+    move_down: clampControlPoint(positions.move_down, viewBox, inset),
+    move_left: clampControlPoint(positions.move_left, viewBox, inset),
+    move_right: clampControlPoint(positions.move_right, viewBox, inset),
+    rotate_ccw: clampControlPoint(positions.rotate_ccw, viewBox, inset),
+    rotate_cw: clampControlPoint(positions.rotate_cw, viewBox, inset),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 export function getStageFitStyle(config: RuntimeTaskConfig): {

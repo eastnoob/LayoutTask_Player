@@ -172,6 +172,11 @@ body {
   outline: none;
 }
 
+.layout-task-object.is-static-context {
+  cursor: default;
+  pointer-events: none;
+}
+
 .layout-task-object.is-draggable {
   cursor: grab;
   touch-action: none;
