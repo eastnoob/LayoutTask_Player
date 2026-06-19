@@ -65,7 +65,6 @@ type ControlButtonAction = Exclude<LayoutAction, "drag_start" | "drag_move" | "d
 interface ControlLayoutInput {
   bounds: VisualBounds;
   ui: ReturnType<typeof getStageUiMetrics>;
-  viewBox?: { x: number; y: number; width: number; height: number };
 }
 
 export class LayoutTaskRenderer {
@@ -841,7 +840,6 @@ export class LayoutTaskRenderer {
     const positions = getObjectControlLayout({
       bounds,
       ui,
-      viewBox: this.options.config.world.viewBox,
     });
 
     for (const [action, button] of buttons.entries()) {
@@ -1263,36 +1261,8 @@ export function isObjectInteractive(objectConfig: RuntimeTaskObject): boolean {
   return hasButtonMovement || hasDragMovement || hasRotation;
 }
 
-export function clampControlPoint(
-  point: { x: number; y: number },
-  viewBox: { x: number; y: number; width: number; height: number } | undefined,
-  inset: number,
-): { x: number; y: number } {
-  if (
-    !viewBox ||
-    !Number.isFinite(viewBox.x) ||
-    !Number.isFinite(viewBox.y) ||
-    !Number.isFinite(viewBox.width) ||
-    !Number.isFinite(viewBox.height) ||
-    viewBox.width <= inset * 2 ||
-    viewBox.height <= inset * 2
-  ) {
-    return point;
-  }
-
-  const minX = viewBox.x + inset;
-  const maxX = viewBox.x + viewBox.width - inset;
-  const minY = viewBox.y + inset;
-  const maxY = viewBox.y + viewBox.height - inset;
-
-  return {
-    x: Math.min(Math.max(point.x, minX), maxX),
-    y: Math.min(Math.max(point.y, minY), maxY),
-  };
-}
-
 export function getObjectControlLayout(input: ControlLayoutInput): Record<ControlButtonAction, { x: number; y: number }> {
-  const { bounds, ui, viewBox } = input;
+  const { bounds, ui } = input;
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerY = (bounds.minY + bounds.maxY) / 2;
   const width = Math.max(bounds.maxX - bounds.minX, 0);
@@ -1301,24 +1271,14 @@ export function getObjectControlLayout(input: ControlLayoutInput): Record<Contro
 
   const moveGap = clamp(shortSide * 0.22, 20 * ui.scale, 44 * ui.scale);
   const rotateGap = clamp(shortSide * 0.28, 28 * ui.scale, 56 * ui.scale);
-  const inset = ui.controlRadius + 8 * ui.scale;
 
-  const positions: Record<ControlButtonAction, { x: number; y: number }> = {
+  return {
     move_up: { x: centerX, y: bounds.minY - moveGap },
     move_down: { x: centerX, y: bounds.maxY + moveGap },
     move_left: { x: bounds.minX - moveGap, y: centerY },
     move_right: { x: bounds.maxX + moveGap, y: centerY },
     rotate_ccw: { x: bounds.minX - rotateGap, y: bounds.minY - rotateGap },
     rotate_cw: { x: bounds.maxX + rotateGap, y: bounds.minY - rotateGap },
-  };
-
-  return {
-    move_up: clampControlPoint(positions.move_up, viewBox, inset),
-    move_down: clampControlPoint(positions.move_down, viewBox, inset),
-    move_left: clampControlPoint(positions.move_left, viewBox, inset),
-    move_right: clampControlPoint(positions.move_right, viewBox, inset),
-    rotate_ccw: clampControlPoint(positions.rotate_ccw, viewBox, inset),
-    rotate_cw: clampControlPoint(positions.rotate_cw, viewBox, inset),
   };
 }
 

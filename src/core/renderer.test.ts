@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
-  clampControlPoint,
   getConfiguredObjectLocalRect,
   getObjectControlLayout,
   getRotatedVisualBounds,
@@ -138,7 +137,6 @@ describe("LayoutTaskRenderer control layout", () => {
     const layout = getObjectControlLayout({
       bounds,
       ui,
-      viewBox: config.world.viewBox,
     });
 
     expect(layout.move_right.x - bounds.maxX).toBeLessThan(ui.controlGap);
@@ -153,27 +151,34 @@ describe("LayoutTaskRenderer control layout", () => {
     const layout = getObjectControlLayout({
       bounds,
       ui,
-      viewBox: config.world.viewBox,
     });
 
     expect(bounds.minY - layout.rotate_ccw.y).toBeGreaterThan(bounds.minY - layout.move_up.y);
     expect(layout.rotate_cw.x - bounds.maxX).toBeGreaterThan(layout.move_right.x - bounds.maxX);
   });
 
-  it("clamps controls inside the stage viewBox near edges", () => {
+  it("keeps directional control positions distinct near stage edges", () => {
     const config = createRuntimeConfig();
     const ui = getStageUiMetrics(config);
-    const bounds = { minX: 470, maxX: 500, minY: -10, maxY: 10 };
+    const bounds = { minX: 470, maxX: 500, minY: -500, maxY: -470 };
 
     const layout = getObjectControlLayout({
       bounds,
       ui,
-      viewBox: config.world.viewBox,
     });
 
-    const maxControlX = config.world.viewBox.x + config.world.viewBox.width - ui.controlRadius - 8 * ui.scale;
-    expect(layout.move_right.x).toBe(maxControlX);
-    expect(layout.rotate_cw.x).toBe(maxControlX);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    expect(layout.move_up.x).toBe(centerX);
+    expect(layout.move_up.y).toBeLessThan(bounds.minY);
+    expect(layout.move_right.x).toBeGreaterThan(bounds.maxX);
+    expect(layout.move_right.y).toBe(centerY);
+    expect(layout.rotate_ccw.x).toBeLessThan(bounds.minX);
+    expect(layout.rotate_ccw.y).toBeLessThan(bounds.minY);
+    expect(layout.rotate_cw.x).toBeGreaterThan(bounds.maxX);
+    expect(layout.rotate_cw.y).toBeLessThan(bounds.minY);
+    expect(`${layout.move_up.x},${layout.move_up.y}`).not.toBe(`${layout.rotate_cw.x},${layout.rotate_cw.y}`);
+    expect(`${layout.move_right.x},${layout.move_right.y}`).not.toBe(`${layout.rotate_cw.x},${layout.rotate_cw.y}`);
   });
 
   it("does not move controls away from their expected positions when far from edges", () => {
@@ -184,22 +189,11 @@ describe("LayoutTaskRenderer control layout", () => {
     const layout = getObjectControlLayout({
       bounds,
       ui,
-      viewBox: config.world.viewBox,
     });
 
     expect(layout.move_up.x).toBe(0);
     expect(layout.move_down.x).toBe(0);
     expect(layout.move_left.y).toBe(0);
     expect(layout.move_right.y).toBe(0);
-  });
-
-  it("returns the original point when clamping has no valid finite viewBox", () => {
-    expect(
-      clampControlPoint(
-        { x: 999, y: 999 },
-        { x: 0, y: 0, width: 0, height: 0 },
-        10,
-      ),
-    ).toEqual({ x: 999, y: 999 });
   });
 });

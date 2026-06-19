@@ -8,6 +8,8 @@
 
 **Tech Stack:** TypeScript, Vitest, existing SVG renderer, existing `RuntimeTaskConfig` / `RuntimeTaskObject` types.
 
+**Post-implementation correction:** The original plan used per-control viewBox clamping for edge visibility. Visual testing showed that this collapses several controls into the same boundary point near corners. The implemented behavior now preserves each control's directional position from the object bounds and uses SVG `overflow: visible` on the stage to keep edge controls reachable.
+
 ---
 
 ## File Structure

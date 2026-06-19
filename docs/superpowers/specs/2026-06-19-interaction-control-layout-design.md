@@ -40,15 +40,15 @@ The renderer computes each object's visual bounds after asset placement and rota
 - `shortSide = min(bounds.width, bounds.height)`
 - movement gap scales with `shortSide`
 - rotation gap scales with `shortSide` and is slightly larger than movement gap
-- both gaps are clamped to visual pixel thresholds converted to world units through the current stage UI scale
+- both gaps are bounded by visual pixel thresholds converted to world units through the current stage UI scale
 
 This keeps controls close enough for small furniture while preserving comfortable spacing for larger objects.
 
-### Stage-Edge Clamping
+### Stage-Edge Visibility
 
-Each control button center is clamped inside `world.viewBox` with enough padding for the control radius and a small visual margin.
+Each control button keeps its geometric relationship to the object: movement controls stay on the four cardinal sides, and rotation controls stay on the upper-left and upper-right corners.
 
-If an object is near the right, left, top, bottom, or a corner edge, the relevant controls slide inward rather than leaving the visible SVG region. This preserves clickability without changing object coordinates or stage geometry.
+If an object is near the right, left, top, bottom, or a corner edge, controls may extend beyond `world.viewBox`. The SVG stage allows overflow so those controls remain visible and clickable instead of being clipped or collapsed together.
 
 The controls layer already renders after object layers, so the primary issue is viewBox clipping rather than stacking. The implementation should keep controls in the existing layer for this change.
 
@@ -62,7 +62,6 @@ Add small pure helpers near the existing exported renderer geometry helpers:
 
 - `isObjectInteractive(objectConfig)`
 - `getObjectControlLayout(...)`
-- `clampControlPoint(...)`
 
 The renderer will use `isObjectInteractive` while creating object groups. It will only attach interaction affordances to interactive objects.
 
@@ -86,13 +85,13 @@ Action and drag requests already pass through store-level gates. Those gates rem
 4. Static context objects render as passive visuals.
 5. Interactive objects get selection affordances and can activate controls.
 6. On activation, renderer computes visual bounds and size-aware controls.
-7. Control centers are clamped to the stage viewBox before being applied to DOM elements.
+7. Control centers are applied in their directional positions; stage overflow keeps edge controls visible.
 
 ## Error Handling
 
 If object bounds cannot be computed, the renderer should fall back to the configured local rect and existing UI scale. The UI should remain usable rather than throwing.
 
-If `world.viewBox` is missing or invalid, the layout helper should skip clamping and return unclamped control positions. Current valid task configs already provide a viewBox.
+If an SVG runtime does not honor visible overflow, the controls may still render at the correct geometric positions but could be visually clipped by that environment. The player CSS sets the stage overflow explicitly for supported browsers.
 
 ## Testing
 
@@ -102,7 +101,7 @@ Add focused tests for pure logic and controller behavior:
 - `isObjectInteractive` returns true for button movement, drag movement, or rotation step.
 - Control gap is smaller for small objects than the legacy fixed global gap, but stays above a visual minimum.
 - Rotation controls are placed farther than movement controls.
-- Controls near a viewBox edge are clamped inside the visible stage.
+- Controls near a viewBox edge preserve their side/corner positions and remain visible through SVG overflow.
 - Controls away from edges keep their expected side/corner placement.
 - `InteractionController.selectObject` ignores static context objects.
 - Variable objects remain selectable.
@@ -132,5 +131,5 @@ Manual check when the local preview is available:
 - Static context objects cannot steal selection from variable objects.
 - Existing variable movement and rotation behavior remains unchanged.
 - Controls are visually tied to object size instead of a single fixed offset.
-- Controls remain reachable near all stage edges.
+- Controls remain directionally separated and reachable near all stage edges.
 - The change applies globally to all task packages.

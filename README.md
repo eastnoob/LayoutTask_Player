@@ -286,7 +286,7 @@ For best results, object SVGs should be self-contained and use ordinary SVG shap
 
 The player treats object interactivity as a behavior-level rule. Objects with no button movement, no enabled drag movement, and no rotation step are rendered as passive context: they stay visible and can still participate in collision checks, but they are not selectable and do not show controls.
 
-Movement and rotation controls are placed from the object's rendered bounds. The gap scales with object size and control centers are clamped inside the stage viewBox, so small objects keep reachable controls and edge objects do not lose controls outside the visible stage.
+Movement and rotation controls are placed from the object's rendered bounds. The gap scales with object size, and the SVG stage allows controls to remain visible beyond the viewBox edge so edge objects keep directional controls instead of collapsing them into one point.
 
 ### Flow Modes
 

@@ -158,6 +158,7 @@ body {
 .layout-task-stage {
   display: block;
   width: 100%;
+  overflow: visible;
   background: #eef3f8;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
