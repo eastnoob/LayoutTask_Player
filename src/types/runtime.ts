@@ -10,7 +10,7 @@ import type {
   FeedbackConfig,
   LayoutTaskMessages,
   ObjectAssetConfig,
-  ObjectCollisionConfig,
+  ObjectCollisionPolygon,
   OutputConfig,
   PreviewStageMode,
   RecordingConfig,
@@ -44,7 +44,7 @@ export interface RuntimeTaskObject {
   anchor: Anchor;
   behaviorTemplateId?: string;
   behavior: ResolvedBehaviorConfig;
-  collision: Required<ObjectCollisionConfig>;
+  collision: RuntimeObjectCollisionConfig;
 }
 
 export interface RuntimeBackground {
@@ -74,6 +74,20 @@ export interface RuntimeStageConfig extends Required<StageConfig> {}
 export interface RuntimeCollisionSource extends CollisionSourceConfig, ResolvedAssetPath {
   inlineSvgText?: string;
 }
+
+export type RuntimeObjectCollisionConfig =
+  | {
+      enabled: boolean;
+      shape: "box";
+      padding: number;
+    }
+  | {
+      enabled: boolean;
+      shape: "polygons";
+      polygons: ObjectCollisionPolygon[];
+      padding: number;
+      source?: CollisionSourceConfig & ResolvedAssetPath & { inlineSvgText?: string };
+    };
 
 export interface RuntimeCollisionConfig {
   enabled: boolean;

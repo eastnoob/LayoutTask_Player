@@ -624,6 +624,47 @@ describe("taskSchema collision", () => {
     expect(parsed.objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 0 });
   });
 
+  it("accepts object collision polygons and asset outlines", () => {
+    const task = createMinimalTask();
+    task.objects[0].collision = {
+      enabled: true,
+      shape: "polygons",
+      polygons: [
+        {
+          id: "seat",
+          points: [
+            { x: -50, y: -25 },
+            { x: 50, y: -25 },
+            { x: 50, y: 25 },
+            { x: -50, y: 25 },
+          ],
+        },
+      ],
+    };
+    expect(taskSchema.parse(task).objects[0].collision).toMatchObject({ shape: "polygons" });
+
+    task.objects[0].collision = {
+      enabled: true,
+      shape: "asset_outline",
+      source: {
+        type: "svg",
+        src: "assets/collision/objects/chair_COLLIDER.svg",
+      },
+    };
+    expect(taskSchema.parse(task).objects[0].collision).toMatchObject({ shape: "asset_outline" });
+  });
+
+  it("defaults legacy object collision without shape to box", () => {
+    const task = createMinimalTask();
+    task.objects[0].collision = { enabled: true, padding: 2 };
+
+    expect(taskSchema.parse(task).objects[0].collision).toEqual({
+      enabled: true,
+      shape: "box",
+      padding: 2,
+    });
+  });
+
   it("accepts an SVG collision source", () => {
     const task = createMinimalTask();
     task.collision = {

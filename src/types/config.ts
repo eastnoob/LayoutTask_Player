@@ -244,11 +244,40 @@ export interface TaskCollisionConfig {
   source?: CollisionSourceConfig;
 }
 
-export interface ObjectCollisionConfig {
+export interface ObjectCollisionPolygon {
+  id?: string;
+  points: CollisionPoint[];
+}
+
+export interface ObjectCollisionSourceConfig {
+  type: "svg";
+  src: string;
+}
+
+export interface BoxObjectCollisionConfig {
   enabled?: boolean;
   shape?: "box";
   padding?: number;
 }
+
+export interface PolygonObjectCollisionConfig {
+  enabled?: boolean;
+  shape: "polygons";
+  polygons: ObjectCollisionPolygon[];
+  padding?: number;
+}
+
+export interface AssetOutlineObjectCollisionConfig {
+  enabled?: boolean;
+  shape: "asset_outline";
+  source: ObjectCollisionSourceConfig;
+  padding?: number;
+}
+
+export type ObjectCollisionConfig =
+  | BoxObjectCollisionConfig
+  | PolygonObjectCollisionConfig
+  | AssetOutlineObjectCollisionConfig;
 
 export interface ManifestTaskEntry {
   qid: string;

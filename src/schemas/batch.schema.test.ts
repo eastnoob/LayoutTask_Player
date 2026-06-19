@@ -220,6 +220,22 @@ describe("batchSchema", () => {
     expect(parsed.trials[0].objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 5 });
   });
 
+  it("accepts collider SVG collision declarations in batch objects", () => {
+    const batch = cloneMinimalBatch();
+    batch.trials[0].objects[0].collision = {
+      enabled: true,
+      shape: "asset_outline",
+      source: {
+        type: "svg",
+        src: "assets/collision/objects/chair_COLLIDER.svg",
+      },
+    };
+
+    expect(batchSchema.parse(batch).trials[0].objects[0].collision).toMatchObject({
+      shape: "asset_outline",
+    });
+  });
+
   it("rejects empty scoring object keys", () => {
     const batch = cloneMinimalBatch();
     batch.trials[0].scoring = {
