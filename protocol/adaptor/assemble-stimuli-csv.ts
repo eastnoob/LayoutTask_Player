@@ -7,8 +7,9 @@ const placeholderTaskId = "scene_from_runner";
 const legacyDefaultBehaviorTemplate = "drag500_rotate45_limited";
 const defaultBehaviorTemplate = "button500_rotate45_limited";
 const taskIdSafePattern = /[^A-Za-z0-9_-]+/g;
+const defaultColliderSuffix = "_COLLISION";
 
-const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>]`;
+const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>] [--attach-collider-svg] [--collider-suffix <suffix>]`;
 
 interface CliArgs {
   csv?: string;
@@ -17,6 +18,8 @@ interface CliArgs {
   title: string;
   trustSvgViewBox: boolean;
   svgViewBoxScale: number;
+  attachColliderSvg: boolean;
+  colliderSuffix: string;
 }
 
 type CsvRow = Record<string, string | undefined>;
@@ -38,7 +41,13 @@ function requireValue(args: string[], index: number, option: string): string {
 }
 
 function parseArgs(args: string[]): CliArgs {
-  const parsed: CliArgs = { title: "", trustSvgViewBox: false, svgViewBoxScale: 1 };
+  const parsed: CliArgs = {
+    title: "",
+    trustSvgViewBox: false,
+    svgViewBoxScale: 1,
+    attachColliderSvg: false,
+    colliderSuffix: defaultColliderSuffix,
+  };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -100,6 +109,22 @@ function parseArgs(args: string[]): CliArgs {
 
     if (arg.startsWith("--svg-viewbox-scale=")) {
       parsed.svgViewBoxScale = Number(arg.slice("--svg-viewbox-scale=".length));
+      continue;
+    }
+
+    if (arg === "--attach-collider-svg") {
+      parsed.attachColliderSvg = true;
+      continue;
+    }
+
+    if (arg === "--collider-suffix") {
+      parsed.colliderSuffix = requireValue(args, index, "--collider-suffix");
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--collider-suffix=")) {
+      parsed.colliderSuffix = arg.slice("--collider-suffix=".length);
       continue;
     }
 
@@ -321,6 +346,73 @@ function isSvgAsset(value: unknown): boolean {
   return type === "svg" || src.endsWith(".svg");
 }
 
+function colliderSourceFromObjectAsset(asset: unknown, colliderSuffix: string): string | undefined {
+  if (!isSvgAsset(asset)) {
+    return undefined;
+  }
+
+  const src = String((asset as JsonObject).src ?? "").replaceAll("\\", "/").split(/[?#]/, 1)[0];
+  const fileName = src.split("/").pop() ?? "";
+  const stem = fileName.replace(/\.svg$/i, "");
+
+  if (!stem) {
+    return undefined;
+  }
+
+  return `assets/collision/objects/${stem}${colliderSuffix}.svg`;
+}
+
+function shouldAttachCollider(collision: unknown): boolean {
+  if (collision === undefined) {
+    return true;
+  }
+
+  if (!collision || typeof collision !== "object" || Array.isArray(collision)) {
+    return false;
+  }
+
+  const config = collision as JsonObject;
+  if (config.enabled === false) {
+    return false;
+  }
+
+  return config.shape === undefined || config.shape === "box";
+}
+
+function withColliderCollision(collision: unknown, colliderSrc: string): JsonObject {
+  const existing = collision && typeof collision === "object" && !Array.isArray(collision) ? (collision as JsonObject) : {};
+
+  return {
+    ...existing,
+    enabled: existing.enabled ?? true,
+    shape: "asset_outline",
+    source: { type: "svg", src: colliderSrc },
+  };
+}
+
+function attachObjectColliderSvgs(trial: JsonObject, objectAssets: JsonObject, colliderSuffix: string): void {
+  const objects = Array.isArray(trial.objects) ? trial.objects : [];
+
+  for (const object of objects) {
+    if (!object || typeof object !== "object" || Array.isArray(object)) {
+      continue;
+    }
+
+    const objectConfig = object as JsonObject;
+    if (!shouldAttachCollider(objectConfig.collision)) {
+      continue;
+    }
+
+    const assetKey = String(objectConfig.asset ?? "");
+    const colliderSrc = colliderSourceFromObjectAsset(objectAssets[assetKey], colliderSuffix);
+    if (!colliderSrc) {
+      continue;
+    }
+
+    objectConfig.collision = withColliderCollision(objectConfig.collision, colliderSrc);
+  }
+}
+
 function stripSvgAssetDimensions(assets: JsonObject): void {
   for (const asset of Object.values(assets)) {
     if (!isSvgAsset(asset)) {
@@ -377,7 +469,15 @@ function stripTrialSvgDimensions(trial: JsonObject, objectAssets: JsonObject, ba
   delete background.height;
 }
 
-function assemble(rows: CsvRow[], experimentId: string, title: string, trustSvgViewBox: boolean, svgViewBoxScale: number): {
+function assemble(
+  rows: CsvRow[],
+  experimentId: string,
+  title: string,
+  trustSvgViewBox: boolean,
+  svgViewBoxScale: number,
+  attachColliderSvg: boolean,
+  colliderSuffix: string,
+): {
   batch: JsonObject;
   objectLibrary: JsonObject;
   backgroundLibrary: JsonObject;
@@ -426,6 +526,9 @@ function assemble(rows: CsvRow[], experimentId: string, title: string, trustSvgV
     }
     mergeLibraryObjects(objectAssets, objectLibrary?.objects, "object");
     mergeLibraryObjects(backgroundAssets, backgroundLibrary?.backgrounds, "background");
+    if (attachColliderSvg) {
+      attachObjectColliderSvgs(trial, (objectLibrary?.objects ?? {}) as JsonObject, colliderSuffix);
+    }
     trials.push(trial);
   });
 
@@ -514,7 +617,15 @@ async function main(): Promise<void> {
       throw new Error("CSV has no data rows.");
     }
 
-    const assembled = assemble(rows, args.experimentId, args.title, args.trustSvgViewBox, args.svgViewBoxScale);
+    const assembled = assemble(
+      rows,
+      args.experimentId,
+      args.title,
+      args.trustSvgViewBox,
+      args.svgViewBoxScale,
+      args.attachColliderSvg,
+      args.colliderSuffix,
+    );
     const parsedBatch = batchSchema.parse(assembled.batch);
     const files = [
       resolveOutputFile(args.out, "batch.json", assembled.batch),

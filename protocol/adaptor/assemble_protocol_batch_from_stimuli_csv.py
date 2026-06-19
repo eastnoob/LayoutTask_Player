@@ -15,6 +15,7 @@ from pathlib import Path
 PLACEHOLDER_TASK_ID = "scene_from_runner"
 LEGACY_DEFAULT_BEHAVIOR_TEMPLATE = "drag500_rotate45_limited"
 DEFAULT_BEHAVIOR_TEMPLATE = "button500_rotate45_limited"
+DEFAULT_COLLIDER_SUFFIX = "_COLLISION"
 TASK_ID_SAFE = re.compile(r"[^A-Za-z0-9_-]+")
 
 
@@ -28,6 +29,16 @@ def parse_args():
         "--trust-svg-viewbox",
         action="store_true",
         help="Omit SVG object/background dimensions so the Player infers absolute size from SVG viewBox.",
+    )
+    parser.add_argument(
+        "--attach-collider-svg",
+        action="store_true",
+        help="Attach same-name SVG collider sources to SVG objects that have no collision or legacy box collision.",
+    )
+    parser.add_argument(
+        "--collider-suffix",
+        default=DEFAULT_COLLIDER_SUFFIX,
+        help="Suffix inserted before .svg for collider assets. Defaults to _COLLISION.",
     )
     return parser.parse_args()
 
@@ -182,6 +193,55 @@ def is_svg_asset(value):
     return asset_type == "svg" or src.endswith(".svg")
 
 
+def collider_source_from_object_asset(asset, collider_suffix):
+    if not is_svg_asset(asset):
+        return None
+
+    src = str(asset.get("src") or "").replace("\\", "/").split("?", 1)[0].split("#", 1)[0]
+    file_name = src.rsplit("/", 1)[-1]
+    stem = re.sub(r"\.svg$", "", file_name, flags=re.IGNORECASE)
+    if not stem:
+        return None
+
+    return f"assets/collision/objects/{stem}{collider_suffix}.svg"
+
+
+def should_attach_collider(collision):
+    if collision is None:
+        return True
+
+    if not isinstance(collision, dict):
+        return False
+
+    if collision.get("enabled") is False:
+        return False
+
+    return collision.get("shape") in (None, "box")
+
+
+def with_collider_collision(collision, collider_src):
+    existing = dict(collision) if isinstance(collision, dict) else {}
+    existing.setdefault("enabled", True)
+    existing["shape"] = "asset_outline"
+    existing["source"] = {"type": "svg", "src": collider_src}
+    return existing
+
+
+def attach_object_collider_svgs(trial, object_assets, collider_suffix):
+    for obj in trial.get("objects") or []:
+        if not isinstance(obj, dict):
+            continue
+        if not should_attach_collider(obj.get("collision")):
+            continue
+
+        asset_key = str(obj.get("asset") or "")
+        collider_src = collider_source_from_object_asset(object_assets.get(asset_key), collider_suffix)
+        if not collider_src:
+            continue
+
+        obj["collision"] = with_collider_collision(obj.get("collision"), collider_src)
+
+
 def strip_svg_asset_dimensions(assets):
     for asset in assets.values():
         if not is_svg_asset(asset):
@@ -208,7 +268,14 @@ def strip_trial_svg_dimensions(trial, object_assets, background_assets):
         background.pop(key, None)
 
 
-def assemble(rows, experiment_id, title, trust_svg_viewbox=False):
+def assemble(
+    rows,
+    experiment_id,
+    title,
+    trust_svg_viewbox=False,
+    attach_collider_svg=False,
+    collider_suffix=DEFAULT_COLLIDER_SUFFIX,
+):
     trials = []
     object_assets = {}
     background_assets = {}
@@ -243,6 +310,8 @@ def assemble(rows, experiment_id, title, trust_svg_viewbox=False):
             )
         merge_dict(object_assets, object_library.get("objects", {}), "object")
         merge_dict(background_assets, background_library.get("backgrounds", {}), "background")
+        if attach_collider_svg:
+            attach_object_collider_svgs(trial, object_library.get("objects", {}), collider_suffix)
         trials.append(trial)
 
     shared_world = extract_shared_world(trials)
@@ -289,6 +358,8 @@ def main():
         args.experiment_id,
         args.title,
         args.trust_svg_viewbox,
+        args.attach_collider_svg,
+        args.collider_suffix,
     )
     out_dir = Path(args.out)
     write_json(out_dir / "batch.json", batch)

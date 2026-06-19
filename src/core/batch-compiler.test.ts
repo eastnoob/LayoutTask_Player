@@ -186,6 +186,25 @@ describe("compileBatch", () => {
     expect(task.objects[0].collision).toEqual({ enabled: true, shape: "box", padding: 5 });
   });
 
+  it("preserves object asset_outline collision into runtime task config", () => {
+    const batch = createBatch();
+    batch.trials[0].objects[0].collision = {
+      enabled: true,
+      shape: "asset_outline",
+      source: { type: "svg", src: "assets/collision/objects/chair_a_COLLISION.svg" },
+      padding: 2,
+    };
+
+    const task = compileBatch(batch).tasks[0].config;
+
+    expect(task.objects[0].collision).toEqual({
+      enabled: true,
+      shape: "asset_outline",
+      source: { type: "svg", src: "assets/collision/objects/chair_a_COLLISION.svg" },
+      padding: 2,
+    });
+  });
+
   it("emits private scoring references with role, group_id, target, tolerance, and labels", () => {
     const compiled = compileBatch(createBatch());
 
