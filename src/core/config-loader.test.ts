@@ -642,6 +642,48 @@ describe("resolveRuntimeConfig collision", () => {
       },
     });
   });
+
+  it("deep-copies authored object polygon collision data into runtime config", () => {
+    const input = createBehaviorConfigInput({
+      template: "move25",
+    });
+    const authoredPolygons = [
+      {
+        id: "seat",
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+          { x: 10, y: 10 },
+        ],
+      },
+    ];
+    input.task.objects[0].collision = {
+      shape: "polygons",
+      polygons: authoredPolygons,
+    };
+
+    const config = resolveRuntimeConfig(input);
+    const runtimeCollision = config.objects[0].collision;
+    expect(runtimeCollision.shape).toBe("polygons");
+    if (runtimeCollision.shape !== "polygons") {
+      throw new Error("Expected runtime polygon collision");
+    }
+
+    runtimeCollision.polygons[0].id = "mutated";
+    runtimeCollision.polygons[0].points[0].x = 99;
+    runtimeCollision.polygons[0].points.push({ x: 99, y: 99 });
+
+    expect(authoredPolygons).toEqual([
+      {
+        id: "seat",
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+          { x: 10, y: 10 },
+        ],
+      },
+    ]);
+  });
 });
 
 describe("ConfigLoader collision runtime config", () => {
@@ -948,6 +990,53 @@ describe("ConfigLoader collision runtime config", () => {
         inlineSvgText: outlineSvgText,
       },
       polygons: config.objects[0].collision.shape === "polygons" ? config.objects[0].collision.polygons : [],
+    });
+  });
+
+  it("does not fetch or parse disabled object asset_outline collision sources", async () => {
+    const colliderSourceUrl = "https://cdn.example.test/layout-task/assets/collision/invalid_outline.svg";
+    const fetchImpl = createConfigFetch({
+      manifestAssetBaseUrl: "https://cdn.example.test/layout-task/",
+      taskObjects: [
+        {
+          id: "chair_01",
+          asset: "chair_a",
+          x: 0,
+          y: 0,
+          behavior: { template: "move25" },
+          collision: {
+            enabled: false,
+            shape: "asset_outline",
+            source: {
+              type: "svg",
+              src: "assets/collision/invalid_outline.svg",
+            },
+            padding: 5,
+          },
+        },
+      ],
+      textByUrl: {
+        [colliderSourceUrl]: "<svg><image href=\"bad.png\" /></svg>",
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(fetchImpl).not.toHaveBeenCalledWith(colliderSourceUrl);
+    expect(config.objects[0].collision).toEqual({
+      enabled: false,
+      shape: "polygons",
+      polygons: [],
+      padding: 5,
+      source: {
+        type: "svg",
+        src: "assets/collision/invalid_outline.svg",
+        srcResolved: colliderSourceUrl,
+      },
     });
   });
 });

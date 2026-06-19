@@ -7,6 +7,7 @@ import type {
   MinViewportRequirement,
   ObjectLibraryConfig,
   ObjectAssetConfig,
+  ObjectCollisionPolygon,
   PartialBehaviorConfig,
   TaskObjectBehaviorConfig,
   TaskConfig,
@@ -281,7 +282,7 @@ export class ConfigLoader {
     const svgSources = new Map<string, Promise<string>>();
 
     for (const objectConfig of config.objects) {
-      if (objectConfig.collision.shape !== "polygons" || !objectConfig.collision.source) {
+      if (!objectConfig.collision.enabled || objectConfig.collision.shape !== "polygons" || !objectConfig.collision.source) {
         continue;
       }
 
@@ -433,7 +434,7 @@ function resolveObjectCollision(
     return {
       enabled,
       shape: "polygons",
-      polygons: collision.polygons,
+      polygons: cloneObjectCollisionPolygons(collision.polygons),
       padding,
     };
   }
@@ -456,6 +457,13 @@ function resolveObjectCollision(
     shape: "box",
     padding,
   };
+}
+
+function cloneObjectCollisionPolygons(polygons: ObjectCollisionPolygon[]): ObjectCollisionPolygon[] {
+  return polygons.map((polygon) => ({
+    ...polygon,
+    points: polygon.points.map((point) => ({ ...point })),
+  }));
 }
 
 function resolveObjectDimensions(
