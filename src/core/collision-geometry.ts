@@ -36,7 +36,7 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
     return { ok: true };
   }
 
-  const movingPolygon = createObjectCollisionPolygon(input.movingObject, input.candidatePose);
+  const movingPolygons = createObjectCollisionPolygons(input.movingObject, input.candidatePose);
   const containAreas = input.areas.filter((area) => area.type === "contain");
   const blockAreas = input.areas.filter((area) => area.type === "block");
   const containPolygons =
@@ -44,13 +44,16 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
       ? containAreas.map((area) => ({ id: area.id, polygon: areaToPolygon(area) }))
       : [{ id: "__world_viewBox", polygon: viewBoxToPolygon(input.worldViewBox) }];
 
-  const containingArea = containPolygons.find((area) => isPolygonInsidePolygon(movingPolygon, area.polygon));
-  if (!containingArea) {
-    return { ok: false, reason: "outside_contain", areaId: containPolygons[0]?.id ?? "__world_viewBox" };
+  for (const movingPolygon of movingPolygons) {
+    const containingArea = containPolygons.find((area) => isPolygonInsidePolygon(movingPolygon, area.polygon));
+    if (!containingArea) {
+      return { ok: false, reason: "outside_contain", areaId: containPolygons[0]?.id ?? "__world_viewBox" };
+    }
   }
 
   for (const area of blockAreas) {
-    if (doPolygonsIntersect(movingPolygon, areaToPolygon(area))) {
+    const blockPolygon = areaToPolygon(area);
+    if (movingPolygons.some((movingPolygon) => doPolygonsIntersect(movingPolygon, blockPolygon))) {
       return { ok: false, reason: "blocked_area", areaId: area.id };
     }
   }
@@ -61,13 +64,27 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
     }
 
     const pose = input.objectPoses?.[object.id] ?? { x: object.x, y: object.y, r: object.rotation };
-    const objectPolygon = createObjectCollisionPolygon(object, pose);
-    if (doPolygonsIntersect(movingPolygon, objectPolygon)) {
+    const objectPolygons = createObjectCollisionPolygons(object, pose);
+    if (
+      movingPolygons.some((movingPolygon) =>
+        objectPolygons.some((objectPolygon) => doPolygonsIntersect(movingPolygon, objectPolygon)),
+      )
+    ) {
       return { ok: false, reason: "object", objectId: object.id };
     }
   }
 
   return { ok: true };
+}
+
+export function createObjectCollisionPolygons(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon[] {
+  if (object.collision.shape === "box") {
+    return [createObjectCollisionPolygon(object, pose)];
+  }
+
+  // Polygon padding is intentionally not applied in v1. Authored object-local
+  // collider polygons are transformed verbatim to avoid an implicit offset model.
+  return object.collision.polygons.map((polygon) => transformObjectLocalPolygon(object, pose, polygon.points));
 }
 
 export function createObjectCollisionPolygon(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon {
@@ -90,6 +107,28 @@ export function createObjectCollisionPolygon(object: RuntimeTaskObject, pose: Ob
     x: pose.x + point.x * cos - point.y * sin,
     y: pose.y + point.x * sin + point.y * cos,
   }));
+}
+
+function transformObjectLocalPolygon(
+  object: RuntimeTaskObject,
+  pose: ObjectPose,
+  points: CollisionPolygon,
+): CollisionPolygon {
+  const originX = object.anchor === "center" ? object.width / 2 : 0;
+  const originY = object.anchor === "center" ? object.height / 2 : 0;
+  const angle = (normalizeRotation(pose.r) * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return points.map((point) => {
+    const localX = point.x - originX;
+    const localY = point.y - originY;
+
+    return {
+      x: pose.x + localX * cos - localY * sin,
+      y: pose.y + localX * sin + localY * cos,
+    };
+  });
 }
 
 export function areaToPolygon(area: CollisionAreaConfig): CollisionPolygon {

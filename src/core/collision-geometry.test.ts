@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   areaToPolygon,
   createObjectCollisionPolygon,
+  createObjectCollisionPolygons,
   doPolygonsIntersect,
   evaluateCollision,
   isPolygonInsidePolygon,
@@ -111,6 +112,73 @@ describe("collision geometry", () => {
       { x: 125, y: 250 },
       { x: 75, y: 250 },
       { x: 75, y: 150 },
+    ]);
+  });
+
+  it("creates centered local collision polygons in world units", () => {
+    const polygons = createObjectCollisionPolygons(
+      createObject({
+        x: 100,
+        y: 200,
+        width: 100,
+        height: 50,
+        collision: {
+          enabled: true,
+          shape: "polygons",
+          padding: 0,
+          polygons: [
+            {
+              points: [
+                { x: 60, y: 10 },
+                { x: 80, y: 10 },
+                { x: 60, y: 30 },
+              ],
+            },
+          ],
+        },
+      }),
+      { x: 100, y: 200, r: 90 },
+    );
+
+    expect(polygons).toHaveLength(1);
+    expectPolygonToBeCloseTo(polygons[0], [
+      { x: 115, y: 210 },
+      { x: 115, y: 230 },
+      { x: 95, y: 210 },
+    ]);
+  });
+
+  it("creates top-left local collision polygons in world units", () => {
+    const polygons = createObjectCollisionPolygons(
+      createObject({
+        x: 100,
+        y: 200,
+        width: 100,
+        height: 50,
+        anchor: "top_left",
+        collision: {
+          enabled: true,
+          shape: "polygons",
+          padding: 0,
+          polygons: [
+            {
+              points: [
+                { x: 10, y: 20 },
+                { x: 30, y: 20 },
+                { x: 10, y: 40 },
+              ],
+            },
+          ],
+        },
+      }),
+      { x: 100, y: 200, r: 90 },
+    );
+
+    expect(polygons).toHaveLength(1);
+    expectPolygonToBeCloseTo(polygons[0], [
+      { x: 80, y: 210 },
+      { x: 80, y: 230 },
+      { x: 60, y: 210 },
     ]);
   });
 
@@ -301,6 +369,86 @@ describe("collision geometry", () => {
     });
 
     expect(result).toEqual({ ok: false, reason: "object", objectId: "table_01" });
+  });
+
+  it("blocks when any moving local polygon overlaps another collision-enabled object", () => {
+    const moving = createObject({
+      id: "chair_01",
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      collision: {
+        enabled: true,
+        shape: "polygons",
+        padding: 0,
+        polygons: [
+          {
+            points: [
+              { x: 0, y: 0 },
+              { x: 20, y: 0 },
+              { x: 20, y: 20 },
+              { x: 0, y: 20 },
+            ],
+          },
+          {
+            points: [
+              { x: 80, y: 80 },
+              { x: 100, y: 80 },
+              { x: 100, y: 100 },
+              { x: 80, y: 100 },
+            ],
+          },
+        ],
+      },
+    });
+    const table = createObject({ id: "table_01", x: 140, y: 140, width: 20, height: 20 });
+
+    const result = evaluateCollision({
+      movingObject: moving,
+      candidatePose: { x: 100, y: 100, r: 0 },
+      objects: [moving, table],
+      areas: [],
+      worldViewBox: { x: 0, y: 0, width: 300, height: 300 },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "object", objectId: "table_01" });
+  });
+
+  it("allows bbox overlap when the actual moving local polygon does not overlap", () => {
+    const moving = createObject({
+      id: "chair_01",
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 100,
+      collision: {
+        enabled: true,
+        shape: "polygons",
+        padding: 0,
+        polygons: [
+          {
+            points: [
+              { x: 0, y: 0 },
+              { x: 20, y: 0 },
+              { x: 20, y: 20 },
+              { x: 0, y: 20 },
+            ],
+          },
+        ],
+      },
+    });
+    const table = createObject({ id: "table_01", x: 140, y: 140, width: 20, height: 20 });
+
+    const result = evaluateCollision({
+      movingObject: moving,
+      candidatePose: { x: 100, y: 100, r: 0 },
+      objects: [moving, table],
+      areas: [],
+      worldViewBox: { x: 0, y: 0, width: 300, height: 300 },
+    });
+
+    expect(result).toEqual({ ok: true });
   });
 
   it("allows candidate poses for collision-disabled moving objects", () => {
