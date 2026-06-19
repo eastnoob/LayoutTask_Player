@@ -282,6 +282,12 @@ Selection is implemented as a separate shadow layer behind the object:
 
 For best results, object SVGs should be self-contained and use ordinary SVG shapes such as `rect`, `circle`, `path`, `polygon`, or grouped combinations of these. Complex SVGs with their own filters, masks, clip paths, or embedded external images should be checked manually.
 
+### Object Interaction Behavior
+
+The player treats object interactivity as a behavior-level rule. Objects with no button movement, no enabled drag movement, and no rotation step are rendered as passive context: they stay visible and can still participate in collision checks, but they are not selectable and do not show controls.
+
+Movement and rotation controls are placed from the object's rendered bounds. The gap scales with object size and control centers are clamped inside the stage viewBox, so small objects keep reachable controls and edge objects do not lose controls outside the visible stage.
+
 ### Flow Modes
 
 Tasks default to direct reconstruction: participants can interact with the stage as soon as the player opens.
