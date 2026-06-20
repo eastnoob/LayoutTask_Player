@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { compileBatch } from "./batch-compiler";
 import { manifestSchema, taskSchema } from "../schemas/config.schema";
@@ -11,6 +12,8 @@ const sharedWorld = {
   origin: { x: 0, y: 0 },
   grid: { size: 25, visible: true, snap: true },
 };
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const createBatch = (): BatchConfig => ({
   schema: "layouttask.batch.v1",
@@ -73,7 +76,7 @@ const createBatch = (): BatchConfig => ({
 
 describe("protocol examples", () => {
   it("uses asset src paths that exist from the player base root", () => {
-    const protocolRoot = path.resolve("protocol/examples");
+    const protocolRoot = path.join(repoRoot, "protocol/examples");
     const batch = JSON.parse(
       readFileSync(path.join(protocolRoot, "scoring-example.json"), "utf8"),
     ) as BatchConfig;

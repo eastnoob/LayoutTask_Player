@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parse } from "csv-parse/sync";
 import { batchSchema } from "../../src/schemas/batch.schema";
 
@@ -30,6 +31,47 @@ interface OutputFile {
   value: unknown;
 }
 
+export function jsonValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) {
+    return true;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((item, index) => jsonValuesEqual(item, right[index]));
+  }
+
+  if (
+    !left ||
+    !right ||
+    typeof left !== "object" ||
+    typeof right !== "object" ||
+    Array.isArray(left) ||
+    Array.isArray(right)
+  ) {
+    return false;
+  }
+
+  const leftEntries = Object.entries(left as JsonObject).sort(([leftKey], [rightKey]) =>
+    leftKey.localeCompare(rightKey),
+  );
+  const rightEntries = Object.entries(right as JsonObject).sort(([leftKey], [rightKey]) =>
+    leftKey.localeCompare(rightKey),
+  );
+
+  if (leftEntries.length !== rightEntries.length) {
+    return false;
+  }
+
+  return leftEntries.every(([key, value], index) => {
+    const [rightKey, rightValue] = rightEntries[index];
+    return key === rightKey && jsonValuesEqual(value, rightValue);
+  });
+}
+
 function requireValue(args: string[], index: number, option: string): string {
   const value = args[index + 1];
 
@@ -40,7 +82,7 @@ function requireValue(args: string[], index: number, option: string): string {
   return value;
 }
 
-function parseArgs(args: string[]): CliArgs {
+export function parseArgs(args: string[]): CliArgs {
   const parsed: CliArgs = {
     title: "",
     trustSvgViewBox: false,
@@ -224,8 +266,7 @@ function extractSharedWorld(trials: JsonObject[]): unknown {
 
   const normalized = trialsWithWorld.map((trial) => withDefaultWorldUnits(trial.world));
   const [first] = normalized;
-  const firstJson = JSON.stringify(first);
-  const allEqual = normalized.every((world) => JSON.stringify(world) === firstJson);
+  const allEqual = normalized.every((world) => jsonValuesEqual(world, first));
 
   if (allEqual) {
     for (const trial of trials) {
@@ -248,7 +289,7 @@ function mergeLibraryObjects(target: JsonObject, source: unknown, label: string)
 
   for (const [key, value] of Object.entries(source as JsonObject)) {
     if (Object.hasOwn(target, key)) {
-      if (JSON.stringify(target[key]) !== JSON.stringify(value)) {
+      if (!jsonValuesEqual(target[key], value)) {
         throw new Error(`Conflicting ${label} asset definition for key: ${key}`);
       }
       continue;
@@ -346,20 +387,24 @@ function isSvgAsset(value: unknown): boolean {
   return type === "svg" || src.endsWith(".svg");
 }
 
+export function colliderSrcForObjectSrc(src: string, colliderSuffix: string): string | undefined {
+  const normalizedSrc = src.replaceAll("\\", "/").split(/[?#]/, 1)[0];
+  const fileName = normalizedSrc.split("/").pop() ?? "";
+  const stem = fileName.replace(/\.svg$/i, "");
+
+  if (!stem || stem === fileName) {
+    return undefined;
+  }
+
+  return `assets/collision/objects/${stem}${colliderSuffix}.svg`;
+}
+
 function colliderSourceFromObjectAsset(asset: unknown, colliderSuffix: string): string | undefined {
   if (!isSvgAsset(asset)) {
     return undefined;
   }
 
-  const src = String((asset as JsonObject).src ?? "").replaceAll("\\", "/").split(/[?#]/, 1)[0];
-  const fileName = src.split("/").pop() ?? "";
-  const stem = fileName.replace(/\.svg$/i, "");
-
-  if (!stem) {
-    return undefined;
-  }
-
-  return `assets/collision/objects/${stem}${colliderSuffix}.svg`;
+  return colliderSrcForObjectSrc(String((asset as JsonObject).src ?? ""), colliderSuffix);
 }
 
 function shouldAttachCollider(collision: unknown): boolean {
@@ -390,7 +435,11 @@ function withColliderCollision(collision: unknown, colliderSrc: string): JsonObj
   };
 }
 
-function attachObjectColliderSvgs(trial: JsonObject, objectAssets: JsonObject, colliderSuffix: string): void {
+export function attachColliderSvgToTrialObjects(
+  trial: JsonObject,
+  objectAssets: JsonObject,
+  colliderSuffix: string,
+): void {
   const objects = Array.isArray(trial.objects) ? trial.objects : [];
 
   for (const object of objects) {
@@ -527,7 +576,7 @@ function assemble(
     mergeLibraryObjects(objectAssets, objectLibrary?.objects, "object");
     mergeLibraryObjects(backgroundAssets, backgroundLibrary?.backgrounds, "background");
     if (attachColliderSvg) {
-      attachObjectColliderSvgs(trial, (objectLibrary?.objects ?? {}) as JsonObject, colliderSuffix);
+      attachColliderSvgToTrialObjects(trial, (objectLibrary?.objects ?? {}) as JsonObject, colliderSuffix);
     }
     trials.push(trial);
   });
@@ -649,4 +698,11 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  return entry !== undefined && import.meta.url === pathToFileURL(entry).href;
+}
+
+if (isMainModule()) {
+  await main();
+}

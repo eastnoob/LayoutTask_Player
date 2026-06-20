@@ -19,7 +19,7 @@ DEFAULT_COLLIDER_SUFFIX = "_COLLISION"
 TASK_ID_SAFE = re.compile(r"[^A-Za-z0-9_-]+")
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True)
     parser.add_argument("--out", required=True)
@@ -40,7 +40,7 @@ def parse_args():
         default=DEFAULT_COLLIDER_SUFFIX,
         help="Suffix inserted before .svg for collider assets. Defaults to _COLLISION.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def load_rows(csv_path):
