@@ -1278,7 +1278,8 @@ describe("ConfigLoader protocol full-preview-collision fixture", () => {
     ) as unknown;
     const compiled = compileBatch(batch);
     const task = compiled.tasks[0];
-    const fetchImpl = vi.fn(async (url: string) => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input instanceof Request ? input.url : String(input);
       const relativePath = new URL(url).pathname.replace(/^\/layout-task\//, "");
       const jsonByPath: Record<string, unknown> = {
         "manifest.json": compiled.manifest,

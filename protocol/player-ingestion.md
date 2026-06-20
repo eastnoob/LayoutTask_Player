@@ -108,7 +108,7 @@ The Player interprets a trial as one reconstruction task, usually one room scene
 - `stage`: browser fitting policy for scaling world coordinates to CSS pixels.
 - `metadata`: optional study-side labels such as room ID, condition, or generator source.
 
-`world.unit` labels task-space units only. It does not trigger automatic conversion. All task-space coordinates, dimensions, grid sizes, movement steps, targets, and collision areas should use that same unit.
+`world.unit` labels task-space units only. It does not trigger automatic conversion. Task-space coordinates, dimensions, grid sizes, movement steps, collision areas, and optional `target.absolute` coordinates should use that same unit. `target.relative` and saved relative answers use signed step counts.
 
 `intrinsic_unit` on assets describes the internal coordinate system of an SVG/image file. It does not change object size, placement, target, or collision values.
 
@@ -202,7 +202,7 @@ At runtime, the browser:
 6. Parses collision SVG sidecars when configured.
 7. Creates the stage, grid, background, objects, controls, and flow UI.
 
-The browser scales the SVG stage to fit the available screen area, but object positions, grid size, movement steps, collision geometry, and saved answers remain in world units.
+The browser scales the SVG stage to fit the available screen area, but object positions, grid size, movement steps, collision geometry, and saved absolute answers remain in world units. Saved relative answers remain signed movement/rotation step counts.
 
 ## Result And Scoring
 
@@ -238,12 +238,16 @@ When `target.absolute` is omitted, scoring does not synthesize target absolute c
 
 Collision is a rule layer, not a visible room graphic.
 
+Task-level collision is the global switch for one task. If it is omitted or
+`enabled: false`, object collision shapes are not evaluated even when objects
+declare their own collision settings.
+
 Task-level collision defines room constraints:
 
 - `contain`: allowed placement areas.
 - `block`: forbidden areas such as walls, columns, holes, or internal obstacles.
 
-Object-level collision defines whether an object participates and which shape to use:
+Object-level collision defines whether one object participates and which shape to use:
 
 ```json
 {
@@ -251,7 +255,50 @@ Object-level collision defines whether an object participates and which shape to
 }
 ```
 
+Object collision supports three shapes:
+
+- `box`: legacy bounding box based on object width/height.
+- `polygons`: explicit object-local polygons in the same coordinate system as the object asset.
+- `asset_outline`: authoring convenience that loads a collider SVG and resolves it to `polygons`.
+
+Example `asset_outline`:
+
+```json
+{
+  "collision": {
+    "enabled": true,
+    "shape": "asset_outline",
+    "source": {
+      "type": "svg",
+      "src": "assets/collision/objects/chair_a_COLLISION.svg"
+    }
+  }
+}
+```
+
+Compiled task JSON may contain `asset_outline`. During runtime loading, the
+browser fetches the SVG once per source, parses its solid vector geometry, and
+stores a resolved `polygons` collision shape. Interaction-time collision then
+transforms those polygons by the object's `x`, `y`, `rotation`, and `anchor`;
+it does not inspect visual SVG transparency or raster pixels.
+
+Collider SVGs are analysis assets. They should live under
+`assets/collision/objects/`, use the `_COLLISION.svg` suffix by convention, and
+share the visual object's local coordinate system. The parser accepts filled
+`rect`, `polygon`, and closed `path` solids. It rejects `<image>`, `<use>`,
+`mask`, `clipPath`, `filter`, transforms, and rounded rects.
+
 If a candidate move or rotation would violate collision, the Player blocks the action, leaves the object in its previous pose, and can record a blocked event with reason `collision`.
+
+Both levels must allow collision for object-object blocking to happen: the task
+must have `collision.enabled: true`, and both the moving object and the other
+object must have `collision.enabled: true`.
+
+`group_id` does not create a collision group or same-group exclusion. If a
+fixed/context object is only a visual reference layer, do not give it a broad
+object collision box. Either set that object's `collision.enabled` to `false`,
+or export a precise collision sidecar/shape that represents only the solid areas
+participants should not cross.
 
 ## Current Boundaries
 

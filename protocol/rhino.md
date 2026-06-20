@@ -24,6 +24,10 @@ layout-task-source/
       room_generated_001.svg
     backgrounds/
       room_generated_001.svg
+    collision/
+      room_generated_001_collision.svg
+      objects/
+        chair_a_COLLISION.svg
     objects/
       chair_a.svg
       table_a.svg
@@ -336,7 +340,7 @@ Recommended minimal config:
 }
 ```
 
-`contain` defines allowed placement areas. If any contain areas exist, an object's collision box must be fully inside at least one of them. If no contain areas exist, `world.viewBox` is used as the default contain area.
+`contain` defines allowed placement areas. If any contain areas exist, an object's collision shape must be fully inside at least one of them. If no contain areas exist, `world.viewBox` is used as the default contain area.
 
 `block` defines optional forbidden areas such as walls, columns, holes, and internal obstacles. Objects cannot overlap block areas. Simple rooms can use contain only and omit block.
 
@@ -353,6 +357,74 @@ Objects participate in collision with an object-level box:
   "collision": { "enabled": true, "shape": "box", "padding": 0 }
 }
 ```
+
+For precise furniture collision, prefer an object collider SVG instead of a broad
+bbox. The visual SVG remains in `assets/objects/`; the collider SVG is a hidden
+analysis asset in `assets/collision/objects/`.
+
+Recommended naming:
+
+```text
+assets/objects/armchairAndTeatable_FIXED.svg
+assets/collision/objects/armchairAndTeatable_FIXED_COLLISION.svg
+assets/objects/armchairAndTeatable_VARIABLE.svg
+assets/collision/objects/armchairAndTeatable_VARIABLE_COLLISION.svg
+```
+
+Object config:
+
+```json
+{
+  "id": "chair_variable_001",
+  "asset": "armchairAndTeatable_VARIABLE",
+  "collision": {
+    "enabled": true,
+    "shape": "asset_outline",
+    "source": {
+      "type": "svg",
+      "src": "assets/collision/objects/armchairAndTeatable_VARIABLE_COLLISION.svg"
+    },
+    "padding": 0
+  }
+}
+```
+
+The collider SVG must use the same object-local coordinate system as the visual
+SVG. If the visual object SVG has `viewBox="-25 -25 50 50"`, the collider should
+use the same viewBox and draw only the solid regions that should block movement.
+Transparent/empty visual space is ignored because collision uses only the
+collider's extracted polygons.
+
+Supported object collider geometry:
+
+- filled `rect` without rounded corners
+- filled `polygon`
+- closed `path` using `M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, and `Z`; curves are flattened into polygons
+
+Do not use:
+
+- `<image>` or `<use>`
+- `mask`, `clipPath`, or `filter`
+- `transform` on groups or shapes
+- rounded `rect` (`rx`/`ry`)
+- stroke-only lines as collision solids
+
+If a Rhino/SVG export creates `<image>` or `<use>` elements, re-export or bake the
+collider as simple vector solids. Bake transforms into the coordinates before
+export.
+
+Collision is active only when both levels are enabled:
+
+- The trial has `collision.enabled: true`.
+- The moving object has `collision.enabled: true`.
+- Other objects only block movement when they also have `collision.enabled: true`.
+
+`group_id` is not a collision group and does not exclude same-group objects from
+object-object collision. This matters for Rhino exports where a fixed/context
+asset may be a whole furniture-group visual layer. If that context layer is not
+meant to be a solid obstacle, do not export it with a broad bbox collision box.
+Set its object collision to `false`, or provide a separate precise collision
+layer that covers only truly blocked geometry.
 
 SVG analysis layer:
 
