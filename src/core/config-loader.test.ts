@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { compileBatch } from "./batch-compiler";
 import { ConfigLoader, resolveRuntimeConfig } from "./config-loader";
+import type { BatchConfig } from "../types/batch";
 import type { TaskCollisionConfig } from "../types/config";
 
 describe("resolveRuntimeConfig display image", () => {
@@ -1261,6 +1263,79 @@ describe("ConfigLoader complete preview collision demo fixture", () => {
     expect(chair?.behavior.movement.mode).toBe("button");
     expect(chair?.behavior.free_drag.enabled).toBe(false);
     expect(config.recording.record_blocked_events).toBe(true);
+  });
+});
+
+describe("ConfigLoader protocol full-preview-collision fixture", () => {
+  it("resolves the example object collider SVG to runtime polygons", async () => {
+    const protocolRoot = join(process.cwd(), "protocol", "examples", "full-preview-collision");
+    const batch = JSON.parse(await readFile(join(protocolRoot, "batch.json"), "utf8")) as BatchConfig;
+    const objectLibrary = JSON.parse(
+      await readFile(join(protocolRoot, batch.shared.asset_library), "utf8"),
+    ) as unknown;
+    const backgroundLibrary = JSON.parse(
+      await readFile(join(protocolRoot, batch.shared.background_library), "utf8"),
+    ) as unknown;
+    const compiled = compileBatch(batch);
+    const task = compiled.tasks[0];
+    const fetchImpl = vi.fn(async (url: string) => {
+      const relativePath = new URL(url).pathname.replace(/^\/layout-task\//, "");
+      const jsonByPath: Record<string, unknown> = {
+        "manifest.json": compiled.manifest,
+        [task.file]: task.config,
+        [batch.shared.asset_library]: objectLibrary,
+        [batch.shared.background_library]: backgroundLibrary,
+        [batch.shared.behavior_library]: {
+          schema: "layouttask.behaviors.v1",
+          behaviors: {},
+        },
+      };
+      const jsonData = jsonByPath[relativePath];
+      const body =
+        jsonData === undefined
+          ? await readFile(join(protocolRoot, relativePath), "utf8")
+          : JSON.stringify(jsonData);
+
+      return {
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => JSON.parse(body),
+        text: async () => body,
+      } as Response;
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "full_preview_collision_001" });
+    const chair = config.objects.find((object) => object.id === "chair_01");
+
+    expect(chair?.collision).toMatchObject({
+      enabled: true,
+      shape: "polygons",
+      padding: 0,
+      source: {
+        type: "svg",
+        src: "assets/collision/objects/full_chair_COLLISION.svg",
+        srcResolved: "http://example.test/layout-task/assets/collision/objects/full_chair_COLLISION.svg",
+      },
+      polygons: [
+        {
+          id: "chair_solid",
+          points: [
+            { x: -20, y: -20 },
+            { x: 20, y: -20 },
+            { x: 20, y: 20 },
+            { x: -20, y: 20 },
+          ],
+        },
+      ],
+    });
+    expect(chair?.collision.shape === "polygons" ? chair.collision.source?.inlineSvgText : "").toContain(
+      'id="chair_solid"',
+    );
   });
 });
 

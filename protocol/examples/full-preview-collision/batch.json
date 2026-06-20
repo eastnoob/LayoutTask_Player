@@ -81,7 +81,15 @@
               "free_drag": { "enabled": false }
             }
           },
-          "collision": { "enabled": true, "shape": "box", "padding": 0 },
+          "collision": {
+            "enabled": true,
+            "shape": "asset_outline",
+            "source": {
+              "type": "svg",
+              "src": "assets/collision/objects/full_chair_COLLISION.svg"
+            },
+            "padding": 0
+          },
           "target": {
             "relative": { "dx_steps": -3, "dy_steps": 5, "rotation_steps": 1 }
           },
