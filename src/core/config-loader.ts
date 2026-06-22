@@ -137,6 +137,9 @@ export class ConfigLoader {
   }
 
   async loadRuntimeConfig(selection: TaskSelection): Promise<RuntimeTaskConfig> {
+    // ===== 1. Select and fetch authoring files =====
+    // Authoring packages stay split for humans/generators: manifest picks a task,
+    // then task/assets/behaviors are joined once into browser-ready runtime config.
     // Selection rule: task_id first, then qid, then first task as fallback.
     // 这样独立页面和问卷 URL 都可以宽松地指向同一个 task。
     const manifest = await this.loadManifest();
@@ -209,6 +212,8 @@ export class ConfigLoader {
   }
 
   private async attachInlineSvgObjectAssets(config: RuntimeTaskConfig): Promise<void> {
+    // Runtime objects carry resolved asset copies, so SVG text is attached again here
+    // before renderer/sizing helpers inspect viewBox data on the final object asset.
     const svgAssets = new Map<string, Promise<string>>();
     for (const objectConfig of config.objects) {
       if (objectConfig.asset.type !== "svg") {
@@ -233,6 +238,9 @@ export class ConfigLoader {
     objectLibrary: ObjectLibraryConfig;
     backgroundLibrary: BackgroundLibraryConfig;
   }): Promise<void> {
+    // ===== 2. Attach inline SVG text for sizing/rendering =====
+    // SVG viewBox can be the source of truth for 1:1 Rhino/CAD exports. If JSON
+    // already gives dimensions/placement, that wins; otherwise later helpers read SVG text.
     const svgAssets = new Map<string, Promise<string>>();
     const attachObjectAsset = async (assetId: string): Promise<void> => {
       const asset = input.objectLibrary.objects[assetId] as ObjectAssetConfig & { inlineSvgText?: string };
@@ -279,6 +287,9 @@ export class ConfigLoader {
   }
 
   private async attachObjectCollisionSources(config: RuntimeTaskConfig): Promise<void> {
+    // ===== 3. Resolve object collider sidecars =====
+    // asset_outline is authoring sugar. Runtime collision only consumes polygons,
+    // so collider SVG points are parsed and mapped into rendered object-local units here.
     const svgSources = new Map<string, Promise<string>>();
 
     for (const objectConfig of config.objects) {
@@ -322,9 +333,9 @@ interface ResolveRuntimeConfigInput {
 }
 
 export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeTaskConfig {
-  // Runtime config is the fully linked version of authoring config:
-  // asset ids -> resolved assets, behavior ids -> concrete behavior blocks, defaults applied.
-  // 也就是“浏览器真正能直接渲染和运行”的那一层 shape。
+  // RuntimeTaskConfig is the ingestion boundary for package users: ids are resolved,
+  // defaults are applied, and later modules no longer need to know which authoring file
+  // a value came from. 也就是“浏览器真正能直接渲染和运行”的那一层 shape。
   const assetBaseUrl = input.manifest.asset_base_url ?? input.baseUrl;
   const resolvedBackgroundAsset = input.backgroundLibrary.backgrounds[input.task.background.asset];
   const backgroundPlacement = resolveBackgroundPlacement(input.task, resolvedBackgroundAsset);
@@ -440,6 +451,8 @@ function resolveObjectCollision(
   }
 
   if (collision.shape === "asset_outline") {
+    // asset_outline defers polygon extraction to runtime so the sidecar SVG can keep
+    // editor-friendly coordinates while the player always receives polygons.
     return {
       enabled,
       shape: "polygons",
@@ -470,6 +483,9 @@ function resolveObjectDimensions(
   objectConfig: TaskConfig["objects"][number],
   asset: ObjectAssetConfig & { inlineSvgText?: string },
 ): { width: number; height: number } {
+  // Object width/height are world-unit dimensions used by rendering, controls, and
+  // collision. Explicit bbox-style numbers are safest; SVG viewBox inference only works
+  // when the artwork is already authored in task-space units.
   if (objectConfig.width !== undefined || objectConfig.height !== undefined) {
     if (objectConfig.width === undefined || objectConfig.height === undefined) {
       throw new Error(`Object ${objectConfig.id} must supply both width and height when overriding dimensions`);
@@ -503,6 +519,8 @@ function resolveBackgroundPlacement(
   task: TaskConfig,
   asset: BackgroundAssetConfig & { inlineSvgText?: string },
 ): ViewBox {
+  // Background placement is room placement, not object sizing. A background SVG root
+  // viewBox can supply x/y/width/height directly because it already lives in world coords.
   const background = task.background;
   const hasExplicitPlacement =
     background.x !== undefined ||
