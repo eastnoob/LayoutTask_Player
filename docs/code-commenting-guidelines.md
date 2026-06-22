@@ -4,7 +4,7 @@ This project uses comments to explain domain meaning and irreversible assumption
 
 ## Audience
 
-- Future experiment maintainers.
+- Future maintainers of experiment logic, runtime/browser code, and tooling.
 - People turning Rhino/GH exports into Layout Task protocol packages.
 
 ## What Comments Should Do
@@ -17,28 +17,29 @@ This project uses comments to explain domain meaning and irreversible assumption
 ## Language
 
 - Write English first.
-- Add Chinese when a comment explains experiment semantics, Rhino/CAD assumptions, participant-visible behavior, or downstream analysis meaning.
+- Add Chinese only when it will genuinely help explain experiment semantics, Rhino/CAD assumptions, participant-visible behavior, or downstream analysis meaning.
 - Keep the Chinese line aligned with the English claim; it should sharpen the meaning, not introduce a different rule.
+- If the English comment is already clear for the intended reader, stop there.
 
 ## Preferred Shape
 
-Use a short section header when a reader needs the mental model before the code:
+Prefer a short plain rationale comment near the logic it explains:
+
+```ts
+// Candidate movement is validated before mutation so blocked actions leave no
+// temporary state for later code to undo.
+if (wouldCollide(nextPose)) {
+  return blocked;
+}
+```
+
+Use a section header only when a dense block needs a larger mental model up front:
 
 ```ts
 // ===== Runtime config assembly =====
 // Authoring files are split for generators and package tools; runtime loading
 // resolves them once so later modules can work with a single config shape.
 // 这里把协议语义收口，后面的模块不再猜这些字段来自 task JSON、asset library 还是行为库。
-```
-
-Use inline comments only when the next step would otherwise be easy to misread:
-
-```ts
-// Candidate movement is validated before mutation.
-// 被试看到的是“动作被挡住”，不是“先移动再弹回去”。
-if (wouldCollide(nextPose)) {
-  return blocked;
-}
 ```
 
 ## Good Examples
@@ -80,7 +81,7 @@ The bad examples repeat the code but do not explain policy, assumptions, or cons
 
 Ask:
 
-- Will a future maintainer learn a domain rule or boundary from this?
+- Will a future maintainer of experiment code, browser runtime code, or tooling learn a domain rule or boundary from this?
 - Would a Rhino/GH package author understand what space, unit, or export assumption the code expects?
 - If analysis output depends on this behavior, does the comment say so plainly?
 
