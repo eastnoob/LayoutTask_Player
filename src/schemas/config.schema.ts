@@ -32,7 +32,8 @@ export const gridSchema = z.object({
  * Global stage coordinate system declared by the author.
  *
  * `world` is the explicit spatial frame for a task: the working viewBox,
- * origin, and optional grid metadata used by authoring and runtime layout.
+ * origin, and required grid config used by authoring and runtime layout, with
+ * some nested grid fields remaining optional/defaulted.
  */
 export const worldSchema = z.object({
   unit: worldUnitSchema.optional(),
@@ -187,8 +188,9 @@ export const outputSchema = z.object({
 /**
  * Persistence channel for task output.
  *
- * `copy` leaves delivery to the participant/operator clipboard flow. `datapipe`
- * declares the experiment metadata needed by the built-in submission protocol.
+ * Clipboard/copy delivery remains part of the runtime flow either way. `copy`
+ * means no extra DataPipe submission path, while `datapipe` adds the experiment
+ * metadata needed for the built-in submission protocol on top of that flow.
  */
 export const dataSaveSchema = z.discriminatedUnion("mode", [
   z.object({
