@@ -45,7 +45,7 @@ export interface WorldConfig {
 export interface ObjectAssetConfig {
   type: AssetType;
   src: string;
-  /** Native measurement unit assumed by the source asset before world-space conversion. */
+  /** Schema/asset metadata describing the source artwork's native unit, if known. */
   intrinsic_unit?: WorldUnit;
   default_width?: number;
   default_height?: number;
@@ -132,7 +132,7 @@ export type FinalStateMode = "relative" | "absolute";
 export interface OutputConfig {
   encoding?: EncodingMethod;
   detail?: OutputDetail;
-  /** Whether exported final coordinates are relative to authored anchors or absolute world values. */
+  /** Whether final export uses step offsets (`dx_steps`/`dy_steps`/`rotation_steps`) or an absolute pose. */
   final_state?: FinalStateMode;
 }
 
@@ -172,7 +172,7 @@ export interface PreviewThenReconstructFlowConfig {
   preview_duration_sec?: number;
   /** If true, require an explicit participant acknowledgment before preview starts. */
   require_preview_ack?: boolean;
-  /** Intro copy shown before the preview stage begins. */
+  /** Intro copy shown on the pre-preview acknowledgment step when that gate is used. */
   intro_message?: string;
   intro_confirm_label?: string;
   stage_during_preview?: PreviewStageMode;
