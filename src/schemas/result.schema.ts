@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { pointSchema, viewBoxSchema, worldUnitSchema } from "./config.schema";
 
-/**
- * Browser-export boundary for participant results.
- * 这里要兼顾真实浏览器导出形态，以及后续 decoder 的 backward-compatible parsing。
- */
 export const operationCountsSchema = z.object({
   left: z.number().int().nonnegative(),
   right: z.number().int().nonnegative(),
@@ -275,7 +271,8 @@ export const relativeFinalObjectStateSchema = z.object({
 
 /**
  * Permissive validation for browser-exported result payloads.
- * Absolute final poses remain valid, and relative final states are also valid output.
+ * 这里要兼顾真实浏览器导出形态，以及后续 decoder 的 backward-compatible parsing。
+ * Accepts exports that store final state as resolved poses or as step-delta state.
  */
 export const resultSchema = z.object({
   schema: z.literal("layouttask.result.v1"),
@@ -295,8 +292,8 @@ export const resultSchema = z.object({
   context: resultContextSchema.optional(),
   events: z.array(layoutTaskEventSchema),
   final_state_mode: z.enum(["absolute", "relative"]).optional(),
-  // Relative final_state is a legitimate export shape when the browser reports
-  // step deltas instead of resolved world coordinates.
+  // Export/output may serialize final state as step deltas instead of resolved
+  // world coordinates, so validation intentionally accepts both record shapes.
   final_state: z.union([z.record(finalObjectStateSchema), z.record(relativeFinalObjectStateSchema)]),
   locked: z.literal(true),
   copy_timestamp: z.number().int().positive().optional(),

@@ -45,7 +45,7 @@ export const relativeTargetSchema = z.object({
 });
 
 /**
- * Optional resolved world-space target used for analysis or export-side checks.
+ * Optional resolved world-space target used for scoring analysis or diagnostics.
  * Relative remains the required authored answer; absolute is supplemental data.
  */
 export const absoluteTargetSchema = z.object({
