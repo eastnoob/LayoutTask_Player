@@ -74,6 +74,7 @@ describe("batchSchema", () => {
   });
 
   it("treats object x/y/rotation as reconstruction initial pose and target.relative as correct answer", () => {
+    // Instance pose is the starting state; target.relative is the participant answer key.
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0] = {
       ...batch.trials[0].objects[0],
@@ -98,6 +99,7 @@ describe("batchSchema", () => {
   });
 
   it("accepts relative-only object targets as the canonical answer", () => {
+    // Relative targets are the canonical authored scoring surface.
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0].target = {
       relative: { dx_steps: -1, dy_steps: 2, rotation_steps: -2 },
@@ -175,6 +177,7 @@ describe("batchSchema", () => {
   });
 
   it("rejects shared preview flow without trial display_image", () => {
+    // Shared preview mode still depends on each trial carrying a real display image.
     const batch = cloneMinimalBatch();
     batch.shared.flow = { mode: "preview_then_reconstruct" };
 

@@ -233,6 +233,7 @@ describe("asset library intrinsic units", () => {
   });
 
   it("allows SVG object assets to omit default dimensions for viewBox inference", () => {
+    // SVG assets can recover authored size from viewBox alone.
     const parsed = objectLibrarySchema.parse({
       schema: "layouttask.assets.objects.v1",
       objects: {
@@ -248,6 +249,7 @@ describe("asset library intrinsic units", () => {
   });
 
   it("requires explicit dimensions for non-SVG object assets", () => {
+    // Raster/object assets need explicit authored dimensions in the protocol.
     expect(() =>
       objectLibrarySchema.parse({
         schema: "layouttask.assets.objects.v1",
@@ -411,6 +413,7 @@ describe("taskSchema flow", () => {
   });
 
   it("requires display_image for preview flow and rejects invalid preview config", () => {
+    // Preview flow is only valid when the participant sees a real reference image.
     expect(() =>
       taskSchema.parse({
         ...baseTask,
@@ -588,6 +591,7 @@ describe("taskSchema object behavior", () => {
 
 describe("taskSchema collision", () => {
   it("accepts inline collision contain and block areas", () => {
+    // Collision declarations are part of the authored task surface, not derived state.
     const task = createMinimalTask();
     task.collision = {
       enabled: true,

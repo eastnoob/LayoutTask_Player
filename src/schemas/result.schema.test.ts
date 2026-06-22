@@ -34,6 +34,7 @@ function createMinimalResult(): any {
 
 describe("pageTimingSchema", () => {
   it("accepts fractional elapsed milliseconds from performance.timeOrigin", () => {
+    // performance.timeOrigin can yield fractional millisecond protocol values.
     const parsed = pageTimingSchema.parse({
       source: "performance.timeOrigin",
       page_open_time: 1777994238876.2,
@@ -49,6 +50,7 @@ describe("pageTimingSchema", () => {
 
 describe("resultSchema events", () => {
   it("accepts collision as a blocked event reason", () => {
+    // collision is a stable blocked outcome vocabulary item in result logs.
     const result = createMinimalResult();
     result.events = [
       {
