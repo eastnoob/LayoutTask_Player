@@ -48,7 +48,6 @@ export interface LayoutTaskEvent {
   object: string;
   action: LayoutAction;
   valid: boolean;
-  // Reason the intended participant action was rejected by the runtime.
   blocked_reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "collision";
   before?: ObjectPose;
   after?: ObjectPose;

@@ -38,7 +38,7 @@ export interface BatchConfig {
   trials: BatchTrialConfig[];
 }
 
-/** Shared defaults inherited by every trial unless that trial provides its own value. */
+/** Shared defaults for trials; individual sections may be merged or replaced by trial-level config. */
 export interface BatchSharedConfig {
   asset_library: string;
   background_library: string;
@@ -57,10 +57,10 @@ export interface BatchSharedConfig {
 /**
  * Per-trial override layer.
  *
- * Trial fields reuse the same semantic shapes as `shared`, but win for that
- * trial only. In practice this is where a protocol pins the background,
- * starting objects, scoring targets, and any trial-specific flow/collision
- * adjustments.
+ * Trial fields can override shared settings for that trial, with section-level
+ * resolution handled by the compiler. In practice this is where a protocol
+ * pins the background, starting objects, scoring targets, and any trial-
+ * specific flow/collision adjustments.
  */
 export interface BatchTrialConfig {
   qid: string;
