@@ -1,7 +1,12 @@
 import { z } from "zod";
 
-// Zod schemas define the authoring-time contract for static JSON config files.
-// 它们描述“研究者可以怎么写配置”，不是 runtime resolve 后的最终结构。
+/**
+ * Schema layer for static authoring JSON.
+ *
+ * These Zod definitions validate what researchers/authors are allowed to write
+ * in config files before load-time resolution. 它们约束“配置怎么写”，不是
+ * runtime resolve 后带默认资产信息、推断 viewBox、已解析碰撞几何的最终配置。
+ */
 export const worldUnitSchema = z.enum(["mm", "cm", "m", "px", "cad_unit", "unknown"]);
 
 export const viewBoxSchema = z.object({
@@ -23,6 +28,12 @@ export const gridSchema = z.object({
   origin: pointSchema.optional(),
 });
 
+/**
+ * Global stage coordinate system declared by the author.
+ *
+ * `world` is the explicit spatial frame for a task: the working viewBox,
+ * origin, and optional grid metadata used by authoring and runtime layout.
+ */
 export const worldSchema = z.object({
   unit: worldUnitSchema.optional(),
   viewBox: viewBoxSchema,
@@ -50,6 +61,12 @@ export const freeDragBehaviorSchema = z.object({
   snap: z.boolean().optional(),
 });
 
+/**
+ * Reusable movement/rotation interaction recipe from the behavior library.
+ *
+ * This schema captures author intent at the protocol layer, before any task-
+ * level override merges or runtime controller wiring happen.
+ */
 export const behaviorSchema = z
   .object({
     movement: movementBehaviorSchema,
@@ -57,8 +74,8 @@ export const behaviorSchema = z
     free_drag: freeDragBehaviorSchema.default({ enabled: false }),
   })
   .superRefine((value, context) => {
-    // Drag is an explicit authoring mode: movement.mode and free_drag.enabled must agree.
-    // 避免出现“看起来能拖，但运行时其实没开”的半配置状态。
+    // Drag is an explicit protocol choice, so both knobs must tell the same story.
+    // 避免出现“movement 写成 drag，但 free_drag 没开”的半配置状态。
     const movementIsDrag = value.movement.mode === "drag";
     const freeDragEnabled = value.free_drag.enabled;
 
@@ -113,6 +130,8 @@ export const objectAssetSchema = z
       });
     }
 
+    // Raster-like assets do not have SVG viewBox semantics to fall back on,
+    // so authoring must provide the intended world-space footprint explicitly.
     if (value.type !== "svg" && (!hasWidth || !hasHeight)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -152,6 +171,12 @@ export const autosaveSchema = z.object({
   save_on: z.literal("state_change").default("state_change"),
 });
 
+/**
+ * Output payload shaping for participant results.
+ *
+ * These flags describe how result data is encoded and how much state is emitted
+ * when a task is saved/exported; they do not configure the save transport itself.
+ */
 export const outputSchema = z.object({
   // Transport/export policy. "plain-json" means no compression, not encryption.
   encoding: z.enum(["lz-uri", "lz-base64", "plain-json"]).default("lz-uri"),
@@ -159,6 +184,12 @@ export const outputSchema = z.object({
   final_state: z.enum(["relative", "absolute"]).default("relative"),
 });
 
+/**
+ * Persistence channel for task output.
+ *
+ * `copy` leaves delivery to the participant/operator clipboard flow. `datapipe`
+ * declares the experiment metadata needed by the built-in submission protocol.
+ */
 export const dataSaveSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("copy").default("copy"),
@@ -196,6 +227,12 @@ export const displayImageSchema = z.object({
   record_metrics: z.boolean().default(true),
 });
 
+/**
+ * High-level protocol flow for a task.
+ *
+ * This is not generic UI state; it selects the experimental sequence, such as
+ * immediate reconstruction versus timed preview followed by reconstruction.
+ */
 export const flowSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("direct_reconstruction"),
@@ -289,6 +326,12 @@ export const collisionSourceSchema = z.object({
   src: z.string().min(1),
 });
 
+/**
+ * Task-level collision declaration for the shared scene.
+ *
+ * This schema stores authored contain/block areas or an SVG source reference.
+ * It does not parse polygons into runtime collision primitives here.
+ */
 export const taskCollisionSchema = z.object({
   enabled: z.boolean().default(false),
   mode: z.literal("discrete").default("discrete"),
@@ -327,6 +370,12 @@ export const objectCollisionSchema = z.union([
   assetOutlineObjectCollisionSchema,
 ]);
 
+/**
+ * Authored object instance before dimension pair validation.
+ *
+ * This is the authoring boundary for per-object placement, behavior linkage,
+ * and optional collision declaration, not a resolved runtime sprite/model.
+ */
 export const taskObjectBaseSchema = z.object({
   id: z.string().min(1),
   asset: z.string().min(1),
@@ -370,6 +419,8 @@ export const taskBackgroundSchema = z
     const placementFields = ["x", "y", "width", "height"] as const;
     const presentFields = placementFields.filter((field) => value[field] !== undefined);
 
+    // Background placement is all-or-nothing: either the author pins the image
+    // into world coordinates, or runtime may infer placement from SVG metadata.
     if (presentFields.length > 0 && presentFields.length < placementFields.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -379,6 +430,13 @@ export const taskBackgroundSchema = z
     }
   });
 
+/**
+ * Complete authored task document.
+ *
+ * This validates one static task JSON as written by experiment authors, before
+ * manifest resolution, asset loading, viewBox inference, and runtime defaults
+ * that depend on external files or execution context.
+ */
 export const taskSchema = z.object({
   schema: z.literal("layouttask.task.v1"),
   task_id: z.string().min(1),
@@ -400,6 +458,7 @@ export const taskSchema = z.object({
   stage: stageSchema.optional(),
   collision: taskCollisionSchema.optional(),
 }).superRefine((value, context) => {
+  // Preview-reconstruct flow only makes sense when a preview image is actually enabled.
   if (value.flow?.mode === "preview_then_reconstruct" && !value.display_image?.enabled) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
