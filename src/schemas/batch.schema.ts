@@ -34,12 +34,20 @@ const filenameSafeIdSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]+$/, "must contain only letters, numbers, underscores, and hyphens");
 
+/**
+ * Canonical authored answer for where an object should end up.
+ * Stored in movement / rotation steps so authoring stays stable across world-space rewrites.
+ */
 export const relativeTargetSchema = z.object({
   dx_steps: z.number().int(),
   dy_steps: z.number().int(),
   rotation_steps: z.number().int(),
 });
 
+/**
+ * Optional resolved world-space target used for analysis or export-side checks.
+ * Relative remains the required authored answer; absolute is supplemental data.
+ */
 export const absoluteTargetSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
@@ -75,6 +83,10 @@ export const scoringSchema = z.object({
   objects: z.record(z.string().min(1), objectScoringSchema).optional(),
 });
 
+/**
+ * Batch-authored task object with optional protocol annotations for grouping,
+ * canonical targets, and per-object scoring overrides.
+ */
 export const batchObjectSchema = taskObjectBaseSchema
   .extend({
     role: objectRoleSchema.optional(),
@@ -135,6 +147,8 @@ export const batchSchema = z
     const taskIds = new Map<string, number>();
 
     value.trials.forEach((trial, trialIndex) => {
+      // task_id is used as a file/package identity in compiled task outputs, so it
+      // must stay unique even when qid or other metadata differs.
       const duplicateTaskIndex = taskIds.get(trial.task_id);
       if (duplicateTaskIndex !== undefined) {
         context.addIssue({
@@ -146,6 +160,8 @@ export const batchSchema = z
         taskIds.set(trial.task_id, trialIndex);
       }
 
+      // Each trial needs a resolved world from shared defaults or a local override;
+      // object poses and background placement are otherwise uninterpretable.
       if (!value.shared.world && !trial.world) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -155,6 +171,8 @@ export const batchSchema = z
       }
 
       const resolvedFlow = trial.flow ?? value.shared.flow;
+      // Preview flow depends on a visible trial image. The flow mode may come from
+      // shared config, but the actual preview asset is still trial-local.
       if (
         resolvedFlow?.mode === "preview_then_reconstruct" &&
         trial.display_image?.enabled !== true

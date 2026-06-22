@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { pointSchema, viewBoxSchema, worldUnitSchema } from "./config.schema";
 
-// Result schema validates the payload that leaves the browser.
-// 这里要兼顾当前导出模式和后续 decoder 的 backward-compatible parsing。
+/**
+ * Browser-export boundary for participant results.
+ * 这里要兼顾真实浏览器导出形态，以及后续 decoder 的 backward-compatible parsing。
+ */
 export const operationCountsSchema = z.object({
   left: z.number().int().nonnegative(),
   right: z.number().int().nonnegative(),
@@ -12,12 +14,18 @@ export const operationCountsSchema = z.object({
   ccw: z.number().int().nonnegative(),
 });
 
+/**
+ * Absolute world-space pose captured from the player at a moment in time.
+ */
 export const objectPoseSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
   r: z.number().finite(),
 });
 
+/**
+ * Relative displacement from the configured object origin in authored step units.
+ */
 export const objectOffsetsSchema = z.object({
   xSteps: z.number().int(),
   ySteps: z.number().int(),
@@ -73,7 +81,8 @@ export const pageTimingSchema = z.object({
   ]),
   page_open_time: z.number().finite(),
   submit_time: z.number().finite(),
-  // performance.timeOrigin may be fractional. 这里保留小数毫秒，避免 decoder 拒绝真实浏览器输出。
+  // performance.timeOrigin can yield fractional millisecond deltas, so result
+  // validation stays permissive here instead of forcing integer-only exports.
   total_elapsed_ms: z.number().finite().nonnegative(),
   player_start_time: z.number().finite().optional(),
   player_elapsed_ms: z.number().finite().nonnegative().optional(),
@@ -200,6 +209,9 @@ export const resultContextSchema = z.object({
   objects: z.record(resultContextObjectSchema),
 });
 
+/**
+ * Minimal flow metadata emitted by the browser for preview and reconstruction phases.
+ */
 export const resultFlowSchema = z.object({
   mode: z.enum(["direct_reconstruction", "preview_then_reconstruct"]),
   preview_ack_at: z.number().finite().optional(),
@@ -233,6 +245,7 @@ export const layoutTaskEventSchema = z.object({
   ]),
   valid: z.boolean(),
   blocked_reason: z
+    // "collision" is kept as a stable blocked-outcome label for downstream analysis.
     .enum(["locked", "limit_reached", "movement_disabled", "rotation_disabled", "collision"])
     .optional(),
   before: objectPoseSchema.optional(),
@@ -260,6 +273,10 @@ export const relativeFinalObjectStateSchema = z.object({
   rotation_steps: z.number().int(),
 });
 
+/**
+ * Permissive validation for browser-exported result payloads.
+ * Absolute final poses remain valid, and relative final states are also valid output.
+ */
 export const resultSchema = z.object({
   schema: z.literal("layouttask.result.v1"),
   exp: z.string().min(1),
@@ -278,6 +295,8 @@ export const resultSchema = z.object({
   context: resultContextSchema.optional(),
   events: z.array(layoutTaskEventSchema),
   final_state_mode: z.enum(["absolute", "relative"]).optional(),
+  // Relative final_state is a legitimate export shape when the browser reports
+  // step deltas instead of resolved world coordinates.
   final_state: z.union([z.record(finalObjectStateSchema), z.record(relativeFinalObjectStateSchema)]),
   locked: z.literal(true),
   copy_timestamp: z.number().int().positive().optional(),
