@@ -8,18 +8,58 @@ export interface ObjectColliderPolygon {
   points: ObjectColliderPoint[];
 }
 
+export interface ObjectColliderViewBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ParsedObjectColliderSvg {
+  viewBox?: ObjectColliderViewBox;
+  polygons: ObjectColliderPolygon[];
+}
+
+interface TransformMatrix {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
+}
+
 const CURVE_SUBDIVISIONS = 12;
 const commentPattern = /<!--[\s\S]*?-->/g;
 const tagPattern = /<(?<closing>\/)?(?<tag>[A-Za-z][A-Za-z0-9:-]*)\b(?<attrs>[^>]*)>/g;
 const attributePattern = /(?<name>[A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"(?<double>[^"]*)"|'(?<single>[^']*)')/g;
 const pathTokenPattern = /[AaCcHhLlMmQqSsTtVvZz]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g;
-const unsupportedTags = new Set(["image", "use", "mask", "clippath", "filter"]);
+const transformFunctionPattern = /(?<name>[A-Za-z]+)\s*\((?<args>[^)]*)\)/g;
+const ignoredReferenceTags = new Set(["image"]);
+const unsupportedTags = new Set(["mask", "clippath", "filter"]);
+// defs/symbol/metadata/title/desc hold templates or labels, not rendered solids.
+// Ignoring them prevents hidden authoring helpers from turning into colliders.
+const ignoredContainerTags = new Set(["defs", "symbol", "metadata", "title", "desc"]);
 const supportedShapeTags = new Set(["rect", "polygon", "path"]);
+const identityTransform: TransformMatrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
 export function parseObjectColliderSvg(svgText: string): ObjectColliderPolygon[] {
+  return parseObjectColliderSvgDocument(svgText).polygons;
+}
+
+// ===== Object collider SVG parser =====
+// This parser is deliberately narrow: collider SVGs are analysis/runtime assets,
+// not arbitrary artwork. It only accepts the solid geometry subset we author here:
+// rect/polygon/closed path shapes, plus sized use references as rect blocks.
+// Returned points stay in the collider SVG's own coordinates; the root viewBox is
+// returned alongside them so ConfigLoader can map into rendered object-local space.
+export function parseObjectColliderSvgDocument(svgText: string): ParsedObjectColliderSvg {
   const polygons: ObjectColliderPolygon[] = [];
   const uncommentedSvgText = svgText.replace(commentPattern, "");
   const groupVisibilityStack: boolean[] = [];
+  const groupTransformStack: TransformMatrix[] = [];
+  const ignoredContainerStack: string[] = [];
+  let viewBox: ObjectColliderViewBox | undefined;
 
   for (const match of uncommentedSvgText.matchAll(tagPattern)) {
     const rawTag = match.groups?.tag;
@@ -29,25 +69,73 @@ export function parseObjectColliderSvg(svgText: string): ObjectColliderPolygon[]
     }
 
     const closing = match.groups?.closing === "/";
-    if (closing) {
-      if (tag === "g") {
-        groupVisibilityStack.pop();
+    const rawAttrs = match.groups?.attrs ?? "";
+
+    if (ignoredContainerStack.length > 0) {
+      if (closing && tag === ignoredContainerStack.at(-1)) {
+        ignoredContainerStack.pop();
+      } else if (!closing && ignoredContainerTags.has(tag) && !isSelfClosingTag(rawAttrs)) {
+        ignoredContainerStack.push(tag);
       }
       continue;
     }
 
-    const rawAttrs = match.groups?.attrs ?? "";
+    if (closing) {
+      if (tag === "g") {
+        groupVisibilityStack.pop();
+        groupTransformStack.pop();
+      }
+      continue;
+    }
+
     const attrs = parseAttributes(rawAttrs);
+
+    if (tag === "svg" && viewBox === undefined && attrs.viewbox !== undefined) {
+      viewBox = parseViewBox(attrs.viewbox);
+      continue;
+    }
+
+    if (ignoredContainerTags.has(tag)) {
+      if (!isSelfClosingTag(rawAttrs)) {
+        ignoredContainerStack.push(tag);
+      }
+      continue;
+    }
 
     if (unsupportedTags.has(tag)) {
       throw new Error(`Unsupported object collider SVG element: ${rawTag}`);
     }
 
+    if (ignoredReferenceTags.has(tag)) {
+      continue;
+    }
+
+    if (tag === "use") {
+      const id = attrs.id || `use_${polygons.length + 1}`;
+      if (attrs.width === undefined || attrs.height === undefined) {
+        continue;
+      }
+
+      const transform = multiplyTransforms(
+        currentTransform(groupTransformStack),
+        parseTransform(attrs, `Object collider element ${id}`),
+      );
+
+      if (!isVisible(groupVisibilityStack) || !isSolidVisibleShape(attrs)) {
+        continue;
+      }
+
+      polygons.push({ id, points: transformPolygon(parseRect(attrs, id), transform) });
+      continue;
+    }
+
     if (tag === "g") {
       const id = attrs.id || `group_${groupVisibilityStack.length + 1}`;
-      rejectTransform(attrs, `Object collider group ${id}`);
       if (!isSelfClosingTag(rawAttrs)) {
         groupVisibilityStack.push(isVisible(groupVisibilityStack) && isSolidVisibleShape(attrs));
+        groupTransformStack.push(
+          multiplyTransforms(currentTransform(groupTransformStack), parseTransform(attrs, `Object collider group ${id}`)),
+        );
       }
       continue;
     }
@@ -57,30 +145,33 @@ export function parseObjectColliderSvg(svgText: string): ObjectColliderPolygon[]
     }
 
     const id = attrs.id || `${tag}_${polygons.length + 1}`;
-    rejectTransform(attrs, `Object collider element ${id}`);
+    const transform = multiplyTransforms(
+      currentTransform(groupTransformStack),
+      parseTransform(attrs, `Object collider element ${id}`),
+    );
 
     if (!isVisible(groupVisibilityStack) || !isSolidVisibleShape(attrs)) {
       continue;
     }
 
     if (tag === "rect") {
-      polygons.push({ id, points: parseRect(attrs, id) });
+      polygons.push({ id, points: transformPolygon(parseRect(attrs, id), transform) });
       continue;
     }
 
     if (tag === "polygon") {
-      polygons.push({ id, points: parsePolygon(attrs.points ?? "", id) });
+      polygons.push({ id, points: transformPolygon(parsePolygon(attrs.points ?? "", id), transform) });
       continue;
     }
 
-    polygons.push({ id, points: parsePath(attrs.d ?? "", id) });
+    polygons.push({ id, points: transformPolygon(parsePath(attrs.d ?? "", id), transform) });
   }
 
   if (polygons.length === 0) {
     throw new Error("Object collider SVG did not contain any supported solid polygons");
   }
 
-  return polygons;
+  return { viewBox, polygons };
 }
 
 function isVisible(groupVisibilityStack: boolean[]): boolean {
@@ -89,12 +180,6 @@ function isVisible(groupVisibilityStack: boolean[]): boolean {
 
 function isSelfClosingTag(rawAttrs: string): boolean {
   return rawAttrs.trimEnd().endsWith("/");
-}
-
-function rejectTransform(attrs: Record<string, string>, label: string): void {
-  if (attrs.transform !== undefined) {
-    throw new Error(`${label} uses unsupported transform`);
-  }
 }
 
 function parseAttributes(raw: string): Record<string, string> {
@@ -109,6 +194,116 @@ function parseAttributes(raw: string): Record<string, string> {
   }
 
   return attrs;
+}
+
+function currentTransform(stack: TransformMatrix[]): TransformMatrix {
+  return stack.at(-1) ?? identityTransform;
+}
+
+function parseTransform(attrs: Record<string, string>, label: string): TransformMatrix {
+  const raw = attrs.transform;
+  if (raw === undefined || raw.trim() === "") {
+    return identityTransform;
+  }
+
+  let transform = identityTransform;
+  let previousEnd = 0;
+
+  for (const match of raw.matchAll(transformFunctionPattern)) {
+    const index = match.index ?? 0;
+    if (raw.slice(previousEnd, index).trim() !== "") {
+      throw new Error(`${label} uses unsupported transform`);
+    }
+
+    const name = match.groups?.name.toLowerCase();
+    const args = parseTransformArgs(match.groups?.args ?? "");
+    const next = transformFromFunction(name, args, label);
+    transform = multiplyTransforms(transform, next);
+    previousEnd = index + match[0].length;
+  }
+
+  if (previousEnd === 0 || raw.slice(previousEnd).trim() !== "") {
+    throw new Error(`${label} uses unsupported transform`);
+  }
+
+  return transform;
+}
+
+function parseTransformArgs(raw: string): number[] {
+  return raw
+    .trim()
+    .split(/[,\s]+/)
+    .filter(Boolean)
+    .map((value) => Number(value));
+}
+
+function transformFromFunction(name: string | undefined, args: number[], label: string): TransformMatrix {
+  if (name === "matrix" && args.length === 6 && args.every(Number.isFinite)) {
+    return { a: args[0], b: args[1], c: args[2], d: args[3], e: args[4], f: args[5] };
+  }
+
+  if (name === "translate" && (args.length === 1 || args.length === 2) && args.every(Number.isFinite)) {
+    return { a: 1, b: 0, c: 0, d: 1, e: args[0], f: args[1] ?? 0 };
+  }
+
+  if (name === "scale" && (args.length === 1 || args.length === 2) && args.every(Number.isFinite)) {
+    return { a: args[0], b: 0, c: 0, d: args[1] ?? args[0], e: 0, f: 0 };
+  }
+
+  if (name === "rotate" && (args.length === 1 || args.length === 3) && args.every(Number.isFinite)) {
+    const radians = (args[0] * Math.PI) / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const rotation = { a: cos, b: sin, c: -sin, d: cos, e: 0, f: 0 };
+
+    if (args.length === 1) {
+      return rotation;
+    }
+
+    return multiplyTransforms(
+      multiplyTransforms({ a: 1, b: 0, c: 0, d: 1, e: args[1], f: args[2] }, rotation),
+      { a: 1, b: 0, c: 0, d: 1, e: -args[1], f: -args[2] },
+    );
+  }
+
+  throw new Error(`${label} uses unsupported transform`);
+}
+
+function multiplyTransforms(left: TransformMatrix, right: TransformMatrix): TransformMatrix {
+  return {
+    a: left.a * right.a + left.c * right.b,
+    b: left.b * right.a + left.d * right.b,
+    c: left.a * right.c + left.c * right.d,
+    d: left.b * right.c + left.d * right.d,
+    e: left.a * right.e + left.c * right.f + left.e,
+    f: left.b * right.e + left.d * right.f + left.f,
+  };
+}
+
+function transformPolygon(points: ObjectColliderPoint[], transform: TransformMatrix): ObjectColliderPoint[] {
+  return points.map((point) => ({
+    x: transform.a * point.x + transform.c * point.y + transform.e,
+    y: transform.b * point.x + transform.d * point.y + transform.f,
+  }));
+}
+
+function parseViewBox(raw: string): ObjectColliderViewBox {
+  const values = raw
+    .trim()
+    .split(/[,\s]+/)
+    .filter(Boolean)
+    .map((value) => Number(value));
+
+  if (values.length !== 4 || values.some((value) => !Number.isFinite(value)) || values[2] <= 0 || values[3] <= 0) {
+    throw new Error("Object collider SVG has invalid viewBox");
+  }
+
+  return {
+    x: values[0],
+    y: values[1],
+    width: values[2],
+    height: values[3],
+  };
 }
 
 function isSolidVisibleShape(attrs: Record<string, string>): boolean {
@@ -400,12 +595,22 @@ function readNumber(attrs: Record<string, string>, name: string, id: string, def
     throw new Error(`Object collider element ${id} has invalid ${name}`);
   }
 
-  const value = raw === undefined && defaultValue !== undefined ? defaultValue : Number(raw);
+  const value = raw === undefined && defaultValue !== undefined ? defaultValue : parseSvgNumber(raw);
   if (!Number.isFinite(value)) {
     throw new Error(`Object collider element ${id} has invalid ${name}`);
   }
 
   return value;
+}
+
+function parseSvgNumber(raw: string | undefined): number {
+  if (raw === undefined) {
+    return Number.NaN;
+  }
+
+  const trimmed = raw.trim();
+  const withoutPx = trimmed.toLowerCase().endsWith("px") ? trimmed.slice(0, -2).trim() : trimmed;
+  return Number(withoutPx);
 }
 
 function readPositiveNumber(attrs: Record<string, string>, name: string, id: string): number {

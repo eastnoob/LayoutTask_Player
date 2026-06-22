@@ -31,6 +31,9 @@ export interface EvaluateCollisionInput {
 
 const EPSILON = 1e-9;
 
+// ===== Collision policy =====
+// Collision is intentionally discrete: each candidate pose is accepted or rejected
+// as a whole. The runtime does not compute partial slides or "move until touch."
 export function evaluateCollision(input: EvaluateCollisionInput): CollisionResult {
   if (!input.movingObject.collision.enabled) {
     return { ok: true };
@@ -39,6 +42,8 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
   const movingPolygons = createObjectCollisionPolygons(input.movingObject, input.candidatePose);
   const containAreas = input.areas.filter((area) => area.type === "contain");
   const blockAreas = input.areas.filter((area) => area.type === "block");
+  // contain areas define where an object may stay. If none are authored, the task
+  // world viewBox becomes the default allowed room. block areas are obstacles inside it.
   const containPolygons =
     containAreas.length > 0
       ? containAreas.map((area) => ({ id: area.id, polygon: areaToPolygon(area) }))
@@ -195,7 +200,8 @@ function hasSeparatingAxis(a: CollisionPolygon, b: CollisionPolygon): boolean {
     const projectionA = projectPolygon(a, axis);
     const projectionB = projectPolygon(b, axis);
 
-    // Edge contact is allowed. Positive overlap is collision.
+    // Edge contact is allowed because Rhino/CAD layouts often place objects flush
+    // with walls or context furniture. Only positive overlap counts as collision.
     if (projectionA.max <= projectionB.min + EPSILON || projectionB.max <= projectionA.min + EPSILON) {
       return true;
     }
