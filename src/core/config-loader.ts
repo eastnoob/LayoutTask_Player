@@ -289,7 +289,7 @@ export class ConfigLoader {
   private async attachObjectCollisionSources(config: RuntimeTaskConfig): Promise<void> {
     // ===== 3. Resolve object collider sidecars =====
     // asset_outline is authoring sugar. Runtime collision only consumes polygons,
-    // so collider SVG points are parsed and mapped into rendered object-local units here.
+    // so parsed collider points are mapped into rendered object-local coordinates here.
     const svgSources = new Map<string, Promise<string>>();
 
     for (const objectConfig of config.objects) {
@@ -451,8 +451,8 @@ function resolveObjectCollision(
   }
 
   if (collision.shape === "asset_outline") {
-    // asset_outline defers polygon extraction to runtime so the sidecar SVG can keep
-    // editor-friendly coordinates while the player always receives polygons.
+    // asset_outline defers polygon extraction to runtime so the sidecar can preserve
+    // its own local SVG/viewBox coordinates before runtime normalization.
     return {
       enabled,
       shape: "polygons",
@@ -485,7 +485,7 @@ function resolveObjectDimensions(
 ): { width: number; height: number } {
   // Object width/height are world-unit dimensions used by rendering, controls, and
   // collision. Explicit bbox-style numbers are safest; SVG viewBox inference only works
-  // when the artwork is already authored in task-space units.
+  // when the SVG numbers are meant to define runtime size directly or via viewbox_scale.
   if (objectConfig.width !== undefined || objectConfig.height !== undefined) {
     if (objectConfig.width === undefined || objectConfig.height === undefined) {
       throw new Error(`Object ${objectConfig.id} must supply both width and height when overriding dimensions`);
@@ -520,7 +520,8 @@ function resolveBackgroundPlacement(
   asset: BackgroundAssetConfig & { inlineSvgText?: string },
 ): ViewBox {
   // Background placement is room placement, not object sizing. A background SVG root
-  // viewBox can supply x/y/width/height directly because it already lives in world coords.
+  // viewBox can supply x/y/width/height directly when those numbers, or viewbox_scale,
+  // are intended to define runtime placement in world coordinates.
   const background = task.background;
   const hasExplicitPlacement =
     background.x !== undefined ||
