@@ -27,8 +27,9 @@ interface DragSession {
   grabOffset: { x: number; y: number };
 }
 
-// InteractionController is the behavior layer between SVG UI and state transitions.
-// 它负责“能不能做”“做了以后记什么”“UI 应该怎么响应”。
+// InteractionController is the behavior layer between renderer gestures and
+// StateStore rule checks. It owns selection, status/feedback, and recording of
+// user intent around each action, while StateStore stays focused on pose rules.
 export class InteractionController {
   private activeObjectId: string | undefined;
   private dragSession: DragSession | undefined;
@@ -61,6 +62,8 @@ export class InteractionController {
     }
 
     const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
+    // Fixed/context objects can still be visible collision geometry, but only
+    // interactive variable objects should enter reconstruction edit mode.
     if (!objectConfig || !isObjectInteractive(objectConfig)) {
       return;
     }
@@ -107,6 +110,8 @@ export class InteractionController {
 
     const canApply = this.options.store.canApplyAction(request.objectId, request.action);
     if (!canApply.ok) {
+      // The attempted gesture still matters for analysis, even though the store
+      // rejects the candidate pose and leaves object state unchanged.
       this.options.renderer.updateControlsDisabled(request.objectId);
       if (canApply.reason === "limit_reached" || canApply.reason === "collision") {
         this.options.renderer.showLimitFeedback(request.objectId, request.action);
@@ -305,6 +310,9 @@ export class InteractionController {
     request: ActionRequest,
     reason: { ok: false; reason?: string }["reason"] | "locked",
   ): void {
+    // Blocked attempts are recorded in the controller because the gesture and
+    // pointer context are real participant intent, even when StateStore keeps
+    // the pose unchanged after rejecting the action.
     if (!this.options.config.recording.record_blocked_events) {
       return;
     }

@@ -30,6 +30,11 @@ export interface CanApplyResult {
   reason?: "locked" | "limit_reached" | "movement_disabled" | "rotation_disabled" | "unsupported_action" | "collision";
 }
 
+// ===== Object state model =====
+// initialStates are the authored starting poses participants reconstruct from.
+// Runtime state then tracks the live world pose plus signed offsets from that
+// start pose, because scoring/analysis usually cares about relative answer
+// steps rather than treating the answer as a second hidden absolute object.
 interface ObjectInitialState {
   x: number;
   y: number;
@@ -118,8 +123,9 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const offsets = this.getObjectOffsets(objectId);
 
-    // Limits are evaluated against offset-from-origin, not lifetime click count.
-    // 这正是实验语义：先左 2 格后，仍然可以一路向右回到另一侧边界。
+    // Limits are evaluated against signed offset from the initial pose, not
+    // lifetime click count. The constraint is final displacement from start,
+    // so participants can cross back through the origin to the other side.
     if (isMoveAction(action)) {
       if (objectConfig.behavior.movement.mode !== "button") {
         return { ok: false, reason: "movement_disabled" };
@@ -129,6 +135,8 @@ export class StateStore {
         return { ok: false, reason: "limit_reached" };
       }
 
+      // Collision gates the candidate pose before we mutate state.
+      // 被挡住的动作应该保持原位，而不是先写入再回滚。
       if (this.wouldCollide(objectConfig, this.createCandidatePose(state, objectConfig, action))) {
         return { ok: false, reason: "collision" };
       }
@@ -330,8 +338,8 @@ export class StateStore {
         }
       : desired;
 
-    // Drag uses the same relative limits as button movement.
-    // 先按原点偏移限制，再夹到 viewBox，保证最终位置始终可解释。
+    // Drag uses the same offset-from-start limits as button movement, then
+    // clamps again to the world viewBox so the accepted pose stays renderable.
     const minX = initial.x - (objectConfig.behavior.movement.max_left ?? Number.POSITIVE_INFINITY) * step;
     const maxX = initial.x + (objectConfig.behavior.movement.max_right ?? Number.POSITIVE_INFINITY) * step;
     const minY = initial.y - (objectConfig.behavior.movement.max_up ?? Number.POSITIVE_INFINITY) * step;
