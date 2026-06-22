@@ -195,8 +195,8 @@ export class LayoutTaskRenderer {
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
     // Object visuals and controls are separate layers.
-    // Controls render after furniture so arrows stay clickable near stage edges
-    // or when nearby artwork overlaps in the object layer.
+    // Rendering controls last solves z-order/overlap targeting; their own layout
+    // logic still has to keep them usable when objects sit near stage edges.
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
       wrapper.classList.add("layout-task-object-wrapper");
@@ -841,8 +841,8 @@ export class LayoutTaskRenderer {
       return;
     }
 
-    // Control positions come from the rendered object's current bounds, including
-    // rotation, so large and small assets keep a similar click distance.
+    // Control spacing comes from rendered, rotation-aware bounds, then clamps
+    // through screen-aware min/max gaps so tiny and large assets stay usable.
     const bounds = this.getObjectVisualBounds(objectId);
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const positions = getObjectControlLayout({
