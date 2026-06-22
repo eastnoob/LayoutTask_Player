@@ -20,6 +20,14 @@ import type { ObjectRole } from "../protocol/constants";
 export type BatchMetadataValue = string | number | boolean | null;
 export type BatchMetadata = Record<string, BatchMetadataValue>;
 
+/**
+ * Authoring-level batch document.
+ *
+ * `shared` defines the experiment-wide defaults; each entry in `trials` may
+ * override only the fields it needs. Compilers/readers should therefore treat
+ * the effective task config as `shared` plus per-trial replacement at the same
+ * semantic layer, not as an unrelated second schema.
+ */
 export interface BatchConfig {
   schema: "layouttask.batch.v1";
   experiment_id: string;
@@ -30,6 +38,7 @@ export interface BatchConfig {
   trials: BatchTrialConfig[];
 }
 
+/** Shared defaults inherited by every trial unless that trial provides its own value. */
 export interface BatchSharedConfig {
   asset_library: string;
   background_library: string;
@@ -45,6 +54,14 @@ export interface BatchSharedConfig {
   requirements?: RequirementsConfig;
 }
 
+/**
+ * Per-trial override layer.
+ *
+ * Trial fields reuse the same semantic shapes as `shared`, but win for that
+ * trial only. In practice this is where a protocol pins the background,
+ * starting objects, scoring targets, and any trial-specific flow/collision
+ * adjustments.
+ */
 export interface BatchTrialConfig {
   qid: string;
   task_id: string;
@@ -83,6 +100,13 @@ export interface ScoringConfig {
   objects?: Record<string, ObjectScoringConfig>;
 }
 
+/**
+ * Canonical answer state for one object.
+ *
+ * `relative` is the authored/scored truth: signed action steps from the
+ * reconstruction initial pose stored on the object config. `absolute` is an
+ * optional derived pose kept for analysis/export convenience.
+ */
 export interface ObjectTargetState {
   /** Canonical correct answer: signed action steps from reconstruction initial pose. */
   relative: RelativeTargetState;
@@ -99,12 +123,13 @@ export interface RelativeTargetState {
   rotation_steps: number;
 }
 
+/** Derived target pose in world space, useful for QA/export but not the canonical authored answer. */
 export interface AbsoluteTargetState {
-  /** Optional derived target anchor x in world units. */
+  /** Derived target anchor x in world units. */
   x: number;
-  /** Optional derived target anchor y in world units. */
+  /** Derived target anchor y in world units. */
   y: number;
-  /** Optional derived target clockwise rotation in degrees. */
+  /** Derived target clockwise rotation in degrees. */
   rotation_deg: number;
 }
 
@@ -125,6 +150,14 @@ export interface ScoringTolerance {
   rotation_deg?: number;
 }
 
+/**
+ * Compiled scoring-side lookup exported from a batch.
+ *
+ * This is keyed by `task_id` and carries only the fields analysis/scoring need,
+ * so downstream tools do not have to reopen the full authored batch. Targets
+ * still follow the same rule as authored configs: relative steps are primary,
+ * absolute poses are optional derived helpers.
+ */
 export interface ScoringReferenceConfig {
   schema: "layouttask.scoring-reference.v1";
   experiment_id: string;

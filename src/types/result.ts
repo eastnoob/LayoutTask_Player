@@ -1,8 +1,8 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
 import type { ViewBox, WorldUnit } from "./config";
 
-// Result types describe what can be serialized and exported out of the task.
-// 这一层既服务浏览器端编码，也服务后续 decoder / analysis 脚本。
+// Result types are the serialized protocol surface shared by runtime, encoder,
+// decoder, and downstream analysis scripts. 这一层是实验结果交换格式，不只是前端内部状态。
 export interface RectInfo {
   x: number;
   y: number;
@@ -132,11 +132,14 @@ export interface ObjectRuntimeState extends ObjectPose {
   counts: OperationCounts;
 }
 
+/** Absolute per-object end state as stored in `final_state_mode: "absolute"` results. */
 export interface FinalObjectState extends ObjectPose {
   counts: OperationCounts;
+  /** Signed step offsets from the object's reconstruction origin, when available. */
   offsets?: ObjectOffsets;
 }
 
+/** Relative per-object end state stored as signed action-step offsets, not world coordinates. */
 export interface RelativeFinalObjectState {
   dx_steps: number;
   dy_steps: number;
@@ -148,11 +151,13 @@ export type RelativeFinalState = Record<string, RelativeFinalObjectState>;
 export type FinalState = AbsoluteFinalState | RelativeFinalState;
 
 export interface ResultContextObject {
+  // Reconstruction origin: the authored initial pose that relative outputs are measured from.
   origin: {
     x: number;
     y: number;
     r: number;
   };
+  // Per-step translation size used to interpret dx/dy step counts in relative results.
   movement_step: number;
   rotation_step: number;
   limits: {
@@ -186,6 +191,7 @@ export interface ResultContext {
 export interface ResultFlowInfo {
   mode: "direct_reconstruction" | "preview_then_reconstruct";
   preview_ack_at?: number;
+  // Timestamp when the preview image actually became available to the participant.
   preview_started_at?: number;
   preview_ended_at?: number;
   preview_duration_ms?: number;
@@ -193,12 +199,20 @@ export interface ResultFlowInfo {
 }
 
 export interface ResultRestoreInfo {
+  // True only when this run restored a previously saved draft into the active session.
   recovered: boolean;
   restore_count?: number;
   draft_saved_at?: number;
   restored_at?: number;
 }
 
+/**
+ * Top-level exported task result.
+ *
+ * `events` is the action log, `final_state` is the locked submission snapshot,
+ * and optional `context` provides the analysis/replay metadata needed to turn
+ * relative step output back into absolute poses.
+ */
 export interface LayoutTaskResult {
   schema: "layouttask.result.v1";
   exp: string;
