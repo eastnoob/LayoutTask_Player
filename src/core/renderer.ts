@@ -68,6 +68,9 @@ interface ControlLayoutInput {
 }
 
 export class LayoutTaskRenderer {
+  // Renderer owns DOM/SVG shape, not experiment rules.
+  // It keeps browser pixels, SVG world coordinates, and control affordances in sync
+  // so InteractionController / StateStore can stay focused on task behavior.
   readonly refs: RendererRefs;
   private activeObjectId: string | undefined;
   private hideControlsTimer: number | undefined;
@@ -191,8 +194,9 @@ export class LayoutTaskRenderer {
 
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
-    // Controls live in a dedicated overlay layer so they are easier to target.
-    // 控制层和对象层分开，后续 drag / feedback 都更好接。
+    // Object visuals and controls are separate layers.
+    // Controls render after furniture so arrows stay clickable near stage edges
+    // or when nearby artwork overlaps in the object layer.
     for (const objectConfig of this.options.config.objects) {
       const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
       wrapper.classList.add("layout-task-object-wrapper");
@@ -205,6 +209,8 @@ export class LayoutTaskRenderer {
       group.classList.toggle("is-static-context", !interactive);
 
       if (interactive) {
+        // Fixed/context objects still render and collide, but only interactive
+        // reconstruction targets receive selection / drag / keyboard handlers.
         group.setAttribute("tabindex", "0");
         group.setAttribute("role", "button");
         group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
@@ -744,8 +750,8 @@ export class LayoutTaskRenderer {
       return { x: clientX, y: clientY };
     }
 
-    // SVGPoint keeps this conversion browser-native and respects viewBox/preserveAspectRatio.
-    // 后续若有缩放或响应式布局，也不需要手写比例换算。
+    // Pointer events arrive in viewport pixels. Convert once into world units so
+    // drag/collision code never needs to know about CSS scale or browser zoom.
     const point = svg.createSVGPoint();
     point.x = clientX;
     point.y = clientY;
@@ -835,6 +841,8 @@ export class LayoutTaskRenderer {
       return;
     }
 
+    // Control positions come from the rendered object's current bounds, including
+    // rotation, so large and small assets keep a similar click distance.
     const bounds = this.getObjectVisualBounds(objectId);
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const positions = getObjectControlLayout({
@@ -891,6 +899,8 @@ export class LayoutTaskRenderer {
     const visual = this.refs.objectVisualElements.get(objectId);
     const bbox = visual ? getSvgBBoxSafe(visual) : undefined;
 
+    // Prefer measured SVG bounds when available; configured width/height is only
+    // a fallback. That keeps control placement tied to what the participant sees.
     return getRotatedVisualBounds(
       bbox?.width && bbox?.height
         ? bbox
