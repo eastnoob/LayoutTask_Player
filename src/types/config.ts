@@ -2,8 +2,12 @@ export type AssetType = "svg" | "png" | "jpg" | "image";
 export type Anchor = "center" | "top_left";
 export type WorldUnit = "mm" | "cm" | "m" | "px" | "cad_unit" | "unknown";
 
-// Authoring-side types: close to JSON files in public/layout-task/.
-// 研究者写 manifest / task / library 时，对应的就是这一层 shape。
+/**
+ * Authoring-side protocol types used by manifest, task, and library JSON files.
+ * These describe the authored wire format before runtime resolution, defaults,
+ * and derived state are applied.
+ * 研究者写 manifest / task / library 时，对应的就是这一层 shape，不是最终运行态 config。
+ */
 export interface ViewBox {
   x: number;
   y: number;
@@ -23,6 +27,10 @@ export interface GridConfig {
   origin?: Point;
 }
 
+/**
+ * Authored world-space definition shared by background, task objects, and stage fit.
+ * Coordinates in task files are interpreted against this space.
+ */
 export interface WorldConfig {
   unit?: WorldUnit;
   viewBox: ViewBox;
@@ -30,12 +38,18 @@ export interface WorldConfig {
   grid: GridConfig;
 }
 
+/**
+ * Authoring record for a reusable object asset before any task-specific sizing
+ * or behavior is attached.
+ */
 export interface ObjectAssetConfig {
   type: AssetType;
   src: string;
+  /** Native measurement unit assumed by the source asset before world-space conversion. */
   intrinsic_unit?: WorldUnit;
   default_width?: number;
   default_height?: number;
+  /** Multiplier used when mapping SVG/image viewBox coordinates into authored world units. */
   viewbox_scale?: number;
   anchor?: Anchor;
 }
@@ -67,6 +81,10 @@ export interface FreeDragBehavior {
   snap?: boolean;
 }
 
+/**
+ * Reusable authored interaction envelope for an object: discrete movement,
+ * optional rotation, and free-drag affordances.
+ */
 export interface BehaviorConfig {
   movement: MovementBehavior;
   rotation?: RotationBehavior;
@@ -114,6 +132,7 @@ export type FinalStateMode = "relative" | "absolute";
 export interface OutputConfig {
   encoding?: EncodingMethod;
   detail?: OutputDetail;
+  /** Whether exported final coordinates are relative to authored anchors or absolute world values. */
   final_state?: FinalStateMode;
 }
 
@@ -151,7 +170,9 @@ export type PreviewStageMode = "hidden" | "locked";
 
 export interface PreviewThenReconstructFlowConfig {
   preview_duration_sec?: number;
+  /** If true, require an explicit participant acknowledgment before preview starts. */
   require_preview_ack?: boolean;
+  /** Intro copy shown before the preview stage begins. */
   intro_message?: string;
   intro_confirm_label?: string;
   stage_during_preview?: PreviewStageMode;
@@ -237,6 +258,9 @@ export interface CollisionSourceConfig {
   src: string;
 }
 
+/**
+ * Authored task-level collision environment, either inline areas or an SVG-derived map.
+ */
 export interface TaskCollisionConfig {
   enabled?: boolean;
   mode?: "discrete";
@@ -274,6 +298,9 @@ export interface AssetOutlineObjectCollisionConfig {
   padding?: number;
 }
 
+/**
+ * Authored per-object collision envelope used during reconstruction interaction.
+ */
 export type ObjectCollisionConfig =
   | BoxObjectCollisionConfig
   | PolygonObjectCollisionConfig
@@ -285,6 +312,9 @@ export interface ManifestTaskEntry {
   file: string;
 }
 
+/**
+ * Experiment manifest that binds authored libraries and task files into one protocol bundle.
+ */
 export interface ManifestConfig {
   schema: "layouttask.manifest.v1";
   experiment_id: string;
@@ -312,6 +342,9 @@ export interface BehaviorLibraryConfig {
   behaviors: Record<string, BehaviorConfig>;
 }
 
+/**
+ * Authored placement and interaction contract for one reconstructable task object.
+ */
 export interface TaskObjectConfig {
   id: string;
   asset: string;
@@ -336,6 +369,10 @@ export interface TaskBackgroundConfig {
   height?: number;
 }
 
+/**
+ * Full authored task payload referenced by the manifest.
+ * This is the experiment/protocol definition, not the resolved player state.
+ */
 export interface TaskConfig {
   schema: "layouttask.task.v1";
   task_id: string;

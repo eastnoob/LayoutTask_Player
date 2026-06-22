@@ -1,3 +1,4 @@
+// Stable protocol vocabulary shared by types, schemas, and tooling; not UI/presentation enums.
 export const OBJECT_ROLES = ["fixed", "variable"] as const;
 export const ANCHORS = ["center", "top_left"] as const;
 export const MOVEMENT_MODES = ["none", "button", "drag"] as const;
