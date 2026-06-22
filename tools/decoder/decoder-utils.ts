@@ -117,6 +117,11 @@ export interface EventCsvRow {
 const TIME_TOLERANCE_MS = 10;
 const EPSILON = 1e-6;
 
+// ===== Decoder utilities for research QC =====
+// These helpers decode transport strings, run conservative consistency checks,
+// and flatten results into analysis tables. They are for audit/QC, not for
+// replaying participant intent or reconstructing gameplay in full detail.
+
 // Small shared CLI parser for decoder tools.
 // 参数故意保持很少：input/output/column 已经足够覆盖文本和问卷 CSV 两种入口。
 export function parseDecoderArgs(argv: string[]): DecoderCliOptions {

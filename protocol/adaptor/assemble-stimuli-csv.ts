@@ -440,6 +440,9 @@ export function attachColliderSvgToTrialObjects(
   objectAssets: JsonObject,
   colliderSuffix: string,
 ): void {
+  // Collider sidecars are packaging metadata only: assembly records the expected
+  // same-name SVG path, but it does not require the file to exist yet.
+  // 缺失 sidecar 不在这里报错，方便作者先组装协议包，再由 compile/runtime 校验最终资产是否齐全。
   const objects = Array.isArray(trial.objects) ? trial.objects : [];
 
   for (const object of objects) {
@@ -532,6 +535,10 @@ function assemble(
   backgroundLibrary: JsonObject;
   behaviorLibrary: JsonObject;
 } {
+  // ===== Stimuli CSV -> protocol batch =====
+  // Rhino/GH exports can include many helper columns, but `metric_trial_protocol_json`
+  // is the Player protocol source of truth. This adaptor mainly packages authored
+  // trial JSON into batch/library files and fills copy-time details around assets.
   const trials: JsonObject[] = [];
   const objectAssets: JsonObject = {};
   const backgroundAssets: JsonObject = {};
@@ -545,8 +552,8 @@ function assemble(
     }
 
     const taskId = rowTaskId(row, rowNumber);
-    // The adaptor treats metric_trial_protocol_json as the source of truth.
-    // Preserve target.relative as authored and do not synthesize target.absolute.
+    // Preserve protocol-authored answers as-is: the adaptor should not rewrite
+    // scoring semantics such as `target.relative`, or invent `target.absolute`.
     const parsedTrial = parseJsonCell(row, "trial_protocol_json");
     let trial = replaceScenePlaceholder(parsedTrial, taskId) as JsonObject;
 

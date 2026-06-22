@@ -69,6 +69,10 @@ export function toObjectStateRows(
   records: DecodedSourceRecord[],
   scoringReference?: ScoringReferenceConfig,
 ): ObjectStateCsvRow[] {
+  // Scoring treats `target.relative` as the canonical answer because Layout Task
+  // correctness is authored as displacement from each object's start pose.
+  // `target.absolute` is optional extra analysis data for labs that also want
+  // world-coordinate error columns in the exported scoring table.
   const rows: ObjectStateCsvRow[] = [];
 
   for (const record of records) {
