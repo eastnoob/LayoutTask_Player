@@ -49,7 +49,7 @@ export interface ObjectAssetConfig {
   intrinsic_unit?: WorldUnit;
   default_width?: number;
   default_height?: number;
-  /** Multiplier used when mapping SVG/image viewBox coordinates into authored world units. */
+  /** Multiplier used when scaling SVG viewBox numbers into authored task/world space. */
   viewbox_scale?: number;
   anchor?: Anchor;
 }
