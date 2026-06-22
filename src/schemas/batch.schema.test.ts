@@ -74,7 +74,7 @@ describe("batchSchema", () => {
   });
 
   it("treats object x/y/rotation as reconstruction initial pose and target.relative as correct answer", () => {
-    // Instance pose is the starting state; target.relative is the participant answer key.
+    // Instance pose is the starting state; target.relative is the authored answer key.
     const batch = cloneMinimalBatch();
     batch.trials[0].objects[0] = {
       ...batch.trials[0].objects[0],
