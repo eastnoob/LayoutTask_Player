@@ -82,9 +82,9 @@ export class FlowController {
           return;
         }
 
-        // preview_started_at marks when the participant could actually study the
-        // preview image. It starts after the display is ready, not when preview
-        // UI first renders or when the acknowledgement dialog closes.
+        // preview_started_at is set only after waitForDisplayImageReady()
+        // resolves, which is the point the preview image is actually studyable.
+        // It does not start at preview UI entry or acknowledgement close.
         this.flowInfo.preview_started_at = this.nowImpl();
         this.tickPreview(totalSeconds);
       });

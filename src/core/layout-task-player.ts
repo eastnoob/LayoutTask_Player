@@ -28,9 +28,9 @@ export interface LayoutTaskPlayer {
 }
 
 // ===== Player lifecycle =====
-// This factory is the product core shared by standalone bootstraps and protocol
-// adapters. Entry points should stay thin so load/render/bind/record/complete
-// behavior is defined in one place instead of drifting across integrations.
+// Upstream loaders/adapters supply an already-built RuntimeTaskConfig. From
+// that point on, this factory owns the mounted player lifecycle so standalone
+// bootstraps and protocol adapters can stay thin around one shared flow.
 export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): LayoutTaskPlayer {
   const sessionId = createSessionId();
   const store = new StateStore(options.config);
