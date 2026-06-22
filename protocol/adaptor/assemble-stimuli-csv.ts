@@ -441,7 +441,10 @@ export function attachColliderSvgToTrialObjects(
   colliderSuffix: string,
 ): void {
   // Collider sidecars are packaging metadata only: assembly records the expected
-  // same-name SVG path, but it does not require the file to exist yet.
+  // copied path under `assets/collision/objects/...`, but it does not require the
+  // sidecar file to exist yet. Missing sidecars should not fail CSV -> batch
+  // assembly, because authors often assemble the protocol package before the
+  // collider export/copy step runs.
   // 缺失 sidecar 不在这里报错，方便作者先组装协议包，再由 compile/runtime 校验最终资产是否齐全。
   const objects = Array.isArray(trial.objects) ? trial.objects : [];
 
@@ -536,9 +539,13 @@ function assemble(
   behaviorLibrary: JsonObject;
 } {
   // ===== Stimuli CSV -> protocol batch =====
-  // Rhino/GH exports can include many helper columns, but `metric_trial_protocol_json`
-  // is the Player protocol source of truth. This adaptor mainly packages authored
-  // trial JSON into batch/library files and fills copy-time details around assets.
+  // Rhino/GH Stimuli CSV rows may contain many helper / analysis columns, but the
+  // Player protocol source of truth is `metric_trial_protocol_json` (or the
+  // unprefixed `trial_protocol_json`, which this adaptor reads via `getCell`).
+  // This adaptor does not reinterpret experiment logic. It packages each authored
+  // task JSON into one Player batch trial, merges row-level asset libraries into
+  // shared `assets/*.json` catalogs, and fills package-path details such as
+  // `assets/objects/...`, `assets/backgrounds/...`, and optional collider sidecars.
   const trials: JsonObject[] = [];
   const objectAssets: JsonObject = {};
   const backgroundAssets: JsonObject = {};
@@ -684,6 +691,9 @@ async function main(): Promise<void> {
     );
     const parsedBatch = batchSchema.parse(assembled.batch);
     const files = [
+      // Package layout: one batch entry point plus merged asset/behavior libraries.
+      // Optional collider SVG sidecars, when referenced above, live beside these
+      // JSON manifests but are copied by later packaging steps rather than written here.
       resolveOutputFile(args.out, "batch.json", assembled.batch),
       resolveOutputFile(args.out, "assets/objects.json", assembled.objectLibrary),
       resolveOutputFile(args.out, "assets/backgrounds.json", assembled.backgroundLibrary),

@@ -69,8 +69,10 @@ export function toObjectStateRows(
   records: DecodedSourceRecord[],
   scoringReference?: ScoringReferenceConfig,
 ): ObjectStateCsvRow[] {
-  // Scoring treats `target.relative` as the canonical answer because Layout Task
-  // correctness is authored as displacement from each object's start pose.
+  // Scoring compares each participant final object state against the authored
+  // target for that task/object. `target.relative` is the canonical task answer:
+  // Layout Task correctness is authored as displacement from each object's start
+  // pose, so these columns carry the primary pass/fail / error semantics.
   // `target.absolute` is optional extra analysis data for labs that also want
   // world-coordinate error columns in the exported scoring table.
   const rows: ObjectStateCsvRow[] = [];
@@ -179,6 +181,9 @@ function getObservedAbsolute(
       return undefined;
     }
 
+    // Relative final states are enough to score the task canonically.
+    // When context is present, we also project them back into world coordinates
+    // so analysis exports can compare against optional `target.absolute`.
     return {
       x: context.origin.x + state.dx_steps * context.movement_step,
       y: context.origin.y + state.dy_steps * context.movement_step,

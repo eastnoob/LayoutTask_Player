@@ -119,8 +119,10 @@ const EPSILON = 1e-6;
 
 // ===== Decoder utilities for research QC =====
 // These helpers decode transport strings, run conservative consistency checks,
-// and flatten results into analysis tables. They are for audit/QC, not for
-// replaying participant intent or reconstructing gameplay in full detail.
+// and flatten results into analysis tables. They are for research audit/QC and
+// downstream stats tooling, not for replaying participant intent or rebuilding
+// gameplay frame-by-frame. If a record looks suspicious, treat decoder output as
+// evidence for inspection, not as an authoritative simulator of what the player saw.
 
 // Small shared CLI parser for decoder tools.
 // 参数故意保持很少：input/output/column 已经足够覆盖文本和问卷 CSV 两种入口。
@@ -226,7 +228,8 @@ export function validateDecodedResult(decoded: DecodedLayoutTask): ValidationSum
   const warnings: string[] = [];
   const { result } = decoded;
 
-  // Transport-level checks first; 后面再做 timing / event / final-state 的语义检查。
+  // Transport-level checks first; then semantic QC on timing / event / final-state.
+  // 顺序上先确认“这串结果有没有被正确解包”，再确认“这条记录在研究分析上像不像真的”。
   if (!decoded.hashOk) {
     errors.push("hash_mismatch");
   }
@@ -310,7 +313,8 @@ export function toEventRows(records: DecodedSourceRecord[]): EventCsvRow[] {
   const rows: EventCsvRow[] = [];
 
   // Long table: one event becomes one row.
-  // 这对后续时序分析或 mixed model 会比嵌套 JSON 友好很多。
+  // 这对后续时序分析或 mixed model 会比嵌套 JSON 友好很多，但仍然只是 QC/analysis
+  // 视图，不等于完整 gameplay replay。
   for (const record of records) {
     if (!record.decoded) {
       continue;
