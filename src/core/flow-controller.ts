@@ -35,6 +35,9 @@ export class FlowController {
     this.flowInfo = { mode: options.flow.mode };
   }
 
+  // Flow phases gate when reconstruction is available, but they do not own the
+  // object-state rules themselves. direct_reconstruction starts interactive
+  // immediately; preview_then_reconstruct delays interaction until preview ends.
   start(): void {
     if (this.options.flow.mode === "direct_reconstruction") {
       this.startReconstruction();
@@ -119,6 +122,8 @@ export class FlowController {
       this.flowInfo.preview_ended_at = endedAt;
       this.flowInfo.preview_duration_ms =
         this.flowInfo.preview_started_at === undefined ? undefined : endedAt - this.flowInfo.preview_started_at;
+      // Phase timing stays separate from the player's main page timing so
+      // analysis can compare preview duration against the overall task duration.
       this.startReconstruction(flow.config.message_after);
       return;
     }
@@ -129,6 +134,8 @@ export class FlowController {
   }
 
   private startReconstruction(message?: string): void {
+    // Reconstruction start is the handoff point where preview-gated players
+    // finally bind interaction, while direct flow reaches the same state at once.
     this.flowInfo.reconstruction_started_at = this.nowImpl();
     this.options.renderer.enterReconstructionFlow(message);
     this.options.onReconstructionStart();

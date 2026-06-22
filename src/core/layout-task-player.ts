@@ -27,8 +27,10 @@ export interface LayoutTaskPlayer {
   isLocked(): boolean;
 }
 
-// createLayoutTaskPlayer is the product core.
-// standalone `main.ts` 和 jsPsych plugin 都应该只是外层 adapter，不要把产品逻辑散回去。
+// ===== Player lifecycle =====
+// This factory is the product core shared by standalone bootstraps and protocol
+// adapters. Entry points should stay thin so load/render/bind/record/complete
+// behavior is defined in one place instead of drifting across integrations.
 export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): LayoutTaskPlayer {
   const sessionId = createSessionId();
   const store = new StateStore(options.config);
@@ -84,8 +86,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
 
   return {
     start() {
-      // Render first, then wire recorder / interaction around mounted DOM refs.
-      // 先 mount 再测 display，再绑定行为；这样数据和界面生命周期是一致的。
+      // Mount before measuring or binding. Display metadata should describe the
+      // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
       // Browser-only observer: in Node unit tests there is no window, so skip it.
       // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
@@ -121,6 +123,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         onComplete: options.onComplete,
       });
 
+      // Recorder owns page-level timing for the whole player session; flow adds
+      // its own phase timestamps on top of that shared session record.
       recorder.start();
       flow = new FlowController({
         flow: options.config.flow,
