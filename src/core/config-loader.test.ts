@@ -995,6 +995,60 @@ describe("ConfigLoader collision runtime config", () => {
     });
   });
 
+  it("maps object asset_outline polygons from SVG viewBox coordinates into rendered local coordinates", async () => {
+    const outlineSvgText = [
+      "<svg viewBox=\"-25 -25 50 50\">",
+      "  <rect id=\"centered_outline\" x=\"-20\" y=\"-10\" width=\"40\" height=\"20\" />",
+      "</svg>",
+    ].join("");
+    const colliderSourceUrl = "https://cdn.example.test/layout-task/assets/collision/centered_outline.svg";
+    const fetchImpl = createConfigFetch({
+      manifestAssetBaseUrl: "https://cdn.example.test/layout-task/",
+      taskObjects: [
+        {
+          id: "chair_01",
+          asset: "chair_a",
+          x: 0,
+          y: 0,
+          behavior: { template: "move25" },
+          collision: {
+            enabled: true,
+            shape: "asset_outline",
+            source: {
+              type: "svg",
+              src: "assets/collision/centered_outline.svg",
+            },
+          },
+        },
+      ],
+      textByUrl: {
+        [colliderSourceUrl]: outlineSvgText,
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+
+    expect(config.objects[0].collision).toMatchObject({
+      enabled: true,
+      shape: "polygons",
+      polygons: [
+        {
+          id: "centered_outline",
+          points: [
+            { x: 5, y: 15 },
+            { x: 45, y: 15 },
+            { x: 45, y: 35 },
+            { x: 5, y: 35 },
+          ],
+        },
+      ],
+    });
+  });
+
   it("does not fetch or parse disabled object asset_outline collision sources", async () => {
     const colliderSourceUrl = "https://cdn.example.test/layout-task/assets/collision/invalid_outline.svg";
     const fetchImpl = createConfigFetch({
@@ -1326,10 +1380,10 @@ describe("ConfigLoader protocol full-preview-collision fixture", () => {
         {
           id: "chair_solid",
           points: [
-            { x: -20, y: -20 },
-            { x: 20, y: -20 },
-            { x: 20, y: 20 },
-            { x: -20, y: 20 },
+            { x: 5, y: 5 },
+            { x: 45, y: 5 },
+            { x: 45, y: 45 },
+            { x: 5, y: 45 },
           ],
         },
       ],

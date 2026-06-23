@@ -72,7 +72,7 @@ export function toObjectStateRows(
   // Scoring compares each participant final object state against the authored
   // target for that task/object. `target.relative` is the canonical task answer:
   // Layout Task correctness is authored as displacement from each object's start
-  // pose, so these columns carry the primary pass/fail / error semantics.
+  // pose, so these columns carry the primary correctness / error semantics.
   // `target.absolute` is optional extra analysis data for labs that also want
   // world-coordinate error columns in the exported scoring table.
   const rows: ObjectStateCsvRow[] = [];

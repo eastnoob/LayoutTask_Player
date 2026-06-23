@@ -23,7 +23,7 @@ import {
 } from "./config-validator";
 import { parseCollisionSvg } from "./collision-svg";
 import { resolveMessages } from "./messages";
-import { parseObjectColliderSvg } from "./object-collider-svg";
+import { parseObjectColliderSvgDocument } from "./object-collider-svg";
 
 // ConfigLoader is the authoring-config entry point.
 // 它把 manifest / task / asset / behavior 这些分散文件 resolve 成 RuntimeTaskConfig。
@@ -305,7 +305,13 @@ export class ConfigLoader {
 
       const inlineSvgText = await svgText;
       objectConfig.collision.source.inlineSvgText = inlineSvgText;
-      objectConfig.collision.polygons = parseObjectColliderSvg(inlineSvgText);
+      const parsedCollider = parseObjectColliderSvgDocument(inlineSvgText);
+      objectConfig.collision.polygons = mapColliderPolygonsToObjectLocalCoordinates(
+        parsedCollider.polygons,
+        parsedCollider.viewBox,
+        objectConfig.width,
+        objectConfig.height,
+      );
     }
   }
 
@@ -476,6 +482,25 @@ function cloneObjectCollisionPolygons(polygons: ObjectCollisionPolygon[]): Objec
   return polygons.map((polygon) => ({
     ...polygon,
     points: polygon.points.map((point) => ({ ...point })),
+  }));
+}
+
+function mapColliderPolygonsToObjectLocalCoordinates(
+  polygons: ObjectCollisionPolygon[],
+  viewBox: ViewBox | undefined,
+  objectWidth: number,
+  objectHeight: number,
+): ObjectCollisionPolygon[] {
+  const sourceViewBox = viewBox ?? { x: 0, y: 0, width: objectWidth, height: objectHeight };
+  const scaleX = objectWidth / sourceViewBox.width;
+  const scaleY = objectHeight / sourceViewBox.height;
+
+  return polygons.map((polygon) => ({
+    ...polygon,
+    points: polygon.points.map((point) => ({
+      x: (point.x - sourceViewBox.x) * scaleX,
+      y: (point.y - sourceViewBox.y) * scaleY,
+    })),
   }));
 }
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { compileBatch } from "../../src/core/batch-compiler";
 import { batchSchema } from "../../src/schemas/batch.schema";
@@ -105,6 +105,53 @@ async function writeJsonFile(file: OutputFile): Promise<void> {
   await writeFile(file.target, `${JSON.stringify(file.value, null, 2)}\n`, "utf8");
 }
 
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await stat(target);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function copyStaticDirectory(inputFile: string, outDir: string, relativeDirectory: string): Promise<boolean> {
+  const inputRoot = path.dirname(path.resolve(inputFile));
+  const source = path.resolve(inputRoot, relativeDirectory);
+  const outputRoot = path.resolve(outDir);
+  const target = path.resolve(outputRoot, relativeDirectory);
+
+  if (!isInside(inputRoot, source) || !isInside(outputRoot, target)) {
+    throw new Error(`Refusing to copy unsafe static directory: ${relativeDirectory}`);
+  }
+
+  if (!(await pathExists(source))) {
+    return false;
+  }
+
+  await rm(target, { recursive: true, force: true });
+  await mkdir(path.dirname(target), { recursive: true });
+  await cp(source, target, { recursive: true, force: true });
+  return true;
+}
+
+async function copyPlayerIconAssets(outDir: string): Promise<boolean> {
+  const source = path.resolve("public", "layout-task", "assets", "icons");
+  const outputRoot = path.resolve(outDir);
+  const target = path.resolve(outputRoot, "assets", "icons");
+
+  if (!isInside(outputRoot, target) || !(await pathExists(source))) {
+    return false;
+  }
+
+  await mkdir(path.dirname(target), { recursive: true });
+  await cp(source, target, { recursive: true, force: true });
+  return true;
+}
+
 async function main(): Promise<void> {
   let input: string | undefined;
   let out = defaultOutDir;
@@ -139,7 +186,20 @@ async function main(): Promise<void> {
       await writeJsonFile(file);
     }
 
+    const copiedDirectories = [];
+    for (const relativeDirectory of ["assets", "behaviors"]) {
+      if (await copyStaticDirectory(input, out, relativeDirectory)) {
+        copiedDirectories.push(relativeDirectory);
+      }
+    }
+    if (await copyPlayerIconAssets(out)) {
+      copiedDirectories.push("assets/icons");
+    }
+
     console.log(`Compiled ${compiled.tasks.length} task(s) to ${out}`);
+    if (copiedDirectories.length > 0) {
+      console.log(`Copied static director${copiedDirectories.length === 1 ? "y" : "ies"}: ${copiedDirectories.join(", ")}`);
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

@@ -10,7 +10,12 @@ const defaultBehaviorTemplate = "button500_rotate45_limited";
 const taskIdSafePattern = /[^A-Za-z0-9_-]+/g;
 const defaultColliderSuffix = "_COLLISION";
 
-const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>] [--attach-collider-svg] [--collider-suffix <suffix>]`;
+const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>] [--attach-collider-svg] [--collider-suffix <suffix>]
+
+Notes:
+  --attach-collider-svg only attaches object collider sources.
+  --normalize-paired-svg-dimensions reads SVG viewBox values from --asset-root, or --out when omitted.
+  --trust-svg-viewbox removes explicit SVG dimensions; use it only when SVG viewBox values are already task-space world units.`;
 
 interface CliArgs {
   csv?: string;
@@ -21,6 +26,8 @@ interface CliArgs {
   svgViewBoxScale: number;
   attachColliderSvg: boolean;
   colliderSuffix: string;
+  normalizePairedSvgDimensions: boolean;
+  assetRoot?: string;
 }
 
 type CsvRow = Record<string, string | undefined>;
@@ -89,6 +96,7 @@ export function parseArgs(args: string[]): CliArgs {
     svgViewBoxScale: 1,
     attachColliderSvg: false,
     colliderSuffix: defaultColliderSuffix,
+    normalizePairedSvgDimensions: false,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -159,6 +167,22 @@ export function parseArgs(args: string[]): CliArgs {
       continue;
     }
 
+    if (arg === "--normalize-paired-svg-dimensions") {
+      parsed.normalizePairedSvgDimensions = true;
+      continue;
+    }
+
+    if (arg === "--asset-root") {
+      parsed.assetRoot = requireValue(args, index, "--asset-root");
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--asset-root=")) {
+      parsed.assetRoot = arg.slice("--asset-root=".length);
+      continue;
+    }
+
     if (arg === "--collider-suffix") {
       parsed.colliderSuffix = requireValue(args, index, "--collider-suffix");
       index += 1;
@@ -178,6 +202,24 @@ export function parseArgs(args: string[]): CliArgs {
   }
 
   return parsed;
+}
+
+export function sizingWarnings(args: Pick<CliArgs, "trustSvgViewBox" | "attachColliderSvg">): string[] {
+  const warnings: string[] = [];
+
+  if (args.trustSvgViewBox) {
+    warnings.push(
+      "--trust-svg-viewbox removes explicit SVG dimensions. Use it only when SVG viewBox values are already task-space world units.",
+    );
+  }
+
+  if (args.trustSvgViewBox && args.attachColliderSvg) {
+    warnings.push(
+      "--attach-collider-svg does not require --trust-svg-viewbox. Rhino bbox exports should usually attach colliders while preserving explicit dimensions.",
+    );
+  }
+
+  return warnings;
 }
 
 function getCell(row: CsvRow, name: string, defaultValue = ""): string {
@@ -468,6 +510,19 @@ export function attachColliderSvgToTrialObjects(
   }
 }
 
+export function enableTaskCollisionForColliderSvg(trial: JsonObject): void {
+  const existing =
+    trial.collision && typeof trial.collision === "object" && !Array.isArray(trial.collision)
+      ? (trial.collision as JsonObject)
+      : {};
+
+  trial.collision = {
+    ...existing,
+    enabled: existing.enabled ?? true,
+    mode: existing.mode ?? "discrete",
+  };
+}
+
 function stripSvgAssetDimensions(assets: JsonObject): void {
   for (const asset of Object.values(assets)) {
     if (!isSvgAsset(asset)) {
@@ -491,6 +546,130 @@ function applySvgViewBoxScale(assets: JsonObject, scale: number): void {
 
     (asset as JsonObject).viewbox_scale = scale;
   }
+}
+
+interface SvgViewBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function parseSvgViewBoxText(svgText: string): SvgViewBox | undefined {
+  const match = svgText.match(/\bviewBox\s*=\s*["']([^"']+)["']/i);
+  if (!match) {
+    return undefined;
+  }
+
+  const values = match[1].trim().split(/[\s,]+/).map(Number);
+  if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) {
+    return undefined;
+  }
+
+  const [x, y, width, height] = values;
+  if (width <= 0 || height <= 0) {
+    return undefined;
+  }
+
+  return { x, y, width, height };
+}
+
+function finitePositive(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function relativeDifference(left: number, right: number): number {
+  return Math.abs(left - right) / Math.max(Math.abs(left), Math.abs(right), 1);
+}
+
+function almostEqual(left: number, right: number): boolean {
+  return relativeDifference(left, right) <= 0.001;
+}
+
+function setAssetDimensions(asset: JsonObject, width: number, height: number): void {
+  asset.default_width = Number(width.toFixed(3));
+  asset.default_height = Number(height.toFixed(3));
+}
+
+export function normalizePairedSvgAssetDimensions(
+  objectAssets: JsonObject,
+  viewBoxesByAssetId: Record<string, SvgViewBox | undefined>,
+): string[] {
+  const updated: string[] = [];
+  const primaryDimensionTolerance = 0.02;
+
+  for (const [assetId, asset] of Object.entries(objectAssets)) {
+    if (!assetId.endsWith("_variable") || !asset || typeof asset !== "object" || Array.isArray(asset)) {
+      continue;
+    }
+
+    const groupAssetId = `${assetId.slice(0, -"_variable".length)}_group`;
+    const groupAsset = objectAssets[groupAssetId];
+    if (!groupAsset || typeof groupAsset !== "object" || Array.isArray(groupAsset)) {
+      continue;
+    }
+
+    const variableAsset = asset as JsonObject;
+    const pairedGroupAsset = groupAsset as JsonObject;
+    const variableViewBox = viewBoxesByAssetId[assetId];
+    const groupViewBox = viewBoxesByAssetId[groupAssetId];
+
+    if (!variableViewBox || !groupViewBox) {
+      continue;
+    }
+
+    if (
+      almostEqual(variableViewBox.width, groupViewBox.width) &&
+      finitePositive(variableAsset.default_width) &&
+      finitePositive(pairedGroupAsset.default_width) &&
+      relativeDifference(variableAsset.default_width, pairedGroupAsset.default_width) > primaryDimensionTolerance
+    ) {
+      const scale = pairedGroupAsset.default_width / groupViewBox.width;
+      setAssetDimensions(variableAsset, variableViewBox.width * scale, variableViewBox.height * scale);
+      updated.push(assetId);
+      continue;
+    }
+
+    if (
+      almostEqual(variableViewBox.height, groupViewBox.height) &&
+      finitePositive(variableAsset.default_height) &&
+      finitePositive(pairedGroupAsset.default_height) &&
+      relativeDifference(variableAsset.default_height, pairedGroupAsset.default_height) > primaryDimensionTolerance
+    ) {
+      const scale = pairedGroupAsset.default_height / groupViewBox.height;
+      setAssetDimensions(variableAsset, variableViewBox.width * scale, variableViewBox.height * scale);
+      updated.push(assetId);
+    }
+  }
+
+  return updated;
+}
+
+async function loadSvgViewBoxesForAssets(objectAssets: JsonObject, assetRoot: string): Promise<Record<string, SvgViewBox>> {
+  const viewBoxes: Record<string, SvgViewBox> = {};
+
+  await Promise.all(
+    Object.entries(objectAssets).map(async ([assetId, asset]) => {
+      if (!isSvgAsset(asset)) {
+        return;
+      }
+
+      const src = String((asset as JsonObject).src ?? "");
+      const file = path.resolve(assetRoot, src.replaceAll("/", path.sep));
+      try {
+        const svgText = await readFile(file, "utf8");
+        const viewBox = parseSvgViewBoxText(svgText);
+        if (viewBox) {
+          viewBoxes[assetId] = viewBox;
+        }
+      } catch {
+        // Missing sidecar assets should not make CSV assembly fail. The caller can
+        // still run this option after copying assets into the package directory.
+      }
+    }),
+  );
+
+  return viewBoxes;
 }
 
 function stripTrialSvgDimensions(trial: JsonObject, objectAssets: JsonObject, backgroundAssets: JsonObject): void {
@@ -524,7 +703,7 @@ function stripTrialSvgDimensions(trial: JsonObject, objectAssets: JsonObject, ba
   delete background.height;
 }
 
-function assemble(
+export function assemble(
   rows: CsvRow[],
   experimentId: string,
   title: string,
@@ -540,8 +719,8 @@ function assemble(
 } {
   // ===== Stimuli CSV -> protocol batch =====
   // Rhino/GH Stimuli CSV rows may contain many helper / analysis columns, but the
-  // Player protocol source of truth is `metric_trial_protocol_json` (or the
-  // unprefixed `trial_protocol_json`, which this adaptor reads via `getCell`).
+  // Player task JSON comes from `trial_protocol_json`, falling back to
+  // `metric_trial_protocol_json` via `getCell` when the unprefixed field is absent.
   // This adaptor does not reinterpret experiment logic. It packages each authored
   // task JSON into one Player batch trial, merges row-level asset libraries into
   // shared `assets/*.json` catalogs, and fills package-path details such as
@@ -591,11 +770,15 @@ function assemble(
     mergeLibraryObjects(backgroundAssets, backgroundLibrary?.backgrounds, "background");
     if (attachColliderSvg) {
       attachColliderSvgToTrialObjects(trial, (objectLibrary?.objects ?? {}) as JsonObject, colliderSuffix);
+      enableTaskCollisionForColliderSvg(trial);
     }
     trials.push(trial);
   });
 
   const shared: JsonObject = {
+    // These are package-relative copy targets consumed by the Player bundle.
+    // CSV rows contribute per-trial snippets, while assembly emits the merged
+    // library files once and points every trial batch at those copied paths.
     asset_library: "assets/objects.json",
     background_library: "assets/backgrounds.json",
     behavior_library: "behaviors/behaviors.json",
@@ -669,6 +852,10 @@ async function main(): Promise<void> {
   }
 
   try {
+    for (const warning of sizingWarnings(args)) {
+      console.warn(`Warning: ${warning}`);
+    }
+
     const raw = await readFile(args.csv, "utf8");
     const rows = parse(raw, {
       bom: true,
@@ -689,6 +876,14 @@ async function main(): Promise<void> {
       args.attachColliderSvg,
       args.colliderSuffix,
     );
+    if (args.normalizePairedSvgDimensions) {
+      const assetRoot = path.resolve(args.assetRoot ?? args.out);
+      const viewBoxes = await loadSvgViewBoxesForAssets((assembled.objectLibrary.objects ?? {}) as JsonObject, assetRoot);
+      const updatedAssets = normalizePairedSvgAssetDimensions((assembled.objectLibrary.objects ?? {}) as JsonObject, viewBoxes);
+      if (updatedAssets.length > 0) {
+        console.log(`Normalized paired SVG dimensions: ${updatedAssets.join(", ")}`);
+      }
+    }
     const parsedBatch = batchSchema.parse(assembled.batch);
     const files = [
       // Package layout: one batch entry point plus merged asset/behavior libraries.

@@ -203,8 +203,9 @@ Rules:
 
 - Library keys such as `chair_a` and `room_001_bg` are what trials reference.
 - SVG files should be self-contained.
-- For 1:1 SVG/CAD/Rhino exports, prefer omitting `default_width/default_height`. The Player will read the SVG root `viewBox` and use `viewBox.width/viewBox.height` as the object's world size.
+- For Rhino/CAD exports, preserve bbox-derived `default_width/default_height` unless the SVG root `viewBox` is already authored in the same task-space world units as `world.viewBox`.
 - If `default_width/default_height` are present, they are in world units and override the SVG `viewBox`.
+- Only omit `default_width/default_height` for SVG assets whose `viewBox.width/viewBox.height` are the intended world size.
 - Raster object assets (`png`, `jpg`, `image`) must define `default_width/default_height`; their natural pixel dimensions are not treated as world units.
 - `intrinsic_unit` describes the asset file's internal coordinate system only. It does not change the task-space size or placement values.
 - `anchor` is usually `"center"` for furniture.
@@ -229,8 +230,9 @@ Rules:
 - `task_id` must be filename-safe: letters, numbers, `_`, and `-`; lowercase is recommended.
 - `qid` should match the survey/question identifier used by the study.
 - `background.asset` references `assets/backgrounds.json`.
-- For 1:1 SVG backgrounds, prefer omitting `background.x/y/width/height`. The Player will read the background SVG root `viewBox` and use `viewBox.x/y/width/height` as the world placement.
+- For Rhino/CAD exports, preserve `background.x/y/width/height` unless the background SVG root `viewBox` is already authored in the same task-space world units as `world.viewBox`.
 - If `background.x/y/width/height` are present, all four must be present and they override the SVG `viewBox`.
+- Only omit `background.x/y/width/height` for SVG backgrounds whose root `viewBox.x/y/width/height` are the intended world placement.
 - Raster/image backgrounds must provide explicit `x/y/width/height`.
 - `display_image` is optional for direct reconstruction but required for preview flows.
 
@@ -393,25 +395,31 @@ The collider SVG must use the same object-local coordinate system as the visual
 SVG. If the visual object SVG has `viewBox="-25 -25 50 50"`, the collider should
 use the same viewBox and draw only the solid regions that should block movement.
 Transparent/empty visual space is ignored because collision uses only the
-collider's extracted polygons.
+collider's extracted polygons. At runtime, `asset_outline` polygons are mapped
+from the collider SVG `viewBox` into the rendered object's local `0..width` and
+`0..height` coordinate space, then transformed by the object's room pose.
 
 Supported object collider geometry:
 
 - filled `rect` without rounded corners
+- positioned `<use>` rectangles
 - filled `polygon`
 - closed `path` using `M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, and `Z`; curves are flattened into polygons
+- affine `matrix`, `translate`, `scale`, and `rotate` transforms on groups or shapes
 
 Do not use:
 
-- `<image>` or `<use>`
+- raster `<image>` as collision geometry; raster nodes are ignored
 - `mask`, `clipPath`, or `filter`
-- `transform` on groups or shapes
 - rounded `rect` (`rx`/`ry`)
 - stroke-only lines as collision solids
 
-If a Rhino/SVG export creates `<image>` or `<use>` elements, re-export or bake the
-collider as simple vector solids. Bake transforms into the coordinates before
-export.
+Geometry inside `<defs>`, `<symbol>`, `<metadata>`, `<title>`, or `<desc>` is
+treated as non-rendered template/metadata content and ignored.
+
+If a Rhino/SVG export creates raster `<image>` elements, re-export the collider
+as simple vector solids. `<use>` is accepted only when it carries explicit
+rectangular `x/y/width/height` placement.
 
 Collision is active only when both levels are enabled:
 

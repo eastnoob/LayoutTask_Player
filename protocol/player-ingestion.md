@@ -121,6 +121,12 @@ SVG sizing rule:
 - If background placement is omitted for an SVG background, the Player uses the SVG root `viewBox.x/y/width/height`.
 - Raster object assets and raster/image backgrounds still need explicit dimensions/placement.
 
+Rhino/CAD packages should normally use explicit bbox-derived dimensions. Use
+SVG viewBox inference only when the SVG root viewBox itself is authored in world
+units. `asset_outline` collider SVGs are mapped from their own viewBox into the
+object's final rendered size; they do not require removing explicit object or
+background dimensions.
+
 ## Object Identity And Roles
 
 Each object has a trial-unique `id`. This ID is the key used for interaction events, final user answers, scoring references, and CSV rows.
@@ -278,15 +284,20 @@ Example `asset_outline`:
 
 Compiled task JSON may contain `asset_outline`. During runtime loading, the
 browser fetches the SVG once per source, parses its solid vector geometry, and
-stores a resolved `polygons` collision shape. Interaction-time collision then
-transforms those polygons by the object's `x`, `y`, `rotation`, and `anchor`;
-it does not inspect visual SVG transparency or raster pixels.
+maps the parsed points from the collider SVG `viewBox` into the rendered
+object's local `0..width` and `0..height` coordinate space before storing a
+resolved `polygons` collision shape. Interaction-time collision then transforms
+those polygons by the object's `x`, `y`, `rotation`, and `anchor`; it does not
+inspect visual SVG transparency or raster pixels.
 
 Collider SVGs are analysis assets. They should live under
 `assets/collision/objects/`, use the `_COLLISION.svg` suffix by convention, and
 share the visual object's local coordinate system. The parser accepts filled
-`rect`, `polygon`, and closed `path` solids. It rejects `<image>`, `<use>`,
-`mask`, `clipPath`, `filter`, transforms, and rounded rects.
+`rect`, positioned `<use>` rectangles, `polygon`, and closed `path` solids.
+It applies affine `matrix`, `translate`, `scale`, and `rotate` transforms.
+Raster `<image>` nodes are ignored. It rejects `mask`, `clipPath`, `filter`,
+and rounded rects. Geometry inside
+template/metadata containers such as `<defs>` and `<symbol>` is ignored.
 
 If a candidate move or rotation would violate collision, the Player blocks the action, leaves the object in its previous pose, and can record a blocked event with reason `collision`.
 

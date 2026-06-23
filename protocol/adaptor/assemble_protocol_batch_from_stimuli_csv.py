@@ -28,7 +28,10 @@ def parse_args(argv=None):
     parser.add_argument(
         "--trust-svg-viewbox",
         action="store_true",
-        help="Omit SVG object/background dimensions so the Player infers absolute size from SVG viewBox.",
+        help=(
+            "Omit SVG object/background dimensions so the Player infers absolute size from SVG viewBox. "
+            "Use only when SVG viewBox values are already task-space world units."
+        ),
     )
     parser.add_argument(
         "--attach-collider-svg",
@@ -41,6 +44,19 @@ def parse_args(argv=None):
         help="Suffix inserted before .svg for collider assets. Defaults to _COLLISION.",
     )
     return parser.parse_args(argv)
+
+
+def sizing_warnings(args):
+    warnings = []
+    if args.trust_svg_viewbox:
+        warnings.append(
+            "--trust-svg-viewbox removes explicit SVG dimensions. Use it only when SVG viewBox values are already task-space world units."
+        )
+    if args.trust_svg_viewbox and args.attach_collider_svg:
+        warnings.append(
+            "--attach-collider-svg does not require --trust-svg-viewbox. Rhino bbox exports should usually attach colliders while preserving explicit dimensions."
+        )
+    return warnings
 
 
 def load_rows(csv_path):
@@ -242,6 +258,15 @@ def attach_object_collider_svgs(trial, object_assets, collider_suffix):
         obj["collision"] = with_collider_collision(obj.get("collision"), collider_src)
 
 
+def enable_task_collision_for_collider_svg(trial):
+    existing = trial.get("collision") if isinstance(trial.get("collision"), dict) else {}
+    trial["collision"] = {
+        **existing,
+        "enabled": existing.get("enabled", True),
+        "mode": existing.get("mode", "discrete"),
+    }
+
+
 def strip_svg_asset_dimensions(assets):
     for asset in assets.values():
         if not is_svg_asset(asset):
@@ -312,6 +337,7 @@ def assemble(
         merge_dict(background_assets, background_library.get("backgrounds", {}), "background")
         if attach_collider_svg:
             attach_object_collider_svgs(trial, object_library.get("objects", {}), collider_suffix)
+            enable_task_collision_for_collider_svg(trial)
         trials.append(trial)
 
     shared_world = extract_shared_world(trials)
@@ -349,6 +375,9 @@ def write_json(path, data):
 
 def main():
     args = parse_args()
+    for warning in sizing_warnings(args):
+        print(f"Warning: {warning}")
+
     rows = load_rows(args.csv)
     if not rows:
         raise ValueError("CSV has no data rows.")
