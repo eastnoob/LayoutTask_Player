@@ -131,7 +131,7 @@ describe("compileBatch", () => {
     });
   });
 
-  it("strips authoring-only fields from runtime task objects", () => {
+  it("strips private scoring fields but preserves runtime-safe object metadata", () => {
     const runtimeObject = compileBatch(createBatch()).tasks[0].config.objects[0] as unknown as Record<
       string,
       unknown
@@ -139,14 +139,14 @@ describe("compileBatch", () => {
 
     expect(runtimeObject).toEqual({
       id: "chair_variable_01",
+      role: "variable",
+      group_id: "chairs",
       asset: "chair_a",
       x: 100,
       y: 150,
       rotation: 0,
       behavior: { template: "drag25_rotate45_limited" },
     });
-    expect(runtimeObject).not.toHaveProperty("role");
-    expect(runtimeObject).not.toHaveProperty("group_id");
     expect(runtimeObject).not.toHaveProperty("target");
     expect(runtimeObject).not.toHaveProperty("scoring");
     expect(runtimeObject).not.toHaveProperty("initial_state_label");

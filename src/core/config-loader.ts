@@ -346,6 +346,8 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
 
     return {
       id: objectConfig.id,
+      role: objectConfig.role,
+      group_id: objectConfig.group_id,
       assetId: objectConfig.asset,
       asset: {
         ...asset,

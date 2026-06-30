@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OBJECT_ROLES } from "../protocol/constants";
 
 /**
  * Schema layer for static authoring JSON.
@@ -8,6 +9,7 @@ import { z } from "zod";
  * runtime resolve 后带默认资产信息、推断 viewBox、已解析碰撞几何的最终配置。
  */
 export const worldUnitSchema = z.enum(["mm", "cm", "m", "px", "cad_unit", "unknown"]);
+export const objectRoleSchema = z.enum(OBJECT_ROLES);
 
 export const viewBoxSchema = z.object({
   x: z.number().finite(),
@@ -380,6 +382,8 @@ export const objectCollisionSchema = z.union([
  */
 export const taskObjectBaseSchema = z.object({
   id: z.string().min(1),
+  role: objectRoleSchema.optional(),
+  group_id: z.string().min(1).optional(),
   asset: z.string().min(1),
   x: z.number().finite(),
   y: z.number().finite(),

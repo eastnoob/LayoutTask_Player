@@ -11,14 +11,11 @@ import {
   stageSchema,
   taskBackgroundSchema,
   taskCollisionSchema,
+  objectRoleSchema,
   taskObjectBaseSchema,
   refineObjectDimensions,
   worldSchema,
 } from "./config.schema";
-import { OBJECT_ROLES } from "../protocol/constants";
-
-const objectRoleSchema = z.enum(OBJECT_ROLES);
-
 const metadataValueSchema = z.union([
   z.string(),
   z.number().finite(),

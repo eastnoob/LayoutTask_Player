@@ -1340,6 +1340,29 @@ describe("ConfigLoader protocol full-preview-collision fixture", () => {
   });
 });
 
+describe("ConfigLoader generated package metadata", () => {
+  it("loads real generated package role/group_id metadata for same-group collision", async () => {
+    const packageRoot = join(process.cwd(), "public", "layout-task-generated-sg-output-2-collider-preserve-size");
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task-generated-sg-output-2-collider-preserve-size/",
+      fetchImpl: createGeneratedPackageFetch(packageRoot),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "scene_afa7ff5e4ecd" });
+    const group = config.objects.find((object) => object.id === "scene_afa7ff5e4ecd_m01_group");
+    const variable = config.objects.find((object) => object.id === "scene_afa7ff5e4ecd_m01_variable");
+
+    expect(group).toMatchObject({
+      role: "fixed",
+      group_id: "scene_afa7ff5e4ecd_m01",
+    });
+    expect(variable).toMatchObject({
+      role: "variable",
+      group_id: "scene_afa7ff5e4ecd_m01",
+    });
+  });
+});
+
 describe("resolveRuntimeConfig object behavior", () => {
   it("resolves template-only behavior", () => {
     const config = resolveRuntimeConfig(createBehaviorConfigInput({
@@ -1530,6 +1553,24 @@ function createPublicConfigFetch(): typeof fetch {
     const path = new URL(url).pathname.replace(/^\/layout-task\//, "");
     const filePath = join(process.cwd(), "public", "layout-task", path);
     const body = await readFile(filePath, "utf8");
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => JSON.parse(body),
+      text: async () => body,
+    } as Response;
+  }) as typeof fetch;
+}
+
+function createGeneratedPackageFetch(root: string): typeof fetch {
+  return (async (url: string) => {
+    const path = new URL(url).pathname.replace(
+      /^\/layout-task-generated-sg-output-2-collider-preserve-size\//,
+      "",
+    );
+    const body = await readFile(join(root, path), "utf8");
 
     return {
       ok: true,

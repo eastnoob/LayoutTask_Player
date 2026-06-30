@@ -98,6 +98,8 @@ function toRuntimeObject(object: BatchObjectConfig): TaskObjectConfig {
     behavior: object.behavior,
   };
 
+  assignIfDefined(runtimeObject, "role", object.role);
+  assignIfDefined(runtimeObject, "group_id", object.group_id);
   assignIfDefined(runtimeObject, "rotation", object.rotation);
   assignIfDefined(runtimeObject, "width", object.width);
   assignIfDefined(runtimeObject, "height", object.height);

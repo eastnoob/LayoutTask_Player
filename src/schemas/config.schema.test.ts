@@ -589,6 +589,26 @@ describe("taskSchema object behavior", () => {
   });
 });
 
+describe("taskSchema object metadata", () => {
+  it("accepts runtime-safe role and group_id metadata", () => {
+    const task = createMinimalTask();
+    task.objects[0].role = "variable";
+    task.objects[0].group_id = "chair_group";
+
+    expect(taskSchema.parse(task).objects[0]).toMatchObject({
+      role: "variable",
+      group_id: "chair_group",
+    });
+  });
+
+  it("rejects invalid object roles", () => {
+    const task = createMinimalTask();
+    task.objects[0].role = "anchor";
+
+    expect(() => taskSchema.parse(task)).toThrow();
+  });
+});
+
 describe("taskSchema collision", () => {
   it("accepts inline collision contain and block areas", () => {
     // Collision declarations are part of the authored task surface, not derived state.

@@ -5,6 +5,7 @@ import type {
   FlowConfig,
   ManifestConfig,
   MessagesConfig,
+  ObjectRole,
   OutputConfig,
   RecordingConfig,
   RequirementsConfig,
@@ -15,7 +16,6 @@ import type {
   TaskObjectConfig,
   WorldConfig,
 } from "./config";
-import type { ObjectRole } from "../protocol/constants";
 
 export type BatchMetadataValue = string | number | boolean | null;
 export type BatchMetadata = Record<string, BatchMetadataValue>;

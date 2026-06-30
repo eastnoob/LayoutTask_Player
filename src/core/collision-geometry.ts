@@ -67,6 +67,9 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
     if (object.id === input.movingObject.id || !object.collision.enabled) {
       continue;
     }
+    if (hasSameGroupId(input.movingObject, object)) {
+      continue;
+    }
 
     const pose = input.objectPoses?.[object.id] ?? { x: object.x, y: object.y, r: object.rotation };
     const objectPolygons = createObjectCollisionPolygons(object, pose);
@@ -80,6 +83,11 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
   }
 
   return { ok: true };
+}
+
+function hasSameGroupId(a: RuntimeTaskObject, b: RuntimeTaskObject): boolean {
+  // ponytail: same group parts may overlap by design; add group-level collision only if groups become movable entities.
+  return a.group_id !== undefined && a.group_id === b.group_id;
 }
 
 export function createObjectCollisionPolygons(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon[] {

@@ -1,6 +1,7 @@
 export type AssetType = "svg" | "png" | "jpg" | "image";
 export type Anchor = "center" | "top_left";
 export type WorldUnit = "mm" | "cm" | "m" | "px" | "cad_unit" | "unknown";
+export type ObjectRole = "fixed" | "variable";
 
 /**
  * Authoring-side protocol types used by manifest, task, and library JSON files.
@@ -347,6 +348,9 @@ export interface BehaviorLibraryConfig {
  */
 export interface TaskObjectConfig {
   id: string;
+  /** Runtime-safe analysis metadata; also lets collision ignore same-group parts. */
+  role?: ObjectRole;
+  group_id?: string;
   asset: string;
   /** Reconstruction initial anchor x in world units. */
   x: number;

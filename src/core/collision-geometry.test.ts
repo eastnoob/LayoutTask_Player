@@ -371,6 +371,43 @@ describe("collision geometry", () => {
     expect(result).toEqual({ ok: false, reason: "object", objectId: "table_01" });
   });
 
+  it("allows overlap with another object in the same group", () => {
+    const moving = createObject({
+      id: "chair_variable_01",
+      group_id: "chair_group",
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+    });
+    const context = createObject({
+      id: "chair_group_01",
+      group_id: "chair_group",
+      x: 50,
+      y: 50,
+      width: 50,
+      height: 50,
+    });
+    const other = createObject({
+      id: "table_01",
+      group_id: "table_group",
+      x: 200,
+      y: 50,
+      width: 50,
+      height: 50,
+    });
+
+    expect(
+      evaluateCollision({
+        movingObject: moving,
+        candidatePose: { x: 50, y: 50, r: 0 },
+        objects: [moving, context, other],
+        areas: [],
+        worldViewBox: { x: 0, y: 0, width: 300, height: 300 },
+      }),
+    ).toEqual({ ok: true });
+  });
+
   it("blocks when any moving local polygon overlaps another collision-enabled object", () => {
     const moving = createObject({
       id: "chair_01",

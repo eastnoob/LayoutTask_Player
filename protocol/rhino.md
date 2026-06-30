@@ -400,18 +400,19 @@ Supported object collider geometry:
 - filled `rect` without rounded corners
 - filled `polygon`
 - closed `path` using `M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, and `Z`; curves are flattened into polygons
+- sized `<use>` references, treated as rectangular solid footprints
+- `matrix`, `translate`, `scale`, and `rotate` transforms
 
 Do not use:
 
-- `<image>` or `<use>`
+- standalone `<image>` as geometry
 - `mask`, `clipPath`, or `filter`
-- `transform` on groups or shapes
 - rounded `rect` (`rx`/`ry`)
 - stroke-only lines as collision solids
 
-If a Rhino/SVG export creates `<image>` or `<use>` elements, re-export or bake the
-collider as simple vector solids. Bake transforms into the coordinates before
-export.
+If a Rhino/SVG export creates image-backed `<use>` elements, the Player treats
+the sized `<use>` as a rectangular collider. For tighter collision, export simple
+vector solids instead.
 
 Collision is active only when both levels are enabled:
 
@@ -419,12 +420,12 @@ Collision is active only when both levels are enabled:
 - The moving object has `collision.enabled: true`.
 - Other objects only block movement when they also have `collision.enabled: true`.
 
-`group_id` is not a collision group and does not exclude same-group objects from
+Objects with the same non-empty `group_id` do not block each other in
 object-object collision. This matters for Rhino exports where a fixed/context
-asset may be a whole furniture-group visual layer. If that context layer is not
-meant to be a solid obstacle, do not export it with a broad bbox collision box.
-Set its object collision to `false`, or provide a separate precise collision
-layer that covers only truly blocked geometry.
+asset and a variable asset are paired parts of the same furniture group. Use the
+same `group_id` for that pair so the variable part does not collide with its own
+context layer. Objects in different groups still block each other when collision
+is enabled on both objects.
 
 SVG analysis layer:
 

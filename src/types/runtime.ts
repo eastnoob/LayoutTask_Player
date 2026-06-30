@@ -9,6 +9,7 @@ import type {
   DisplayImageConfig,
   FeedbackConfig,
   LayoutTaskMessages,
+  ObjectRole,
   ObjectAssetConfig,
   ObjectCollisionPolygon,
   OutputConfig,
@@ -34,6 +35,8 @@ export type ResolvedBehaviorConfig = BehaviorConfig;
 
 export interface RuntimeTaskObject {
   id: string;
+  role?: ObjectRole;
+  group_id?: string;
   assetId: string;
   asset: ResolvedObjectAsset;
   x: number;

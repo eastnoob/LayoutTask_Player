@@ -98,12 +98,33 @@ describe("parseObjectColliderSvg", () => {
     expect(polygon.points.length).toBeGreaterThan(14);
   });
 
-  it("rejects unsupported SVG elements that can hide or reference geometry", () => {
-    for (const tag of ["image", "use", "mask", "clipPath", "filter"]) {
+  it("rejects unsupported SVG elements that can hide geometry", () => {
+    for (const tag of ["mask", "clipPath", "filter"]) {
       const svg = `<svg><${tag} id="bad" /></svg>`;
 
       expect(() => parseObjectColliderSvg(svg), tag).toThrow(`Unsupported object collider SVG element: ${tag}`);
     }
+  });
+
+  it("parses sized use references as rectangular solids and ignores image definitions", () => {
+    const svg = `
+      <svg>
+        <use id="raster-solid" href="#image_1" x="2" y="3" width="10px" height="20px" />
+        <defs><image id="image_1" href="data:image/png;base64,abc" /></defs>
+      </svg>
+    `;
+
+    expect(parseObjectColliderSvg(svg)).toEqual([
+      {
+        id: "raster-solid",
+        points: [
+          { x: 2, y: 3 },
+          { x: 12, y: 3 },
+          { x: 12, y: 23 },
+          { x: 2, y: 23 },
+        ],
+      },
+    ]);
   });
 
   it("ignores non-solid and hidden shapes", () => {
@@ -178,16 +199,35 @@ describe("parseObjectColliderSvg", () => {
     ]);
   });
 
-  it("rejects transforms on supported shapes", () => {
+  it("applies transforms on supported shapes", () => {
     const svg = `<svg><polygon id="moved" transform="translate(10 0)" points="0,0 10,0 10,10" /></svg>`;
 
-    expect(() => parseObjectColliderSvg(svg)).toThrow("Object collider element moved uses unsupported transform");
+    expect(parseObjectColliderSvg(svg)).toEqual([
+      {
+        id: "moved",
+        points: [
+          { x: 10, y: 0 },
+          { x: 20, y: 0 },
+          { x: 20, y: 10 },
+        ],
+      },
+    ]);
   });
 
-  it("rejects transforms on groups", () => {
+  it("applies transforms on groups", () => {
     const svg = `<svg><g id="moved-group" transform="translate(10 0)"><rect x="0" y="0" width="10" height="10" /></g></svg>`;
 
-    expect(() => parseObjectColliderSvg(svg)).toThrow("Object collider group moved-group uses unsupported transform");
+    expect(parseObjectColliderSvg(svg)).toEqual([
+      {
+        id: "rect_1",
+        points: [
+          { x: 10, y: 0 },
+          { x: 20, y: 0 },
+          { x: 20, y: 10 },
+          { x: 10, y: 10 },
+        ],
+      },
+    ]);
   });
 
   it("rejects rounded rects", () => {

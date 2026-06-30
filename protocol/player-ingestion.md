@@ -144,7 +144,7 @@ Role semantics:
 
 `role` is analysis semantics. It does not by itself control interaction. Interaction is controlled by `behavior`.
 
-`group_id` is an analysis label only. It does not create a group transform, group position, linked movement, linked rotation, or group-level collision behavior.
+`group_id` is an analysis label and same-group collision exemption. It does not create a group transform, group position, linked movement, linked rotation, or group-level collider. During object-object collision checks, objects with the same non-empty `group_id` do not block each other; this lets a variable furniture part overlap its paired fixed/context layer without freezing movement.
 
 ## State Chain
 
@@ -285,8 +285,10 @@ it does not inspect visual SVG transparency or raster pixels.
 Collider SVGs are analysis assets. They should live under
 `assets/collision/objects/`, use the `_COLLISION.svg` suffix by convention, and
 share the visual object's local coordinate system. The parser accepts filled
-`rect`, `polygon`, and closed `path` solids. It rejects `<image>`, `<use>`,
-`mask`, `clipPath`, `filter`, transforms, and rounded rects.
+`rect`, `polygon`, closed `path`, and sized `<use>` solids. It applies supported
+transforms and ignores inline `<image>` definitions except when a sized `<use>`
+gives them a rectangular footprint. It rejects `mask`, `clipPath`, `filter`, and
+rounded rects.
 
 If a candidate move or rotation would violate collision, the Player blocks the action, leaves the object in its previous pose, and can record a blocked event with reason `collision`.
 
@@ -294,11 +296,10 @@ Both levels must allow collision for object-object blocking to happen: the task
 must have `collision.enabled: true`, and both the moving object and the other
 object must have `collision.enabled: true`.
 
-`group_id` does not create a collision group or same-group exclusion. If a
-fixed/context object is only a visual reference layer, do not give it a broad
-object collision box. Either set that object's `collision.enabled` to `false`,
-or export a precise collision sidecar/shape that represents only the solid areas
-participants should not cross.
+Same-group objects do not collide with each other. If a fixed/context object is
+only a visual reference layer for the same furniture group, give it the same
+`group_id` as the variable object. Different `group_id` values still block each
+other when collision is enabled on both objects.
 
 ## Current Boundaries
 
