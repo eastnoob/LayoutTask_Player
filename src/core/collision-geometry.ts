@@ -67,10 +67,6 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
     if (object.id === input.movingObject.id || !object.collision.enabled) {
       continue;
     }
-    if (hasSameGroupId(input.movingObject, object)) {
-      continue;
-    }
-
     const pose = input.objectPoses?.[object.id] ?? { x: object.x, y: object.y, r: object.rotation };
     const objectPolygons = createObjectCollisionPolygons(object, pose);
     if (
@@ -78,6 +74,9 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
         objectPolygons.some((objectPolygon) => doPolygonsIntersect(movingPolygon, objectPolygon)),
       )
     ) {
+      if (hasSameGroupId(input.movingObject, object) && wasAlreadyOverlapping(input, objectPolygons)) {
+        continue;
+      }
       return { ok: false, reason: "object", objectId: object.id };
     }
   }
@@ -86,8 +85,24 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
 }
 
 function hasSameGroupId(a: RuntimeTaskObject, b: RuntimeTaskObject): boolean {
-  // ponytail: same group parts may overlap by design; add group-level collision only if groups become movable entities.
   return a.group_id !== undefined && a.group_id === b.group_id;
+}
+
+function wasAlreadyOverlapping(
+  input: EvaluateCollisionInput,
+  objectPolygons: CollisionPolygon[],
+): boolean {
+  // ponytail: allow escaping authored same-group overlap; still block newly-created overlap.
+  const currentPose = input.objectPoses?.[input.movingObject.id] ?? {
+    x: input.movingObject.x,
+    y: input.movingObject.y,
+    r: input.movingObject.rotation,
+  };
+  const currentMovingPolygons = createObjectCollisionPolygons(input.movingObject, currentPose);
+
+  return currentMovingPolygons.some((movingPolygon) =>
+    objectPolygons.some((objectPolygon) => doPolygonsIntersect(movingPolygon, objectPolygon)),
+  );
 }
 
 export function createObjectCollisionPolygons(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon[] {

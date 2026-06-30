@@ -420,12 +420,12 @@ Collision is active only when both levels are enabled:
 - The moving object has `collision.enabled: true`.
 - Other objects only block movement when they also have `collision.enabled: true`.
 
-Objects with the same non-empty `group_id` do not block each other in
-object-object collision. This matters for Rhino exports where a fixed/context
-asset and a variable asset are paired parts of the same furniture group. Use the
-same `group_id` for that pair so the variable part does not collide with its own
-context layer. Objects in different groups still block each other when collision
-is enabled on both objects.
+Objects with the same non-empty `group_id` may move out of an authored overlap
+without freezing movement, but newly-created same-group overlaps still block.
+This matters for Rhino exports where a fixed/context asset and a variable asset
+are paired parts of the same furniture group. Use the same `group_id` for that
+pair so the variable part can escape its own context layer. Objects in different
+groups still block each other when collision is enabled on both objects.
 
 SVG analysis layer:
 
