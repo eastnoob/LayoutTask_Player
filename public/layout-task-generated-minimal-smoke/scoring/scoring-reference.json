@@ -1,0 +1,14 @@
+{
+  "schema": "layouttask.scoring-reference.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "tasks": {
+    "generated_minimal_001": {
+      "qid": "QMIN001",
+      "objects": {
+        "chair_variable_01": {
+          "role": "variable"
+        }
+      }
+    }
+  }
+}

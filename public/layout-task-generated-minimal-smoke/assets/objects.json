@@ -1,0 +1,12 @@
+{
+  "schema": "layouttask.assets.objects.v1",
+  "objects": {
+    "chair_a": {
+      "type": "svg",
+      "src": "assets/objects/chair_a.svg",
+      "default_width": 50,
+      "default_height": 50,
+      "anchor": "center"
+    }
+  }
+}

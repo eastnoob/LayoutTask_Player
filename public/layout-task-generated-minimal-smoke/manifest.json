@@ -1,0 +1,15 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "tasks": [
+    {
+      "qid": "QMIN001",
+      "task_id": "generated_minimal_001",
+      "file": "tasks/generated_minimal_001.json"
+    }
+  ],
+  "title": "Minimal generated batch"
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "layouttask.generation-report.v1",
+  "experiment_id": "floorplan_coherence_v1",
+  "task_count": 1,
+  "generated_files": [
+    "manifest.json",
+    "tasks/generated_minimal_001.json",
+    "scoring/scoring-reference.json",
+    "generation-report.json"
+  ],
+  "warnings": []
+}

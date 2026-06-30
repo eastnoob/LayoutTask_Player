@@ -1,0 +1,45 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "generated_minimal_001",
+  "qid": "QMIN001",
+  "world": {
+    "unit": "mm",
+    "viewBox": {
+      "x": -500,
+      "y": -500,
+      "width": 1000,
+      "height": 1000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 25,
+      "visible": true,
+      "snap": true
+    }
+  },
+  "background": {
+    "asset": "room01_bg",
+    "x": -400,
+    "y": -300,
+    "width": 800,
+    "height": 600
+  },
+  "objects": [
+    {
+      "id": "chair_variable_01",
+      "asset": "chair_a",
+      "x": 100,
+      "y": 150,
+      "behavior": {
+        "template": "drag25_rotate45_limited"
+      },
+      "rotation": 0
+    }
+  ],
+  "flow": {
+    "mode": "direct_reconstruction"
+  }
+}
