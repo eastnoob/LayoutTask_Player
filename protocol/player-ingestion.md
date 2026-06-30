@@ -144,7 +144,7 @@ Role semantics:
 
 `role` is analysis semantics. It does not by itself control interaction. Interaction is controlled by `behavior`.
 
-`group_id` is an analysis label and same-group collision escape hatch. It does not create a group transform, group position, linked movement, linked rotation, or group-level collider. During object-object collision checks, same-group objects may reduce an authored overlap, but they still block newly-created or deeper overlap.
+`group_id` is an analysis label. It does not create a group transform, group position, linked movement, linked rotation, group-level collider, or collision exemption. During object-object collision checks, any positive overlap at the candidate pose blocks the action, including overlap between objects with the same `group_id`.
 
 ## State Chain
 
@@ -296,11 +296,10 @@ Both levels must allow collision for object-object blocking to happen: the task
 must have `collision.enabled: true`, and both the moving object and the other
 object must have `collision.enabled: true`.
 
-Same-group objects can reduce an authored overlap without freezing movement. If
-a fixed/context object is only a visual reference layer for the same furniture
-group, give it the same `group_id` as the variable object. New or deeper
-overlaps with the same group, and all overlaps with different groups, still
-block movement when collision is enabled on both objects.
+`group_id` is not a collision exemption. If a candidate move or rotation still
+overlaps any collision-enabled object, including one with the same `group_id`,
+the action is blocked. Keep fixed/context colliders authored so legal variable
+poses do not start or remain inside them.
 
 ## Current Boundaries
 

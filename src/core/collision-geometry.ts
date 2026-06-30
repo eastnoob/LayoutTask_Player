@@ -74,61 +74,11 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
         objectPolygons.some((objectPolygon) => doPolygonsIntersect(movingPolygon, objectPolygon)),
       )
     ) {
-      if (
-        hasSameGroupId(input.movingObject, object) &&
-        overlapDepthForMany(currentObjectPolygons(input), objectPolygons) >
-          overlapDepthForMany(movingPolygons, objectPolygons)
-      ) {
-        continue;
-      }
       return { ok: false, reason: "object", objectId: object.id };
     }
   }
 
   return { ok: true };
-}
-
-function hasSameGroupId(a: RuntimeTaskObject, b: RuntimeTaskObject): boolean {
-  return a.group_id !== undefined && a.group_id === b.group_id;
-}
-
-function currentObjectPolygons(input: EvaluateCollisionInput): CollisionPolygon[] {
-  const currentPose = input.objectPoses?.[input.movingObject.id] ?? {
-    x: input.movingObject.x,
-    y: input.movingObject.y,
-    r: input.movingObject.rotation,
-  };
-
-  return createObjectCollisionPolygons(input.movingObject, currentPose);
-}
-
-function overlapDepthForMany(a: CollisionPolygon[], b: CollisionPolygon[]): number {
-  return Math.max(0, ...a.flatMap((aPolygon) => b.map((bPolygon) => overlapDepth(aPolygon, bPolygon))));
-}
-
-function overlapDepth(a: CollisionPolygon, b: CollisionPolygon): number {
-  return Math.min(overlapDepthOnAxes(a, b), overlapDepthOnAxes(b, a));
-}
-
-function overlapDepthOnAxes(a: CollisionPolygon, b: CollisionPolygon): number {
-  let depth = Number.POSITIVE_INFINITY;
-
-  for (let index = 0; index < a.length; index += 1) {
-    const p1 = a[index];
-    const p2 = a[(index + 1) % a.length];
-    const axis = { x: -(p2.y - p1.y), y: p2.x - p1.x };
-    const projectionA = projectPolygon(a, axis);
-    const projectionB = projectPolygon(b, axis);
-    const overlap = Math.min(projectionA.max, projectionB.max) - Math.max(projectionA.min, projectionB.min);
-
-    if (overlap <= EPSILON) {
-      return 0;
-    }
-
-    depth = Math.min(depth, overlap);
-  }
-
-  return depth;
 }
 
 export function createObjectCollisionPolygons(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon[] {

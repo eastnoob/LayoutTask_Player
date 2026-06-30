@@ -408,7 +408,7 @@ describe("collision geometry", () => {
     ).toEqual({ ok: false, reason: "object", objectId: "chair_group_01" });
   });
 
-  it("allows same-group poses that are already overlapping so the object can move out", () => {
+  it("blocks same-group poses that remain overlapping", () => {
     const moving = createObject({
       id: "chair_variable_01",
       group_id: "chair_group",
@@ -440,36 +440,6 @@ describe("collision geometry", () => {
         candidatePose: { x: 75, y: 50, r: 0 },
         objects: [moving, context, other],
         objectPoses: { chair_variable_01: { x: 50, y: 50, r: 0 } },
-        areas: [],
-        worldViewBox: { x: 0, y: 0, width: 300, height: 300 },
-      }),
-    ).toEqual({ ok: true });
-  });
-
-  it("blocks same-group poses that increase an existing overlap", () => {
-    const moving = createObject({
-      id: "chair_variable_01",
-      group_id: "chair_group",
-      x: 75,
-      y: 50,
-      width: 50,
-      height: 50,
-    });
-    const context = createObject({
-      id: "chair_group_01",
-      group_id: "chair_group",
-      x: 50,
-      y: 50,
-      width: 50,
-      height: 50,
-    });
-
-    expect(
-      evaluateCollision({
-        movingObject: moving,
-        candidatePose: { x: 50, y: 50, r: 0 },
-        objects: [moving, context],
-        objectPoses: { chair_variable_01: { x: 75, y: 50, r: 0 } },
         areas: [],
         worldViewBox: { x: 0, y: 0, width: 300, height: 300 },
       }),
