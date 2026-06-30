@@ -23,7 +23,7 @@ import {
 } from "./config-validator";
 import { parseCollisionSvg } from "./collision-svg";
 import { resolveMessages } from "./messages";
-import { parseObjectColliderSvg } from "./object-collider-svg";
+import { parseObjectColliderSvgDocument } from "./object-collider-svg";
 
 // ConfigLoader is the authoring-config entry point.
 // 它把 manifest / task / asset / behavior 这些分散文件 resolve 成 RuntimeTaskConfig。
@@ -305,7 +305,16 @@ export class ConfigLoader {
 
       const inlineSvgText = await svgText;
       objectConfig.collision.source.inlineSvgText = inlineSvgText;
-      objectConfig.collision.polygons = parseObjectColliderSvg(inlineSvgText);
+      const parsedCollider = parseObjectColliderSvgDocument(inlineSvgText);
+      objectConfig.collision.polygons = parsedCollider.viewBox
+        ? parsedCollider.polygons.map((polygon) => ({
+            ...polygon,
+            points: polygon.points.map((point) => ({
+              x: ((point.x - parsedCollider.viewBox!.x) * objectConfig.width) / parsedCollider.viewBox!.width,
+              y: ((point.y - parsedCollider.viewBox!.y) * objectConfig.height) / parsedCollider.viewBox!.height,
+            })),
+          }))
+        : parsedCollider.polygons;
     }
   }
 

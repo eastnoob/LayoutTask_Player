@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { compileBatch } from "./batch-compiler";
 import { ConfigLoader, resolveRuntimeConfig } from "./config-loader";
+import { evaluateCollision } from "./collision-geometry";
 import type { BatchConfig } from "../types/batch";
 import type { TaskCollisionConfig } from "../types/config";
 
@@ -1326,10 +1327,10 @@ describe("ConfigLoader protocol full-preview-collision fixture", () => {
         {
           id: "chair_solid",
           points: [
-            { x: -20, y: -20 },
-            { x: 20, y: -20 },
-            { x: 20, y: 20 },
-            { x: -20, y: 20 },
+            { x: 5, y: 5 },
+            { x: 45, y: 5 },
+            { x: 45, y: 45 },
+            { x: 5, y: 45 },
           ],
         },
       ],
@@ -1360,6 +1361,28 @@ describe("ConfigLoader generated package metadata", () => {
       role: "variable",
       group_id: "scene_afa7ff5e4ecd_m01",
     });
+  });
+
+  it("maps real object collider SVG viewBox coordinates into rendered object dimensions", async () => {
+    const packageRoot = join(process.cwd(), "public", "layout-task-generated-sg-output-2-collider-preserve-size");
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task-generated-sg-output-2-collider-preserve-size/",
+      fetchImpl: createGeneratedPackageFetch(packageRoot),
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "scene_afa7ff5e4ecd" });
+    const variable = config.objects.find((object) => object.id === "scene_afa7ff5e4ecd_m04_variable");
+
+    expect(variable).toBeDefined();
+    expect(
+      evaluateCollision({
+        movingObject: variable!,
+        candidatePose: { x: variable!.x, y: variable!.y, r: variable!.rotation },
+        objects: config.objects,
+        areas: config.collision.areas,
+        worldViewBox: config.world.viewBox,
+      }),
+    ).toEqual({ ok: true });
   });
 });
 
