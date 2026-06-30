@@ -17,7 +17,7 @@ async function bootstrap(): Promise<void> {
   const params = parseLayoutTaskUrlParams(window.location.search);
   // base can be overridden for alternate static hosting roots.
   // 这样 GitHub Pages / 子路径部署时不需要改业务代码。
-  const baseUrl = new URL(params.base ?? "/layout-task/", window.location.origin).toString();
+  const baseUrl = new URL(params.base ?? "layout-task/", window.location.href).toString();
   const loader = new ConfigLoader({ baseUrl });
   const config = await loader.loadRuntimeConfig({
     // Default standalone mode must stay button/arrow based.
