@@ -1,0 +1,75 @@
+{
+  "schema": "layouttask.assets.objects.v1",
+  "objects": {
+    "m01_group": {
+      "type": "svg",
+      "src": "assets/objects/m01_group.svg",
+      "anchor": "center",
+      "default_width": 3855.502,
+      "default_height": 850
+    },
+    "m01_variable": {
+      "type": "svg",
+      "src": "assets/objects/m01_variable.svg",
+      "anchor": "center",
+      "default_width": 600,
+      "default_height": 830
+    },
+    "m02_group": {
+      "type": "svg",
+      "src": "assets/objects/m02_group.svg",
+      "anchor": "center",
+      "default_width": 402.355,
+      "default_height": 1319.612
+    },
+    "m02_variable": {
+      "type": "svg",
+      "src": "assets/objects/m02_variable.svg",
+      "anchor": "center",
+      "default_width": 402.328,
+      "default_height": 319.612
+    },
+    "m03_group": {
+      "type": "svg",
+      "src": "assets/objects/m03_group.svg",
+      "anchor": "center",
+      "default_width": 2175.207,
+      "default_height": 2038.707
+    },
+    "m03_variable": {
+      "type": "svg",
+      "src": "assets/objects/m03_variable.svg",
+      "anchor": "center",
+      "default_width": 475,
+      "default_height": 450
+    },
+    "m04_group": {
+      "type": "svg",
+      "src": "assets/objects/m04_group.svg",
+      "anchor": "center",
+      "default_width": 3865.162,
+      "default_height": 5550
+    },
+    "m04_variable": {
+      "type": "svg",
+      "src": "assets/objects/m04_variable.svg",
+      "anchor": "center",
+      "default_width": 3865.162,
+      "default_height": 603.932
+    },
+    "m05_group": {
+      "type": "svg",
+      "src": "assets/objects/m05_group.svg",
+      "anchor": "center",
+      "default_width": 1970.422,
+      "default_height": 1908.983
+    },
+    "m05_variable": {
+      "type": "svg",
+      "src": "assets/objects/m05_variable.svg",
+      "anchor": "center",
+      "default_width": 1058.817,
+      "default_height": 638.272
+    }
+  }
+}

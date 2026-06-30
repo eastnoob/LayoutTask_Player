@@ -1,0 +1,60 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "sg_output_2_collider_preserve_size",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "tasks": [
+    {
+      "qid": "Q_scene_afa7ff5e4ecd",
+      "task_id": "scene_afa7ff5e4ecd",
+      "file": "tasks/scene_afa7ff5e4ecd.json"
+    },
+    {
+      "qid": "Q_scene_238c41f8b518",
+      "task_id": "scene_238c41f8b518",
+      "file": "tasks/scene_238c41f8b518.json"
+    },
+    {
+      "qid": "Q_scene_156a04713cb7",
+      "task_id": "scene_156a04713cb7",
+      "file": "tasks/scene_156a04713cb7.json"
+    },
+    {
+      "qid": "Q_scene_9b9b30087a68",
+      "task_id": "scene_9b9b30087a68",
+      "file": "tasks/scene_9b9b30087a68.json"
+    },
+    {
+      "qid": "Q_scene_ebb9dc114ff2",
+      "task_id": "scene_ebb9dc114ff2",
+      "file": "tasks/scene_ebb9dc114ff2.json"
+    },
+    {
+      "qid": "Q_scene_6b56dd493723",
+      "task_id": "scene_6b56dd493723",
+      "file": "tasks/scene_6b56dd493723.json"
+    },
+    {
+      "qid": "Q_scene_fe901861f221",
+      "task_id": "scene_fe901861f221",
+      "file": "tasks/scene_fe901861f221.json"
+    },
+    {
+      "qid": "Q_scene_2a5ee93fe71a",
+      "task_id": "scene_2a5ee93fe71a",
+      "file": "tasks/scene_2a5ee93fe71a.json"
+    },
+    {
+      "qid": "Q_scene_15f676babed3",
+      "task_id": "scene_15f676babed3",
+      "file": "tasks/scene_15f676babed3.json"
+    },
+    {
+      "qid": "Q_scene_042cf983b7ea",
+      "task_id": "scene_042cf983b7ea",
+      "file": "tasks/scene_042cf983b7ea.json"
+    }
+  ],
+  "title": "SG Output 2 Collider Preserve Size"
+}

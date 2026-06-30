@@ -1,0 +1,290 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "scene_238c41f8b518",
+  "qid": "Q_scene_238c41f8b518",
+  "world": {
+    "unit": "mm",
+    "viewBox": {
+      "x": 0,
+      "y": 0,
+      "width": 35000,
+      "height": 14000
+    },
+    "origin": {
+      "x": 0,
+      "y": 0
+    },
+    "grid": {
+      "size": 500,
+      "visible": true,
+      "snap": true,
+      "origin": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  },
+  "background": {
+    "asset": "room_scene_0001_bg",
+    "x": 0,
+    "y": 0,
+    "width": 35000,
+    "height": 14000
+  },
+  "objects": [
+    {
+      "id": "scene_238c41f8b518_m05_group",
+      "asset": "m05_group",
+      "x": 31500,
+      "y": 10500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m05_variable",
+      "asset": "m05_variable",
+      "x": 31500,
+      "y": 10500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m01_group",
+      "asset": "m01_group",
+      "x": 31500,
+      "y": 3500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m01_variable",
+      "asset": "m01_variable",
+      "x": 31500,
+      "y": 3500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m02_group",
+      "asset": "m02_group",
+      "x": 17500,
+      "y": 10500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m02_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m02_variable",
+      "asset": "m02_variable",
+      "x": 17500,
+      "y": 10500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m02_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m03_group",
+      "asset": "m03_group",
+      "x": 17500,
+      "y": 3500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m03_variable",
+      "asset": "m03_variable",
+      "x": 17500,
+      "y": 3500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m04_group",
+      "asset": "m04_group",
+      "x": 24500,
+      "y": 7000,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_238c41f8b518_m04_variable",
+      "asset": "m04_variable",
+      "x": 24500,
+      "y": 7000,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    }
+  ],
+  "display_image": {
+    "enabled": true,
+    "src": "assets/images/stimulus/238c41f8b518_perspective_stimulus_1920x1080.png",
+    "alt": "Reference image",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "direct_reconstruction"
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "areas": []
+  }
+}

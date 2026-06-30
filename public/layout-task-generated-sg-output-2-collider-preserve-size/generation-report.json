@@ -1,0 +1,21 @@
+{
+  "schema": "layouttask.generation-report.v1",
+  "experiment_id": "sg_output_2_collider_preserve_size",
+  "task_count": 10,
+  "generated_files": [
+    "manifest.json",
+    "tasks/scene_afa7ff5e4ecd.json",
+    "tasks/scene_238c41f8b518.json",
+    "tasks/scene_156a04713cb7.json",
+    "tasks/scene_9b9b30087a68.json",
+    "tasks/scene_ebb9dc114ff2.json",
+    "tasks/scene_6b56dd493723.json",
+    "tasks/scene_fe901861f221.json",
+    "tasks/scene_2a5ee93fe71a.json",
+    "tasks/scene_15f676babed3.json",
+    "tasks/scene_042cf983b7ea.json",
+    "scoring/scoring-reference.json",
+    "generation-report.json"
+  ],
+  "warnings": []
+}
