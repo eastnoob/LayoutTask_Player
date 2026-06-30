@@ -2,7 +2,7 @@ name: Deploy Pages
 
 on:
   push:
-    branches: [deploy/github-pages-smoke]
+    branches: [feature/flow-preview-reconstruct]
   workflow_dispatch:
 
 permissions:
