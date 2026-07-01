@@ -38,5 +38,5 @@ Rules:
 - `box` is the legacy object collision fallback.
 - For precise object-object collision, put object collider SVGs in `assets/collision/objects/` with matching names such as `chair_a_COLLISION.svg`, then reference them with `collision.shape: "asset_outline"`.
 - At runtime, `asset_outline` collider SVGs resolve to object-local `polygons`.
-- Collider SVGs should share the visual object's local coordinate system and contain only filled vector solids. Supported shapes are `rect`, `polygon`, and closed `path`; curves in paths are flattened. Avoid `<image>`, `<use>`, masks, clip paths, filters, transforms, rounded rects, and stroke-only geometry.
+- Collider SVGs should share the visual object's local coordinate system and contain only intentional filled vector solids. Recommended shapes are `rect`, `polygon`, and closed `path`; curves in paths are flattened. A sized `<use>` is accepted only when that entire rectangle is intended to be the collider. Avoid image-backed `<use>`, masks, clip paths, filters, rounded rects, stroke-only geometry, and visual artwork.
 - For an alternate standalone `base`, copy the Player UI icons into `assets/icons/` as well as the experiment assets.

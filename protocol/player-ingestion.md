@@ -38,6 +38,9 @@ validate-batch
 compile-batch
         |
         v
+validate-runtime-package
+        |
+        v
 static Player base
         |
         v
@@ -75,6 +78,16 @@ Compile next:
 ```bash
 pixi run compile-batch path/to/batch.json --out public/layout-task-generated
 ```
+
+Run runtime package preflight before browser testing:
+
+```bash
+pixi run validate-runtime-package --base public/layout-task-generated --check-targets
+```
+
+Runtime package preflight reads the compiled/deployable base directory, not only
+the source `batch.json`. It catches missing assets, malformed collider SVGs,
+and illegal variable/context overlaps before participants see the task.
 
 Open a compiled task with:
 
@@ -319,7 +332,8 @@ Before using a Rhino export in a real study:
 
 1. Run `validate-batch`.
 2. Run `compile-batch`.
-3. Open at least one generated task in the browser.
-4. Confirm preview image, background, objects, grid, collision, and movement behavior.
-5. Submit one result.
-6. Decode/score that result and confirm target errors are sensible.
+3. Run `validate-runtime-package` on the compiled/deployable base.
+4. Open at least one generated task in the browser.
+5. Confirm preview image, background, objects, grid, collision, and movement behavior.
+6. Submit one result.
+7. Decode/score that result and confirm target errors are sensible.

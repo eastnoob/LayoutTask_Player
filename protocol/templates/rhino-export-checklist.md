@@ -13,12 +13,18 @@
 - [ ] Collision SVG analysis layers contain only marked `rect` and `polygon` elements.
 - [ ] Collision SVG analysis layers do not use arbitrary paths, masks, raster images, or unmarked artwork.
 - [ ] Concave or complex rooms are split into convex rects/polygons before export.
+- [ ] Object collider sidecars contain only intentional filled vector solids.
+- [ ] Sized `<use>` appears in object collider sidecars only when the whole rectangle is intended to block movement.
+- [ ] No image-backed `<use>` or raster remnants are used as object colliders unless intentionally rectangular.
 - [ ] Object SVG assets are registered in `objects.json`.
 - [ ] Background assets are registered in `backgrounds.json`.
 - [ ] Variable objects have `role: "variable"`.
 - [ ] Fixed context objects have `role: "fixed"` or movement behavior set to `none`.
 - [ ] For every variable object, `x`, `y`, and `rotation` are the reconstruction initial pose, not the stimulus-correct pose.
+- [ ] For every variable object, the reconstruction initial pose does not overlap any collision-enabled context object.
 - [ ] For every scored variable object, `target.relative` stores the canonical correct answer as signed movement/rotation steps.
+- [ ] For every scored variable object, the target pose does not overlap any collision-enabled context object.
 - [ ] `target.absolute` is omitted unless it is intentionally exported as optional derived/analysis data.
 - [ ] No local unit override fields are emitted; they are reserved and not implemented in v1.
 - [ ] Run `validate-batch` before compiling.
+- [ ] Run `validate-runtime-package` on the compiled/deployable base before browser testing.

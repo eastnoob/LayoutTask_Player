@@ -348,7 +348,7 @@ export interface BehaviorLibraryConfig {
  */
 export interface TaskObjectConfig {
   id: string;
-  /** Runtime-safe analysis metadata; also lets collision ignore same-group parts. */
+  /** Runtime-safe analysis metadata. It is not a collision exemption. */
   role?: ObjectRole;
   group_id?: string;
   asset: string;

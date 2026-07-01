@@ -399,20 +399,21 @@ Supported object collider geometry:
 
 - filled `rect` without rounded corners
 - filled `polygon`
-- closed `path` using `M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, and `Z`; curves are flattened into polygons
-- sized `<use>` references, treated as rectangular solid footprints
+- filled closed `path` using `M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, and `Z`; curves are flattened into polygons
+- sized `<use>` references only when the referenced footprint is intentionally a solid rectangular collider
 - `matrix`, `translate`, `scale`, and `rotate` transforms
+
+Avoid image-backed `<use>` from Rhino/SVG exports unless the whole referenced rectangle
+is intentionally solid. The Player treats a sized `<use>` as a rectangular collider
+and does not inspect raster transparency.
 
 Do not use:
 
 - standalone `<image>` as geometry
+- visual artwork, screenshots, or raster remnants as collider geometry
 - `mask`, `clipPath`, or `filter`
 - rounded `rect` (`rx`/`ry`)
 - stroke-only lines as collision solids
-
-If a Rhino/SVG export creates image-backed `<use>` elements, the Player treats
-the sized `<use>` as a rectangular collider. For tighter collision, export simple
-vector solids instead.
 
 Collision is active only when both levels are enabled:
 
@@ -538,6 +539,12 @@ Compile to a static Player base:
 pixi run compile-batch path/to/batch.json --out public/layout-task-generated
 ```
 
+Then run runtime package preflight:
+
+```bash
+pixi run validate-runtime-package --base public/layout-task-generated --check-targets
+```
+
 Serve with:
 
 ```text
@@ -545,6 +552,12 @@ Serve with:
 ```
 
 The JSON Schema in `protocol/schemas/layouttask.batch.schema.json` is useful for generator-side structural preflight. `validate-batch` is the canonical semantic validator; it catches defaults and cross-record rules such as duplicate `task_id` values and duplicate object IDs.
+
+`validate-batch` checks JSON structure and cross-record semantics. It does not
+load SVG assets or evaluate collider geometry. `validate-runtime-package` loads
+the deployable base through the same `ConfigLoader` used by the browser and
+checks variable initial poses against collision. With `--check-targets`, it
+also reads `scoring/scoring-reference.json` and checks relative target poses.
 
 ## Common Mistakes
 
