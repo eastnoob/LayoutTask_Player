@@ -45,6 +45,8 @@ export interface RendererRefs {
   flowModalMessageElement?: HTMLElement;
   flowModalButtonElement?: HTMLButtonElement;
   confidenceElement?: HTMLElement;
+  tutorialBubbleElement?: HTMLElement;
+  tutorialBubbleMessageElement?: HTMLElement;
 }
 
 interface LocalRect {
@@ -127,6 +129,7 @@ export class LayoutTaskRenderer {
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
     const shell = document.createElement("section");
     shell.className = "layout-task-shell";
+    shell.dataset.layoutTaskAnchor = "shell";
 
     const header = document.createElement("header");
     header.className = "layout-task-header";
@@ -150,11 +153,13 @@ export class LayoutTaskRenderer {
 
     const workspace = document.createElement("main");
     workspace.className = "layout-task-workspace";
+    workspace.dataset.layoutTaskAnchor = "workspace";
 
     const displayImageFrame = this.createDisplayImageFrame();
 
     const stageWrap = document.createElement("div");
     stageWrap.className = "layout-task-stage-wrap";
+    stageWrap.dataset.layoutTaskAnchor = "stage";
     const stageFitStyle = getStageFitStyle(this.options.config);
     stageWrap.style.padding = stageFitStyle.padding;
 
@@ -272,6 +277,7 @@ export class LayoutTaskRenderer {
 
     const panel = document.createElement("aside");
     panel.className = "layout-task-panel";
+    panel.dataset.layoutTaskAnchor = "panel";
 
     const panelTitle = document.createElement("h2");
     panelTitle.textContent = "Object Controls";
@@ -281,6 +287,7 @@ export class LayoutTaskRenderer {
 
     const reconstructionHint = this.createReconstructionHint();
     const confidenceControl = this.createConfidenceControl();
+    confidenceControl.dataset.layoutTaskAnchor = "confidence";
 
     const flowMessage = document.createElement("p");
     flowMessage.className = "layout-task-flow-message";
@@ -293,6 +300,7 @@ export class LayoutTaskRenderer {
     const flowModal = document.createElement("div");
     flowModal.className = "layout-task-flow-modal";
     flowModal.hidden = true;
+    flowModal.dataset.layoutTaskAnchor = "flow-modal";
 
     const flowModalDialog = document.createElement("div");
     flowModalDialog.className = "layout-task-flow-modal-dialog";
@@ -313,11 +321,13 @@ export class LayoutTaskRenderer {
     confirmButton.className = "layout-task-primary-button";
     confirmButton.type = "button";
     confirmButton.textContent = "Confirm and copy result";
+    confirmButton.dataset.layoutTaskAnchor = "confirm";
     confirmButton.addEventListener("click", () => this.options.onConfirm?.());
 
     const status = document.createElement("p");
     status.className = "layout-task-status";
     status.textContent = this.options.config.messages.status_ready;
+    status.dataset.layoutTaskAnchor = "status";
 
     const output = document.createElement("textarea");
     output.className = "layout-task-output";
@@ -348,6 +358,15 @@ export class LayoutTaskRenderer {
     if (displayImageFrame) {
       shell.insertBefore(displayImageFrame, workspace);
     }
+
+    const tutorialBubble = document.createElement("div");
+    tutorialBubble.className = "layout-task-tutorial-bubble";
+    tutorialBubble.hidden = true;
+    const tutorialMessage = document.createElement("p");
+    tutorialMessage.className = "layout-task-tutorial-message";
+    tutorialBubble.append(tutorialMessage);
+    shell.append(tutorialBubble);
+
     shell.append(flowModal);
     this.options.root.append(shell);
 
@@ -368,6 +387,8 @@ export class LayoutTaskRenderer {
     this.refs.flowModalMessageElement = flowModalMessage;
     this.refs.flowModalButtonElement = flowModalButton;
     this.refs.confidenceElement = confidenceControl;
+    this.refs.tutorialBubbleElement = tutorialBubble;
+    this.refs.tutorialBubbleMessageElement = tutorialMessage;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
     this.refs.viewportWarningElement = viewportWarning;
@@ -388,6 +409,7 @@ export class LayoutTaskRenderer {
     // 它只负责展示参考图，并随浏览器宽度自然缩放，不参与物体交互。
     const frame = document.createElement("section");
     frame.className = "layout-task-display-image-frame";
+    frame.dataset.layoutTaskAnchor = "display-image";
 
     const image = document.createElement("img");
     image.className = "layout-task-display-image";
@@ -408,7 +430,7 @@ export class LayoutTaskRenderer {
 
     const title = document.createElement("p");
     title.className = "layout-task-confidence-title";
-    title.textContent = "请选择这个家具组的确定度";
+    title.textContent = "Choose your confidence rating for this furniture group";
 
     const buttons = document.createElement("div");
     buttons.className = "layout-task-confidence-buttons";
@@ -426,7 +448,7 @@ export class LayoutTaskRenderer {
           }
           button.classList.add("is-selected");
           confidence.onChoose(value);
-          this.setStatus(`已选择确定度：${button.textContent}`);
+          this.setStatus(`Confidence rating selected: ${button.textContent}`);
         });
         buttons.append(button);
       }
@@ -449,6 +471,24 @@ export class LayoutTaskRenderer {
 
   focusConfidence(): void {
     this.refs.confidenceElement?.querySelector<HTMLButtonElement>("button")?.focus();
+  }
+
+  showTutorialStep(step: { anchor: string; message: string }): void {
+    const bubble = this.refs.tutorialBubbleElement;
+    const message = this.refs.tutorialBubbleMessageElement;
+    if (!bubble || !message) {
+      return;
+    }
+
+    message.textContent = step.message;
+    bubble.hidden = false;
+    bubble.dataset.anchor = step.anchor;
+  }
+
+  hideTutorialStep(): void {
+    if (this.refs.tutorialBubbleElement) {
+      this.refs.tutorialBubbleElement.hidden = true;
+    }
   }
 
   private createReconstructionHint(): HTMLElement {

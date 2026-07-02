@@ -17,6 +17,7 @@ export interface FlowControllerOptions {
   nowImpl?: () => number;
   setTimeoutImpl?: typeof globalThis.setTimeout;
   clearTimeoutImpl?: typeof globalThis.clearTimeout;
+  onPreviewAcknowledged?: () => void;
   onReconstructionStart: () => void;
 }
 
@@ -106,6 +107,7 @@ export class FlowController {
         }
 
         this.flowInfo.preview_ack_at = this.nowImpl();
+        this.options.onPreviewAcknowledged?.();
         beginPreview();
       });
   }

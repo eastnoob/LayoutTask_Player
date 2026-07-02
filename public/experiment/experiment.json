@@ -1,0 +1,30 @@
+{
+  "schema": "layouttask.experiment.v1",
+  "experiment_id": "layout_task_demo_v1",
+  "baseUrl": "./layout-task/",
+  "order": "fixed",
+  "tutorial": {
+    "enabled": true,
+    "taskId": "tutorial_room",
+    "qid": "QTUTORIAL"
+  },
+  "confidence": {
+    "required": true,
+    "scale": [1, 2, 3, 4, 5],
+    "labels": {
+      "1": "Very unsure",
+      "2": "Unsure",
+      "3": "Neutral",
+      "4": "Sure",
+      "5": "Very sure"
+    }
+  },
+  "data_save": {
+    "mode": "copy",
+    "filename_prefix": "layout-task"
+  },
+  "trials": [
+    { "taskId": "scene_001", "qid": "Q001" },
+    { "taskId": "scene_002", "qid": "Q002" }
+  ]
+}

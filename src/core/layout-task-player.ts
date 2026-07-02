@@ -14,6 +14,7 @@ import { Recorder } from "./recorder";
 import { LayoutTaskRenderer } from "./renderer";
 import { StateStore } from "./state-store";
 import { createSessionId } from "../utils/time";
+import { TutorialController, type TutorialEvent } from "./tutorial-controller";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -52,6 +53,19 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let displayChangeRecorder: DisplayChangeRecorder | undefined;
   let flow: FlowController | undefined;
   let confidence: ConfidenceController | undefined;
+  let tutorial: TutorialController | undefined;
+
+  const showTutorial = () => {
+    if (tutorial) {
+      renderer.showTutorialStep(tutorial.getCurrentStep());
+    }
+  };
+
+  const advanceTutorial = (event: TutorialEvent, payload?: { objectId?: string }) => {
+    if (tutorial?.handle(event, payload)) {
+      showTutorial();
+    }
+  };
 
   const renderer = new LayoutTaskRenderer({
     root: options.root,
@@ -61,7 +75,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       ? {
           scale: options.confidence.scale,
           labels: options.confidence.labels,
-          onChoose: (value) => confidence?.choose(value),
+          onChoose: (value) => {
+            confidence?.choose(value);
+            advanceTutorial("confidence_chosen");
+          },
         }
       : undefined,
     onAction: (objectId, action, event) => {
@@ -104,6 +121,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Mount before measuring or binding. Display metadata should describe the
       // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
+      if (options.tutorialMode) {
+        tutorial = new TutorialController();
+        showTutorial();
+      }
       // Browser-only observer: in Node unit tests there is no window, so skip it.
       // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
       displayChangeRecorder =
@@ -135,6 +156,11 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         renderer,
         recorder,
         confidence,
+        tutorial: {
+          onObjectSelected: (objectId) => advanceTutorial("object_selected", { objectId }),
+          onObjectAction: (objectId) => advanceTutorial("object_moved_or_rotated", { objectId }),
+          onObjectDeselected: (objectId) => advanceTutorial("object_deselected", { objectId }),
+        },
       });
       completion = new CompletionController({
         config: options.config,
@@ -145,7 +171,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         clipboard,
         dataSave,
         confidence,
-        onComplete: options.onComplete,
+        onComplete: (payload) => {
+          advanceTutorial("submitted");
+          options.onComplete?.(payload);
+        },
       });
 
       // Recorder owns page-level timing for the whole player session; flow adds
@@ -154,7 +183,9 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       flow = new FlowController({
         flow: options.config.flow,
         renderer,
+        onPreviewAcknowledged: () => advanceTutorial("preview_acknowledged"),
         onReconstructionStart: () => {
+          advanceTutorial("reconstruction_started");
           interaction?.bind();
         },
       });

@@ -195,7 +195,9 @@ describe("CompletionController", () => {
     await controller.requestComplete();
 
     expect(store.isLocked()).toBe(false);
-    expect(renderer.setStatus).toHaveBeenCalledWith("请先完成 chair_group 的确定度选择。");
+    expect(renderer.setStatus).toHaveBeenCalledWith(
+      "Choose a confidence rating for every furniture group before submitting.",
+    );
     expect(recorder.finish).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,47 @@
+{
+  "schema": "layouttask.assets.objects.v1",
+  "objects": {
+    "chair_a": {
+      "type": "svg",
+      "src": "assets/objects/chair_a.svg",
+      "default_width": 50,
+      "default_height": 50,
+      "anchor": "center"
+    },
+    "table_a": {
+      "type": "svg",
+      "src": "assets/objects/table_a.svg",
+      "default_width": 100,
+      "default_height": 60,
+      "anchor": "center"
+    },
+    "chair_a_x4000": {
+      "type": "svg",
+      "src": "assets/objects/chair_a_x4000.svg",
+      "default_width": 200000,
+      "default_height": 200000,
+      "anchor": "center"
+    },
+    "table_a_x4000": {
+      "type": "svg",
+      "src": "assets/objects/table_a_x4000.svg",
+      "default_width": 400000,
+      "default_height": 240000,
+      "anchor": "center"
+    },
+    "collision_demo_chair": {
+      "type": "svg",
+      "src": "assets/objects/collision_demo_chair.svg",
+      "default_width": 50,
+      "default_height": 50,
+      "anchor": "center"
+    },
+    "collision_demo_table": {
+      "type": "svg",
+      "src": "assets/objects/collision_demo_table.svg",
+      "default_width": 75,
+      "default_height": 75,
+      "anchor": "center"
+    }
+  }
+}

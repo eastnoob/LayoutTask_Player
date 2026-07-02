@@ -10,7 +10,7 @@ describe("ExperimentLoader", () => {
       json: async () => ({
         schema: "layouttask.experiment.v1",
         experiment_id: "layout_task_v1",
-        baseUrl: "/layout-task-generated/",
+        baseUrl: "./layout-task/",
         order: "fixed",
         trials: [{ taskId: "scene_001", qid: "Q001" }],
       }),
@@ -21,6 +21,7 @@ describe("ExperimentLoader", () => {
 
     expect(fetchImpl).toHaveBeenCalledWith("http://example.test/experiment/experiment.json");
     expect(config.experimentId).toBe("layout_task_v1");
+    expect(config.baseUrl).toBe("http://example.test/experiment/layout-task/");
     expect(config.trials).toEqual([{ taskId: "scene_001", qid: "Q001" }]);
   });
 

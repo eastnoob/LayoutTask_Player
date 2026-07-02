@@ -1,0 +1,63 @@
+{
+  "schema": "layouttask.scoring-reference.v1",
+  "experiment_id": "layout_task_demo_v1",
+  "tasks": {
+    "tutorial_room": {
+      "qid": "QTUTORIAL",
+      "objects": {
+        "chair_01": {
+          "role": "variable",
+          "group_id": "chair_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        },
+        "table_01": {
+          "role": "variable",
+          "group_id": "table_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        }
+      }
+    },
+    "scene_001": {
+      "qid": "Q001",
+      "objects": {
+        "chair_01": {
+          "role": "variable",
+          "group_id": "chair_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        },
+        "table_01": {
+          "role": "variable",
+          "group_id": "table_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        }
+      }
+    },
+    "scene_002": {
+      "qid": "Q002",
+      "objects": {
+        "chair_01": {
+          "role": "variable",
+          "group_id": "chair_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        },
+        "table_01": {
+          "role": "variable",
+          "group_id": "table_group",
+          "target": {
+            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+          }
+        }
+      }
+    }
+  }
+}

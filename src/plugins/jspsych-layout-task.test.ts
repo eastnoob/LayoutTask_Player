@@ -79,7 +79,7 @@ describe("LayoutTaskPlugin", () => {
     vi.mocked(createLayoutTaskPlayer).mockReturnValue(createPlayerStub());
     const plugin = new LayoutTaskPlugin({ finishTrial: vi.fn() } as unknown as JsPsych);
 
-    await plugin.trial(createDisplayElement(), {
+    const trialPromise = plugin.trial(createDisplayElement(), {
       type: LayoutTaskPlugin,
       config: null,
       baseUrl: "/layout-task/",
@@ -93,6 +93,7 @@ describe("LayoutTaskPlugin", () => {
       title: "Layout Task",
     });
 
+    await flushPromises();
     expect(ConfigLoader.prototype.loadRuntimeConfig).toHaveBeenCalledWith({
       taskId: "room01",
       qid: "Q1",
@@ -102,6 +103,7 @@ describe("LayoutTaskPlugin", () => {
         config,
       }),
     );
+    await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
   it("does not auto-finish when autoFinishTrial is false", async () => {
@@ -115,7 +117,7 @@ describe("LayoutTaskPlugin", () => {
     );
     const plugin = new LayoutTaskPlugin({ finishTrial } as unknown as JsPsych);
 
-    await plugin.trial(createDisplayElement(), {
+    const trialPromise = plugin.trial(createDisplayElement(), {
       type: LayoutTaskPlugin,
       config: createRuntimeConfig(),
       baseUrl: "/layout-task/",
@@ -129,7 +131,9 @@ describe("LayoutTaskPlugin", () => {
       title: "Layout Task",
     });
 
+    await flushPromises();
     expect(finishTrial).not.toHaveBeenCalled();
+    await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
   it("passes confidence config into the core player", async () => {
@@ -137,7 +141,7 @@ describe("LayoutTaskPlugin", () => {
     vi.mocked(createLayoutTaskPlayer).mockReturnValue(createPlayerStub());
     const plugin = new LayoutTaskPlugin({ finishTrial: vi.fn() } as unknown as JsPsych);
 
-    await plugin.trial(createDisplayElement(), {
+    const trialPromise = plugin.trial(createDisplayElement(), {
       type: LayoutTaskPlugin,
       config,
       baseUrl: "/layout-task/",
@@ -153,21 +157,23 @@ describe("LayoutTaskPlugin", () => {
         required: true,
         scale: [1, 2, 3, 4, 5],
         labels: {
-          "1": "很不确定",
-          "2": "不太确定",
-          "3": "一般",
-          "4": "比较确定",
-          "5": "很确定",
+          "1": "Very unsure",
+          "2": "Unsure",
+          "3": "Neutral",
+          "4": "Sure",
+          "5": "Very sure",
         },
       },
       tutorialMode: false,
     } as never);
 
+    await flushPromises();
     expect(createLayoutTaskPlayer).toHaveBeenCalledWith(
       expect.objectContaining({
         confidence: expect.objectContaining({ required: true }),
       }),
     );
+    await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
   it("finishes with error data when config loading fails", async () => {
@@ -299,4 +305,8 @@ function createDisplayElement(): HTMLElement {
   };
 
   return element as unknown as HTMLElement;
+}
+
+function flushPromises(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }

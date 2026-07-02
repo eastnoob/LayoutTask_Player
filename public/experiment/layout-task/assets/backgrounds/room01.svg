@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Room 01 placeholder floorplan">
+  <rect x="1" y="1" width="798" height="598" fill="#f8fafc" stroke="#1f2937" stroke-width="2" />
+  <path d="M180 1v170M180 250v349M520 1v210M520 290v309" fill="none" stroke="#334155" stroke-width="4" />
+  <path d="M1 210h260M340 210h459M1 400h130M210 400h589" fill="none" stroke="#334155" stroke-width="4" />
+  <path d="M260 210a80 80 0 0 1 80 80" fill="none" stroke="#64748b" stroke-width="3" />
+  <path d="M130 400a80 80 0 0 0 80 80" fill="none" stroke="#64748b" stroke-width="3" />
+  <text x="70" y="110" font-family="Arial, sans-serif" font-size="28" fill="#475569">A</text>
+  <text x="330" y="110" font-family="Arial, sans-serif" font-size="28" fill="#475569">B</text>
+  <text x="630" y="110" font-family="Arial, sans-serif" font-size="28" fill="#475569">C</text>
+  <text x="650" y="505" font-family="Arial, sans-serif" font-size="28" fill="#475569">D</text>
+</svg>

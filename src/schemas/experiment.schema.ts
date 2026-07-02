@@ -2,11 +2,11 @@ import { z } from "zod";
 import type { ExperimentConfig } from "../types/experiment";
 
 const defaultConfidenceLabels = {
-  "1": "很不确定",
-  "2": "不太确定",
-  "3": "一般",
-  "4": "比较确定",
-  "5": "很确定",
+  "1": "Very unsure",
+  "2": "Unsure",
+  "3": "Neutral",
+  "4": "Sure",
+  "5": "Very sure",
 };
 
 const trialSchema = z.object({

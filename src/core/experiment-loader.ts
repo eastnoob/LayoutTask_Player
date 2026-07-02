@@ -23,7 +23,11 @@ export class ExperimentLoader {
     if (!response.ok) {
       throw new Error(`Failed to load ${this.configPath}: ${response.status} ${response.statusText}`);
     }
-    return parseExperimentConfig(await response.json());
+    const config = parseExperimentConfig(await response.json());
+    return {
+      ...config,
+      baseUrl: new URL(config.baseUrl, this.baseUrl).toString(),
+    };
   }
 }
 

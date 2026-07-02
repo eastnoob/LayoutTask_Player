@@ -1,6 +1,8 @@
 import "./styles/layout-task.css";
 import { ConfigLoader } from "./core/config-loader";
 import { createLayoutTaskPlayer } from "./core/layout-task-player";
+import { ExperimentLoader } from "./core/experiment-loader";
+import { createRunnableExperiment } from "./experiment-runner";
 import { parseLayoutTaskUrlParams } from "./utils/url";
 
 // main.ts is the standalone-page adapter.
@@ -12,6 +14,13 @@ async function bootstrap(): Promise<void> {
   const root = document.querySelector<HTMLDivElement>("#app");
   if (!root) {
     throw new Error("Missing #app root element");
+  }
+
+  if (isExperimentPath(window.location.pathname)) {
+    const loader = new ExperimentLoader({ baseUrl: new URL("./", window.location.href).toString() });
+    const { jsPsych, timeline } = createRunnableExperiment(await loader.load(), root);
+    await jsPsych.run(timeline);
+    return;
   }
 
   const params = parseLayoutTaskUrlParams(window.location.search);
@@ -31,6 +40,10 @@ async function bootstrap(): Promise<void> {
     config,
   });
   player.start();
+}
+
+function isExperimentPath(pathname: string): boolean {
+  return pathname.endsWith("/experiment/") || pathname.endsWith("/experiment");
 }
 
 void bootstrap().catch((error: unknown) => {

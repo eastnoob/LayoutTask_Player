@@ -66,6 +66,14 @@ http://127.0.0.1:5173/?task=room_collision_preview_demo&q=QCOLLISIONPREVIEW
 
 This demo first shows a reference `display_image`, then switches to a button-controlled reconstruction scene with collision constraints.
 
+Full experiment demo:
+
+```text
+http://127.0.0.1:5173/experiment/
+```
+
+This runs tutorial -> fixed-order preview/reconstruction trials -> final participant CSV.
+
 ## Static Deployment
 
 This project is designed for pure static hosting.
@@ -83,6 +91,30 @@ General deployment flow:
 3. make sure the static `public/layout-task/` assets are included in the build output
 
 No backend is required for runtime task delivery.
+
+## Experiment Runner
+
+The standalone player runs one LayoutTask task. The experiment runner wraps normal tasks in a static jsPsych sequence:
+
+```text
+tutorial -> formal preview/reconstruction trials -> final CSV/DataPipe save
+```
+
+Experiment-level settings live in `public/experiment/experiment.json`: fixed order, tutorial task, confidence labels, participant/session save settings, and formal trial list. Each formal trial remains a normal LayoutTask task and should use `flow.mode: "preview_then_reconstruct"` with enabled `display_image.src`.
+
+Confidence is recorded by furniture group. A group requires confidence when it contains at least one `role: "variable"` object; if `group_id` is missing, the object id is used.
+
+Final CSV columns:
+
+```csv
+participant_id,session_id,experiment_id,start_time,end_time,n_trials,tutorial_completed,tutorial_duration_ms,trial_order_json,trial_results_json
+```
+
+Run preflight before deployment:
+
+```bash
+pixi run validate-experiment-package public/experiment
+```
 
 ## Researcher Workflow
 

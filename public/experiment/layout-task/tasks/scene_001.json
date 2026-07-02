@@ -1,0 +1,51 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "scene_001",
+  "qid": "Q001",
+  "title": "Scene 001",
+  "world": {
+    "viewBox": { "x": -500, "y": -500, "width": 1000, "height": 1000 },
+    "origin": { "x": 0, "y": 0 },
+    "grid": { "size": 25, "visible": false, "snap": true }
+  },
+  "background": { "asset": "room01_bg", "x": -400, "y": -300, "width": 800, "height": 600 },
+  "objects": [
+    {
+      "id": "chair_01",
+      "role": "variable",
+      "group_id": "chair_group",
+      "asset": "chair_a",
+      "x": 100,
+      "y": 150,
+      "rotation": 0,
+      "behavior": { "template": "move25_rotate45_limited" }
+    },
+    {
+      "id": "table_01",
+      "role": "variable",
+      "group_id": "table_group",
+      "asset": "table_a",
+      "x": 200,
+      "y": 175,
+      "rotation": 90,
+      "behavior": { "template": "rotate45_only" }
+    }
+  ],
+  "display_image": {
+    "enabled": true,
+    "src": "assets/display-images/signal-2026-05-05-144133_002.jpeg",
+    "alt": "Reference image",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 3,
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "You have {seconds} seconds to study the image.",
+      "message_after": "Reconstruct the scene from memory."
+    }
+  },
+  "output": { "encoding": "plain-json", "detail": "final-only", "final_state": "relative" }
+}

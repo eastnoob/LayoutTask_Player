@@ -1,0 +1,26 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "layout_task_demo_v1",
+  "title": "LayoutTask Experiment Demo",
+  "config_version": "0.1.0",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "tasks": [
+    {
+      "qid": "QTUTORIAL",
+      "task_id": "tutorial_room",
+      "file": "tasks/tutorial_room.json"
+    },
+    {
+      "qid": "Q001",
+      "task_id": "scene_001",
+      "file": "tasks/scene_001.json"
+    },
+    {
+      "qid": "Q002",
+      "task_id": "scene_002",
+      "file": "tasks/scene_002.json"
+    }
+  ]
+}

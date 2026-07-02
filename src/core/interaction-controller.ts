@@ -48,6 +48,11 @@ export class InteractionController {
         canLeaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
         leaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
       };
+      tutorial?: {
+        onObjectSelected(objectId: string): void;
+        onObjectAction(objectId: string): void;
+        onObjectDeselected(objectId: string): void;
+      };
     },
   ) {}
 
@@ -76,7 +81,7 @@ export class InteractionController {
 
     const confidenceGate = this.options.confidence?.canEnterObjectEdit(objectId);
     if (confidenceGate && !confidenceGate.ok) {
-      this.options.renderer.setStatus(`请选择 ${confidenceGate.groupId} 的确定度后再继续。`);
+      this.options.renderer.setStatus("Choose a confidence rating for this furniture group before exiting edit mode.");
       this.options.renderer.focusConfidence();
       return;
     }
@@ -94,6 +99,7 @@ export class InteractionController {
     this.options.renderer.updateControlsDisabled(objectId);
     this.options.renderer.showConfidenceForActiveGroup();
     this.options.renderer.setStatus(`Editing ${objectId}. Tap the stage background to exit edit mode.`);
+    this.options.tutorial?.onObjectSelected(objectId);
   }
 
   deselectObject(): void {
@@ -103,7 +109,7 @@ export class InteractionController {
 
     const confidenceGate = this.options.confidence?.leaveActiveGroup();
     if (confidenceGate && !confidenceGate.ok) {
-      this.options.renderer.setStatus(`请选择 ${confidenceGate.groupId} 的确定度后再退出。`);
+      this.options.renderer.setStatus("Choose a confidence rating for this furniture group before exiting edit mode.");
       this.options.renderer.focusConfidence();
       return;
     }
@@ -112,6 +118,7 @@ export class InteractionController {
     this.activeObjectId = undefined;
     this.options.renderer.clearActiveObject();
     this.options.renderer.setStatus(`Exited ${previousObjectId} edit mode.`);
+    this.options.tutorial?.onObjectDeselected(previousObjectId);
   }
 
   requestAction(request: ActionRequest): { ok: boolean; reason?: string } {
@@ -160,6 +167,7 @@ export class InteractionController {
     this.options.renderer.updateObject(request.objectId);
     this.options.renderer.updateControlsDisabled(request.objectId);
     this.options.renderer.setStatus(`${request.objectId}: ${request.action} applied.`);
+    this.options.tutorial?.onObjectAction(request.objectId);
     return { ok: true };
   }
 
@@ -233,6 +241,7 @@ export class InteractionController {
     this.options.renderer.updateObject(request.objectId);
     this.options.renderer.updateControlsDisabled(request.objectId);
     this.options.renderer.setStatus(`${request.objectId}: drag finished.`);
+    this.options.tutorial?.onObjectAction(request.objectId);
     return { ok: true };
   }
 

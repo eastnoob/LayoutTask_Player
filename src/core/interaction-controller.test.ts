@@ -337,7 +337,9 @@ describe("InteractionController", () => {
 
     expect(controller.getActiveObjectId()).toBe("chair_01");
     expect(renderer.clearActiveObject).not.toHaveBeenCalled();
-    expect(renderer.setStatus).toHaveBeenLastCalledWith("请选择 chair_group 的确定度后再退出。");
+    expect(renderer.setStatus).toHaveBeenLastCalledWith(
+      "Choose a confidence rating for this furniture group before exiting edit mode.",
+    );
   });
 
   it("blocks switching objects when active group requires confidence", () => {
@@ -377,7 +379,9 @@ describe("InteractionController", () => {
     expect(controller.getActiveObjectId()).toBe("chair_01");
     expect(renderer.activateObject).toHaveBeenCalledWith("chair_01");
     expect(renderer.activateObject).not.toHaveBeenCalledWith("table_01");
-    expect(renderer.setStatus).toHaveBeenLastCalledWith("请选择 chair_group 的确定度后再继续。");
+    expect(renderer.setStatus).toHaveBeenLastCalledWith(
+      "Choose a confidence rating for this furniture group before exiting edit mode.",
+    );
   });
 
   it("records drag start and end without logging drag move events", () => {

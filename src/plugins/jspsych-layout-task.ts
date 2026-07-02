@@ -122,29 +122,32 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
 
       // The core player owns rendering, interaction, completion, encoding and clipboard.
       // plugin 只监听 onComplete，把结果转换成 jsPsych trial data。
-      const player = createLayoutTaskPlayer({
-        root: displayElement,
-        config,
-        confidence: trial.confidence ?? undefined,
-        tutorialMode: trial.tutorialMode,
-        onComplete: (payload) => {
-          if (finished) {
-            return;
-          }
+      return new Promise<void>((resolve) => {
+        const player = createLayoutTaskPlayer({
+          root: displayElement,
+          config,
+          confidence: trial.confidence ?? undefined,
+          tutorialMode: trial.tutorialMode,
+          onComplete: (payload) => {
+            if (finished) {
+              return;
+            }
 
-          const trialData = buildTrialData(config, payload, trial);
+            const trialData = buildTrialData(config, payload, trial);
 
-          // write* flags decide the payload shape.
-          // autoFinishTrial only decides whether jsPsych advances immediately,
-          // useful when a researcher wants to inspect/copy data before calling finishTrial manually.
-          if (trial.autoFinishTrial) {
-            finished = true;
-            this.jsPsych.finishTrial(trialData);
-          }
-        },
+            // write* flags decide the payload shape.
+            // autoFinishTrial only decides whether jsPsych advances immediately,
+            // useful when a researcher wants to inspect/copy data before calling finishTrial manually.
+            if (trial.autoFinishTrial) {
+              finished = true;
+              this.jsPsych.finishTrial(trialData);
+              resolve();
+            }
+          },
+        });
+
+        player.start();
       });
-
-      player.start();
     } catch (error) {
       // Fail loudly inside jsPsych: 显示错误，同时把 error trial 写入数据，方便排查配置问题。
       const message = error instanceof Error ? error.message : "Unknown Layout Task plugin error";

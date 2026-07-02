@@ -95,6 +95,31 @@ Open a compiled task with:
 /?base=/layout-task-generated/&task=room_generated_001&q=Q001
 ```
 
+## Experiment-Level Package
+
+For multi-trial studies, the generator/pipeline should produce one deployable experiment folder:
+
+```text
+experiment.json
+layout-task/manifest.json
+layout-task/tasks/*.json
+layout-task/assets/**
+layout-task/behaviors/*.json
+layout-task/scoring/scoring-reference.json
+```
+
+Responsibilities are split:
+
+- `experiment.json`: tutorial, fixed order, confidence scale, and participant-level save settings.
+- `manifest.json` and `tasks/*.json`: geometry, assets, display image, flow mode, roles, groups, collision, and movement.
+- `scoring/scoring-reference.json`: target states used by scoring and runtime package validation.
+
+Formal trials should use `preview_then_reconstruct` and enabled `display_image.src`. Before publishing, run:
+
+```bash
+pixi run validate-experiment-package <experiment-folder>
+```
+
 ## Compiler Outputs
 
 `compile-batch` writes Player runtime files. Authors should not hand-maintain these generated files for large batches.
