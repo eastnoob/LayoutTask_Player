@@ -138,6 +138,21 @@ describe("Recorder", () => {
       reconstruction_started_at: 11_000,
     });
   });
+
+  it("includes final confidence when supplied", async () => {
+    const recorder = new Recorder({
+      config: createRuntimeConfig(),
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      getConfidence: () => ({ chair_group: 4 }),
+      nowImpl: createNowSequence([1_000, 2_000]),
+    });
+
+    recorder.start();
+    const result = await recorder.finish();
+
+    expect(result.confidence).toEqual({ chair_group: 4 });
+  });
 });
 
 function createNowSequence(values: number[]): () => number {

@@ -217,6 +217,8 @@ export const resultFlowSchema = z.object({
   reconstruction_started_at: z.number().finite().optional(),
 });
 
+export const resultConfidenceSchema = z.record(z.number().int().min(1).max(5));
+
 export const resultRestoreSchema = z.object({
   recovered: z.boolean(),
   restore_count: z.number().int().nonnegative().optional(),
@@ -286,6 +288,7 @@ export const resultSchema = z.object({
   page_timing: pageTimingSchema.optional(),
   display: displayInfoSchema.optional(),
   flow: resultFlowSchema.optional(),
+  confidence: resultConfidenceSchema.optional(),
   restore: resultRestoreSchema.optional(),
   task_config_hash: z.string().optional(),
   // Optional for early pilot compatibility; new exports should include it.

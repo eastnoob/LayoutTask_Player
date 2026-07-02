@@ -114,3 +114,27 @@ describe("resultSchema restore", () => {
     });
   });
 });
+
+describe("resultSchema confidence", () => {
+  it("accepts confidence values on result payloads", () => {
+    const result = createMinimalResult();
+    result.confidence = {
+      chair_group: 4,
+      table_group: 2,
+    };
+
+    expect(resultSchema.parse(result).confidence).toEqual({
+      chair_group: 4,
+      table_group: 2,
+    });
+  });
+
+  it("rejects invalid confidence values", () => {
+    const result = createMinimalResult();
+    result.confidence = {
+      chair_group: 0,
+    };
+
+    expect(() => resultSchema.parse(result)).toThrow();
+  });
+});

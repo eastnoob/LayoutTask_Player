@@ -23,6 +23,12 @@ export interface LayoutTaskPluginParams {
   writeResultToData?: boolean;
   writeHeaderToData?: boolean;
   title?: string;
+  confidence?: {
+    required: boolean;
+    scale: number[];
+    labels: Record<string, string>;
+  };
+  tutorialMode?: boolean;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -70,6 +76,14 @@ const info = {
       type: ParameterType.STRING,
       default: "Layout Task",
     },
+    confidence: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
+    tutorialMode: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
   },
 };
 
@@ -111,6 +125,8 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
       const player = createLayoutTaskPlayer({
         root: displayElement,
         config,
+        confidence: trial.confidence ?? undefined,
+        tutorialMode: trial.tutorialMode,
         onComplete: (payload) => {
           if (finished) {
             return;

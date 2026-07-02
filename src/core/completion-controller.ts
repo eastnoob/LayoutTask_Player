@@ -29,6 +29,9 @@ export class CompletionController {
       encoder: LayoutTaskEncoder;
       clipboard: ClipboardService;
       dataSave?: DataSaveService;
+      confidence?: {
+        canSubmit(): { ok: true } | { ok: false; reason: string; groupId: string };
+      };
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
     },
@@ -38,6 +41,13 @@ export class CompletionController {
 
   async requestComplete(): Promise<void> {
     if (this.options.store.isLocked()) {
+      return;
+    }
+
+    const confidenceGate = this.options.confidence?.canSubmit();
+    if (confidenceGate && !confidenceGate.ok) {
+      this.options.renderer.setStatus(`请先完成 ${confidenceGate.groupId} 的确定度选择。`);
+      this.options.renderer.focusConfidence();
       return;
     }
 

@@ -10,6 +10,7 @@ interface RecorderOptions {
   getFinalState: () => LayoutTaskResult["final_state"];
   getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
   getFlowInfo?: () => ResultFlowInfo;
+  getConfidence?: () => Record<string, number> | undefined;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
 }
@@ -56,8 +57,9 @@ export class Recorder {
     const pageTiming = this.options.config.recording.record_page_timing
       ? this.options.getPageTiming?.(this.endTime, this.startTime)
       : undefined;
+    const confidence = this.options.getConfidence?.();
 
-    return {
+    const result: LayoutTaskResult = {
       schema: "layouttask.result.v1",
       exp: this.options.config.experimentId,
       qid: this.options.config.qid,
@@ -79,6 +81,12 @@ export class Recorder {
       copy_timestamp: copyTimestamp,
       user_agent: this.options.config.recording.record_user_agent ? this.getUserAgent() : undefined,
     };
+
+    if (confidence && Object.keys(confidence).length > 0) {
+      result.confidence = confidence;
+    }
+
+    return result;
   }
 }
 

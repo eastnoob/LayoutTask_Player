@@ -6,6 +6,7 @@ import { DisplayChangeRecorder } from "./display-change-recorder";
 import { DisplayInfoCollector } from "./display-info";
 import { LayoutTaskEncoder } from "./encoder";
 import { DataSaveService } from "./data-save-service";
+import { ConfidenceController } from "./confidence-controller";
 import { FlowController } from "./flow-controller";
 import { InteractionController } from "./interaction-controller";
 import { PageTimingCollector } from "./page-timing";
@@ -17,6 +18,12 @@ import { createSessionId } from "../utils/time";
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
   config: RuntimeTaskConfig;
+  confidence?: {
+    required: boolean;
+    scale: number[];
+    labels: Record<string, string>;
+  };
+  tutorialMode?: boolean;
   onComplete?: (payload: CompletionPayload) => void;
 }
 
@@ -44,11 +51,19 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let completion: CompletionController | undefined;
   let displayChangeRecorder: DisplayChangeRecorder | undefined;
   let flow: FlowController | undefined;
+  let confidence: ConfidenceController | undefined;
 
   const renderer = new LayoutTaskRenderer({
     root: options.root,
     config: options.config,
     store,
+    confidence: options.confidence
+      ? {
+          scale: options.confidence.scale,
+          labels: options.confidence.labels,
+          onChoose: (value) => confidence?.choose(value),
+        }
+      : undefined,
     onAction: (objectId, action, event) => {
       interaction?.requestAction({
         objectId,
@@ -105,12 +120,21 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getFinalState: () => store.getFinalState(),
         getPageTiming: (submitTime, playerStartTime) => pageTiming.collect(submitTime, playerStartTime),
         getFlowInfo: () => flow?.getFlowInfo() ?? { mode: options.config.flow.mode },
+        getConfidence: () => confidence?.getFinalConfidence(),
       });
+      confidence = options.confidence
+        ? new ConfidenceController({
+            config: options.config,
+            required: options.confidence.required,
+            scale: options.confidence.scale,
+          })
+        : undefined;
       interaction = new InteractionController({
         config: options.config,
         store,
         renderer,
         recorder,
+        confidence,
       });
       completion = new CompletionController({
         config: options.config,
@@ -120,6 +144,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         encoder,
         clipboard,
         dataSave,
+        confidence,
         onComplete: options.onComplete,
       });
 

@@ -42,6 +42,12 @@ export class InteractionController {
       store: StateStore;
       renderer: LayoutTaskRenderer;
       recorder: InteractionRecorder;
+      confidence?: {
+        canEnterObjectEdit(objectId: string): { ok: true } | { ok: false; reason: string; groupId: string };
+        enterObjectEdit(objectId: string): void;
+        canLeaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
+        leaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
+      };
     },
   ) {}
 
@@ -68,6 +74,13 @@ export class InteractionController {
       return;
     }
 
+    const confidenceGate = this.options.confidence?.canEnterObjectEdit(objectId);
+    if (confidenceGate && !confidenceGate.ok) {
+      this.options.renderer.setStatus(`请选择 ${confidenceGate.groupId} 的确定度后再继续。`);
+      this.options.renderer.focusConfidence();
+      return;
+    }
+
     if (this.activeObjectId && this.activeObjectId !== objectId) {
       this.options.renderer.setStatus(
         `Editing ${this.activeObjectId}. Tap the stage background to exit before selecting another object.`,
@@ -76,13 +89,22 @@ export class InteractionController {
     }
 
     this.activeObjectId = objectId;
+    this.options.confidence?.enterObjectEdit(objectId);
     this.options.renderer.activateObject(objectId);
     this.options.renderer.updateControlsDisabled(objectId);
+    this.options.renderer.showConfidenceForActiveGroup();
     this.options.renderer.setStatus(`Editing ${objectId}. Tap the stage background to exit edit mode.`);
   }
 
   deselectObject(): void {
     if (!this.bound || !this.activeObjectId || this.dragSession) {
+      return;
+    }
+
+    const confidenceGate = this.options.confidence?.leaveActiveGroup();
+    if (confidenceGate && !confidenceGate.ok) {
+      this.options.renderer.setStatus(`请选择 ${confidenceGate.groupId} 的确定度后再退出。`);
+      this.options.renderer.focusConfidence();
       return;
     }
 

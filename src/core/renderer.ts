@@ -44,6 +44,7 @@ export interface RendererRefs {
   flowModalElement?: HTMLElement;
   flowModalMessageElement?: HTMLElement;
   flowModalButtonElement?: HTMLButtonElement;
+  confidenceElement?: HTMLElement;
 }
 
 interface LocalRect {
@@ -93,6 +94,11 @@ export class LayoutTaskRenderer {
       onDragCancel?: (objectId: string, pointer: RendererPointer) => void;
       onConfirm?: () => void;
       onCopyAgain?: () => void;
+      confidence?: {
+        scale: number[];
+        labels: Record<string, string>;
+        onChoose(value: number): void;
+      };
     },
   ) {
     this.refs = {
@@ -274,6 +280,7 @@ export class LayoutTaskRenderer {
     instruction.textContent = this.options.config.messages.instruction_edit_mode;
 
     const reconstructionHint = this.createReconstructionHint();
+    const confidenceControl = this.createConfidenceControl();
 
     const flowMessage = document.createElement("p");
     flowMessage.className = "layout-task-flow-message";
@@ -328,6 +335,7 @@ export class LayoutTaskRenderer {
       panelTitle,
       reconstructionHint,
       instruction,
+      confidenceControl,
       flowMessage,
       flowCountdown,
       confirmButton,
@@ -359,6 +367,7 @@ export class LayoutTaskRenderer {
     this.refs.flowModalElement = flowModal;
     this.refs.flowModalMessageElement = flowModalMessage;
     this.refs.flowModalButtonElement = flowModalButton;
+    this.refs.confidenceElement = confidenceControl;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
     this.refs.viewportWarningElement = viewportWarning;
@@ -390,6 +399,56 @@ export class LayoutTaskRenderer {
     this.refs.displayImageFrameElement = frame;
     this.refs.displayImageElement = image;
     return frame;
+  }
+
+  private createConfidenceControl(): HTMLElement {
+    const wrapper = document.createElement("section");
+    wrapper.className = "layout-task-confidence";
+    wrapper.hidden = true;
+
+    const title = document.createElement("p");
+    title.className = "layout-task-confidence-title";
+    title.textContent = "请选择这个家具组的确定度";
+
+    const buttons = document.createElement("div");
+    buttons.className = "layout-task-confidence-buttons";
+
+    const confidence = this.options.confidence;
+    if (confidence) {
+      for (const value of confidence.scale) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "layout-task-confidence-button";
+        button.textContent = `${value} ${confidence.labels[String(value)] ?? ""}`.trim();
+        button.addEventListener("click", () => {
+          for (const item of buttons.querySelectorAll("button")) {
+            item.classList.remove("is-selected");
+          }
+          button.classList.add("is-selected");
+          confidence.onChoose(value);
+          this.setStatus(`已选择确定度：${button.textContent}`);
+        });
+        buttons.append(button);
+      }
+    }
+
+    wrapper.append(title, buttons);
+    return wrapper;
+  }
+
+  showConfidenceForActiveGroup(): void {
+    if (!this.refs.confidenceElement || !this.options.confidence) {
+      return;
+    }
+
+    this.refs.confidenceElement.hidden = false;
+    for (const item of this.refs.confidenceElement.querySelectorAll("button")) {
+      item.classList.remove("is-selected");
+    }
+  }
+
+  focusConfidence(): void {
+    this.refs.confidenceElement?.querySelector<HTMLButtonElement>("button")?.focus();
   }
 
   private createReconstructionHint(): HTMLElement {

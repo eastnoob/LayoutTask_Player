@@ -225,6 +225,7 @@ export interface LayoutTaskResult {
   page_timing?: PageTimingInfo;
   display?: DisplayInfo;
   flow?: ResultFlowInfo;
+  confidence?: Record<string, number>;
   restore?: ResultRestoreInfo;
   task_config_hash?: string;
   context?: ResultContext;

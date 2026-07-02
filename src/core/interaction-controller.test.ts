@@ -306,6 +306,80 @@ describe("InteractionController", () => {
     expect(renderer.clearActiveObject).toHaveBeenCalledOnce();
   });
 
+  it("blocks deselect when active group requires confidence", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder: createRecorderStub(),
+      confidence: {
+        canEnterObjectEdit: vi.fn(() => ({ ok: true as const })),
+        enterObjectEdit: vi.fn(),
+        canLeaveActiveGroup: vi.fn(() => ({
+          ok: false,
+          reason: "confidence_required",
+          groupId: "chair_group",
+        })),
+        leaveActiveGroup: vi.fn(() => ({
+          ok: false,
+          reason: "confidence_required",
+          groupId: "chair_group",
+        })),
+      },
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    controller.deselectObject();
+
+    expect(controller.getActiveObjectId()).toBe("chair_01");
+    expect(renderer.clearActiveObject).not.toHaveBeenCalled();
+    expect(renderer.setStatus).toHaveBeenLastCalledWith("请选择 chair_group 的确定度后再退出。");
+  });
+
+  it("blocks switching objects when active group requires confidence", () => {
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      objects: [
+        base.objects[0],
+        {
+          ...base.objects[0],
+          id: "table_01",
+        },
+      ],
+    });
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder: createRecorderStub(),
+      confidence: {
+        canEnterObjectEdit: vi.fn((objectId: string) =>
+          objectId === "table_01"
+            ? { ok: false as const, reason: "confidence_required", groupId: "chair_group" }
+            : { ok: true as const },
+        ),
+        enterObjectEdit: vi.fn(),
+        canLeaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+        leaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+      },
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    controller.selectObject("table_01");
+
+    expect(controller.getActiveObjectId()).toBe("chair_01");
+    expect(renderer.activateObject).toHaveBeenCalledWith("chair_01");
+    expect(renderer.activateObject).not.toHaveBeenCalledWith("table_01");
+    expect(renderer.setStatus).toHaveBeenLastCalledWith("请选择 chair_group 的确定度后再继续。");
+  });
+
   it("records drag start and end without logging drag move events", () => {
     const config = createDragRuntimeConfig();
     const store = new StateStore(config);
@@ -492,6 +566,8 @@ function createRendererStub(): LayoutTaskRenderer {
     activateObject: vi.fn(),
     clearActiveObject: vi.fn(),
     setDragging: vi.fn(),
+    focusConfidence: vi.fn(),
+    showConfidenceForActiveGroup: vi.fn(),
   } as unknown as LayoutTaskRenderer;
 }
 

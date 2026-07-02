@@ -17,8 +17,10 @@ describe("participant/session ids", () => {
       url: new URL("https://example.test/"),
       storage: {
         getItem: (key) => storage.get(key) ?? null,
-        setItem: (key, value) => storage.set(key, value),
-      } as Storage,
+        setItem: (key, value) => {
+          storage.set(key, value);
+        },
+      },
       now: new Date("2026-07-02T12:34:56Z"),
       cryptoImpl,
     });

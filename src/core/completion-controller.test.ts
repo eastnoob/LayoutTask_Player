@@ -173,6 +173,31 @@ describe("CompletionController", () => {
     expect(store.isLocked()).toBe(false);
     expect(recorder.finish).not.toHaveBeenCalled();
   });
+
+  it("blocks submit until required confidence is complete", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn() };
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: { encode: vi.fn() } as never,
+      clipboard: { copy: vi.fn() } as never,
+      confidence: {
+        canSubmit: () => ({ ok: false, reason: "missing_confidence", groupId: "chair_group" }),
+      },
+      confirmImpl: () => true,
+    });
+
+    await controller.requestComplete();
+
+    expect(store.isLocked()).toBe(false);
+    expect(renderer.setStatus).toHaveBeenCalledWith("请先完成 chair_group 的确定度选择。");
+    expect(recorder.finish).not.toHaveBeenCalled();
+  });
 });
 
 function createCompletionRendererStub(): LayoutTaskRenderer {
@@ -180,6 +205,7 @@ function createCompletionRendererStub(): LayoutTaskRenderer {
     setLocked: vi.fn(),
     showCompletion: vi.fn(),
     setStatus: vi.fn(),
+    focusConfidence: vi.fn(),
   } as unknown as LayoutTaskRenderer;
 }
 
