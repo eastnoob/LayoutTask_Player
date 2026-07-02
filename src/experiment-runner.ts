@@ -1,6 +1,11 @@
 import InstructionsPlugin from "@jspsych/plugin-instructions";
 import { initJsPsych } from "jspsych";
-import { createExperimentCsv, createExperimentDataPipePayload, type ExperimentTrialResultItem } from "./core/experiment-data";
+import {
+  createExperimentCsvFiles,
+  createExperimentDataPipePayloads,
+  type ExperimentCsvFile,
+  type ExperimentTrialResultItem,
+} from "./core/experiment-data";
 import { createSessionId, getParticipantId } from "./core/participant-session";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
@@ -27,7 +32,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
     timeline.push({
       type: InstructionsPlugin,
       pages: [
-        "<h1>Tutorial complete.</h1><p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>",
+        "<h1>Tutorial complete.</h1><pre>Study image -> Reconstruct scene -> Rate confidence -> Submit</pre><p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>",
       ],
       show_clickable_nav: true,
       button_label_next: "Start formal experiment",
@@ -49,13 +54,6 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
     });
   }
 
-  timeline.push({
-    type: InstructionsPlugin,
-    pages: ["Experiment complete. Data is being saved."],
-    show_clickable_nav: true,
-    button_label_next: "Finish",
-  });
-
   return timeline;
 }
 
@@ -66,39 +64,47 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
       taskId: String(row.task_id ?? row.taskId ?? ""),
       qid: row.qid ? String(row.qid) : undefined,
       encoded: row.encoded ? String(row.encoded) : undefined,
+      hash8: row.hash8 ? String(row.hash8) : undefined,
       result: row.result,
     }));
 }
 
-export async function saveExperimentCsv(input: {
+export async function saveExperimentFiles(input: {
   dataSave: ExperimentDataSaveConfig;
-  participantId: string;
-  sessionId: string;
-  csv: string;
+  files: ExperimentCsvFile[];
   fetchImpl?: typeof fetch;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; saved: number; failedFilename?: string }> {
   if (input.dataSave.mode === "copy") {
-    return { ok: true };
+    return { ok: true, saved: 0 };
   }
 
-  const payload = createExperimentDataPipePayload({
+  const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
-    filenamePrefix: input.dataSave.filenamePrefix,
-    participantId: input.participantId,
-    sessionId: input.sessionId,
-    data: input.csv,
+    files: input.files,
   });
 
   try {
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
-    const response = await fetchImpl(input.dataSave.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    return response.ok ? { ok: true } : { ok: false, error: `${response.status} ${response.statusText}` };
+    let saved = 0;
+    for (const payload of payloads) {
+      const response = await fetchImpl(input.dataSave.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        return {
+          ok: false,
+          saved,
+          failedFilename: payload.filename,
+          error: `${response.status} ${response.statusText}`,
+        };
+      }
+      saved += 1;
+    }
+    return { ok: true, saved };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, saved: 0, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -112,7 +118,7 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
       const tutorialRow = rows.find((row) => row.tutorial);
-      const csv = createExperimentCsv({
+      const files = createExperimentCsvFiles({
         participantId,
         sessionId,
         experimentId: config.experimentId,
@@ -123,27 +129,46 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         trialOrder: config.trials.map((trial) => trial.taskId),
         trialResults,
       });
-      renderEndPage(csv, await saveExperimentCsv({ dataSave: config.dataSave, participantId, sessionId, csv }));
+      renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, files }));
     },
   });
 
   return { jsPsych, timeline: buildExperimentTimeline(config) };
 }
 
-function renderEndPage(csv: string, saveResult: { ok: boolean; error?: string }): void {
+function renderEndPage(
+  files: ExperimentCsvFile[],
+  saveResult: { ok: boolean; error?: string; failedFilename?: string },
+): void {
   document.body.innerHTML = "";
   const section = document.createElement("section");
   section.className = "layout-task-shell";
   const title = document.createElement("h1");
-  title.textContent = saveResult.ok ? "Experiment complete. Data saved." : "Experiment complete, but automatic saving failed.";
+  title.textContent = saveResult.ok
+    ? "Experiment complete. Your data has been saved."
+    : "Experiment complete, but automatic saving failed.";
   const detail = document.createElement("p");
   detail.textContent = saveResult.ok
-    ? "Thank you for participating."
-    : `Please copy or download the data. Error: ${saveResult.error ?? "Unknown error"}`;
-  const output = document.createElement("textarea");
-  output.className = "layout-task-output";
-  output.value = csv;
-  output.readOnly = true;
-  section.append(title, detail, output);
+    ? "You may now close this page."
+    : `Please copy or download the data shown below, then contact the researcher. Error: ${[
+        saveResult.failedFilename,
+        saveResult.error,
+      ].filter(Boolean).join(" - ") || "Unknown error"}`;
+  const closeButton = document.createElement("button");
+  closeButton.textContent = "Close page";
+  closeButton.addEventListener("click", () => {
+    window.close();
+    setTimeout(() => {
+      detail.textContent = "If this tab did not close automatically, please close it manually.";
+    }, 250);
+  });
+  section.append(title, detail, closeButton);
+  if (!saveResult.ok) {
+    const output = document.createElement("textarea");
+    output.className = "layout-task-output";
+    output.value = files.map((file) => `--- ${file.filename} ---\n${file.data}`).join("\n");
+    output.readOnly = true;
+    section.append(output);
+  }
   document.body.append(section);
 }

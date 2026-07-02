@@ -20,7 +20,9 @@
     }
   },
   "data_save": {
-    "mode": "copy",
+    "mode": "datapipe",
+    "experiment_id": "mshCnq690sD5",
+    "endpoint": "https://pipe.jspsych.org/api/data/",
     "filename_prefix": "layout-task"
   },
   "trials": [

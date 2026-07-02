@@ -4,7 +4,7 @@ import {
   buildExperimentTimeline,
   collectFormalTrialResults,
   createRunnableExperiment,
-  saveExperimentCsv,
+  saveExperimentFiles,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
 import { initJsPsych } from "jspsych";
@@ -51,14 +51,10 @@ describe("buildExperimentTimeline", () => {
   it("creates tutorial then formal LayoutTask trials in fixed order", () => {
     const timeline = buildExperimentTimeline(experimentConfig());
 
-    expect(timeline).toHaveLength(5);
+    expect(timeline).toHaveLength(4);
     expect(timeline[0]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
-    expect(timeline[1]).toMatchObject({
-      pages: [
-        "<h1>Tutorial complete.</h1><p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>",
-      ],
-      button_label_next: "Start formal experiment",
-    });
+    expect(timeline[1].pages[0]).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
+    expect(timeline[1]).toMatchObject({ button_label_next: "Start formal experiment" });
     expect(timeline[2]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
   });
@@ -107,24 +103,27 @@ describe("collectFormalTrialResults", () => {
   });
 });
 
-describe("saveExperimentCsv", () => {
-  it("posts one participant-level CSV to DataPipe", async () => {
+describe("saveExperimentFiles", () => {
+  it("posts every generated CSV file to DataPipe", async () => {
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, statusText: "OK" })) as unknown as typeof fetch;
 
-    const result = await saveExperimentCsv({
+    const result = await saveExperimentFiles({
       dataSave: experimentConfig().dataSave,
-      participantId: "P001",
-      sessionId: "S001",
-      csv: "a,b\n1,2\n",
+      files: [
+        { filename: "layout_session_P001_S001.csv", data: "a\n1\n" },
+        { filename: "layout_results_P001_S001.csv", data: "b\n2\n" },
+        { filename: "layout_events_P001_S001.csv", data: "c\n3\n" },
+      ],
       fetchImpl,
     });
 
     expect(result.ok).toBe(true);
-    expect(fetchImpl).toHaveBeenCalledWith("https://pipe.jspsych.org/api/data/", expect.objectContaining({ method: "POST" }));
-    expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[0][1].body))).toEqual({
+    expect(result.saved).toBe(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body))).toEqual({
       experimentID: "layout_task_v1",
-      filename: "layout-task_P001_S001.csv",
-      data: "a,b\n1,2\n",
+      filename: "layout_results_P001_S001.csv",
+      data: "b\n2\n",
     });
   });
 });
