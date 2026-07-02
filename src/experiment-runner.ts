@@ -129,11 +129,25 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         trialOrder: config.trials.map((trial) => trial.taskId),
         trialResults,
       });
+      renderSavingPage();
       renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, files }));
     },
   });
 
   return { jsPsych, timeline: buildExperimentTimeline(config) };
+}
+
+export function createSavingPageHtml(): string {
+  return `
+    <section class="layout-task-shell">
+      <h1>Saving your data...</h1>
+      <p>Do not close or refresh this page.</p>
+    </section>
+  `;
+}
+
+export function renderSavingPage(): void {
+  document.body.innerHTML = createSavingPageHtml();
 }
 
 function renderEndPage(

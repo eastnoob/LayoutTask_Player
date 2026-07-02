@@ -3,6 +3,7 @@ import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
   buildExperimentTimeline,
   collectFormalTrialResults,
+  createSavingPageHtml,
   createRunnableExperiment,
   saveExperimentFiles,
 } from "./experiment-runner";
@@ -82,6 +83,15 @@ describe("createRunnableExperiment", () => {
     }
 
     expect(initJsPsych).toHaveBeenCalledWith(expect.objectContaining({ display_element: root }));
+  });
+});
+
+describe("createSavingPageHtml", () => {
+  it("returns a nonblank saving state while DataPipe requests are in flight", () => {
+    const html = createSavingPageHtml();
+
+    expect(html).toContain("Saving your data");
+    expect(html).toContain("Do not close or refresh this page");
   });
 });
 
