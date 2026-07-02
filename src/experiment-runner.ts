@@ -73,6 +73,7 @@ export async function saveExperimentFiles(input: {
   dataSave: ExperimentDataSaveConfig;
   files: ExperimentCsvFile[];
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
 }): Promise<{ ok: boolean; error?: string; saved: number; failedFilename?: string }> {
   if (input.dataSave.mode === "copy") {
     return { ok: true, saved: 0 };
@@ -82,16 +83,33 @@ export async function saveExperimentFiles(input: {
     experimentId: input.dataSave.experimentId,
     files: input.files,
   });
+  const dataSave = input.dataSave;
 
   try {
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    const timeoutMs = input.timeoutMs ?? 60_000;
     let saved = 0;
     for (const payload of payloads) {
-      const response = await fetchImpl(input.dataSave.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let response: Response;
+      try {
+        response = await fetchWithTimeout(
+          () =>
+            fetchImpl(dataSave.endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            }),
+          timeoutMs,
+          payload.filename,
+        );
+      } catch (error) {
+        return {
+          ok: false,
+          saved,
+          failedFilename: payload.filename,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
       if (!response.ok) {
         return {
           ok: false,
@@ -142,6 +160,7 @@ export function createSavingPageHtml(): string {
     <section class="layout-task-shell">
       <h1>Saving your data...</h1>
       <p>Do not close or refresh this page.</p>
+      <p>This usually takes less than 1 minute.</p>
     </section>
   `;
 }
@@ -185,4 +204,25 @@ function renderEndPage(
     section.append(output);
   }
   document.body.append(section);
+}
+
+async function fetchWithTimeout(
+  fetchRequest: () => Promise<Response>,
+  timeoutMs: number,
+  filename: string,
+): Promise<Response> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${filename} upload timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([fetchRequest(), timeout]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
 }

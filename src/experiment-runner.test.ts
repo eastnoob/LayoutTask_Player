@@ -92,6 +92,7 @@ describe("createSavingPageHtml", () => {
 
     expect(html).toContain("Saving your data");
     expect(html).toContain("Do not close or refresh this page");
+    expect(html).toContain("usually takes less than 1 minute");
   });
 });
 
@@ -135,5 +136,23 @@ describe("saveExperimentFiles", () => {
       filename: "layout_results_P001_S001.csv",
       data: "b\n2\n",
     });
+  });
+
+  it("fails a DataPipe file that takes longer than the timeout", async () => {
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => undefined)) as unknown as typeof fetch;
+
+    const result = await saveExperimentFiles({
+      dataSave: experimentConfig().dataSave,
+      files: [{ filename: "layout_session_P001_S001.csv", data: "a\n1\n" }],
+      fetchImpl,
+      timeoutMs: 5,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      saved: 0,
+      failedFilename: "layout_session_P001_S001.csv",
+    });
+    expect(result.error).toContain("timed out");
   });
 });
