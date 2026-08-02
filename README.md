@@ -156,6 +156,10 @@ pixi run compile-batch --input protocol/examples/minimal-batch.json --out public
 
 Rhino v1 support is dictionaries, conventions, templates, and export checklists only. This repository does not ship or require Rhino scripts, Grasshopper components, Rhino Python, Rhino C#, or Rhino plugins for the protocol workflow. The protocol examples and assets under `protocol/examples/` are self-authored fixtures for validation, compilation, visual checks, and scoring tests; they are not exported from Rhino.
 
+#### Rhino Display Orientation
+
+Rhino/smallpack packages keep object poses, movement, and scoring in world coordinates. When a package sets `stage.display_flip_y`, the Player flips the display layer for the expected room orientation and counter-flips each object visual locally so furniture artwork is not mirrored. This is a renderer display fix, not a CSV/adaptor/compiler pose rewrite.
+
 #### Batch Generator Commands
 
 Validate canonical batch JSON:

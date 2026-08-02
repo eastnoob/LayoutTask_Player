@@ -3,7 +3,9 @@ import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
   getConfiguredObjectLocalRect,
   getObjectControlLayout,
+  getObjectVisualDisplayTransform,
   getRotatedVisualBounds,
+  getStageDisplayTransform,
   getStageFitStyle,
   getStageUiMetrics,
   isObjectInteractive,
@@ -21,6 +23,8 @@ describe("LayoutTaskRenderer stage fit", () => {
         fit: "contain",
         max_height_ratio: 0.6,
         padding: 12,
+        display_rotation_deg: 0,
+        display_flip_y: false,
       },
     });
     expect(getStageFitStyle(config)).toEqual({
@@ -73,6 +77,65 @@ describe("LayoutTaskRenderer stage fit", () => {
       scale: 4000,
       feedbackLabelFontSize: 80000,
     });
+  });
+
+  it("rotates authored Rhino display stages around the world viewBox center", () => {
+    const config = createRuntimeConfig({
+      world: {
+        viewBox: { x: -14000, y: 0, width: 14000, height: 35000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 500, visible: false, snap: true },
+      },
+      stage: {
+        fit: "contain",
+        max_height_ratio: 0.72,
+        padding: 16,
+        display_rotation_deg: 180,
+      } as ReturnType<typeof createRuntimeConfig>["stage"],
+    });
+
+    expect(getStageDisplayTransform(config)).toBe("rotate(180 -7000 17500)");
+  });
+
+  it("flips Rhino display stages vertically without mirroring left and right slots", () => {
+    const config = createRuntimeConfig({
+      world: {
+        viewBox: { x: -14000, y: 0, width: 14000, height: 35000 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 500, visible: false, snap: true },
+      },
+      stage: {
+        fit: "contain",
+        max_height_ratio: 0.72,
+        padding: 16,
+        display_rotation_deg: 0,
+        display_flip_y: true,
+      } as ReturnType<typeof createRuntimeConfig>["stage"],
+    });
+
+    expect(getStageDisplayTransform(config)).toBe("translate(0 35000) scale(1 -1)");
+  });
+
+  it("counter-flips object visuals when the stage display is flipped", () => {
+    const config = createRuntimeConfig({
+      stage: {
+        ...createRuntimeConfig().stage,
+        display_flip_y: true,
+      },
+    });
+
+    expect(getObjectVisualDisplayTransform(config)).toBe("scale(1 -1)");
+  });
+
+  it("does not transform object visuals when the stage display is not flipped", () => {
+    const config = createRuntimeConfig({
+      stage: {
+        ...createRuntimeConfig().stage,
+        display_flip_y: false,
+      },
+    });
+
+    expect(getObjectVisualDisplayTransform(config)).toBeUndefined();
   });
 
   it("computes control bounds from rotated visual extents", () => {

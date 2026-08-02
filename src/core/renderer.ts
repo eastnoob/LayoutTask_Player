@@ -183,6 +183,14 @@ export class LayoutTaskRenderer {
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     svg.append(defs);
 
+    const displayLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    displayLayer.classList.add("layout-task-display-layer");
+    const displayTransform = getStageDisplayTransform(this.options.config);
+    if (displayTransform) {
+      displayLayer.setAttribute("transform", displayTransform);
+    }
+    svg.append(displayLayer);
+
     const background = document.createElementNS("http://www.w3.org/2000/svg", "image");
     background.setAttribute("href", this.options.config.background.asset.srcResolved);
     background.setAttribute("x", String(this.options.config.background.x));
@@ -190,15 +198,15 @@ export class LayoutTaskRenderer {
     background.setAttribute("width", String(this.options.config.background.width));
     background.setAttribute("height", String(this.options.config.background.height));
     background.classList.add("layout-task-background");
-    svg.append(background);
+    displayLayer.append(background);
 
     const objectLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     objectLayer.classList.add("layout-task-object-layer");
-    svg.append(objectLayer);
+    displayLayer.append(objectLayer);
 
     const feedbackLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     feedbackLayer.classList.add("layout-task-feedback-layer");
-    svg.append(feedbackLayer);
+    displayLayer.append(feedbackLayer);
 
     const feedbackOverlay = document.createElement("div");
     feedbackOverlay.className = "layout-task-feedback-overlay";
@@ -262,6 +270,10 @@ export class LayoutTaskRenderer {
         objectConfig.asset.inlineSvgText,
         defs,
       );
+      const visualTransform = getObjectVisualDisplayTransform(this.options.config);
+      if (visualTransform) {
+        visual.setAttribute("transform", visualTransform);
+      }
       group.append(visual);
       wrapper.append(group);
       objectLayer.append(wrapper);
@@ -272,7 +284,7 @@ export class LayoutTaskRenderer {
       this.updateControlsDisabled(objectConfig.id);
     }
 
-    svg.append(controlsLayer);
+    displayLayer.append(controlsLayer);
     stageWrap.append(svg, feedbackOverlay);
 
     const panel = document.createElement("aside");
@@ -1406,6 +1418,26 @@ export function getStageFitStyle(config: RuntimeTaskConfig): {
     maxHeight: `${config.stage.max_height_ratio * 100}vh`,
     padding: `${config.stage.padding}px`,
   };
+}
+
+export function getStageDisplayTransform(config: RuntimeTaskConfig): string | undefined {
+  const transforms: string[] = [];
+  if (config.stage.display_flip_y) {
+    const viewBox = config.world.viewBox;
+    transforms.push(`translate(0 ${viewBox.y * 2 + viewBox.height}) scale(1 -1)`);
+  }
+
+  const rotation = config.stage.display_rotation_deg % 360;
+  if (rotation !== 0) {
+    const viewBox = config.world.viewBox;
+    transforms.push(`rotate(${rotation} ${viewBox.x + viewBox.width / 2} ${viewBox.y + viewBox.height / 2})`);
+  }
+
+  return transforms.length === 0 ? undefined : transforms.join(" ");
+}
+
+export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): string | undefined {
+  return config.stage.display_flip_y ? "scale(1 -1)" : undefined;
 }
 
 export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement): {
