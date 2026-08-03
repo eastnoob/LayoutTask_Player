@@ -82,6 +82,8 @@ describe("resolveRuntimeConfig display image", () => {
       fit: "contain",
       max_height_ratio: 0.72,
       padding: 16,
+      display_rotation_deg: 0,
+      display_flip_y: false,
     });
   });
 
@@ -996,6 +998,60 @@ describe("ConfigLoader collision runtime config", () => {
     });
   });
 
+  it("flips object asset_outline collider polygons with display_flip_y", async () => {
+    const outlineSvgText = [
+      "<svg viewBox=\"0 0 50 50\">",
+      "  <rect id=\"seat_outline\" x=\"5\" y=\"10\" width=\"20\" height=\"15\" />",
+      "</svg>",
+    ].join("");
+    const fetchImpl = createConfigFetch({
+      taskStage: {
+        fit: "contain",
+        max_height_ratio: 0.72,
+        padding: 16,
+        display_flip_y: true,
+      },
+      taskObjects: [
+        {
+          id: "chair_01",
+          asset: "chair_a",
+          x: 0,
+          y: 0,
+          behavior: { template: "move25" },
+          collision: {
+            enabled: true,
+            shape: "asset_outline",
+            source: {
+              type: "svg",
+              src: "assets/collision/chair_outline.svg",
+            },
+          },
+        },
+      ],
+      textByPath: {
+        "/layout-task/assets/collision/chair_outline.svg": outlineSvgText,
+      },
+    });
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl,
+    });
+
+    const config = await loader.loadRuntimeConfig({ taskId: "room01" });
+    const collision = config.objects[0].collision;
+
+    expect(collision.shape).toBe("polygons");
+    if (collision.shape !== "polygons") {
+      throw new Error("Expected runtime polygon collision");
+    }
+    expect(collision.polygons[0].points).toEqual([
+      { x: 5, y: 40 },
+      { x: 25, y: 40 },
+      { x: 25, y: 25 },
+      { x: 5, y: 25 },
+    ]);
+  });
+
   it("does not fetch or parse disabled object asset_outline collision sources", async () => {
     const colliderSourceUrl = "https://cdn.example.test/layout-task/assets/collision/invalid_outline.svg";
     const fetchImpl = createConfigFetch({
@@ -1157,6 +1213,8 @@ describe("ConfigLoader 4000x fixture", () => {
       fit: "contain",
       max_height_ratio: 0.72,
       padding: 16,
+      display_rotation_deg: 0,
+      display_flip_y: false,
     });
   });
 });
@@ -1497,6 +1555,7 @@ function createConfigFetch(options: {
   manifestAssetBaseUrl?: string;
   taskCollision?: TaskCollisionConfig;
   taskBackground?: Parameters<typeof resolveRuntimeConfig>[0]["task"]["background"];
+  taskStage?: Parameters<typeof resolveRuntimeConfig>[0]["task"]["stage"];
   taskObjects?: Parameters<typeof resolveRuntimeConfig>[0]["task"]["objects"];
   objectAssets?: Record<string, unknown>;
   backgroundAssets?: Record<string, unknown>;
@@ -1526,6 +1585,7 @@ function createConfigFetch(options: {
         },
         background: options.taskBackground ?? { asset: "room01_bg", x: -400, y: -300, width: 800, height: 600 },
         objects: options.taskObjects ?? [{ id: "chair_01", asset: "chair_a", x: 0, y: 0, behavior: { template: "move25" } }],
+        stage: options.taskStage,
         collision: options.taskCollision,
       },
       "/layout-task/assets/objects.json": {

@@ -92,6 +92,8 @@ const DEFAULT_STAGE = {
   fit: "contain" as const,
   max_height_ratio: 0.72,
   padding: 16,
+  display_rotation_deg: 0,
+  display_flip_y: false,
 };
 
 const DEFAULT_TASK_COLLISION = {
@@ -309,10 +311,14 @@ export class ConfigLoader {
       objectConfig.collision.polygons = parsedCollider.viewBox
         ? parsedCollider.polygons.map((polygon) => ({
             ...polygon,
-            points: polygon.points.map((point) => ({
-              x: ((point.x - parsedCollider.viewBox!.x) * objectConfig.width) / parsedCollider.viewBox!.width,
-              y: ((point.y - parsedCollider.viewBox!.y) * objectConfig.height) / parsedCollider.viewBox!.height,
-            })),
+            points: polygon.points.map((point) => {
+              const x = ((point.x - parsedCollider.viewBox!.x) * objectConfig.width) / parsedCollider.viewBox!.width;
+              const y = ((point.y - parsedCollider.viewBox!.y) * objectConfig.height) / parsedCollider.viewBox!.height;
+              return {
+                x,
+                y: config.stage.display_flip_y ? objectConfig.height - y : y,
+              };
+            }),
           }))
         : parsedCollider.polygons;
     }
