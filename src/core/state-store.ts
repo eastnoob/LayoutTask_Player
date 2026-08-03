@@ -190,8 +190,8 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const before = toPose(state);
 
-    // Apply in world coordinates first, then snap back to grid if enabled.
-    // movement.step 可以显式配置；未配置时默认继承 grid size。
+    // Button movement is exact step arithmetic from the authored pose.
+    // Drag snapping is handled separately by applyDragPosition().
     switch (action) {
       case "move_left":
         state.x -= objectConfig.behavior.movement.step ?? this.config.world.grid.size;
@@ -221,11 +221,6 @@ export class StateStore {
         break;
       default:
         throw new Error(`Unsupported action: ${action}`);
-    }
-
-    if (isMoveAction(action) && this.config.world.grid.snap) {
-      state.x = snapToGrid(state.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
-      state.y = snapToGrid(state.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
     }
 
     // This is an edit-history flag, not final-state comparison.
@@ -398,11 +393,6 @@ export class StateStore {
         break;
       default:
         return candidate;
-    }
-
-    if (isMoveAction(action) && this.config.world.grid.snap) {
-      candidate.x = snapToGrid(candidate.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
-      candidate.y = snapToGrid(candidate.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
     }
 
     return candidate;

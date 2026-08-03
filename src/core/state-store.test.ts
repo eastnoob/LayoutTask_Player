@@ -39,6 +39,28 @@ describe("StateStore action limits", () => {
     });
   });
 
+  it("keeps button movement relative to non-grid initial positions", () => {
+    const base = createRuntimeConfig();
+    const store = new StateStore(
+      createRuntimeConfig({
+        objects: [
+          {
+            ...base.objects[0],
+            x: 3,
+            y: 7,
+          },
+        ],
+      }),
+    );
+
+    store.applyAction("chair_01", "move_right");
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 28, y: 7 });
+
+    store.applyAction("chair_01", "move_left");
+    expect(store.getObjectState("chair_01")).toMatchObject({ x: 3, y: 7 });
+    expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 0, ySteps: 0 });
+  });
+
   it("limits rotation by offset from the initial rotation", () => {
     const store = new StateStore(createRuntimeConfig());
 
