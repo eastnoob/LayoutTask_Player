@@ -187,7 +187,7 @@ describe("CompletionController", () => {
       encoder: { encode: vi.fn() } as never,
       clipboard: { copy: vi.fn() } as never,
       confidence: {
-        canSubmit: () => ({ ok: false, reason: "missing_confidence", groupId: "chair_group" }),
+        canSubmit: () => ({ ok: false, reason: "confidence_required", groupId: "chair_group" }),
       },
       confirmImpl: () => true,
     });
@@ -196,7 +196,7 @@ describe("CompletionController", () => {
 
     expect(store.isLocked()).toBe(false);
     expect(renderer.setStatus).toHaveBeenCalledWith(
-      "Choose a confidence rating for every furniture group before submitting.",
+      "Choose a confidence rating for this furniture group before submitting.",
     );
     expect(recorder.finish).not.toHaveBeenCalled();
   });
