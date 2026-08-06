@@ -68,6 +68,7 @@ type ControlButtonAction = Exclude<LayoutAction, "drag_start" | "drag_move" | "d
 interface ControlLayoutInput {
   bounds: VisualBounds;
   ui: ReturnType<typeof getStageUiMetrics>;
+  movementRotationDeg?: number;
 }
 
 export class LayoutTaskRenderer {
@@ -179,9 +180,16 @@ export class LayoutTaskRenderer {
         this.options.onStageBackgroundClick?.();
       }
     });
-
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     svg.append(defs);
+
+    const displayLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    displayLayer.classList.add("layout-task-display-layer");
+    const displayTransform = getStageDisplayTransform(this.options.config);
+    if (displayTransform) {
+      displayLayer.setAttribute("transform", displayTransform);
+    }
+    svg.append(displayLayer);
 
     const background = document.createElementNS("http://www.w3.org/2000/svg", "image");
     background.setAttribute("href", this.options.config.background.asset.srcResolved);
@@ -190,15 +198,15 @@ export class LayoutTaskRenderer {
     background.setAttribute("width", String(this.options.config.background.width));
     background.setAttribute("height", String(this.options.config.background.height));
     background.classList.add("layout-task-background");
-    svg.append(background);
+    displayLayer.append(background);
 
     const objectLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     objectLayer.classList.add("layout-task-object-layer");
-    svg.append(objectLayer);
+    displayLayer.append(objectLayer);
 
     const feedbackLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     feedbackLayer.classList.add("layout-task-feedback-layer");
-    svg.append(feedbackLayer);
+    displayLayer.append(feedbackLayer);
 
     const feedbackOverlay = document.createElement("div");
     feedbackOverlay.className = "layout-task-feedback-overlay";
@@ -262,6 +270,10 @@ export class LayoutTaskRenderer {
         objectConfig.asset.inlineSvgText,
         defs,
       );
+      const visualTransform = getObjectVisualDisplayTransform(this.options.config);
+      if (visualTransform) {
+        visual.setAttribute("transform", visualTransform);
+      }
       group.append(visual);
       wrapper.append(group);
       objectLayer.append(wrapper);
@@ -272,7 +284,7 @@ export class LayoutTaskRenderer {
       this.updateControlsDisabled(objectConfig.id);
     }
 
-    svg.append(controlsLayer);
+    displayLayer.append(controlsLayer);
     stageWrap.append(svg, feedbackOverlay);
 
     const panel = document.createElement("aside");
@@ -448,6 +460,7 @@ export class LayoutTaskRenderer {
           }
           button.classList.add("is-selected");
           confidence.onChoose(value);
+          this.refs.confidenceElement?.classList.remove("is-required");
           this.setStatus(`Confidence rating selected: ${button.textContent}`);
         });
         buttons.append(button);
@@ -464,6 +477,7 @@ export class LayoutTaskRenderer {
     }
 
     this.refs.confidenceElement.hidden = false;
+    this.refs.confidenceElement.classList.add("is-required");
     for (const item of this.refs.confidenceElement.querySelectorAll("button")) {
       item.classList.remove("is-selected");
     }
@@ -505,7 +519,7 @@ export class LayoutTaskRenderer {
     for (const item of this.getReconstructionHintItems()) {
       const row = document.createElement("li");
       const icon = document.createElement("img");
-      icon.src = new URL(`assets/icons/${item.icon}`, this.options.config.baseUrl).toString();
+      icon.src = getPlayerIconUrl(item.icon);
       icon.alt = "";
       icon.setAttribute("aria-hidden", "true");
 
@@ -751,6 +765,10 @@ export class LayoutTaskRenderer {
       area.setAttribute("width", String(rect.width));
       area.setAttribute("height", String(rect.height));
       area.setAttribute("rx", String(ui.feedbackRectRadius));
+      const feedbackTransform = getLimitFeedbackTransform(rect, state.r);
+      if (feedbackTransform) {
+        area.setAttribute("transform", feedbackTransform);
+      }
       area.style.strokeWidth = `${ui.feedbackStrokeWidth}px`;
       area.style.strokeDasharray = `${ui.feedbackDashLength}px ${ui.feedbackDashGap}px`;
       feedbackLayer.append(area);
@@ -775,7 +793,7 @@ export class LayoutTaskRenderer {
 
     const icon = document.createElement("img");
     icon.className = "layout-task-feedback-icon";
-    icon.src = new URL(`assets/icons/alert-circle.svg`, this.options.config.baseUrl).toString();
+    icon.src = getPlayerIconUrl("alert-circle.svg");
     icon.alt = "";
 
     const label = document.createElement("span");
@@ -894,6 +912,12 @@ export class LayoutTaskRenderer {
 
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const buttonMap = new Map<LayoutAction, SVGElement>();
+    const hotzone = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hotzone.classList.add("layout-task-controls-hotzone");
+    group.append(hotzone);
+    group.addEventListener("pointerenter", () => this.setActiveControlsVisible(objectId, true));
+    group.addEventListener("pointerleave", () => this.setActiveControlsVisible(objectId, false));
+
     for (const control of [...movementControls, ...rotationControls]) {
       const button = document.createElementNS("http://www.w3.org/2000/svg", "g");
       button.classList.add("layout-task-control-button");
@@ -905,7 +929,7 @@ export class LayoutTaskRenderer {
       const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       circle.setAttribute("r", String(ui.controlRadius));
 
-      const icon = createControlIcon(this.options.config.baseUrl, control.icon, ui.controlIconSize);
+      const icon = createControlIcon(control.icon, ui.controlIconSize);
 
       button.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -942,11 +966,13 @@ export class LayoutTaskRenderer {
 
     // Control spacing comes from rendered, rotation-aware bounds, then clamps
     // through screen-aware min/max gaps so tiny and large assets stay usable.
+    const movementRotationDeg = this.options.store.getObjectState(objectId).r;
     const bounds = this.getObjectVisualBounds(objectId);
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const positions = getObjectControlLayout({
       bounds,
       ui,
+      movementRotationDeg,
     });
 
     for (const [action, button] of buttons.entries()) {
@@ -954,7 +980,22 @@ export class LayoutTaskRenderer {
       if (!position) {
         continue;
       }
-      button.setAttribute("transform", `translate(${position.x} ${position.y})`);
+      button.setAttribute(
+        "transform",
+        getControlButtonTransform(action as ControlButtonAction, position, movementRotationDeg),
+      );
+    }
+
+    const hotzonePositions = Object.fromEntries(
+      Array.from(buttons.keys()).map((action) => [action, positions[action as ControlButtonAction]]),
+    ) as Partial<Record<ControlButtonAction, { x: number; y: number }>>;
+    const hotzoneBounds = getControlHotzoneBounds(hotzonePositions, ui.controlRadius, 6 * ui.scale);
+    const hotzone = this.refs.controlElements.get(objectId)?.querySelector<SVGRectElement>(".layout-task-controls-hotzone");
+    if (hotzone) {
+      hotzone.setAttribute("x", String(hotzoneBounds.x));
+      hotzone.setAttribute("y", String(hotzoneBounds.y));
+      hotzone.setAttribute("width", String(hotzoneBounds.width));
+      hotzone.setAttribute("height", String(hotzoneBounds.height));
     }
   }
 
@@ -1244,6 +1285,7 @@ export class LayoutTaskRenderer {
     }
     for (const [currentObjectId, controlElement] of this.refs.controlElements.entries()) {
       controlElement.classList.toggle("is-active", currentObjectId === objectId);
+      controlElement.classList.remove("is-controls-hidden");
     }
   }
 
@@ -1261,7 +1303,16 @@ export class LayoutTaskRenderer {
 
     for (const controlElement of this.refs.controlElements.values()) {
       controlElement.classList.remove("is-active");
+      controlElement.classList.remove("is-controls-hidden");
     }
+  }
+
+  private setActiveControlsVisible(objectId: string, visible: boolean): void {
+    if (this.activeObjectId !== objectId) {
+      return;
+    }
+
+    this.refs.controlElements.get(objectId)?.classList.toggle("is-controls-hidden", !visible);
   }
 
   private bindObjectPointerEvents(element: SVGElement, objectId: string): void {
@@ -1371,7 +1422,7 @@ export function isObjectInteractive(objectConfig: RuntimeTaskObject): boolean {
 }
 
 export function getObjectControlLayout(input: ControlLayoutInput): Record<ControlButtonAction, { x: number; y: number }> {
-  const { bounds, ui } = input;
+  const { bounds, ui, movementRotationDeg = 0 } = input;
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerY = (bounds.minY + bounds.maxY) / 2;
   const width = Math.max(bounds.maxX - bounds.minX, 0);
@@ -1381,13 +1432,87 @@ export function getObjectControlLayout(input: ControlLayoutInput): Record<Contro
   const moveGap = clamp(shortSide * 0.22, 20 * ui.scale, 44 * ui.scale);
   const rotateGap = clamp(shortSide * 0.28, 28 * ui.scale, 56 * ui.scale);
 
-  return {
+  const layout = {
     move_up: { x: centerX, y: bounds.minY - moveGap },
     move_down: { x: centerX, y: bounds.maxY + moveGap },
     move_left: { x: bounds.minX - moveGap, y: centerY },
     move_right: { x: bounds.maxX + moveGap, y: centerY },
     rotate_ccw: { x: bounds.minX - rotateGap, y: bounds.minY - rotateGap },
     rotate_cw: { x: bounds.maxX + rotateGap, y: bounds.minY - rotateGap },
+  };
+
+  return {
+    move_up: rotatePointAround(layout.move_up, { x: centerX, y: centerY }, movementRotationDeg),
+    move_down: rotatePointAround(layout.move_down, { x: centerX, y: centerY }, movementRotationDeg),
+    move_left: rotatePointAround(layout.move_left, { x: centerX, y: centerY }, movementRotationDeg),
+    move_right: rotatePointAround(layout.move_right, { x: centerX, y: centerY }, movementRotationDeg),
+    rotate_ccw: rotatePointAround(layout.rotate_ccw, { x: centerX, y: centerY }, movementRotationDeg),
+    rotate_cw: rotatePointAround(layout.rotate_cw, { x: centerX, y: centerY }, movementRotationDeg),
+  };
+}
+
+export function getControlButtonTransform(
+  _action: ControlButtonAction,
+  position: { x: number; y: number },
+  movementRotationDeg = 0,
+): string {
+  const rotation = movementRotationDeg % 360;
+  const translate = `translate(${position.x} ${position.y})`;
+  return rotation === 0 ? translate : `${translate} rotate(${rotation})`;
+}
+
+export function getLimitFeedbackTransform(rect: LocalRect, rotationDeg: number): string | undefined {
+  const rotation = rotationDeg % 360;
+  if (rotation === 0) {
+    return undefined;
+  }
+
+  return `rotate(${rotation} ${rect.x + rect.width / 2} ${rect.y + rect.height / 2})`;
+}
+
+export function getControlHotzoneBounds(
+  positions: Partial<Record<ControlButtonAction, { x: number; y: number }>>,
+  controlRadius: number,
+  padding = 0,
+): LocalRect {
+  const points = Object.values(positions);
+  if (points.length === 0) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  const inset = controlRadius + padding;
+  const minX = Math.min(...points.map((point) => point.x)) - inset;
+  const maxX = Math.max(...points.map((point) => point.x)) + inset;
+  const minY = Math.min(...points.map((point) => point.y)) - inset;
+  const maxY = Math.max(...points.map((point) => point.y)) + inset;
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+function rotatePointAround(
+  point: { x: number; y: number },
+  center: { x: number; y: number },
+  rotationDeg: number,
+): { x: number; y: number } {
+  const rotation = rotationDeg % 360;
+  if (rotation === 0) {
+    return point;
+  }
+
+  const radians = (rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
   };
 }
 
@@ -1406,6 +1531,26 @@ export function getStageFitStyle(config: RuntimeTaskConfig): {
     maxHeight: `${config.stage.max_height_ratio * 100}vh`,
     padding: `${config.stage.padding}px`,
   };
+}
+
+export function getStageDisplayTransform(config: RuntimeTaskConfig): string | undefined {
+  const transforms: string[] = [];
+  if (config.stage.display_flip_y) {
+    const viewBox = config.world.viewBox;
+    transforms.push(`translate(0 ${viewBox.y * 2 + viewBox.height}) scale(1 -1)`);
+  }
+
+  const rotation = config.stage.display_rotation_deg % 360;
+  if (rotation !== 0) {
+    const viewBox = config.world.viewBox;
+    transforms.push(`rotate(${rotation} ${viewBox.x + viewBox.width / 2} ${viewBox.y + viewBox.height / 2})`);
+  }
+
+  return transforms.length === 0 ? undefined : transforms.join(" ");
+}
+
+export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): string | undefined {
+  return config.stage.display_flip_y ? "scale(1 -1)" : undefined;
 }
 
 export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement): {
@@ -1595,18 +1740,22 @@ function escapeSvgId(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-function createControlIcon(baseUrl: string, iconFile: string, size: number): SVGElement {
+function createControlIcon(iconFile: string, size: number): SVGElement {
   // Icons are served from public assets so the same files can be reused by
   // the standalone page and future jsPsych integration.
   const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
   image.classList.add("layout-task-control-icon");
-  image.setAttribute("href", new URL(`assets/icons/${iconFile}`, baseUrl).toString());
+  image.setAttribute("href", getPlayerIconUrl(iconFile));
   image.setAttribute("x", String(-size / 2));
   image.setAttribute("y", String(-size / 2));
   image.setAttribute("width", String(size));
   image.setAttribute("height", String(size));
   image.setAttribute("preserveAspectRatio", "xMidYMid meet");
   return image;
+}
+
+export function getPlayerIconUrl(iconFile: string, pageUrl = globalThis.location?.href ?? "http://example.test/"): string {
+  return new URL(`layout-task/assets/icons/${iconFile}`, pageUrl).toString();
 }
 
 function isFeedbackAction(action: LayoutAction): action is Exclude<LayoutAction, "drag_start" | "drag_move" | "drag_end"> {

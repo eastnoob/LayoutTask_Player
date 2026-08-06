@@ -212,14 +212,29 @@ body {
   pointer-events: auto;
 }
 
+.layout-task-controls.is-controls-hidden .layout-task-control-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .layout-task-controls.is-locked {
   opacity: 0;
   pointer-events: none;
 }
 
+.layout-task-controls-hotzone {
+  fill: transparent;
+  pointer-events: none;
+}
+
+.layout-task-controls.is-active .layout-task-controls-hotzone {
+  pointer-events: all;
+}
+
 .layout-task-control-button {
   cursor: pointer;
   outline: none;
+  transition: opacity 120ms ease;
 }
 
 .layout-task-control-button circle {
@@ -391,6 +406,11 @@ body {
   border-radius: 8px;
   padding: 12px;
   background: #ffffff;
+}
+
+.layout-task-confidence.is-required {
+  border-color: rgba(220, 38, 38, 0.7);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16), 0 10px 24px rgba(127, 29, 29, 0.12);
 }
 
 .layout-task-confidence-title {

@@ -1,0 +1,261 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "scene_c0a6081b1b4a",
+  "qid": "Q_scene_c0a6081b1b4a",
+  "world": {
+    "unit": "mm",
+    "viewBox": {
+      "x": -14000,
+      "y": 0,
+      "width": 14000,
+      "height": 35000
+    },
+    "origin": {
+      "x": -14000,
+      "y": 0
+    },
+    "grid": {
+      "size": 500,
+      "visible": true,
+      "snap": true,
+      "origin": {
+        "x": -14000,
+        "y": 0
+      }
+    }
+  },
+  "background": {
+    "asset": "room_scene_0001_bg",
+    "x": -23352.775649116913,
+    "y": -6011.300751686924,
+    "width": 32708.610998810196,
+    "height": 47024.91859563162
+  },
+  "objects": [
+    {
+      "id": "scene_c0a6081b1b4a_m02_group",
+      "asset": "m02_group",
+      "x": -3499.993,
+      "y": 31250,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c0a6081b1b4a_m02",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m02_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m02_variable",
+      "asset": "m02_variable",
+      "x": -3500.014,
+      "y": 32000,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c0a6081b1b4a_m02",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m02_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m03_group",
+      "asset": "m03_group",
+      "x": -3507.532,
+      "y": 17500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c0a6081b1b4a_m03",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m03_variable",
+      "asset": "m03_variable",
+      "x": -2639.009,
+      "y": 16980.827,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c0a6081b1b4a_m03",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m04_group",
+      "asset": "m04_group",
+      "x": -7000,
+      "y": 24500,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c0a6081b1b4a_m04",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m04_variable",
+      "asset": "m04_variable",
+      "x": -7000,
+      "y": 24500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c0a6081b1b4a_m04",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m01_group",
+      "asset": "m01_group",
+      "x": -10500,
+      "y": 17498.45,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c0a6081b1b4a_m01",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c0a6081b1b4a_m01_variable",
+      "asset": "m01_variable",
+      "x": -10488.978,
+      "y": 17500,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c0a6081b1b4a_m01",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    }
+  ],
+  "display_image": {
+    "enabled": true,
+    "src": "assets/images/stimulus/c0a6081b1b4a_perspective_stimulus_1920x1080.png",
+    "alt": "Reference image",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "direct_reconstruction"
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.72,
+    "padding": 16,
+    "display_rotation_deg": 0,
+    "display_flip_y": true
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "areas": []
+  }
+}
