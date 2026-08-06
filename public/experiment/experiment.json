@@ -1,12 +1,10 @@
 {
   "schema": "layouttask.experiment.v1",
-  "experiment_id": "layout_task_demo_v1",
-  "baseUrl": "./layout-task/",
+  "experiment_id": "smallpack_0804_hotzone_clickfix_formal",
+  "baseUrl": "../layout-task-smallpack-0806-formal-confidence-compiled/",
   "order": "fixed",
   "tutorial": {
-    "enabled": true,
-    "taskId": "tutorial_room",
-    "qid": "QTUTORIAL"
+    "enabled": false
   },
   "confidence": {
     "required": true,
@@ -20,13 +18,13 @@
     }
   },
   "data_save": {
-    "mode": "datapipe",
-    "experiment_id": "mshCnq690sD5",
-    "endpoint": "https://pipe.jspsych.org/api/data/",
-    "filename_prefix": "layout-task"
+    "mode": "copy",
+    "filename_prefix": "smallpack-0804-hotzone-clickfix"
   },
   "trials": [
-    { "taskId": "scene_001", "qid": "Q001" },
-    { "taskId": "scene_002", "qid": "Q002" }
+    {
+      "taskId": "scene_8106c07115ae",
+      "qid": "Q_scene_8106c07115ae"
+    }
   ]
 }

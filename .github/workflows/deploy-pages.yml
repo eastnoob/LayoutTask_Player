@@ -2,7 +2,7 @@ name: Deploy Pages
 
 on:
   push:
-    branches: [feature/flow-preview-reconstruct]
+    branches: [codex/formal-confidence-pages]
   workflow_dispatch:
 
 permissions:

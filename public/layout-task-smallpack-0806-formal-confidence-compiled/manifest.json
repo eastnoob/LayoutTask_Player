@@ -1,0 +1,110 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "smallpack_0806_formal_confidence",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "tasks": [
+    {
+      "qid": "Q_scene_e88186a19384",
+      "task_id": "scene_e88186a19384",
+      "file": "tasks/scene_e88186a19384.json"
+    },
+    {
+      "qid": "Q_scene_af6401052228",
+      "task_id": "scene_af6401052228",
+      "file": "tasks/scene_af6401052228.json"
+    },
+    {
+      "qid": "Q_scene_a1d4bb9b6096",
+      "task_id": "scene_a1d4bb9b6096",
+      "file": "tasks/scene_a1d4bb9b6096.json"
+    },
+    {
+      "qid": "Q_scene_854a3b2f2dfe",
+      "task_id": "scene_854a3b2f2dfe",
+      "file": "tasks/scene_854a3b2f2dfe.json"
+    },
+    {
+      "qid": "Q_scene_73247aae0070",
+      "task_id": "scene_73247aae0070",
+      "file": "tasks/scene_73247aae0070.json"
+    },
+    {
+      "qid": "Q_scene_d136a17b2004",
+      "task_id": "scene_d136a17b2004",
+      "file": "tasks/scene_d136a17b2004.json"
+    },
+    {
+      "qid": "Q_scene_f8393daf0271",
+      "task_id": "scene_f8393daf0271",
+      "file": "tasks/scene_f8393daf0271.json"
+    },
+    {
+      "qid": "Q_scene_f8a727cb5ff5",
+      "task_id": "scene_f8a727cb5ff5",
+      "file": "tasks/scene_f8a727cb5ff5.json"
+    },
+    {
+      "qid": "Q_scene_57167b8c3de6",
+      "task_id": "scene_57167b8c3de6",
+      "file": "tasks/scene_57167b8c3de6.json"
+    },
+    {
+      "qid": "Q_scene_c0a6081b1b4a",
+      "task_id": "scene_c0a6081b1b4a",
+      "file": "tasks/scene_c0a6081b1b4a.json"
+    },
+    {
+      "qid": "Q_scene_8106c07115ae",
+      "task_id": "scene_8106c07115ae",
+      "file": "tasks/scene_8106c07115ae.json"
+    },
+    {
+      "qid": "Q_scene_7272e6efb5da",
+      "task_id": "scene_7272e6efb5da",
+      "file": "tasks/scene_7272e6efb5da.json"
+    },
+    {
+      "qid": "Q_scene_b97717a0ad40",
+      "task_id": "scene_b97717a0ad40",
+      "file": "tasks/scene_b97717a0ad40.json"
+    },
+    {
+      "qid": "Q_scene_711ffcfbe916",
+      "task_id": "scene_711ffcfbe916",
+      "file": "tasks/scene_711ffcfbe916.json"
+    },
+    {
+      "qid": "Q_scene_81b4531bcb57",
+      "task_id": "scene_81b4531bcb57",
+      "file": "tasks/scene_81b4531bcb57.json"
+    },
+    {
+      "qid": "Q_scene_a3c8a353d00e",
+      "task_id": "scene_a3c8a353d00e",
+      "file": "tasks/scene_a3c8a353d00e.json"
+    },
+    {
+      "qid": "Q_scene_2154c317b2c0",
+      "task_id": "scene_2154c317b2c0",
+      "file": "tasks/scene_2154c317b2c0.json"
+    },
+    {
+      "qid": "Q_scene_5d28ff94412b",
+      "task_id": "scene_5d28ff94412b",
+      "file": "tasks/scene_5d28ff94412b.json"
+    },
+    {
+      "qid": "Q_scene_c41f9176262d",
+      "task_id": "scene_c41f9176262d",
+      "file": "tasks/scene_c41f9176262d.json"
+    },
+    {
+      "qid": "Q_scene_88789360efa3",
+      "task_id": "scene_88789360efa3",
+      "file": "tasks/scene_88789360efa3.json"
+    }
+  ],
+  "title": "SmallPack 0804 Hotzone Click Fix"
+}

@@ -1,9 +1,14 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
   getConfiguredObjectLocalRect,
+  getControlButtonTransform,
+  getControlHotzoneBounds,
+  getLimitFeedbackTransform,
   getObjectControlLayout,
   getObjectVisualDisplayTransform,
+  getPlayerIconUrl,
   getRotatedVisualBounds,
   getStageDisplayTransform,
   getStageFitStyle,
@@ -138,6 +143,15 @@ describe("LayoutTaskRenderer stage fit", () => {
     expect(getObjectVisualDisplayTransform(config)).toBeUndefined();
   });
 
+  it("resolves player UI icons from the app assets instead of the task package base", () => {
+    expect(getPlayerIconUrl("arrow-up.svg", "http://example.test/?base=/layout-task-smallpack/")).toBe(
+      "http://example.test/layout-task/assets/icons/arrow-up.svg",
+    );
+    expect(getPlayerIconUrl("rotate-cw.svg", "http://example.test/experiment/")).toBe(
+      "http://example.test/experiment/layout-task/assets/icons/rotate-cw.svg",
+    );
+  });
+
   it("computes control bounds from rotated visual extents", () => {
     const bounds = getRotatedVisualBounds(getConfiguredObjectLocalRect({ width: 400, height: 240, anchor: "center" }), 90);
 
@@ -192,6 +206,30 @@ describe("LayoutTaskRenderer object interactivity", () => {
 });
 
 describe("LayoutTaskRenderer control layout", () => {
+  it("keeps control hotzones inert until their object is active", () => {
+    const css = readFileSync("src/styles/layout-task.css", "utf8");
+
+    expect(css).toContain(".layout-task-controls-hotzone {\n  fill: transparent;\n  pointer-events: none;");
+    expect(css).toContain(".layout-task-controls.is-active .layout-task-controls-hotzone {\n  pointer-events: all;");
+  });
+
+  it("uses the active control hotzone hover to show and hide controls", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain('group.addEventListener("pointerenter", () => {');
+    expect(renderer).toContain('group.addEventListener("pointerleave", () => {');
+    expect(renderer).not.toContain("updateActiveControlsVisibility");
+  });
+
+  it("highlights required confidence until a rating is chosen", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const css = readFileSync("src/styles/layout-task.css", "utf8");
+
+    expect(renderer).toContain('this.refs.confidenceElement.classList.add("is-required");');
+    expect(renderer).toContain('this.refs.confidenceElement?.classList.remove("is-required");');
+    expect(css).toContain(".layout-task-confidence.is-required");
+  });
+
   it("keeps controls closer to small objects than the legacy fixed gap", () => {
     const config = createRuntimeConfig();
     const ui = getStageUiMetrics(config);
@@ -218,6 +256,60 @@ describe("LayoutTaskRenderer control layout", () => {
 
     expect(bounds.minY - layout.rotate_ccw.y).toBeGreaterThan(bounds.minY - layout.move_up.y);
     expect(layout.rotate_cw.x - bounds.maxX).toBeGreaterThan(layout.move_right.x - bounds.maxX);
+  });
+
+  it("rotates all controls around the object center by the initial local axis", () => {
+    const config = createRuntimeConfig();
+    const ui = getStageUiMetrics(config);
+    const bounds = { minX: -50, maxX: 50, minY: -40, maxY: 40 };
+    const unrotated = getObjectControlLayout({ bounds, ui });
+    const rotated = getObjectControlLayout({ bounds, ui, movementRotationDeg: 45 });
+    const rightDistance = unrotated.move_right.x;
+    const upDistance = -unrotated.move_up.y;
+    const rotateCwDistanceX = unrotated.rotate_cw.x;
+    const rotateCwDistanceY = unrotated.rotate_cw.y;
+
+    expect(rotated.move_right.x).toBeCloseTo(rightDistance / Math.sqrt(2), 6);
+    expect(rotated.move_right.y).toBeCloseTo(rightDistance / Math.sqrt(2), 6);
+    expect(rotated.move_up.x).toBeCloseTo(upDistance / Math.sqrt(2), 6);
+    expect(rotated.move_up.y).toBeCloseTo(-upDistance / Math.sqrt(2), 6);
+    expect(rotated.rotate_cw.x).toBeCloseTo((rotateCwDistanceX - rotateCwDistanceY) / Math.sqrt(2), 6);
+    expect(rotated.rotate_cw.y).toBeCloseTo((rotateCwDistanceX + rotateCwDistanceY) / Math.sqrt(2), 6);
+  });
+
+  it("rotates every control button icon by the local axis angle", () => {
+    expect(getControlButtonTransform("move_right", { x: 10, y: 20 }, 45)).toBe("translate(10 20) rotate(45)");
+    expect(getControlButtonTransform("rotate_cw", { x: 10, y: 20 }, 45)).toBe("translate(10 20) rotate(45)");
+  });
+
+  it("uses the current object pose to orient control chrome", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain("const movementRotationDeg = this.options.store.getObjectState(objectId).r;");
+    expect(renderer).not.toContain("const movementRotationDeg = objectConfig?.rotation ?? 0;");
+  });
+
+  it("rotates movement limit feedback around the reachable area center", () => {
+    expect(getLimitFeedbackTransform({ x: -10, y: 20, width: 40, height: 60 }, 45)).toBe("rotate(45 10 50)");
+    expect(getLimitFeedbackTransform({ x: -10, y: 20, width: 40, height: 60 }, 0)).toBeUndefined();
+  });
+
+  it("wraps all control buttons in a solid hotzone bounds", () => {
+    const positions = {
+      move_up: { x: 0, y: -10 },
+      move_down: { x: 0, y: 10 },
+      move_left: { x: -20, y: 0 },
+      move_right: { x: 30, y: 0 },
+      rotate_ccw: { x: -25, y: -25 },
+      rotate_cw: { x: 35, y: -25 },
+    };
+
+    expect(getControlHotzoneBounds(positions, 4, 2)).toEqual({
+      x: -31,
+      y: -31,
+      width: 72,
+      height: 47,
+    });
   });
 
   it("keeps directional control positions distinct near stage edges", () => {

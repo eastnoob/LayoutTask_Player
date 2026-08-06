@@ -61,6 +61,36 @@ describe("StateStore action limits", () => {
     expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 0, ySteps: 0 });
   });
 
+  it("moves button actions along the object's initial local axes", () => {
+    const base = createRuntimeConfig();
+    const store = new StateStore(
+      createRuntimeConfig({
+        objects: [
+          {
+            ...base.objects[0],
+            x: 3,
+            y: 7,
+            rotation: 45,
+          },
+        ],
+      }),
+    );
+
+    store.applyAction("chair_01", "move_right");
+
+    const delta = 25 / Math.sqrt(2);
+    const moved = store.getObjectState("chair_01");
+    expect(moved.x).toBeCloseTo(3 + delta, 6);
+    expect(moved.y).toBeCloseTo(7 + delta, 6);
+    expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 1, ySteps: 0 });
+
+    store.applyAction("chair_01", "move_left");
+    const returned = store.getObjectState("chair_01");
+    expect(returned.x).toBeCloseTo(3, 6);
+    expect(returned.y).toBeCloseTo(7, 6);
+    expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 0, ySteps: 0 });
+  });
+
   it("limits rotation by offset from the initial rotation", () => {
     const store = new StateStore(createRuntimeConfig());
 
@@ -188,6 +218,40 @@ describe("StateStore action limits", () => {
       },
     });
     expect(store.hasEdits()).toBe(false);
+  });
+
+  it("checks button collision candidates along initial local axes", () => {
+    const base = createRuntimeConfig();
+    const delta = 25 / Math.sqrt(2);
+    const store = new StateStore(
+      createRuntimeConfig({
+        collision: {
+          ...base.collision,
+          enabled: true,
+        },
+        objects: [
+          {
+            ...base.objects[0],
+            width: 10,
+            height: 10,
+            rotation: 45,
+          },
+          {
+            ...base.objects[0],
+            id: "table_01",
+            x: delta,
+            y: delta,
+            width: 10,
+            height: 10,
+          },
+        ],
+      }),
+    );
+
+    expect(store.canApplyAction("chair_01", "move_right")).toEqual({
+      ok: false,
+      reason: "collision",
+    });
   });
 
   it("blocks rotation when the next rotation overlaps another collision-enabled object", () => {
