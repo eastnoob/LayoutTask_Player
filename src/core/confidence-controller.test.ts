@@ -22,11 +22,17 @@ describe("ConfidenceController", () => {
     });
 
     expect(controller.getRequiredGroupIds()).toEqual(["chair_group", "table_group"]);
-    expect(controller.canSubmit()).toEqual({
-      ok: false,
-      reason: "missing_confidence",
-      groupId: "chair_group",
+    expect(controller.canSubmit()).toEqual({ ok: true });
+  });
+
+  it("does not require confidence before any group is edited", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: true,
+      scale: [1, 2, 3, 4, 5],
     });
+
+    expect(controller.canSubmit()).toEqual({ ok: true });
   });
 
   it("clears active confidence when entering a group edit", () => {
