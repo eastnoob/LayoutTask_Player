@@ -190,23 +190,28 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const before = toPose(state);
 
-    // Apply in world coordinates first, then snap back to grid if enabled.
-    // movement.step 可以显式配置；未配置时默认继承 grid size。
+    const initial = this.initialStates[objectId];
+    if (!initial) {
+      throw new Error(`Unknown object initial state: ${objectId}`);
+    }
+
+    // Button movement is exact step arithmetic along the authored initial local axes.
+    // Drag snapping is handled separately by applyDragPosition().
     switch (action) {
       case "move_left":
-        state.x -= objectConfig.behavior.movement.step ?? this.config.world.grid.size;
+        applyButtonMove(state, action, getMovementStep(this.config, objectConfig), initial.r);
         state.counts.left += 1;
         break;
       case "move_right":
-        state.x += objectConfig.behavior.movement.step ?? this.config.world.grid.size;
+        applyButtonMove(state, action, getMovementStep(this.config, objectConfig), initial.r);
         state.counts.right += 1;
         break;
       case "move_up":
-        state.y -= objectConfig.behavior.movement.step ?? this.config.world.grid.size;
+        applyButtonMove(state, action, getMovementStep(this.config, objectConfig), initial.r);
         state.counts.up += 1;
         break;
       case "move_down":
-        state.y += objectConfig.behavior.movement.step ?? this.config.world.grid.size;
+        applyButtonMove(state, action, getMovementStep(this.config, objectConfig), initial.r);
         state.counts.down += 1;
         break;
       case "rotate_cw":
@@ -221,11 +226,6 @@ export class StateStore {
         break;
       default:
         throw new Error(`Unsupported action: ${action}`);
-    }
-
-    if (isMoveAction(action) && this.config.world.grid.snap) {
-      state.x = snapToGrid(state.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
-      state.y = snapToGrid(state.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
     }
 
     // This is an edit-history flag, not final-state comparison.
@@ -300,10 +300,12 @@ export class StateStore {
     const objectConfig = this.getObjectConfig(objectId);
     const step = getMovementStep(this.config, objectConfig);
 
-    // Offsets are analysis-friendly: signed grid steps and signed rotation steps.
+    const local = worldDeltaToLocalSteps(state.x - initial.x, state.y - initial.y, step, initial.r);
+
+    // Offsets are analysis-friendly: signed local movement steps and signed rotation steps.
     return {
-      xSteps: Math.round((state.x - initial.x) / step),
-      ySteps: Math.round((state.y - initial.y) / step),
+      xSteps: roundStep(local.xSteps),
+      ySteps: roundStep(local.ySteps),
       rotationSteps: this.rotationOffsets[objectId] ?? 0,
     };
   }
@@ -376,19 +378,23 @@ export class StateStore {
   ): ObjectPose {
     const candidate = toPose(state);
     const movementStep = getMovementStep(this.config, objectConfig);
+    const initial = this.initialStates[objectConfig.id];
+    if (!initial) {
+      throw new Error(`Unknown object initial state: ${objectConfig.id}`);
+    }
 
     switch (action) {
       case "move_left":
-        candidate.x -= movementStep;
+        applyButtonMove(candidate, action, movementStep, initial.r);
         break;
       case "move_right":
-        candidate.x += movementStep;
+        applyButtonMove(candidate, action, movementStep, initial.r);
         break;
       case "move_up":
-        candidate.y -= movementStep;
+        applyButtonMove(candidate, action, movementStep, initial.r);
         break;
       case "move_down":
-        candidate.y += movementStep;
+        applyButtonMove(candidate, action, movementStep, initial.r);
         break;
       case "rotate_cw":
         candidate.r = normalizeRotation(candidate.r + (objectConfig.behavior.rotation?.step ?? 45));
@@ -398,11 +404,6 @@ export class StateStore {
         break;
       default:
         return candidate;
-    }
-
-    if (isMoveAction(action) && this.config.world.grid.snap) {
-      candidate.x = snapToGrid(candidate.x, this.config.world.grid.size, this.config.world.grid.origin?.x);
-      candidate.y = snapToGrid(candidate.y, this.config.world.grid.size, this.config.world.grid.origin?.y);
     }
 
     return candidate;
@@ -443,6 +444,69 @@ function toPose(state: ObjectRuntimeState): ObjectPose {
     y: state.y,
     r: state.r,
   };
+}
+
+function applyButtonMove(
+  pose: { x: number; y: number },
+  action: "move_left" | "move_right" | "move_up" | "move_down",
+  step: number,
+  initialRotation: number,
+): void {
+  const delta = getButtonMoveDelta(action, step, initialRotation);
+  pose.x += delta.x;
+  pose.y += delta.y;
+}
+
+function getButtonMoveDelta(
+  action: "move_left" | "move_right" | "move_up" | "move_down",
+  step: number,
+  initialRotation: number,
+): { x: number; y: number } {
+  const local = getLocalMoveSteps(action);
+  const radians = (normalizeRotation(initialRotation) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const localX = local.xSteps * step;
+  const localY = local.ySteps * step;
+
+  return {
+    x: localX * cos - localY * sin,
+    y: localX * sin + localY * cos,
+  };
+}
+
+function getLocalMoveSteps(action: "move_left" | "move_right" | "move_up" | "move_down") {
+  switch (action) {
+    case "move_left":
+      return { xSteps: -1, ySteps: 0 };
+    case "move_right":
+      return { xSteps: 1, ySteps: 0 };
+    case "move_up":
+      return { xSteps: 0, ySteps: -1 };
+    case "move_down":
+      return { xSteps: 0, ySteps: 1 };
+  }
+}
+
+function worldDeltaToLocalSteps(
+  worldDx: number,
+  worldDy: number,
+  step: number,
+  initialRotation: number,
+): { xSteps: number; ySteps: number } {
+  const radians = (normalizeRotation(initialRotation) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+
+  return {
+    xSteps: (worldDx * cos + worldDy * sin) / step,
+    ySteps: (-worldDx * sin + worldDy * cos) / step,
+  };
+}
+
+function roundStep(value: number): number {
+  const rounded = Math.round(value);
+  return Object.is(rounded, -0) ? 0 : rounded;
 }
 
 function isMoveAction(action: LayoutAction): action is "move_left" | "move_right" | "move_up" | "move_down" {

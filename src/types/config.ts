@@ -225,6 +225,8 @@ export interface StageConfig {
   fit?: "contain";
   max_height_ratio?: number;
   padding?: number;
+  display_rotation_deg?: number;
+  display_flip_y?: boolean;
 }
 
 export type CollisionAreaType = "contain" | "block";

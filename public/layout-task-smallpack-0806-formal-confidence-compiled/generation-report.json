@@ -1,0 +1,31 @@
+{
+  "schema": "layouttask.generation-report.v1",
+  "experiment_id": "smallpack_0806_formal_confidence",
+  "task_count": 20,
+  "generated_files": [
+    "manifest.json",
+    "tasks/scene_e88186a19384.json",
+    "tasks/scene_af6401052228.json",
+    "tasks/scene_a1d4bb9b6096.json",
+    "tasks/scene_854a3b2f2dfe.json",
+    "tasks/scene_73247aae0070.json",
+    "tasks/scene_d136a17b2004.json",
+    "tasks/scene_f8393daf0271.json",
+    "tasks/scene_f8a727cb5ff5.json",
+    "tasks/scene_57167b8c3de6.json",
+    "tasks/scene_c0a6081b1b4a.json",
+    "tasks/scene_8106c07115ae.json",
+    "tasks/scene_7272e6efb5da.json",
+    "tasks/scene_b97717a0ad40.json",
+    "tasks/scene_711ffcfbe916.json",
+    "tasks/scene_81b4531bcb57.json",
+    "tasks/scene_a3c8a353d00e.json",
+    "tasks/scene_2154c317b2c0.json",
+    "tasks/scene_5d28ff94412b.json",
+    "tasks/scene_c41f9176262d.json",
+    "tasks/scene_88789360efa3.json",
+    "scoring/scoring-reference.json",
+    "generation-report.json"
+  ],
+  "warnings": []
+}

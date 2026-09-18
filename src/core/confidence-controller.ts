@@ -93,18 +93,7 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    const gate = this.canLeaveActiveGroup();
-    if (!gate.ok) {
-      return gate;
-    }
-
-    for (const groupId of this.requiredGroupIds) {
-      if (!this.finalValues.has(groupId)) {
-        return { ok: false, reason: "missing_confidence", groupId };
-      }
-    }
-
-    return { ok: true };
+    return this.canLeaveActiveGroup();
   }
 
   getActiveGroupId(): string | undefined {

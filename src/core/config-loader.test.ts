@@ -82,6 +82,8 @@ describe("resolveRuntimeConfig display image", () => {
       fit: "contain",
       max_height_ratio: 0.72,
       padding: 16,
+      display_rotation_deg: 0,
+      display_flip_y: false,
     });
   });
 
@@ -1157,6 +1159,8 @@ describe("ConfigLoader 4000x fixture", () => {
       fit: "contain",
       max_height_ratio: 0.72,
       padding: 16,
+      display_rotation_deg: 0,
+      display_flip_y: false,
     });
   });
 });

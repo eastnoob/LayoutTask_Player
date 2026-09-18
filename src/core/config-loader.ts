@@ -92,6 +92,8 @@ const DEFAULT_STAGE = {
   fit: "contain" as const,
   max_height_ratio: 0.72,
   padding: 16,
+  display_rotation_deg: 0,
+  display_flip_y: false,
 };
 
 const DEFAULT_TASK_COLLISION = {
