@@ -1,0 +1,3 @@
+data.example.com {
+  reverse_proxy receiver:3000
+}

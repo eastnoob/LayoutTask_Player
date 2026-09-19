@@ -443,6 +443,24 @@ DataPipe mode requires `experiment_id`. Optional fields:
 
 DataPipe saving is an extra upload step, not the only fallback. If the upload fails, the locked encoded result is still copied/shown so participants can paste it back into the survey.
 
+### Optional Self-Hosted Receiver Saving
+
+The full experiment runner can save generated CSV files to a researcher-owned receiver while the experiment page itself remains statically hosted:
+
+```json
+{
+  "data_save": {
+    "mode": "receiver",
+    "experiment_id": "layout_task_v1",
+    "endpoint": "https://data.example.com/submit",
+    "filename_prefix": "layout-task",
+    "submit_token": "public-study-token"
+  }
+}
+```
+
+The receiver endpoint accepts the generated CSV files, archives them to external storage, removes local raw files after successful archive, and keeps a lightweight active JSONL/SQLite index on the VPS. Old indexes can be snapshot and cleared when a dataset is retired. The token is visible in the static page, so it is not participant authentication; it is only a lightweight routing and abuse-reduction control.
+
 ### Grid Origin
 
 `world.grid.origin` can shift the snap lattice without moving the background image:
