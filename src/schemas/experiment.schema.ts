@@ -63,6 +63,13 @@ const dataSaveSchema = z
       endpoint: z.string().url().default("https://pipe.jspsych.org/api/data/"),
       filename_prefix: z.string().min(1).default("layout-task"),
     }),
+    z.object({
+      mode: z.literal("receiver"),
+      experiment_id: z.string().min(1),
+      endpoint: z.string().url(),
+      filename_prefix: z.string().min(1).default("layout-task"),
+      submit_token: z.string().min(1).optional(),
+    }),
   ])
   .default({ mode: "copy", filename_prefix: "layout-task" });
 
@@ -87,6 +94,14 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
           endpoint: parsed.data_save.endpoint,
           filenamePrefix: parsed.data_save.filename_prefix,
         }
+      : parsed.data_save.mode === "receiver"
+        ? {
+            mode: "receiver" as const,
+            experimentId: parsed.data_save.experiment_id,
+            endpoint: parsed.data_save.endpoint,
+            filenamePrefix: parsed.data_save.filename_prefix,
+            submitToken: parsed.data_save.submit_token,
+          }
       : {
           mode: "copy" as const,
           filenamePrefix: parsed.data_save.filename_prefix,

@@ -82,6 +82,27 @@ describe("parseExperimentConfig", () => {
     });
   });
 
+  it("accepts self-hosted receiver data save mode", () => {
+    const input = baseExperiment();
+    input.data_save = {
+      mode: "receiver",
+      experiment_id: "layout_task_v1",
+      endpoint: "https://data.example.com/submit",
+      filename_prefix: "layout-task",
+      submit_token: "public-study-token",
+    };
+
+    expect(parseExperimentConfig(input)).toMatchObject({
+      dataSave: {
+        mode: "receiver",
+        experimentId: "layout_task_v1",
+        endpoint: "https://data.example.com/submit",
+        filenamePrefix: "layout-task",
+        submitToken: "public-study-token",
+      },
+    });
+  });
+
   it("rejects non-fixed order in v1", () => {
     const input = baseExperiment();
     (input as { order: string }).order = "random";

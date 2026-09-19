@@ -27,7 +27,18 @@ export interface ExperimentDataPipeSaveConfig {
   filenamePrefix: string;
 }
 
-export type ExperimentDataSaveConfig = ExperimentCopyDataSaveConfig | ExperimentDataPipeSaveConfig;
+export interface ExperimentReceiverSaveConfig {
+  mode: "receiver";
+  experimentId: string;
+  endpoint: string;
+  filenamePrefix: string;
+  submitToken?: string;
+}
+
+export type ExperimentDataSaveConfig =
+  | ExperimentCopyDataSaveConfig
+  | ExperimentDataPipeSaveConfig
+  | ExperimentReceiverSaveConfig;
 
 export interface ExperimentConfig {
   schema: "layouttask.experiment.v1";
