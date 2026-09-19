@@ -6,6 +6,8 @@ dist/
 .vite/
 coverage/
 *.log
+__pycache__/
+*.pyc
 .superpowers/
 .worktrees
 .worktrees/
