@@ -48,6 +48,19 @@ function experimentConfig(): ExperimentConfig {
   };
 }
 
+function receiverExperimentConfig(): ExperimentConfig {
+  return {
+    ...experimentConfig(),
+    dataSave: {
+      mode: "receiver",
+      experimentId: "layout_task_v1",
+      endpoint: "https://data.example.com/submit",
+      filenamePrefix: "layout-task",
+      submitToken: "public-study-token",
+    },
+  };
+}
+
 describe("buildExperimentTimeline", () => {
   it("creates tutorial then formal LayoutTask trials in fixed order", () => {
     const timeline = buildExperimentTimeline(experimentConfig());
@@ -115,6 +128,76 @@ describe("collectFormalTrialResults", () => {
 });
 
 describe("saveExperimentFiles", () => {
+  it("posts one batch submission to the self-hosted receiver", async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      participantId: "P001",
+      sessionId: "S001",
+      files: [
+        { filename: "layout_session_P001_S001.csv", data: "a\n1\n" },
+        { filename: "layout_results_P001_S001.csv", data: "b\n2\n" },
+        { filename: "layout_events_P001_S001.csv", data: "c\n3\n" },
+      ],
+      fetchImpl,
+    });
+
+    expect(result).toEqual({ ok: true, saved: 3 });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledWith("https://data.example.com/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Submit-Token": "public-study-token",
+      },
+      body: expect.any(String),
+    });
+
+    const body = JSON.parse(
+      String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[0][1].body),
+    );
+    expect(body).toEqual({
+      schema: "layouttask.receiver.submission.v1",
+      experiment_id: "layout_task_v1",
+      participant_id: "P001",
+      session_id: "S001",
+      files: [
+        { filename: "layout_session_P001_S001.csv", content_type: "text/csv", data: "a\n1\n" },
+        { filename: "layout_results_P001_S001.csv", content_type: "text/csv", data: "b\n2\n" },
+        { filename: "layout_events_P001_S001.csv", content_type: "text/csv", data: "c\n3\n" },
+      ],
+    });
+  });
+
+  it("reports receiver JSON error details", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 413,
+      statusText: "Payload Too Large",
+      clone: () => ({
+        json: async () => ({ error: "body_too_large", message: "Request body is too large." }),
+      }),
+      text: async () => "",
+    })) as unknown as typeof fetch;
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      participantId: "P001",
+      sessionId: "S001",
+      files: [{ filename: "layout_session_P001_S001.csv", data: "a\n1\n" }],
+      fetchImpl,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      saved: 0,
+      failedFilename: "receiver batch",
+    });
+    expect(result.error).toContain("413 Payload Too Large");
+    expect(result.error).toContain("body_too_large");
+  });
+
   it("posts every generated CSV file to DataPipe", async () => {
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, statusText: "OK" })) as unknown as typeof fetch;
 

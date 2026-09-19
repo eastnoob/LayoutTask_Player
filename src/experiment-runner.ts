@@ -72,11 +72,70 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
 export async function saveExperimentFiles(input: {
   dataSave: ExperimentDataSaveConfig;
   files: ExperimentCsvFile[];
+  participantId?: string;
+  sessionId?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }): Promise<{ ok: boolean; error?: string; saved: number; failedFilename?: string }> {
   if (input.dataSave.mode === "copy") {
     return { ok: true, saved: 0 };
+  }
+
+  if (input.dataSave.mode === "receiver") {
+    if (!input.participantId || !input.sessionId) {
+      return {
+        ok: false,
+        saved: 0,
+        failedFilename: "receiver batch",
+        error: "participantId and sessionId are required for receiver mode",
+      };
+    }
+
+    const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    const timeoutMs = input.timeoutMs ?? 60_000;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (input.dataSave.submitToken) {
+      headers["X-Submit-Token"] = input.dataSave.submitToken;
+    }
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        () =>
+          fetchImpl(input.dataSave.endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(
+              createReceiverSubmission({
+                dataSave: input.dataSave,
+                participantId: input.participantId!,
+                sessionId: input.sessionId!,
+                files: input.files,
+              }),
+            ),
+          }),
+        timeoutMs,
+        "receiver batch",
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        saved: 0,
+        failedFilename: "receiver batch",
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        saved: 0,
+        failedFilename: "receiver batch",
+        error: `${response.status} ${response.statusText}${await readSaveError(response)}`,
+      };
+    }
+
+    return { ok: true, saved: input.files.length };
   }
 
   const payloads = createExperimentDataPipePayloads({
@@ -115,7 +174,7 @@ export async function saveExperimentFiles(input: {
           ok: false,
           saved,
           failedFilename: payload.filename,
-          error: `${response.status} ${response.statusText}`,
+          error: `${response.status} ${response.statusText}${await readSaveError(response)}`,
         };
       }
       saved += 1;
@@ -148,7 +207,7 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         trialResults,
       });
       renderSavingPage();
-      renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, files }));
+      renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, participantId, sessionId, files }));
     },
   });
 
@@ -204,6 +263,44 @@ function renderEndPage(
     section.append(output);
   }
   document.body.append(section);
+}
+
+function createReceiverSubmission(input: {
+  dataSave: Extract<ExperimentDataSaveConfig, { mode: "receiver" }>;
+  participantId: string;
+  sessionId: string;
+  files: ExperimentCsvFile[];
+}) {
+  return {
+    schema: "layouttask.receiver.submission.v1" as const,
+    experiment_id: input.dataSave.experimentId,
+    participant_id: input.participantId,
+    session_id: input.sessionId,
+    files: input.files.map((file) => ({
+      filename: file.filename,
+      content_type: "text/csv" as const,
+      data: file.data,
+    })),
+  };
+}
+
+async function readSaveError(response: Response): Promise<string> {
+  try {
+    const body = (await response.clone().json()) as { code?: string; error?: string; message?: string };
+    const code = body.code ?? body.error;
+    const message = body.message;
+    if (code || message) {
+      return ` (${[code, message].filter(Boolean).join(": ")})`;
+    }
+  } catch {
+  }
+
+  try {
+    const text = await response.text();
+    return text ? ` (${text.slice(0, 240)})` : "";
+  } catch {
+    return "";
+  }
 }
 
 async function fetchWithTimeout(
