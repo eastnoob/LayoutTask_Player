@@ -3,10 +3,26 @@ export interface ExperimentTrialRef {
   qid?: string;
 }
 
+export interface ExperimentTutorialReferenceBoardItem {
+  id: string;
+  name: string;
+  allSvg: string;
+  variableSvg: string;
+  allAnimation: string;
+  variableAnimation: string;
+}
+
+export interface ExperimentTutorialReferenceBoardConfig {
+  enabled: boolean;
+  continueLabel?: string;
+  items: ExperimentTutorialReferenceBoardItem[];
+}
+
 export interface ExperimentTutorialConfig {
   enabled: boolean;
   taskId?: string;
   qid?: string;
+  referenceBoard?: ExperimentTutorialReferenceBoardConfig;
 }
 
 export interface ExperimentConfidenceConfig {

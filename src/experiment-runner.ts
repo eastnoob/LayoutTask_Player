@@ -7,6 +7,7 @@ import {
   type ExperimentTrialResultItem,
 } from "./core/experiment-data";
 import { createSessionId, getParticipantId } from "./core/participant-session";
+import { buildTutorialReferenceBoardPage } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
 
@@ -16,27 +17,68 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
   const timeline: ExperimentTimeline = [];
 
   if (config.tutorial.enabled) {
-    timeline.push({
-      type: LayoutTaskPlugin,
-      baseUrl: config.baseUrl,
-      taskId: config.tutorial.taskId,
-      qid: config.tutorial.qid,
-      tutorialMode: true,
-      confidence: config.confidence,
-      autoFinishTrial: true,
-      writeEncodedToData: false,
-      writeResultToData: false,
-      writeHeaderToData: true,
-      data: { tutorial: true },
-    });
-    timeline.push({
-      type: InstructionsPlugin,
-      pages: [
-        "<h1>Tutorial complete.</h1><pre>Study image -> Reconstruct scene -> Rate confidence -> Submit</pre><p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>",
-      ],
-      show_clickable_nav: true,
-      button_label_next: "Start formal experiment",
-    });
+    if (config.tutorial.referenceBoard?.enabled) {
+      timeline.push({
+        type: InstructionsPlugin,
+        css_classes: "layout-task-reference-board-trial",
+        pages: [buildTutorialReferenceBoardPage({ baseUrl: config.baseUrl, board: config.tutorial.referenceBoard })],
+        show_clickable_nav: true,
+        allow_backward: false,
+        button_label_next: config.tutorial.referenceBoard.continueLabel ?? "Continue",
+        on_load: () => {
+          const nav = document.querySelector<HTMLElement>(".layout-task-reference-board-trial .jspsych-instructions-nav");
+          const nextButton = document.querySelector<HTMLButtonElement>(
+            ".layout-task-reference-board-trial #jspsych-instructions-next",
+          );
+          if (!nav || !nextButton) {
+            return;
+          }
+
+          nav.style.visibility = "hidden";
+          nextButton.disabled = true;
+          window.setTimeout(() => {
+            nav.style.visibility = "visible";
+            nextButton.disabled = false;
+          }, 10_000);
+        },
+        data: { tutorial_reference_board: true },
+      });
+    }
+
+    if (config.tutorial.taskId) {
+      timeline.push({
+        type: LayoutTaskPlugin,
+        baseUrl: config.baseUrl,
+        taskId: config.tutorial.taskId,
+        qid: config.tutorial.qid,
+        tutorialMode: true,
+        confidence: config.confidence,
+        autoFinishTrial: true,
+        writeEncodedToData: false,
+        writeResultToData: false,
+        writeHeaderToData: true,
+        data: { tutorial: true },
+      });
+      timeline.push({
+        type: InstructionsPlugin,
+        css_classes: "layout-task-tutorial-complete-trial",
+        pages: [
+          `<section class="layout-task-shell layout-task-tutorial-complete-shell">
+            <header class="layout-task-header layout-task-tutorial-complete-header">
+              <p class="layout-task-eyebrow">Tutorial</p>
+              <h1>Tutorial complete.</h1>
+              <p class="layout-task-meta">Study image -> Reconstruct scene -> Rate confidence -> Submit</p>
+            </header>
+            <div class="layout-task-tutorial-complete-note">
+              <p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>
+            </div>
+          </section>`,
+        ],
+        show_clickable_nav: true,
+        button_label_next: "Start formal experiment",
+        data: { tutorial_complete: true },
+      });
+    }
   }
 
   for (const trial of config.trials) {

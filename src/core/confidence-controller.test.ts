@@ -88,6 +88,20 @@ describe("ConfidenceController", () => {
     expect(controller.canSubmit()).toEqual({ ok: true });
   });
 
+  it("allows tutorial submit after the practiced group is rated", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: true,
+      scale: [1, 2, 3, 4, 5],
+      requireAllGroupsOnSubmit: false,
+    });
+
+    controller.enterObjectEdit("chair_seat");
+    controller.choose(4);
+
+    expect(controller.canSubmit()).toEqual({ ok: true });
+  });
+
   it("falls back to object id when group_id is absent", () => {
     const config = createRuntimeConfig();
     config.objects = [{ ...config.objects[0], id: "solo", role: "variable", group_id: undefined }];

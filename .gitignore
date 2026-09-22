@@ -5,6 +5,7 @@ node_modules/
 dist/
 .vite/
 coverage/
+output/
 *.log
 .superpowers/
 .worktrees

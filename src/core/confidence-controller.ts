@@ -8,6 +8,7 @@ export interface ConfidenceControllerOptions {
   config: RuntimeTaskConfig;
   required: boolean;
   scale: number[];
+  requireAllGroupsOnSubmit?: boolean;
 }
 
 export class ConfidenceController {
@@ -96,6 +97,10 @@ export class ConfidenceController {
     const gate = this.canLeaveActiveGroup();
     if (!gate.ok) {
       return gate;
+    }
+
+    if (this.options.requireAllGroupsOnSubmit === false) {
+      return { ok: true };
     }
 
     for (const groupId of this.requiredGroupIds) {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import InstructionsPlugin from "@jspsych/plugin-instructions";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
   buildExperimentTimeline,
@@ -55,9 +56,71 @@ describe("buildExperimentTimeline", () => {
     expect(timeline).toHaveLength(4);
     expect(timeline[0]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
     expect(timeline[1].pages[0]).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
-    expect(timeline[1]).toMatchObject({ button_label_next: "Start formal experiment" });
+    expect(timeline[1]).toMatchObject({
+      button_label_next: "Start formal experiment",
+      css_classes: "layout-task-tutorial-complete-trial",
+      data: { tutorial_complete: true },
+    });
+    expect(String(timeline[1].pages[0])).toContain("layout-task-tutorial-complete-shell");
+    expect(String(timeline[1].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(timeline[2]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
+  });
+
+  it("shows the reference board before the interactive tutorial room", () => {
+    const config = experimentConfig();
+    config.tutorial.referenceBoard = {
+      enabled: true,
+      continueLabel: "Continue",
+      items: ["m01", "m03", "m04", "m05"].map((id) => ({
+        id,
+        name: id === "m01" ? "Armchairs and Coffee Table" : id,
+        allSvg: `assets/tutorial-reference/tutorial/whole/svg/${id}.svg`,
+        variableSvg: `assets/tutorial-reference/tutorial/variable/svg/${id}.svg`,
+        allAnimation: `assets/tutorial-reference/tutorial/whole/${id}.gif`,
+        variableAnimation: `assets/tutorial-reference/tutorial/variable/${id}.gif`,
+      })),
+    };
+
+    const timeline = buildExperimentTimeline(config);
+
+    expect(timeline[0]).toMatchObject({
+      type: InstructionsPlugin,
+      allow_backward: false,
+      button_label_next: "Continue",
+      css_classes: "layout-task-reference-board-trial",
+    });
+    expect(typeof timeline[0].on_load).toBe("function");
+    expect(timeline[0].data).toEqual({ tutorial_reference_board: true });
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/variable/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
+    expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
+    expect(timeline[2]).toMatchObject({ button_label_next: "Start formal experiment" });
+    expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+  });
+
+  it("can run a board-only tutorial before formal trials", () => {
+    const config = experimentConfig();
+    config.tutorial = {
+      enabled: true,
+      referenceBoard: {
+        enabled: true,
+        items: ["m01", "m03", "m04", "m05"].map((id) => ({
+          id,
+          name: id,
+          allSvg: `assets/tutorial-reference/tutorial/whole/svg/${id}.svg`,
+          variableSvg: `assets/tutorial-reference/tutorial/variable/svg/${id}.svg`,
+          allAnimation: `assets/tutorial-reference/tutorial/whole/${id}.gif`,
+          variableAnimation: `assets/tutorial-reference/tutorial/variable/${id}.gif`,
+        })),
+      },
+    };
+
+    const timeline = buildExperimentTimeline(config);
+
+    expect(timeline[0]).toMatchObject({ type: InstructionsPlugin, button_label_next: "Continue" });
+    expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 });
 
