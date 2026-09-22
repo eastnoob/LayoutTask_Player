@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { compileBatch } from "../../src/core/batch-compiler";
 import { batchSchema } from "../../src/schemas/batch.schema";
+import type { BatchConfig } from "../../src/types/batch";
 
 const defaultOutDir = "public/layout-task-generated";
 const usage = `Usage: tsx tools/generator/compile-batch.ts --input <file> [--out <dir>]
@@ -15,6 +17,15 @@ interface CliArgs {
 interface OutputFile {
   target: string;
   value: unknown;
+}
+
+interface CompileToDirectoryOptions {
+  input: string;
+  out: string;
+}
+
+interface CompileToDirectoryResult {
+  taskCount: number;
 }
 
 function requireValue(args: string[], index: number, option: string): string {
@@ -105,6 +116,131 @@ async function writeJsonFile(file: OutputFile): Promise<void> {
   await writeFile(file.target, `${JSON.stringify(file.value, null, 2)}\n`, "utf8");
 }
 
+export async function compileBatchToDirectory(options: CompileToDirectoryOptions): Promise<CompileToDirectoryResult> {
+  const raw = await readFile(options.input, "utf8");
+  const batch = batchSchema.parse(JSON.parse(raw));
+  const compiled = compileBatch(batch);
+  const outputFiles = [
+    resolveOutputFile(options.out, "manifest.json", compiled.manifest),
+    ...compiled.tasks.map((task) => resolveOutputFile(options.out, task.file, task.config)),
+    resolveOutputFile(options.out, "scoring/scoring-reference.json", compiled.scoringReference),
+    resolveOutputFile(options.out, "generation-report.json", compiled.report),
+  ];
+
+  for (const file of outputFiles) {
+    await writeJsonFile(file);
+  }
+
+  await copyRuntimeAssets({
+    batch,
+    sourceRoot: path.dirname(path.resolve(options.input)),
+    outDir: options.out,
+  });
+
+  return { taskCount: compiled.tasks.length };
+}
+
+async function copyRuntimeAssets(input: { batch: BatchConfig; sourceRoot: string; outDir: string }): Promise<void> {
+  const objectLibrary = await readPackageJson(input.sourceRoot, input.batch.shared.asset_library);
+  const backgroundLibrary = await readPackageJson(input.sourceRoot, input.batch.shared.background_library);
+  const referencedFiles = new Set<string>();
+
+  addRelativeFile(referencedFiles, input.batch.shared.asset_library);
+  addRelativeFile(referencedFiles, input.batch.shared.background_library);
+  addRelativeFile(referencedFiles, input.batch.shared.behavior_library);
+
+  for (const trial of input.batch.trials) {
+    addRelativeFile(referencedFiles, trial.display_image?.src);
+    addRelativeFile(referencedFiles, trial.collision?.source?.src);
+
+    const backgroundAsset = getRecordValue(
+      getRecordValue(backgroundLibrary, "backgrounds"),
+      trial.background.asset,
+    );
+    addRelativeFile(referencedFiles, getStringProperty(backgroundAsset, "src"));
+
+    for (const object of trial.objects) {
+      const objectAsset = getRecordValue(getRecordValue(objectLibrary, "objects"), object.asset);
+      addRelativeFile(referencedFiles, getStringProperty(objectAsset, "src"));
+      addRelativeFile(referencedFiles, getCollisionSourcePath(object.collision));
+    }
+  }
+
+  for (const relativeFile of referencedFiles) {
+    await copyPackageFile(input.sourceRoot, input.outDir, relativeFile);
+  }
+}
+
+async function readPackageJson(sourceRoot: string, relativeFile: string): Promise<unknown> {
+  const source = resolveSourceFile(sourceRoot, relativeFile);
+  return JSON.parse(await readFile(source, "utf8"));
+}
+
+async function copyPackageFile(sourceRoot: string, outDir: string, relativeFile: string): Promise<void> {
+  const source = resolveSourceFile(sourceRoot, relativeFile);
+  const target = resolveOutputPath(outDir, relativeFile);
+
+  await mkdir(path.dirname(target), { recursive: true });
+  await copyFile(source, target);
+}
+
+function resolveSourceFile(sourceRoot: string, relativeFile: string): string {
+  if (!isCopyableRelativePath(relativeFile)) {
+    throw new Error(`Refusing to copy non-local package asset: ${relativeFile}`);
+  }
+
+  const root = path.resolve(sourceRoot);
+  const source = path.resolve(root, relativeFile);
+  if (!isInside(root, source)) {
+    throw new Error(`Refusing to read outside input package directory: ${relativeFile}`);
+  }
+
+  return source;
+}
+
+function resolveOutputPath(outDir: string, relativeFile: string): string {
+  if (!isCopyableRelativePath(relativeFile)) {
+    throw new Error(`Refusing to write non-local package asset: ${relativeFile}`);
+  }
+
+  const root = path.resolve(outDir);
+  const target = path.resolve(root, relativeFile);
+  if (!isInside(root, target)) {
+    throw new Error(`Refusing to write outside output directory: ${relativeFile}`);
+  }
+
+  return target;
+}
+
+function addRelativeFile(files: Set<string>, value: string | undefined): void {
+  if (!value || !isCopyableRelativePath(value)) {
+    return;
+  }
+
+  files.add(value);
+}
+
+function isCopyableRelativePath(value: string): boolean {
+  return !path.isAbsolute(value) && !/^[a-z][a-z\d+.-]*:/i.test(value);
+}
+
+function getRecordValue(value: unknown, key: string): unknown {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>)[key] : undefined;
+}
+
+function getStringProperty(value: unknown, key: string): string | undefined {
+  const property = getRecordValue(value, key);
+  return typeof property === "string" ? property : undefined;
+}
+
+function getCollisionSourcePath(collision: BatchConfig["trials"][number]["objects"][number]["collision"]): string | undefined {
+  if (!collision || !("source" in collision)) {
+    return undefined;
+  }
+
+  return collision.source.src;
+}
+
 async function main(): Promise<void> {
   let input: string | undefined;
   let out = defaultOutDir;
@@ -125,25 +261,14 @@ async function main(): Promise<void> {
   }
 
   try {
-    const raw = await readFile(input, "utf8");
-    const batch = batchSchema.parse(JSON.parse(raw));
-    const compiled = compileBatch(batch);
-    const outputFiles = [
-      resolveOutputFile(out, "manifest.json", compiled.manifest),
-      ...compiled.tasks.map((task) => resolveOutputFile(out, task.file, task.config)),
-      resolveOutputFile(out, "scoring/scoring-reference.json", compiled.scoringReference),
-      resolveOutputFile(out, "generation-report.json", compiled.report),
-    ];
-
-    for (const file of outputFiles) {
-      await writeJsonFile(file);
-    }
-
-    console.log(`Compiled ${compiled.tasks.length} task(s) to ${out}`);
+    const result = await compileBatchToDirectory({ input, out });
+    console.log(`Compiled ${result.taskCount} task(s) to ${out}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}
