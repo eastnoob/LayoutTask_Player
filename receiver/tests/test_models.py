@@ -20,6 +20,7 @@ class ModelTests(unittest.TestCase):
 
     def test_classifies_known_file_kinds(self):
         self.assertEqual(classify_file_kind("layout_session_P001_S001.csv"), "session")
+        self.assertEqual(classify_file_kind("layout-task_session_P001_S001.csv"), "session")
         self.assertEqual(classify_file_kind("layout_results_P001_S001.csv"), "results")
         self.assertEqual(classify_file_kind("layout_events_P001_S001.csv"), "events")
         self.assertEqual(classify_file_kind("layout_debug_P001_S001.json"), "debug")
@@ -28,6 +29,12 @@ class ModelTests(unittest.TestCase):
     def test_rejects_path_traversal_filename(self):
         with self.assertRaisesRegex(ValidationError, "invalid_filename"):
             safe_filename("../layout_session.csv")
+
+    def test_rejects_unsafe_id_segments(self):
+        payload = self.valid_payload()
+        payload["participant_id"] = "../outside"
+        with self.assertRaisesRegex(ValidationError, "invalid_participant_id"):
+            validate_submission(payload, max_files=8, max_file_bytes=1024)
 
     def test_accepts_valid_submission(self):
         submission = validate_submission(self.valid_payload(), max_files=8, max_file_bytes=1024)

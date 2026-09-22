@@ -100,7 +100,10 @@ class ReceiverStorage:
         archive_error = None
         archive_uri = None
         if self.archive_backend is not None:
-            result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
+            try:
+                result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
+            except Exception as error:
+                result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
             if result.ok and result.archive_uri:
                 archive_status = "archived"
                 archive_uri = result.archive_uri
@@ -163,7 +166,10 @@ class ReceiverStorage:
             if not spool_path.exists():
                 continue
             archive_key = f"{experiment_id}/{participant_id}/{session_id}/{submission_id}"
-            result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
+            try:
+                result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
+            except Exception:
+                continue
             if not result.ok or not result.archive_uri:
                 continue
 

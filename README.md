@@ -445,7 +445,7 @@ DataPipe saving is an extra upload step, not the only fallback. If the upload fa
 
 ### Optional Self-Hosted Receiver Saving
 
-The full experiment runner can save generated CSV files to a researcher-owned receiver while the experiment page itself remains statically hosted:
+The full experiment runner can save generated CSV files plus a debug JSON file to a researcher-owned receiver while the experiment page itself remains statically hosted:
 
 ```json
 {
@@ -459,7 +459,7 @@ The full experiment runner can save generated CSV files to a researcher-owned re
 }
 ```
 
-The receiver endpoint accepts the generated CSV files, archives them to external storage, removes local raw files after successful archive, and keeps a lightweight active JSONL/SQLite index on the VPS. Old indexes can be snapshot and cleared when a dataset is retired. The token is visible in the static page, so it is not participant authentication; it is only a lightweight routing and abuse-reduction control.
+The `filename_prefix` is used in generated filenames such as `layout-task_session_<participant>_<session>.csv` and `layout-task_debug_<participant>_<session>.json`. The receiver endpoint accepts the generated files, archives them to external storage, removes local raw files after successful archive, and keeps a lightweight active JSONL/SQLite index on the VPS. Old indexes can be snapshot and cleared when a dataset is retired. The token is visible in the static page, so it is not participant authentication; it is only a lightweight routing and abuse-reduction control.
 
 ### Grid Origin
 

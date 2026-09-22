@@ -83,7 +83,7 @@ describe("parseExperimentConfig", () => {
   });
 
   it("accepts self-hosted receiver data save mode", () => {
-    const input = baseExperiment();
+    const input = baseExperiment() as ReturnType<typeof baseExperiment> & { data_save: Record<string, unknown> };
     input.data_save = {
       mode: "receiver",
       experiment_id: "layout_task_v1",

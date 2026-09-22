@@ -15,3 +15,8 @@ public/layout-task-smallpack-0801-1122-compiled/
 public/layout-task-smallpack-0802-verify-compiled/
 public/layout-task-smallpack-0806-formal-confidence-compiled/
 public/layout-task-smallpack-recompiled-current/
+receiver/.env
+receiver/Caddyfile
+receiver/archive/
+receiver/data/
+receiver/rclone/

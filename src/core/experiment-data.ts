@@ -18,6 +18,7 @@ export interface ExperimentCsvInput {
   participantId: string;
   sessionId: string;
   experimentId: string;
+  filenamePrefix?: string;
   startTime: number;
   endTime: number;
   tutorialCompleted: boolean;
@@ -28,6 +29,7 @@ export interface ExperimentCsvInput {
 
 export interface ExperimentCsvFile {
   filename: string;
+  contentType: string;
   data: string;
 }
 
@@ -37,24 +39,38 @@ export interface ExperimentDataPipePayloadsInput {
 }
 
 export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentCsvFile[] {
+  const prefix = input.filenamePrefix ?? "layout";
   return [
     {
-      filename: createExperimentFilename("layout_session", input.participantId, input.sessionId),
+      filename: createExperimentFilename(`${prefix}_session`, input.participantId, input.sessionId),
+      contentType: "text/csv",
       data: createSessionCsv(input),
     },
     {
-      filename: createExperimentFilename("layout_results", input.participantId, input.sessionId),
+      filename: createExperimentFilename(`${prefix}_results`, input.participantId, input.sessionId),
+      contentType: "text/csv",
       data: createResultsCsv(input),
     },
     {
-      filename: createExperimentFilename("layout_events", input.participantId, input.sessionId),
+      filename: createExperimentFilename(`${prefix}_events`, input.participantId, input.sessionId),
+      contentType: "text/csv",
       data: createEventsCsv(input),
+    },
+    {
+      filename: createExperimentFilename(`${prefix}_debug`, input.participantId, input.sessionId, "json"),
+      contentType: "application/json",
+      data: createDebugJson(input),
     },
   ];
 }
 
-export function createExperimentFilename(prefix: string, participantId: string, sessionId: string): string {
-  return `${sanitizeFilenamePart(prefix)}_${sanitizeFilenamePart(participantId)}_${sanitizeFilenamePart(sessionId)}.csv`;
+export function createExperimentFilename(
+  prefix: string,
+  participantId: string,
+  sessionId: string,
+  extension = "csv",
+): string {
+  return `${sanitizeFilenamePart(prefix)}_${sanitizeFilenamePart(participantId)}_${sanitizeFilenamePart(sessionId)}.${sanitizeFilenamePart(extension)}`;
 }
 
 export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloadsInput): Array<{
@@ -255,6 +271,35 @@ function createEventsCsv(input: ExperimentCsvInput): string {
     ],
     rows,
   );
+}
+
+function createDebugJson(input: ExperimentCsvInput): string {
+  return `${JSON.stringify(
+    {
+      schema: "layouttask.debug.v1",
+      participant_id: input.participantId,
+      session_id: input.sessionId,
+      experiment_id: input.experimentId,
+      started_at: input.startTime,
+      ended_at: input.endTime,
+      duration_ms: input.endTime - input.startTime,
+      tutorial_completed: input.tutorialCompleted,
+      tutorial_duration_ms: input.tutorialDurationMs,
+      trial_count: input.trialResults.length,
+      trial_order: input.trialOrder,
+      trials: input.trialResults.map((trial, trialIndex) => ({
+        trial_index: trialIndex,
+        task_id: trial.taskId,
+        qid: trial.qid,
+        encoded_present: Boolean(trial.encoded),
+        hash8: trial.hash8,
+        result_schema:
+          trial.result && typeof trial.result === "object" ? (trial.result as { schema?: unknown }).schema : undefined,
+      })),
+    },
+    null,
+    2,
+  )}\n`;
 }
 
 type CsvValue = string | number | boolean | undefined;

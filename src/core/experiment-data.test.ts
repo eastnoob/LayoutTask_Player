@@ -132,7 +132,9 @@ describe("experiment data export", () => {
       "layout_session_P001_S001.csv",
       "layout_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
+      "layout_debug_P001_S001.json",
     ]);
+    expect(files.map((file) => file.contentType)).toEqual(["text/csv", "text/csv", "text/csv", "application/json"]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
     expect(files[1].data).toContain("trial_index,task_id,qid,object_id,confidence");
@@ -140,6 +142,24 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
     expect(files[2].data).toContain("event_index,event_time_ms,object_id,action,valid");
     expect(files[2].data).toContain("0,12,group_a,move_right,true");
+    expect(JSON.parse(files[3].data)).toMatchObject({
+      schema: "layouttask.debug.v1",
+      participant_id: "P001",
+      session_id: "S001",
+      experiment_id: "layout_task_v1",
+      trial_count: 1,
+    });
+  });
+
+  it("uses a configured filename prefix", () => {
+    const files = createExperimentCsvFiles({ ...rowInput, filenamePrefix: "layout-task" });
+
+    expect(files.map((file) => file.filename)).toEqual([
+      "layout-task_session_P001_S001.csv",
+      "layout-task_results_P001_S001.csv",
+      "layout-task_events_P001_S001.csv",
+      "layout-task_debug_P001_S001.json",
+    ]);
   });
 
   it("builds one DataPipe payload per CSV file", () => {
@@ -154,6 +174,7 @@ describe("experiment data export", () => {
       "layout_session_P001_S001.csv",
       "layout_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
+      "layout_debug_P001_S001.json",
     ]);
     expect(payloads.every((payload) => payload.experimentID === "mshCnq690sD5")).toBe(true);
   });

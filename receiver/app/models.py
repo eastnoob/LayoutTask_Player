@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import PurePath, PureWindowsPath
+import re
 from typing import Any
 
 
@@ -28,14 +29,17 @@ class Submission:
     files: list[SubmittedFile]
 
 
+_SAFE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+
+
 def classify_file_kind(filename: str) -> str:
-    if filename.startswith("layout_session_") and filename.endswith(".csv"):
+    if filename.endswith(".csv") and "_session_" in filename:
         return "session"
-    if filename.startswith("layout_results_") and filename.endswith(".csv"):
+    if filename.endswith(".csv") and "_results_" in filename:
         return "results"
-    if filename.startswith("layout_events_") and filename.endswith(".csv"):
+    if filename.endswith(".csv") and "_events_" in filename:
         return "events"
-    if filename.startswith("layout_debug_") and filename.endswith(".json"):
+    if filename.endswith(".json") and "_debug_" in filename:
         return "debug"
     return "unknown"
 
@@ -56,15 +60,22 @@ def require_text(value: Any, field: str) -> str:
     return value
 
 
+def safe_path_segment(value: Any, field: str) -> str:
+    text = require_text(value, field)
+    if text in (".", "..") or not _SAFE_SEGMENT_RE.fullmatch(text):
+        raise ValidationError(f"invalid_{field}", f"{field} must be a safe path segment")
+    return text
+
+
 def validate_submission(payload: Any, max_files: int, max_file_bytes: int) -> Submission:
     if not isinstance(payload, dict):
         raise ValidationError("invalid_submission", "request body must be a JSON object")
     if payload.get("schema") != "layouttask.receiver.submission.v1":
         raise ValidationError("invalid_schema", "schema must be layouttask.receiver.submission.v1")
 
-    experiment_id = require_text(payload.get("experiment_id"), "experiment_id")
-    participant_id = require_text(payload.get("participant_id"), "participant_id")
-    session_id = require_text(payload.get("session_id"), "session_id")
+    experiment_id = safe_path_segment(payload.get("experiment_id"), "experiment_id")
+    participant_id = safe_path_segment(payload.get("participant_id"), "participant_id")
+    session_id = safe_path_segment(payload.get("session_id"), "session_id")
     raw_files = payload.get("files")
     if not isinstance(raw_files, list) or not raw_files:
         raise ValidationError("invalid_files", "files must be a non-empty array")

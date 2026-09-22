@@ -11,10 +11,11 @@ The participant-facing experiment must remain deployable as pure static files, i
 The project already has two relevant save layers:
 
 - Task-level `data_save` in individual LayoutTask runtime config. This supports copy-only and DataPipe-style browser uploads for one completed task.
-- Experiment-level `data_save` in `public/experiment/experiment.json`. This is the path used by the jsPsych experiment runner. At the end of the full experiment it generates three CSV files:
+- Experiment-level `data_save` in `public/experiment/experiment.json`. This is the path used by the jsPsych experiment runner. At the end of the full experiment it generates CSV files plus a debug JSON file:
   - `layout_session_<participant>_<session>.csv`
   - `layout_results_<participant>_<session>.csv`
   - `layout_events_<participant>_<session>.csv`
+  - `layout_debug_<participant>_<session>.json`
 
 The self-hosted receiver work targets the experiment-level save path first. Task-level DataPipe support can remain as a compatibility feature.
 
@@ -34,7 +35,7 @@ The self-hosted receiver work targets the experiment-level save path first. Task
 GitHub Pages / static host
   public experiment page
   jsPsych runner
-  generates session/results/events CSV files
+  generates session/results/events CSV files plus debug JSON
        |
        | POST https://data.example.com/submit
        v
@@ -336,7 +337,7 @@ Mitigations:
 Frontend tests:
 
 - experiment schema parses `receiver` mode.
-- experiment runner posts one batch submission with the three generated CSV files.
+- experiment runner posts one batch submission with the generated CSV files plus debug JSON.
 - DataPipe mode still posts single-file DataPipe payloads.
 - copy mode still does not upload.
 - failure fallback still renders generated data.

@@ -136,14 +136,15 @@ describe("saveExperimentFiles", () => {
       participantId: "P001",
       sessionId: "S001",
       files: [
-        { filename: "layout_session_P001_S001.csv", data: "a\n1\n" },
-        { filename: "layout_results_P001_S001.csv", data: "b\n2\n" },
-        { filename: "layout_events_P001_S001.csv", data: "c\n3\n" },
+        { filename: "layout-task_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" },
+        { filename: "layout-task_results_P001_S001.csv", contentType: "text/csv", data: "b\n2\n" },
+        { filename: "layout-task_events_P001_S001.csv", contentType: "text/csv", data: "c\n3\n" },
+        { filename: "layout-task_debug_P001_S001.json", contentType: "application/json", data: "{}" },
       ],
       fetchImpl,
     });
 
-    expect(result).toEqual({ ok: true, saved: 3 });
+    expect(result).toEqual({ ok: true, saved: 4 });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledWith("https://data.example.com/submit", {
       method: "POST",
@@ -163,9 +164,10 @@ describe("saveExperimentFiles", () => {
       participant_id: "P001",
       session_id: "S001",
       files: [
-        { filename: "layout_session_P001_S001.csv", content_type: "text/csv", data: "a\n1\n" },
-        { filename: "layout_results_P001_S001.csv", content_type: "text/csv", data: "b\n2\n" },
-        { filename: "layout_events_P001_S001.csv", content_type: "text/csv", data: "c\n3\n" },
+        { filename: "layout-task_session_P001_S001.csv", content_type: "text/csv", data: "a\n1\n" },
+        { filename: "layout-task_results_P001_S001.csv", content_type: "text/csv", data: "b\n2\n" },
+        { filename: "layout-task_events_P001_S001.csv", content_type: "text/csv", data: "c\n3\n" },
+        { filename: "layout-task_debug_P001_S001.json", content_type: "application/json", data: "{}" },
       ],
     });
   });
@@ -185,7 +187,7 @@ describe("saveExperimentFiles", () => {
       dataSave: receiverExperimentConfig().dataSave,
       participantId: "P001",
       sessionId: "S001",
-      files: [{ filename: "layout_session_P001_S001.csv", data: "a\n1\n" }],
+      files: [{ filename: "layout_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" }],
       fetchImpl,
     });
 
@@ -204,9 +206,9 @@ describe("saveExperimentFiles", () => {
     const result = await saveExperimentFiles({
       dataSave: experimentConfig().dataSave,
       files: [
-        { filename: "layout_session_P001_S001.csv", data: "a\n1\n" },
-        { filename: "layout_results_P001_S001.csv", data: "b\n2\n" },
-        { filename: "layout_events_P001_S001.csv", data: "c\n3\n" },
+        { filename: "layout_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" },
+        { filename: "layout_results_P001_S001.csv", contentType: "text/csv", data: "b\n2\n" },
+        { filename: "layout_events_P001_S001.csv", contentType: "text/csv", data: "c\n3\n" },
       ],
       fetchImpl,
     });
@@ -226,7 +228,7 @@ describe("saveExperimentFiles", () => {
 
     const result = await saveExperimentFiles({
       dataSave: experimentConfig().dataSave,
-      files: [{ filename: "layout_session_P001_S001.csv", data: "a\n1\n" }],
+      files: [{ filename: "layout_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" }],
       fetchImpl,
       timeoutMs: 5,
     });

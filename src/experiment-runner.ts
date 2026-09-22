@@ -82,6 +82,7 @@ export async function saveExperimentFiles(input: {
   }
 
   if (input.dataSave.mode === "receiver") {
+    const dataSave = input.dataSave;
     if (!input.participantId || !input.sessionId) {
       return {
         ok: false,
@@ -94,20 +95,20 @@ export async function saveExperimentFiles(input: {
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
     const timeoutMs = input.timeoutMs ?? 60_000;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (input.dataSave.submitToken) {
-      headers["X-Submit-Token"] = input.dataSave.submitToken;
+    if (dataSave.submitToken) {
+      headers["X-Submit-Token"] = dataSave.submitToken;
     }
 
     let response: Response;
     try {
       response = await fetchWithTimeout(
         () =>
-          fetchImpl(input.dataSave.endpoint, {
+          fetchImpl(dataSave.endpoint, {
             method: "POST",
             headers,
             body: JSON.stringify(
               createReceiverSubmission({
-                dataSave: input.dataSave,
+                dataSave,
                 participantId: input.participantId!,
                 sessionId: input.sessionId!,
                 files: input.files,
@@ -199,6 +200,7 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         participantId,
         sessionId,
         experimentId: config.experimentId,
+        filenamePrefix: config.dataSave.filenamePrefix,
         startTime,
         endTime: Date.now(),
         tutorialCompleted: Boolean(tutorialRow),
@@ -278,7 +280,7 @@ function createReceiverSubmission(input: {
     session_id: input.sessionId,
     files: input.files.map((file) => ({
       filename: file.filename,
-      content_type: "text/csv" as const,
+      content_type: file.contentType,
       data: file.data,
     })),
   };

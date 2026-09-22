@@ -36,6 +36,11 @@ class RecordingArchiveBackend:
         return ArchiveResult(ok=True, archive_uri=f"rclone://layouttask-receiver:metadata-indexes/{archive_key}")
 
 
+class RaisingArchiveBackend:
+    def archive(self, spool_dir: Path, archive_key: str) -> ArchiveResult:
+        raise RuntimeError("backend exploded")
+
+
 def valid_submission():
     return validate_submission(
         {
@@ -121,6 +126,23 @@ class StorageTests(unittest.TestCase):
             )
             with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
                 self.assertEqual(db.execute("SELECT archive_status FROM submissions").fetchone(), ("archived",))
+
+    def test_archive_exception_records_failed_submission_for_retry(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            storage = ReceiverStorage(data_dir, archive_backend=RaisingArchiveBackend(), delete_local_after_success=True)
+
+            stored = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            self.assertEqual(stored.archive_status, "failed")
+            self.assertTrue((data_dir / "spool" / stored.id).exists())
+            with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
+                self.assertEqual(db.execute("SELECT archive_status FROM submissions WHERE id = ?", (stored.id,)).fetchone(), ("failed",))
+                self.assertEqual(db.execute("SELECT archive_status FROM submission_files").fetchall(), [("failed",), ("failed",)])
+
+            lines = (data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(lines), 1)
+            self.assertEqual(json.loads(lines[0])["archive_error"], "backend exploded")
 
     def test_archive_metadata_uploads_prunes_and_clears_active_index(self):
         with tempfile.TemporaryDirectory() as temp_dir:

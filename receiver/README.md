@@ -44,7 +44,7 @@ data/metadata_archives/<timestamp>/ # recent local archived indexes, pruned auto
 archive/<experiment>/...           # local development archive only
 ```
 
-Raw CSV and debug files are canonical in the external archive after successful upload. The VPS keeps only short-term spool files for pending/failed archives and an active lightweight SQLite/JSONL index. Retired indexes should be snapshot, optionally uploaded externally, pruned locally, and removed from the active tables.
+Raw CSV and debug JSON files are canonical in the external archive after successful upload. Incoming experiment, participant, and session IDs are validated as safe path segments before archive keys are built. The VPS keeps only short-term spool files for pending/failed archives and an active lightweight SQLite/JSONL index. Retired indexes should be snapshot, optionally uploaded externally, pruned locally, and removed from the active tables.
 
 ## Retry Failed Archives
 

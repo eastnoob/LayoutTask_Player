@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a static-host-compatible self-hosted receiver save mode and a Dockerized VPS receiver that archives raw CSV/debug files to external storage while keeping only short-term spool files and lightweight metadata on the VPS.
+**Goal:** Add a static-host-compatible self-hosted receiver save mode and a Dockerized VPS receiver that archives raw CSV/debug JSON files to external storage while keeping only short-term spool files and lightweight metadata on the VPS.
 
 **Architecture:** The existing Vite/jsPsych frontend remains a pure static build and gains an experiment-level `receiver` data-save mode. The receiver is a separate Python standard-library service under `receiver/`, with `http.server`, `sqlite3`, short-term spool storage, JSONL metadata logging, CORS, token checks, size limits, and archival backends. Local development uses a filesystem archive backend; VPS production uses an `rclone` backend so Cloudflare R2, S3, WebDAV, or another remote can hold the canonical raw files. DataPipe and copy modes remain compatible.
 
@@ -30,7 +30,7 @@
 - Modify `src/types/experiment.ts`: add `ExperimentReceiverSaveConfig` and include it in `ExperimentDataSaveConfig`.
 - Modify `src/schemas/experiment.schema.ts`: parse `data_save.mode = "receiver"` from static `experiment.json`.
 - Modify `src/schemas/experiment.schema.test.ts`: cover receiver parsing and defaults.
-- Modify `src/experiment-runner.ts`: build receiver batch submissions from existing CSV files and send one `POST /submit`.
+- Modify `src/experiment-runner.ts`: build receiver batch submissions from generated CSV/debug JSON files and send one `POST /submit`.
 - Modify `src/experiment-runner.test.ts`: cover receiver request body, token header, copy mode, DataPipe compatibility, and failure fallback.
 - Modify `README.md`: document experiment-level self-hosted receiver mode and static deployment relationship.
 - Create `receiver/app/__init__.py`: package marker.
@@ -1447,7 +1447,7 @@ In `README.md`, under experiment runner / data save documentation, add:
 ```md
 ### Optional Self-Hosted Receiver Saving
 
-The full experiment runner can save generated CSV files to a researcher-owned receiver while the experiment page itself remains statically hosted:
+The full experiment runner can save generated CSV files plus a debug JSON file to a researcher-owned receiver while the experiment page itself remains statically hosted:
 
 ```json
 {
@@ -1461,7 +1461,7 @@ The full experiment runner can save generated CSV files to a researcher-owned re
 }
 ```
 
-The receiver endpoint accepts the generated CSV files, archives them to external storage, removes local raw files after successful archive, and keeps a lightweight active JSONL/SQLite index on the VPS. Old indexes can be snapshot and cleared when a dataset is retired. The token is visible in the static page, so it is not participant authentication; it is only a lightweight routing and abuse-reduction control.
+The receiver endpoint accepts the generated files, archives them to external storage, removes local raw files after successful archive, and keeps a lightweight active JSONL/SQLite index on the VPS. Old indexes can be snapshot and cleared when a dataset is retired. The token is visible in the static page, so it is not participant authentication; it is only a lightweight routing and abuse-reduction control.
 ```
 
 - [ ] **Step 6: Smoke-check Docker files syntactically**

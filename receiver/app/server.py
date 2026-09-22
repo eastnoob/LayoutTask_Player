@@ -3,6 +3,7 @@ from __future__ import annotations
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
 import json
+import sys
 import time
 from typing import Any
 
@@ -122,7 +123,13 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 json_response(self, 400, {"ok": False, "error": error.code, "message": error.message}, origin)
                 return
             except Exception as error:
-                json_response(self, 500, {"ok": False, "error": "storage_error", "message": str(error)}, origin)
+                print(f"storage_error: {error}", file=sys.stderr)
+                json_response(
+                    self,
+                    500,
+                    {"ok": False, "error": "storage_error", "message": "Submission could not be stored."},
+                    origin,
+                )
                 return
 
             json_response(self, 201, {"ok": True, "submission_id": stored.id, "file_count": stored.file_count}, origin)
