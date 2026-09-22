@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import experimentConfig from "../../public/experiment/experiment.json";
 import { buildTutorialReferenceBoardPage } from "./tutorial-reference-board";
 import type { ExperimentTutorialReferenceBoardConfig } from "../types/experiment";
 
@@ -46,5 +47,18 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(html).toContain("movable furniture will be marked in yellow");
     expect(html).not.toContain("relation.svg");
     expect(html).not.toContain("<h1");
+  });
+
+  it("resolves the shipped reference assets from the formal package to the experiment asset directory", () => {
+    const html = buildTutorialReferenceBoardPage({
+      baseUrl: new URL(experimentConfig.baseUrl, "http://127.0.0.1:5174/experiment/").toString(),
+      board: experimentConfig.tutorial.referenceBoard as ExperimentTutorialReferenceBoardConfig,
+    });
+    const sources = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g), (match) => match[1]);
+
+    expect(sources).toHaveLength(16);
+    expect(sources.every((source) => source.startsWith("http://127.0.0.1:5174/experiment/layout-task/assets/"))).toBe(
+      true,
+    );
   });
 });
