@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import experimentConfig from "../../public/experiment/experiment.json";
-import { buildTutorialReferenceBoardPage } from "./tutorial-reference-board";
+import { buildTutorialReferenceBoardPage, buildTutorialReferenceBoardPages } from "./tutorial-reference-board";
 import type { ExperimentTutorialReferenceBoardConfig } from "../types/experiment";
 
 function board(): ExperimentTutorialReferenceBoardConfig {
@@ -49,6 +51,21 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(html).not.toContain("<h1");
   });
 
+  it("can render one furniture group per page with progress", () => {
+    const pages = buildTutorialReferenceBoardPages({
+      baseUrl: "/layout-task-generated/",
+      board: board(),
+    });
+
+    expect(pages).toHaveLength(4);
+    expect(pages[0].match(/<article class="layout-task-tutorial-board-card">/g)).toHaveLength(1);
+    expect(pages[0]).toContain(">1 / 4<");
+    expect(pages[0]).toContain(">Armchairs and Coffee Table<");
+    expect(pages[0]).not.toContain(">Dining Table and Chairs<");
+    expect(pages[3]).toContain(">4 / 4<");
+    expect(pages[3]).toContain(">Sofa and Coffee Table<");
+  });
+
   it("resolves the shipped reference assets from the formal package to the experiment asset directory", () => {
     const html = buildTutorialReferenceBoardPage({
       baseUrl: new URL(experimentConfig.baseUrl, "http://127.0.0.1:5174/experiment/").toString(),
@@ -57,8 +74,26 @@ describe("buildTutorialReferenceBoardPage", () => {
     const sources = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g), (match) => match[1]);
 
     expect(sources).toHaveLength(16);
-    expect(sources.every((source) => source.startsWith("http://127.0.0.1:5174/experiment/layout-task/assets/"))).toBe(
-      true,
-    );
+    expect(
+      sources.every((source) =>
+        source.startsWith("http://127.0.0.1:5174/layout-task-smallpack-0806-formal-confidence-compiled/assets/"),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps shipped reference-board asset config rooted in the shared assets folder", () => {
+    const board = experimentConfig.tutorial.referenceBoard as ExperimentTutorialReferenceBoardConfig;
+    const configuredAssets = board.items.flatMap((item) => [
+      item.allSvg,
+      item.variableSvg,
+      item.allAnimation,
+      item.variableAnimation,
+    ]);
+
+    expect(configuredAssets).toHaveLength(16);
+    for (const asset of configuredAssets) {
+      expect(asset).toMatch(/^assets\/tutorial-reference\//);
+      expect(existsSync(join(process.cwd(), asset))).toBe(true);
+    }
   });
 });

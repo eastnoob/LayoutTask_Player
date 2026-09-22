@@ -6,6 +6,7 @@ import {
   collectFormalTrialResults,
   createSavingPageHtml,
   createRunnableExperiment,
+  startReferenceBoardContinueCountdown,
   saveExperimentFiles,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
@@ -97,6 +98,12 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
+    expect(timeline.slice(0, 4).map((trial) => trial.data)).toEqual([
+      { tutorial_reference_board: true, reference_board_item_id: "m01", reference_board_page: 1, reference_board_total: 4 },
+      { tutorial_reference_board: true, reference_board_item_id: "m03", reference_board_page: 2, reference_board_total: 4 },
+      { tutorial_reference_board: true, reference_board_item_id: "m04", reference_board_page: 3, reference_board_total: 4 },
+      { tutorial_reference_board: true, reference_board_item_id: "m05", reference_board_page: 4, reference_board_total: 4 },
+    ]);
     expect(timeline[0]).toMatchObject({
       type: InstructionsPlugin,
       allow_backward: false,
@@ -104,13 +111,15 @@ describe("buildExperimentTimeline", () => {
       css_classes: "layout-task-reference-board-trial",
     });
     expect(typeof timeline[0].on_load).toBe("function");
-    expect(timeline[0].data).toEqual({ tutorial_reference_board: true });
+    expect(timeline[0].pages).toHaveLength(1);
     expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/m01.gif");
     expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/variable/m01.gif");
     expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
-    expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
-    expect(timeline[2]).toMatchObject({ button_label_next: "Start formal experiment" });
-    expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+    expect(String(timeline[0].pages[0])).toContain(">1 / 4<");
+    expect(String(timeline[1].pages[0])).toContain(">2 / 4<");
+    expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
+    expect(timeline[5]).toMatchObject({ button_label_next: "Start formal experiment" });
+    expect(timeline[6]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 
   it("can run a board-only tutorial before formal trials", () => {
@@ -132,8 +141,54 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
-    expect(timeline[0]).toMatchObject({ type: InstructionsPlugin, button_label_next: "Continue" });
-    expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+    expect(timeline.slice(0, 4).every((trial) => trial.type === InstructionsPlugin)).toBe(true);
+    expect(timeline[0]).toMatchObject({ button_label_next: "Continue" });
+    expect(timeline[3].data).toEqual({
+      tutorial_reference_board: true,
+      reference_board_item_id: "m05",
+      reference_board_page: 4,
+      reference_board_total: 4,
+    });
+    expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+  });
+
+  it("keeps each reference-board continue button locked for five seconds", () => {
+    vi.useFakeTimers();
+    const nav = { style: { visibility: "hidden" } } as HTMLElement;
+    const button = { disabled: false, textContent: "Continue" } as HTMLButtonElement;
+    const documentRef = {
+      querySelector: vi.fn((selector: string) => {
+        if (selector === ".layout-task-reference-board-trial .jspsych-instructions-nav") {
+          return nav;
+        }
+        if (selector === ".layout-task-reference-board-trial #jspsych-instructions-next") {
+          return button;
+        }
+        return null;
+      }),
+    } as unknown as Document;
+    const windowRef = {
+      setInterval: globalThis.setInterval.bind(globalThis),
+      clearInterval: globalThis.clearInterval.bind(globalThis),
+    } as unknown as Window;
+
+    try {
+      startReferenceBoardContinueCountdown({ documentRef, windowRef, label: "Continue", seconds: 5 });
+
+      expect(nav.style.visibility).toBe("visible");
+      expect(button.disabled).toBe(true);
+      expect(button.textContent).toBe("Continue (5)");
+
+      vi.advanceTimersByTime(4_000);
+      expect(button.disabled).toBe(true);
+      expect(button.textContent).toBe("Continue (1)");
+
+      vi.advanceTimersByTime(1_000);
+      expect(button.disabled).toBe(false);
+      expect(button.textContent).toBe("Continue");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

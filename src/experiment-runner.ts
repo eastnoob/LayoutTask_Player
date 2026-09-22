@@ -7,7 +7,7 @@ import {
   type ExperimentTrialResultItem,
 } from "./core/experiment-data";
 import { createSessionId, getParticipantId } from "./core/participant-session";
-import { buildTutorialReferenceBoardPage } from "./core/tutorial-reference-board";
+import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
 
@@ -18,31 +18,29 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
 
   if (config.tutorial.enabled) {
     if (config.tutorial.referenceBoard?.enabled) {
-      timeline.push({
-        type: InstructionsPlugin,
-        css_classes: "layout-task-reference-board-trial",
-        pages: [buildTutorialReferenceBoardPage({ baseUrl: config.baseUrl, board: config.tutorial.referenceBoard })],
-        show_clickable_nav: true,
-        allow_backward: false,
-        button_label_next: config.tutorial.referenceBoard.continueLabel ?? "Continue",
-        on_load: () => {
-          const nav = document.querySelector<HTMLElement>(".layout-task-reference-board-trial .jspsych-instructions-nav");
-          const nextButton = document.querySelector<HTMLButtonElement>(
-            ".layout-task-reference-board-trial #jspsych-instructions-next",
-          );
-          if (!nav || !nextButton) {
-            return;
-          }
-
-          nav.style.visibility = "hidden";
-          nextButton.disabled = true;
-          window.setTimeout(() => {
-            nav.style.visibility = "visible";
-            nextButton.disabled = false;
-          }, 10_000);
-        },
-        data: { tutorial_reference_board: true },
-      });
+      const board = config.tutorial.referenceBoard;
+      const pages = buildTutorialReferenceBoardPages({ baseUrl: config.baseUrl, board });
+      const continueLabel = board.continueLabel ?? "Continue";
+      for (const [index, page] of pages.entries()) {
+        const item = board.items[index];
+        timeline.push({
+          type: InstructionsPlugin,
+          css_classes: "layout-task-reference-board-trial",
+          pages: [page],
+          show_clickable_nav: true,
+          allow_backward: false,
+          button_label_next: continueLabel,
+          on_load: () => {
+            startReferenceBoardContinueCountdown({ label: continueLabel });
+          },
+          data: {
+            tutorial_reference_board: true,
+            reference_board_item_id: item.id,
+            reference_board_page: index + 1,
+            reference_board_total: pages.length,
+          },
+        });
+      }
     }
 
     if (config.tutorial.taskId) {
@@ -97,6 +95,44 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
   }
 
   return timeline;
+}
+
+export function startReferenceBoardContinueCountdown(input: {
+  documentRef?: Document;
+  windowRef?: Pick<Window, "setInterval" | "clearInterval">;
+  label: string;
+  seconds?: number;
+}): void {
+  const documentRef = input.documentRef ?? document;
+  const windowRef = input.windowRef ?? window;
+  const seconds = input.seconds ?? 5;
+  const nav = documentRef.querySelector<HTMLElement>(".layout-task-reference-board-trial .jspsych-instructions-nav");
+  const nextButton = documentRef.querySelector<HTMLButtonElement>(
+    ".layout-task-reference-board-trial #jspsych-instructions-next",
+  );
+  if (!nav || !nextButton) {
+    return;
+  }
+
+  nav.style.visibility = "visible";
+  let remaining = seconds;
+  const update = () => {
+    nextButton.disabled = remaining > 0;
+    nextButton.textContent = remaining > 0 ? `${input.label} (${remaining})` : input.label;
+  };
+
+  update();
+  if (remaining <= 0) {
+    return;
+  }
+
+  const timer = windowRef.setInterval(() => {
+    remaining -= 1;
+    update();
+    if (remaining <= 0) {
+      windowRef.clearInterval(timer);
+    }
+  }, 1_000);
 }
 
 export function collectFormalTrialResults(rows: Array<Record<string, unknown>>): ExperimentTrialResultItem[] {

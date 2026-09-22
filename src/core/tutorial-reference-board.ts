@@ -4,6 +4,28 @@ export function buildTutorialReferenceBoardPage(input: {
   baseUrl: string;
   board: ExperimentTutorialReferenceBoardConfig;
 }): string {
+  return buildTutorialReferenceBoardHtml({ baseUrl: input.baseUrl, board: input.board });
+}
+
+export function buildTutorialReferenceBoardPages(input: {
+  baseUrl: string;
+  board: ExperimentTutorialReferenceBoardConfig;
+}): string[] {
+  const total = input.board.items.length;
+  return input.board.items.map((item, index) =>
+    buildTutorialReferenceBoardHtml({
+      baseUrl: input.baseUrl,
+      board: { ...input.board, items: [item] },
+      progress: `${index + 1} / ${total}`,
+    }),
+  );
+}
+
+function buildTutorialReferenceBoardHtml(input: {
+  baseUrl: string;
+  board: ExperimentTutorialReferenceBoardConfig;
+  progress?: string;
+}): string {
   const absoluteBaseUrl = new URL(input.baseUrl, "http://example.test/");
   const assetUrl = (path: string) => {
     const url = new URL(path, absoluteBaseUrl);
@@ -45,9 +67,11 @@ export function buildTutorialReferenceBoardPage(input: {
 
   return `
     <section class="layout-task-shell layout-task-tutorial-board-shell">
-      <div class="layout-task-tutorial-board-title"><span>▶</span><span>Reference board</span></div>
+      <div class="layout-task-tutorial-board-title">
+        <span>▶</span><span>Reference board</span>${input.progress ? `<span class="layout-task-tutorial-board-progress">${escapeHtmlText(input.progress)}</span>` : ""}
+      </div>
       <p class="layout-task-tutorial-board-callout">Study these default furniture arrangements carefully. In the formal experiment, movable furniture will be marked in yellow.</p>
-      <div class="layout-task-tutorial-board-grid">${columns}</div>
+      <div class="layout-task-tutorial-board-grid${input.board.items.length === 1 ? " is-single" : ""}">${columns}</div>
     </section>
   `;
 }
