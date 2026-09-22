@@ -5,18 +5,64 @@
     "tutorial_room": {
       "qid": "QTUTORIAL",
       "objects": {
-        "chair_01": {
+        "tutorial_m05_group": {
+          "role": "fixed",
+          "group_id": "tutorial_m05"
+        },
+        "tutorial_m05_variable": {
           "role": "variable",
-          "group_id": "chair_group",
+          "group_id": "tutorial_m05",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": -2,
+              "dy_steps": 0,
+              "rotation_steps": 0
+            }
           }
         },
-        "table_01": {
+        "tutorial_m01_group": {
+          "role": "fixed",
+          "group_id": "tutorial_m01"
+        },
+        "tutorial_m01_variable": {
           "role": "variable",
-          "group_id": "table_group",
+          "group_id": "tutorial_m01",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": -1,
+              "dy_steps": -2,
+              "rotation_steps": 1
+            }
+          }
+        },
+        "tutorial_m02_group": {
+          "role": "fixed",
+          "group_id": "tutorial_m02"
+        },
+        "tutorial_m02_variable": {
+          "role": "variable",
+          "group_id": "tutorial_m02",
+          "target": {
+            "relative": {
+              "dx_steps": -2,
+              "dy_steps": -1,
+              "rotation_steps": -1
+            }
+          }
+        },
+        "tutorial_m03_group": {
+          "role": "fixed",
+          "group_id": "tutorial_m03"
+        },
+        "tutorial_m03_variable": {
+          "role": "variable",
+          "group_id": "tutorial_m03",
+          "target": {
+            "relative": {
+              "dx_steps": -1,
+              "dy_steps": -2,
+              "rotation_steps": 1
+            }
           }
         }
       }
@@ -28,14 +74,22 @@
           "role": "variable",
           "group_id": "chair_group",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0
+            }
           }
         },
         "table_01": {
           "role": "variable",
           "group_id": "table_group",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0
+            }
           }
         }
       }
@@ -47,14 +101,22 @@
           "role": "variable",
           "group_id": "chair_group",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0
+            }
           }
         },
         "table_01": {
           "role": "variable",
           "group_id": "table_group",
           "target": {
-            "relative": { "dx_steps": 0, "dy_steps": 0, "rotation_steps": 0 }
+            "relative": {
+              "dx_steps": 0,
+              "dy_steps": 0,
+              "rotation_steps": 0
+            }
           }
         }
       }

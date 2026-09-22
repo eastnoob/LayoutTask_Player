@@ -213,6 +213,7 @@ export class LayoutTaskRenderer {
 
     const controlsLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     controlsLayer.classList.add("layout-task-controls-layer");
+    controlsLayer.dataset.layoutTaskAnchor = "controls";
     // Object visuals and controls are separate layers.
     // Rendering controls last solves z-order/overlap targeting; their own layout
     // logic still has to keep them usable when objects sit near stage edges.
@@ -312,10 +313,10 @@ export class LayoutTaskRenderer {
     const flowModal = document.createElement("div");
     flowModal.className = "layout-task-flow-modal";
     flowModal.hidden = true;
-    flowModal.dataset.layoutTaskAnchor = "flow-modal";
 
     const flowModalDialog = document.createElement("div");
     flowModalDialog.className = "layout-task-flow-modal-dialog";
+    flowModalDialog.dataset.layoutTaskAnchor = "flow-modal";
     flowModalDialog.setAttribute("role", "dialog");
     flowModalDialog.setAttribute("aria-modal", "true");
 
@@ -497,12 +498,26 @@ export class LayoutTaskRenderer {
     message.textContent = step.message;
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
+    this.setTutorialAttention(step.anchor);
   }
 
   hideTutorialStep(): void {
     if (this.refs.tutorialBubbleElement) {
       this.refs.tutorialBubbleElement.hidden = true;
     }
+    this.setTutorialAttention();
+  }
+
+  private setTutorialAttention(anchor?: string): void {
+    for (const element of this.options.root.querySelectorAll(".is-tutorial-attention")) {
+      element.classList.remove("is-tutorial-attention");
+    }
+
+    if (!anchor) {
+      return;
+    }
+
+    this.options.root.querySelector(`[data-layout-task-anchor="${anchor}"]`)?.classList.add("is-tutorial-attention");
   }
 
   private createReconstructionHint(): HTMLElement {

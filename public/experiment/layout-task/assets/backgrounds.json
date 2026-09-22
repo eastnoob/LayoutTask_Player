@@ -15,6 +15,11 @@
       "type": "svg",
       "src": "assets/backgrounds/collision_demo_bg.svg",
       "intrinsic_unit": "cad_unit"
+    },
+    "room_scene_0001_bg": {
+      "type": "svg",
+      "src": "assets/backgrounds/room_scene_0001_bg.svg",
+      "intrinsic_unit": "cad_unit"
     }
   }
 }

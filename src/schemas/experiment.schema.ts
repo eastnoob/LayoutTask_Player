@@ -14,11 +14,27 @@ const trialSchema = z.object({
   qid: z.string().min(1).optional(),
 });
 
+const tutorialReferenceBoardItemSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  allSvg: z.string().min(1),
+  variableSvg: z.string().min(1),
+  allAnimation: z.string().min(1),
+  variableAnimation: z.string().min(1),
+});
+
 const tutorialSchema = z
   .object({
     enabled: z.boolean().default(false),
     taskId: z.string().min(1).optional(),
     qid: z.string().min(1).optional(),
+    referenceBoard: z
+      .object({
+        enabled: z.boolean().default(false),
+        continueLabel: z.string().min(1).default("Continue"),
+        items: z.array(tutorialReferenceBoardItemSchema).length(4),
+      })
+      .optional(),
   })
   .default({ enabled: false });
 

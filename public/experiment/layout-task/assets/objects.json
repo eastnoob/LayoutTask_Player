@@ -42,6 +42,76 @@
       "default_width": 75,
       "default_height": 75,
       "anchor": "center"
+    },
+    "m01_group": {
+      "type": "svg",
+      "src": "assets/objects/m01_group.svg",
+      "default_width": 3847.341,
+      "default_height": 745.206,
+      "anchor": "center"
+    },
+    "m01_variable": {
+      "type": "svg",
+      "src": "assets/objects/m01_variable.svg",
+      "default_width": 599.999,
+      "default_height": 829.999,
+      "anchor": "center"
+    },
+    "m02_group": {
+      "type": "svg",
+      "src": "assets/objects/m02_group.svg",
+      "default_width": 402.336,
+      "default_height": 808.021,
+      "anchor": "center"
+    },
+    "m02_variable": {
+      "type": "svg",
+      "src": "assets/objects/m02_variable.svg",
+      "default_width": 402.322,
+      "default_height": 308.021,
+      "anchor": "center"
+    },
+    "m03_group": {
+      "type": "svg",
+      "src": "assets/objects/m03_group.svg",
+      "default_width": 2158.079,
+      "default_height": 2000.001,
+      "anchor": "center"
+    },
+    "m03_variable": {
+      "type": "svg",
+      "src": "assets/objects/m03_variable.svg",
+      "default_width": 471.828,
+      "default_height": 450,
+      "anchor": "center"
+    },
+    "m04_group": {
+      "type": "svg",
+      "src": "assets/objects/m04_group.svg",
+      "default_width": 2865.665,
+      "default_height": 5516.606,
+      "anchor": "center"
+    },
+    "m04_variable": {
+      "type": "svg",
+      "src": "assets/objects/m04_variable.svg",
+      "default_width": 2865.665,
+      "default_height": 516.606,
+      "anchor": "center"
+    },
+    "m05_group": {
+      "type": "svg",
+      "src": "assets/objects/m05_group.svg",
+      "default_width": 1954.586,
+      "default_height": 764.586,
+      "anchor": "center"
+    },
+    "m05_variable": {
+      "type": "svg",
+      "src": "assets/objects/m05_variable.svg",
+      "default_width": 1090.489,
+      "default_height": 680.915,
+      "anchor": "center"
     }
   }
 }

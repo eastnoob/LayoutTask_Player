@@ -148,6 +148,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
             config: options.config,
             required: options.confidence.required,
             scale: options.confidence.scale,
+            requireAllGroupsOnSubmit: !options.tutorialMode,
           })
         : undefined;
       interaction = new InteractionController({

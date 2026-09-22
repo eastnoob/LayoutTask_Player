@@ -50,6 +50,44 @@
         "enabled": true,
         "snap": true
       }
+    },
+    "drag500_rotate45_limited": {
+      "movement": {
+        "mode": "drag",
+        "step": 500,
+        "max_left": 4,
+        "max_right": 4,
+        "max_up": 4,
+        "max_down": 4
+      },
+      "rotation": {
+        "step": 45,
+        "max_cw": 2,
+        "max_ccw": 2
+      },
+      "free_drag": {
+        "enabled": true,
+        "snap": true
+      }
+    },
+    "button500_rotate45_limited": {
+      "movement": {
+        "mode": "button",
+        "step": 500,
+        "max_left": 2,
+        "max_right": 2,
+        "max_up": 2,
+        "max_down": 2
+      },
+      "rotation": {
+        "step": 45,
+        "max_cw": 2,
+        "max_ccw": 2
+      },
+      "free_drag": {
+        "enabled": false,
+        "snap": true
+      }
     }
   }
 }

@@ -8,6 +8,7 @@ export interface ConfidenceControllerOptions {
   config: RuntimeTaskConfig;
   required: boolean;
   scale: number[];
+  requireAllGroupsOnSubmit?: boolean;
 }
 
 export class ConfidenceController {
@@ -93,7 +94,22 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    return this.canLeaveActiveGroup();
+    const gate = this.canLeaveActiveGroup();
+    if (!gate.ok) {
+      return gate;
+    }
+
+    if (this.options.requireAllGroupsOnSubmit === false) {
+      return { ok: true };
+    }
+
+    for (const groupId of this.requiredGroupIds) {
+      if (!this.finalValues.has(groupId)) {
+        return { ok: false, reason: "missing_confidence", groupId };
+      }
+    }
+
+    return { ok: true };
   }
 
   getActiveGroupId(): string | undefined {
