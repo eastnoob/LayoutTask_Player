@@ -9,6 +9,26 @@ export function snapToGrid(value: number, gridSize: number, origin = 0): number 
   return origin + Math.round((value - origin) / gridSize) * gridSize;
 }
 
+export function localStepsToWorldDelta(
+  xSteps: number,
+  ySteps: number,
+  step: number,
+  initialRotation: number,
+): { x: number; y: number } {
+  const radians = (normalizeRotation(initialRotation) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const localX = xSteps * step;
+  const localY = ySteps * step;
+  const x = localX * cos - localY * sin;
+  const y = localX * sin + localY * cos;
+
+  return {
+    x: Math.abs(x) < 1e-12 ? 0 : x,
+    y: Math.abs(y) < 1e-12 ? 0 : y,
+  };
+}
+
 export interface MovementLimitFeedbackInput {
   origin: { x: number; y: number };
   step: number;

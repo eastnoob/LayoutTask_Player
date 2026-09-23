@@ -183,6 +183,7 @@ describe("taskSchema stage", () => {
       padding: 16,
       display_rotation_deg: 0,
       display_flip_y: false,
+      background_flip_y: false,
     });
   });
 });

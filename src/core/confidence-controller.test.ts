@@ -35,7 +35,7 @@ describe("ConfidenceController", () => {
     expect(controller.canSubmit()).toEqual({ ok: true });
   });
 
-  it("clears active confidence when entering a group edit", () => {
+  it("keeps a chosen confidence pending until the active group is saved", () => {
     const controller = new ConfidenceController({
       config: configWithGroups(),
       required: true,
@@ -44,14 +44,17 @@ describe("ConfidenceController", () => {
 
     controller.enterObjectEdit("chair_seat");
     controller.choose(4);
-    expect(controller.canLeaveActiveGroup()).toEqual({ ok: true });
-    controller.enterObjectEdit("chair_seat");
 
-    expect(controller.canLeaveActiveGroup()).toEqual({
+    expect(controller.getFinalConfidence()).toEqual({});
+    expect(controller.canSubmit()).toEqual({
       ok: false,
-      reason: "confidence_required",
+      reason: "confidence_save_required",
       groupId: "chair_group",
     });
+
+    expect(controller.saveActiveGroup()).toEqual({ ok: true });
+    expect(controller.getFinalConfidence()).toEqual({ chair_group: 4 });
+    expect(controller.canSubmit()).toEqual({ ok: true });
   });
 
   it("blocks switching groups until active confidence is chosen", () => {
@@ -71,6 +74,14 @@ describe("ConfidenceController", () => {
 
     controller.choose(5);
 
+    expect(controller.canEnterObjectEdit("table_top")).toEqual({
+      ok: false,
+      reason: "confidence_save_required",
+      groupId: "chair_group",
+    });
+
+    controller.saveActiveGroup();
+
     expect(controller.canEnterObjectEdit("table_top")).toEqual({ ok: true });
   });
 
@@ -83,9 +94,10 @@ describe("ConfidenceController", () => {
 
     controller.enterObjectEdit("chair_seat");
     controller.choose(3);
-    controller.leaveActiveGroup();
+    controller.saveActiveGroup();
     controller.enterObjectEdit("table_top");
     controller.choose(2);
+    controller.saveActiveGroup();
 
     expect(controller.getFinalConfidence()).toEqual({
       chair_group: 3,
@@ -104,6 +116,7 @@ describe("ConfidenceController", () => {
 
     controller.enterObjectEdit("chair_seat");
     controller.choose(4);
+    controller.saveActiveGroup();
 
     expect(controller.canSubmit()).toEqual({ ok: true });
   });
@@ -119,7 +132,39 @@ describe("ConfidenceController", () => {
 
     controller.enterObjectEdit("solo");
     controller.choose(1);
+    controller.saveActiveGroup();
 
     expect(controller.getFinalConfidence()).toEqual({ solo: 1 });
+  });
+
+  it("refuses to save an active group before a confidence is chosen", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: true,
+      scale: [1, 2, 3, 4, 5],
+    });
+
+    controller.enterObjectEdit("chair_seat");
+
+    expect(controller.saveActiveGroup()).toEqual({
+      ok: false,
+      reason: "confidence_required",
+      groupId: "chair_group",
+    });
+    expect(controller.getFinalConfidence()).toEqual({});
+  });
+
+  it("stores a chosen rating when confidence is optional", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: false,
+      scale: [1, 2, 3, 4, 5],
+    });
+
+    controller.enterObjectEdit("chair_seat");
+    controller.choose(4);
+    controller.saveActiveGroup();
+
+    expect(controller.getFinalConfidence()).toEqual({ chair_group: 4 });
   });
 });

@@ -6,6 +6,7 @@ import { ConfigLoader } from "../../src/core/config-loader";
 import type { ScoringReferenceConfig, ScoringReferenceObject } from "../../src/types/batch";
 import type { ObjectPose } from "../../src/types/events";
 import type { RuntimeTaskConfig, RuntimeTaskObject } from "../../src/types/runtime";
+import { localStepsToWorldDelta } from "../../src/utils/geometry";
 
 type CollisionFailureReason = Exclude<CollisionResult, { ok: true }>["reason"];
 
@@ -140,9 +141,15 @@ function getRelativeTargetPose(
 
   const movementStep = object.behavior.movement.step ?? config.world.grid.size;
   const rotationStep = object.behavior.rotation?.step ?? 45;
+  const movementDelta = localStepsToWorldDelta(
+    target.dx_steps,
+    target.dy_steps,
+    movementStep,
+    object.rotation,
+  );
   return {
-    x: object.x + target.dx_steps * movementStep,
-    y: object.y + target.dy_steps * movementStep,
+    x: object.x + movementDelta.x,
+    y: object.y + movementDelta.y,
     r: object.rotation + target.rotation_steps * rotationStep,
   };
 }

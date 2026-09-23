@@ -67,18 +67,15 @@ describe("buildTutorialReferenceBoardPage", () => {
   });
 
   it("resolves the shipped reference assets from the formal package to the experiment asset directory", () => {
+    const expectedBase = new URL(experimentConfig.baseUrl, "http://127.0.0.1:5174/experiment/").toString();
     const html = buildTutorialReferenceBoardPage({
-      baseUrl: new URL(experimentConfig.baseUrl, "http://127.0.0.1:5174/experiment/").toString(),
+      baseUrl: expectedBase,
       board: experimentConfig.tutorial.referenceBoard as ExperimentTutorialReferenceBoardConfig,
     });
     const sources = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g), (match) => match[1]);
 
     expect(sources).toHaveLength(16);
-    expect(
-      sources.every((source) =>
-        source.startsWith("http://127.0.0.1:5174/layout-task-smallpack-0806-formal-confidence-compiled/assets/"),
-      ),
-    ).toBe(true);
+    expect(sources.every((source) => source.startsWith(`${expectedBase}assets/`))).toBe(true);
   });
 
   it("keeps shipped reference-board asset config rooted in the shared assets folder", () => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
   getConfiguredObjectLocalRect,
+  getBackgroundDisplayTransform,
   getControlButtonTransform,
   getControlHotzoneBounds,
   getLimitFeedbackTransform,
@@ -30,6 +31,7 @@ describe("LayoutTaskRenderer stage fit", () => {
         padding: 12,
         display_rotation_deg: 0,
         display_flip_y: false,
+        background_flip_y: false,
       },
     });
     expect(getStageFitStyle(config)).toEqual({
@@ -121,7 +123,7 @@ describe("LayoutTaskRenderer stage fit", () => {
     expect(getStageDisplayTransform(config)).toBe("translate(0 35000) scale(1 -1)");
   });
 
-  it("counter-flips object visuals when the stage display is flipped", () => {
+  it("does not flip object visuals a second time when the stage display is flipped", () => {
     const config = createRuntimeConfig({
       stage: {
         ...createRuntimeConfig().stage,
@@ -129,7 +131,7 @@ describe("LayoutTaskRenderer stage fit", () => {
       },
     });
 
-    expect(getObjectVisualDisplayTransform(config)).toBe("scale(1 -1)");
+    expect(getObjectVisualDisplayTransform(config)).toBeUndefined();
   });
 
   it("does not transform object visuals when the stage display is not flipped", () => {
@@ -141,6 +143,22 @@ describe("LayoutTaskRenderer stage fit", () => {
     });
 
     expect(getObjectVisualDisplayTransform(config)).toBeUndefined();
+  });
+
+  it("can flip only the background artwork around its configured bounds", () => {
+    const config = createRuntimeConfig({
+      background: {
+        ...createRuntimeConfig().background,
+        y: -200,
+        height: 42400,
+      },
+      stage: {
+        ...createRuntimeConfig().stage,
+        background_flip_y: true,
+      },
+    });
+
+    expect(getBackgroundDisplayTransform(config)).toBe("translate(0 42000) scale(1 -1)");
   });
 
   it("resolves player UI icons from the app assets instead of the task package base", () => {
@@ -230,6 +248,17 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(css).toContain(".layout-task-confidence.is-required");
   });
 
+  it("uses an explicit confidence save action and a concise confirm label", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const messages = readFileSync("src/core/messages.ts", "utf8");
+
+    expect(renderer).toContain('confirmButton.textContent = "Confirm";');
+    expect(renderer).toContain('saveButton.textContent = "Save";');
+    expect(renderer).toContain("saveButton.disabled = true;");
+    expect(renderer).toContain("confidence.onSave();");
+    expect(messages).toContain("Choose a confidence rating, then select Save to finish editing this furniture group.");
+  });
+
   it("keeps controls closer to small objects than the legacy fixed gap", () => {
     const config = createRuntimeConfig();
     const ui = getStageUiMetrics(config);
@@ -282,11 +311,11 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(getControlButtonTransform("rotate_cw", { x: 10, y: 20 }, 45)).toBe("translate(10 20) rotate(45)");
   });
 
-  it("uses the current object pose to orient control chrome", () => {
+  it("uses the initial object rotation to orient control chrome", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
 
-    expect(renderer).toContain("const movementRotationDeg = this.options.store.getObjectState(objectId).r;");
-    expect(renderer).not.toContain("const movementRotationDeg = objectConfig?.rotation ?? 0;");
+    expect(renderer).toContain("const movementRotationDeg = objectConfig?.rotation ?? 0;");
+    expect(renderer).not.toContain("const movementRotationDeg = this.options.store.getObjectState(objectId).r;");
   });
 
   it("rotates movement limit feedback around the reachable area center", () => {

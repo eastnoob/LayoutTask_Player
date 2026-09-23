@@ -94,6 +94,7 @@ const DEFAULT_STAGE = {
   padding: 16,
   display_rotation_deg: 0,
   display_flip_y: false,
+  background_flip_y: false,
 };
 
 const DEFAULT_TASK_COLLISION = {

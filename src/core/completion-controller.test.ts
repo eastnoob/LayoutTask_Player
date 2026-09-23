@@ -200,6 +200,32 @@ describe("CompletionController", () => {
     );
     expect(recorder.finish).not.toHaveBeenCalled();
   });
+
+  it("asks the participant to save a chosen confidence before submitting", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn() };
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: { encode: vi.fn() } as never,
+      clipboard: { copy: vi.fn() } as never,
+      confidence: {
+        canSubmit: () => ({ ok: false, reason: "confidence_save_required", groupId: "chair_group" }),
+      },
+      confirmImpl: () => true,
+    });
+
+    await controller.requestComplete();
+
+    expect(renderer.setStatus).toHaveBeenCalledWith(
+      "Select Save to store the confidence rating before submitting.",
+    );
+    expect(recorder.finish).not.toHaveBeenCalled();
+  });
 });
 
 function createCompletionRendererStub(): LayoutTaskRenderer {

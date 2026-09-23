@@ -1,0 +1,2992 @@
+[
+  {
+    "combination_id": "be84fc97a8d1",
+    "task_id": "scene_be84fc97a8d1",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M03",
+        "point_id": "P05",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 38492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -9980.827,
+          "y": 39360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -8980.827,
+          "y": 39860.991,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": -2,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+1,y-2,L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P06",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -3500,
+          "y": 38500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -3500,
+          "y": 38500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -2792.893,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": -1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+1,y-1,L+1"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P01",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6351.055,
+          "y": 16950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -8096.829,
+          "y": 18112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7096.829,
+          "y": 18612.688,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2,y+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P04",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6988.978,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -6988.978,
+          "y": 30500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y-2,R+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "40c935d28aa9",
+    "task_id": "scene_40c935d28aa9",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -11500,
+          "y": 39511.022,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2,y+2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3505.326,
+          "y": 38494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -2524.077,
+          "y": 38741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -1816.97,
+          "y": 38034.595,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "y-2,L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -8000,
+          "y": 16500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-2,y+2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P04",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6450.468,
+          "y": 32148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7612.688,
+          "y": 30403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -8112.688,
+          "y": 29403.171,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x-2,y+1,R+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "15d8ce4dbde3",
+    "task_id": "scene_15d8ce4dbde3",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P06",
+      "P04"
+    ],
+    "empty_points": [
+      "P01",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9652.549,
+          "y": 24570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -11708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -11708.812,
+          "y": 24864.767,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+1,y+1,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.904,
+          "y": 38498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -10492.206,
+          "y": 38507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -9785.1,
+          "y": 38507.794,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+1,y-1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3507.532,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -2639.009,
+          "y": 37980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -1639.009,
+          "y": 37480.827,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2,y-1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7500,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "e33c1f2ee9d8",
+    "task_id": "scene_e33c1f2ee9d8",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P03",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P05",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9950.468,
+          "y": 25148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -11112.688,
+          "y": 23403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -11112.688,
+          "y": 22903.171,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 0,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "x-1,L+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P03",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.904,
+          "y": 24498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -3492.206,
+          "y": 24507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -3492.206,
+          "y": 23093.58,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": -2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-2,y-2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7005.326,
+          "y": 17494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -6024.077,
+          "y": 17741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -5670.524,
+          "y": 17388.148,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y-1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 30500,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y-2"
+      }
+    ]
+  },
+  {
+    "combination_id": "8a5600c7b766",
+    "task_id": "scene_8a5600c7b766",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P06",
+      "P04"
+    ],
+    "empty_points": [
+      "P01",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M03",
+        "point_id": "P02",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -10505.326,
+          "y": 24494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -9524.077,
+          "y": 24741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -9170.524,
+          "y": 25095.255,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x+1,R+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P05",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -11500,
+          "y": 38000,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-2,y-1"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P06",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -2851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -4596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -4096.829,
+          "y": 40112.688,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+1,y+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P04",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -6998.45,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -6000,
+          "y": 31511.022,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y-2,R+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "843f53756ca5",
+    "task_id": "scene_843f53756ca5",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -10596.829,
+          "y": 39112.688,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+2,L+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -3500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -3500,
+          "y": 38511.022,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7007.532,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 31000,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y-1"
+      }
+    ]
+  },
+  {
+    "combination_id": "31f06e134f06",
+    "task_id": "scene_31f06e134f06",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -10596.829,
+          "y": 39112.688,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x+2,R+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.904,
+          "y": 38498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -3492.206,
+          "y": 38507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -4199.313,
+          "y": 39214.9,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 2,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y+2,R+2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7007.532,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -6139.009,
+          "y": 17480.827,
+          "rotation_deg": -90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "y+1,L+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -6646.447,
+          "y": 31146.447,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "y-1,R+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "7909d181cd64",
+    "task_id": "scene_7909d181cd64",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P03",
+      "P01"
+    ],
+    "empty_points": [
+      "P04",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M03",
+        "point_id": "P02",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 24492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -9980.827,
+          "y": 25360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -9480.827,
+          "y": 25360.991,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y-1,R+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P05",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -9500,
+          "y": 38500,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+2,L+1"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P03",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -2652.549,
+          "y": 24570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -4708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -4708.812,
+          "y": 24864.767,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+1,y+1,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P01",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -6998.904,
+          "y": 17498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -6992.206,
+          "y": 17507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -8052.867,
+          "y": 17861.347,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-1,y+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "8902bfd7b7e4",
+    "task_id": "scene_8902bfd7b7e4",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P03",
+      "P01"
+    ],
+    "empty_points": [
+      "P04",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M03",
+        "point_id": "P02",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 24492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -9980.827,
+          "y": 25360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10480.827,
+          "y": 25360.991,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "y+1,L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P05",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10500,
+          "y": 39000,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x+1,R+2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P03",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -2652.549,
+          "y": 24570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -4708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -4708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "origin"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P01",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -6998.45,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7500,
+          "y": 17011.022,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,y+1,L+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "286f75c14389",
+    "task_id": "scene_286f75c14389",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P06",
+      "P04"
+    ],
+    "empty_points": [
+      "P01",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M04",
+        "point_id": "P02",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 24500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 24500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10500,
+          "y": 24500,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -12596.829,
+          "y": 39112.688,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 0,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x-2,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -3500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -2500,
+          "y": 38511.022,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "y-2,L+2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P04",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -6480.827,
+          "y": 32360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -5980.827,
+          "y": 32360.991,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y-1"
+      }
+    ]
+  },
+  {
+    "combination_id": "44de6961764d",
+    "task_id": "scene_44de6961764d",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -9500,
+          "y": 38511.022,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "y-2,L+2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3505.326,
+          "y": 38494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -2524.077,
+          "y": 38741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -1816.97,
+          "y": 39448.808,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7500,
+          "y": 16500,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-2,y+1,L+1"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P04",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6351.055,
+          "y": 30950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -8096.829,
+          "y": 32112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -8096.829,
+          "y": 32112.688,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "origin"
+      }
+    ]
+  },
+  {
+    "combination_id": "ffa9be5f52f4",
+    "task_id": "scene_ffa9be5f52f4",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P06",
+      "P04"
+    ],
+    "empty_points": [
+      "P01",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9950.468,
+          "y": 25148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -11112.688,
+          "y": 23403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10612.688,
+          "y": 22403.171,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": -1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x-2,y-1,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10500,
+          "y": 38011.022,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3505.326,
+          "y": 38494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -2524.077,
+          "y": 38741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -2877.631,
+          "y": 39095.255,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -6646.447,
+          "y": 31853.553,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 0,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "x+1,L+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "af8fab999cae",
+    "task_id": "scene_af8fab999cae",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P03",
+      "P01"
+    ],
+    "empty_points": [
+      "P04",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9652.549,
+          "y": 24570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -11708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -12415.918,
+          "y": 24157.661,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 1,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x-1,y+1,R+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.904,
+          "y": 38498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -10492.206,
+          "y": 38507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -11199.313,
+          "y": 38507.794,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,y+1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P03",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3505.326,
+          "y": 24494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -2524.077,
+          "y": 24741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -2877.631,
+          "y": 25095.255,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "y+1,L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -7353.553,
+          "y": 16439.34,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": -1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-2,y-1,L+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "c2df50a485bd",
+    "task_id": "scene_c2df50a485bd",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P03",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P05",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M01",
+        "point_id": "P02",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 24498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -10488.978,
+          "y": 24500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -9988.978,
+          "y": 25000,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+1,y+1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P03",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3507.532,
+          "y": 24500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -2639.009,
+          "y": 23980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -2639.009,
+          "y": 24480.827,
+          "rotation_deg": -90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "y+1,L+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P04",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6450.468,
+          "y": 32148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7612.688,
+          "y": 30403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7612.688,
+          "y": 30403.171,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "L+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "a2b1066832b7",
+    "task_id": "scene_a2b1066832b7",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9950.468,
+          "y": 39148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -11112.688,
+          "y": 37403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -11112.688,
+          "y": 36403.171,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 0,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x-2,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3500,
+          "y": 38498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -3488.978,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -3488.978,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7007.532,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -5139.009,
+          "y": 16980.827,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+2,R+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 32000,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+1,L+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "06398790d57e",
+    "task_id": "scene_06398790d57e",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P05",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 23950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 25112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -12596.829,
+          "y": 25112.688,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 0,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x-2,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -3500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -4000,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7007.532,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7500,
+          "y": 32500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2,y+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "64b3b35fb323",
+    "task_id": "scene_64b3b35fb323",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P03",
+      "P01"
+    ],
+    "empty_points": [
+      "P04",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9950.468,
+          "y": 25148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -11112.688,
+          "y": 23403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -11612.688,
+          "y": 23403.171,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y+1,R+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.45,
+          "y": 38500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 38511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10500,
+          "y": 38011.022,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 0,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P03",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3507.532,
+          "y": 24500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -2639.009,
+          "y": 23980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -2139.009,
+          "y": 23980.827,
+          "rotation_deg": -90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 0,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "x+1,L+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 16500,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x-2,R+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "01e8f8366e77",
+    "task_id": "scene_01e8f8366e77",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P05",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P02",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9652.549,
+          "y": 24570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -11708.812,
+          "y": 24157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -11001.705,
+          "y": 24864.767,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+2,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.904,
+          "y": 38498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -3492.206,
+          "y": 38507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -2431.546,
+          "y": 38154.24,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": -2,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+1,y-2,R+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7007.532,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -6139.009,
+          "y": 16980.827,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -5639.009,
+          "y": 16480.827,
+          "rotation_deg": -90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": -1,
+          "rotation_steps": -2
+        },
+        "variable_state_label": "x+1,y-1,L+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -7353.553,
+          "y": 31853.553,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "c487a33947b5",
+    "task_id": "scene_c487a33947b5",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P05",
+      "P03",
+      "P01"
+    ],
+    "empty_points": [
+      "P04",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M04",
+        "point_id": "P02",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 24500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 24500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -9500,
+          "y": 23500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": -2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-2,y-2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -11096.829,
+          "y": 39612.688,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+1,y+1,R+1"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P03",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3498.904,
+          "y": 24498.904,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -3492.206,
+          "y": 24507.794,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -3138.653,
+          "y": 23447.133,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": -2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x-1,y-2"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -6480.827,
+          "y": 18360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -5480.827,
+          "y": 17860.991,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": -2,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,y-2,L+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "e9a1b84008b8",
+    "task_id": "scene_e9a1b84008b8",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M01",
+        "point_id": "P05",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10500,
+          "y": 38498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -10488.978,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -10988.978,
+          "y": 39000,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,y+1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3505.326,
+          "y": 38494.674,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -2524.077,
+          "y": 38741.702,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -1816.97,
+          "y": 39448.808,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 0,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x+2,L+1"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 17000,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "y-1,R+1"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P04",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6450.468,
+          "y": 32148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7612.688,
+          "y": 30403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7612.688,
+          "y": 29403.171,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -2,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "x-2,R+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "6f20b299b0e5",
+    "task_id": "scene_6f20b299b0e5",
+    "placement_count": 4,
+    "occupied_points": [
+      "P02",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P05",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M01",
+        "point_id": "P02",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -10498.45,
+          "y": 24500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -10500,
+          "y": 24511.022,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -10000,
+          "y": 24011.022,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": -1,
+          "dy_steps": -1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "x-1,y-1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P06",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -3500,
+          "y": 38492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -2980.827,
+          "y": 39360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -3980.827,
+          "y": 40360.991,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+2,y+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P01",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 17500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 18500,
+          "rotation_deg": 0
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "y+2"
+      },
+      {
+        "model_id": "M05",
+        "point_id": "P04",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -6450.468,
+          "y": 32148.945,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7612.688,
+          "y": 30403.171,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -8112.688,
+          "y": 31403.171,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 2,
+          "dy_steps": 1,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "x+2,y+1,R+1"
+      }
+    ]
+  },
+  {
+    "combination_id": "85b04c9ff8c0",
+    "task_id": "scene_85b04c9ff8c0",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P06",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P03"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9851.055,
+          "y": 37950.468,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -11596.829,
+          "y": 39112.688,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P06",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3500,
+          "y": 38498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -3488.978,
+          "y": 38500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -3488.978,
+          "y": 39000,
+          "rotation_deg": -45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": -1
+        },
+        "variable_state_label": "y+1,L+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -6480.827,
+          "y": 18360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7480.827,
+          "y": 18860.991,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+1,y+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      }
+    ]
+  },
+  {
+    "combination_id": "395dba77481f",
+    "task_id": "scene_395dba77481f",
+    "placement_count": 4,
+    "occupied_points": [
+      "P05",
+      "P03",
+      "P01",
+      "P04"
+    ],
+    "empty_points": [
+      "P02",
+      "P06"
+    ],
+    "missing_model": "",
+    "placements": [
+      {
+        "model_id": "M05",
+        "point_id": "P05",
+        "group_asset": "m05_group",
+        "variable_asset": "m05_variable",
+        "group_pose": {
+          "x": -9652.549,
+          "y": 38570.296,
+          "rotation_deg": 45
+        },
+        "variable_initial_pose": {
+          "x": -11708.812,
+          "y": 38157.661,
+          "rotation_deg": 45
+        },
+        "variable_correct_pose": {
+          "x": -12062.365,
+          "y": 38511.214,
+          "rotation_deg": 135
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 1,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "y+1,R+2"
+      },
+      {
+        "model_id": "M01",
+        "point_id": "P03",
+        "group_asset": "m01_group",
+        "variable_asset": "m01_variable",
+        "group_pose": {
+          "x": -3500,
+          "y": 24498.45,
+          "rotation_deg": 0
+        },
+        "variable_initial_pose": {
+          "x": -3488.978,
+          "y": 24500,
+          "rotation_deg": 0
+        },
+        "variable_correct_pose": {
+          "x": -3488.978,
+          "y": 23500,
+          "rotation_deg": 45
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": -2,
+          "rotation_steps": 1
+        },
+        "variable_state_label": "y-2,R+1"
+      },
+      {
+        "model_id": "M03",
+        "point_id": "P01",
+        "group_asset": "m03_group",
+        "variable_asset": "m03_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 17492.468,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -6480.827,
+          "y": 18360.991,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7480.827,
+          "y": 18860.991,
+          "rotation_deg": 90
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 1,
+          "dy_steps": 2,
+          "rotation_steps": 0
+        },
+        "variable_state_label": "x+1,y+2"
+      },
+      {
+        "model_id": "M04",
+        "point_id": "P04",
+        "group_asset": "m04_group",
+        "variable_asset": "m04_variable",
+        "group_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_initial_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 90
+        },
+        "variable_correct_pose": {
+          "x": -7000,
+          "y": 31500,
+          "rotation_deg": 180
+        },
+        "variable_state": {
+          "object": "variable_group",
+          "dx_steps": 0,
+          "dy_steps": 0,
+          "rotation_steps": 2
+        },
+        "variable_state_label": "R+2"
+      }
+    ]
+  }
+]

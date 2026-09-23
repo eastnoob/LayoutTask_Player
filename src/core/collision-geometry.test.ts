@@ -148,6 +148,39 @@ describe("collision geometry", () => {
     ]);
   });
 
+  it("mirrors local collider geometry when the stage counter-flips object visuals", () => {
+    const polygons = createObjectCollisionPolygons(
+      createObject({
+        x: 100,
+        y: 200,
+        width: 100,
+        height: 50,
+        collision: {
+          enabled: true,
+          shape: "polygons",
+          padding: 0,
+          polygons: [
+            {
+              points: [
+                { x: 60, y: 10 },
+                { x: 80, y: 10 },
+                { x: 60, y: 30 },
+              ],
+            },
+          ],
+        },
+      }),
+      { x: 100, y: 200, r: 0 },
+      { flipY: true },
+    );
+
+    expectPolygonToBeCloseTo(polygons[0], [
+      { x: 110, y: 215 },
+      { x: 130, y: 215 },
+      { x: 110, y: 195 },
+    ]);
+  });
+
   it("creates top-left local collision polygons in world units", () => {
     const polygons = createObjectCollisionPolygons(
       createObject({

@@ -298,6 +298,7 @@ export const stageSchema = z.object({
   padding: z.number().nonnegative().default(16),
   display_rotation_deg: z.number().finite().default(0),
   display_flip_y: z.boolean().default(false),
+  background_flip_y: z.boolean().default(false),
 });
 
 const collisionPointSchema = z.object({

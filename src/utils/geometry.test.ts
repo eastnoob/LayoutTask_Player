@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getMovementLimitFeedbackRect, getRotationLimitFeedbackArc, normalizeRotation, snapToGrid } from "./geometry";
+import {
+  getMovementLimitFeedbackRect,
+  getRotationLimitFeedbackArc,
+  localStepsToWorldDelta,
+  normalizeRotation,
+  snapToGrid,
+} from "./geometry";
 
 describe("normalizeRotation", () => {
   it("normalizes values above 360", () => {
@@ -15,6 +21,12 @@ describe("snapToGrid", () => {
   it("snaps to an origin-shifted grid", () => {
     expect(snapToGrid(36, 25, 10)).toBe(35);
     expect(snapToGrid(-3, 25, 10)).toBe(-15);
+  });
+});
+
+describe("localStepsToWorldDelta", () => {
+  it("projects relative movement steps through the initial local axes", () => {
+    expect(localStepsToWorldDelta(1, 0, 25, 90)).toEqual({ x: 0, y: 25 });
   });
 });
 

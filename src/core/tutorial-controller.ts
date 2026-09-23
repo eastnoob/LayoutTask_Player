@@ -14,9 +14,10 @@ export interface TutorialStep {
     | "select_first"
     | "move_or_rotate"
     | "confidence_first"
-    | "deselect"
+    | "save_first"
     | "select_second"
     | "confidence_second"
+    | "save_second"
     | "submit"
     | "complete";
   anchor: string;
@@ -57,9 +58,9 @@ const steps: TutorialStep[] = [
     expectedEvent: "confidence_chosen",
   },
   {
-    id: "deselect",
-    anchor: "stage",
-    message: "Click the stage background to exit edit mode.",
+    id: "save_first",
+    anchor: "confidence",
+    message: "Select Save to store this confidence rating and finish editing the furniture group.",
     expectedEvent: "object_deselected",
   },
   {
@@ -73,6 +74,12 @@ const steps: TutorialStep[] = [
     anchor: "confidence",
     message: "Adjust this group, then choose its confidence rating.",
     expectedEvent: "confidence_chosen",
+  },
+  {
+    id: "save_second",
+    anchor: "confidence",
+    message: "Select Save to store the rating before confirming the tutorial result.",
+    expectedEvent: "object_deselected",
   },
   {
     id: "submit",

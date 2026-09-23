@@ -1,0 +1,788 @@
+{
+  "objects": [
+    {
+      "name": "IPE::PREVIEW::S04::M01::VARIABLE", 
+      "layer": "VARIABLE", 
+      "id": "f2c2b1e2-f3ff-48bb-a1f5-de5ed3127f65", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          602.04898071289062, 
+          832.78818865220455, 
+          395.00000000001535
+        ], 
+        "center": [
+          -6501.0244964809490, 
+          31010.636228688134, 
+          197.49999999999301
+        ], 
+        "min": [
+          -6802.0489868373943, 
+          30594.242134362034, 
+          -1.4668341194457035e-11
+        ], 
+        "max": [
+          -6200.0000061245037, 
+          31427.030323014238, 
+          395.00000000000068
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S04::M01::GROUP", 
+      "layer": "GROUP", 
+      "id": "145dde92-06aa-4a8f-8064-2aef859f1df3", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          744.65410839075957, 
+          3847.3405191093589, 
+          846.56378173828125
+        ], 
+        "center": [
+          -6998.4496480347279, 
+          31499.999997089624, 
+          423.28189086914199
+        ], 
+        "min": [
+          -7370.7767022301077, 
+          29576.329737534947, 
+          1.3073986337985843e-12
+        ], 
+        "max": [
+          -6626.1225938393482, 
+          33423.670256644305, 
+          846.56378173828261
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S01::M05::VARIABLE", 
+      "layer": "VARIABLE", 
+      "id": "bf9f365f-2eb6-47d9-bb6b-d2ede7d9cddb", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          1252.5719941647067, 
+          1252.5720045578873, 
+          319.09109579671372
+        ], 
+        "center": [
+          -7612.6884444175248, 
+          15403.170599420751, 
+          155.54554624633573
+        ], 
+        "min": [
+          -8238.9744414998786, 
+          14776.884597141807, 
+          -4.0000016520211039
+        ], 
+        "max": [
+          -6986.4024473351719, 
+          16029.456601699694, 
+          315.09109414469259
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S06::M04::VARIABLE", 
+      "layer": "VARIABLE", 
+      "id": "089ee511-073b-4789-95b4-761841d5052a", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          2385.3782642141896, 
+          2383.5517063692532, 
+          1169.0104948481567
+        ], 
+        "center": [
+          -2999.7028670666637, 
+          37999.823030582840, 
+          582.30859359744636
+        ], 
+        "min": [
+          -4192.3919991737584, 
+          36808.047177398214, 
+          -2.1966538266320867
+        ], 
+        "max": [
+          -1807.0137349595691, 
+          39191.598883767467, 
+          1166.8138410215247
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S02::M03::VARIABLE", 
+      "layer": "VARIABLE", 
+      "id": "55c8aff6-69ea-4685-99ab-008084f1b47e", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          625.78917184185048, 
+          616.34083271312920, 
+          764.76178932189953
+        ], 
+        "center": [
+          -9988.5768530720634, 
+          25858.336911552717, 
+          417.61912040986368
+        ], 
+        "min": [
+          -10301.471438992989, 
+          25550.166495196150, 
+          35.238225748913877
+        ], 
+        "max": [
+          -9675.6822671511381, 
+          26166.507327909279, 
+          800.00001507081345
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S02::M03::GROUP", 
+      "layer": "GROUP", 
+      "id": "1dd31bd8-4882-44b0-9bf3-81f21b5a2340", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          2000.0006916768962, 
+          2158.0785616254616, 
+          800.00001507081242
+        ], 
+        "center": [
+          -10499.999651781513, 
+          24492.468212861611, 
+          400.00000753540712
+        ], 
+        "min": [
+          -11499.999997619960, 
+          23413.428932048882, 
+          9.0949470177292824e-13
+        ], 
+        "max": [
+          -9499.9993059430635, 
+          25571.507493674344, 
+          800.00001507081333
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S06::M04::GROUP", 
+      "layer": "GROUP", 
+      "id": "a23b044f-4768-4134-996a-e9c9a888d1ef", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          5516.6042642151851, 
+          2865.6659076684009, 
+          1169.0104948481567
+        ], 
+        "center": [
+          -3499.6860918334528, 
+          38500.159855697166, 
+          582.30859359744636
+        ], 
+        "min": [
+          -6257.9882239410454, 
+          37067.326901862965, 
+          -2.1966538266320867
+        ], 
+        "max": [
+          -741.38395972586034, 
+          39932.992809531366, 
+          1166.8138410215247
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "IPE::PREVIEW::S01::M05::GROUP", 
+      "layer": "GROUP", 
+      "id": "eda01d41-b7de-4e2e-a2c9-fe574b7efee2", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          764.58583582470419, 
+          1954.5859375, 
+          710.34449836247802
+        ], 
+        "center": [
+          -6450.4684742887575, 
+          18148.945148585088, 
+          373.38059298235231
+        ], 
+        "min": [
+          -6832.7613922011096, 
+          17171.652179835088, 
+          18.208343801113301
+        ], 
+        "max": [
+          -6068.1755563764054, 
+          19126.238117335088, 
+          728.55284216359132
+        ]
+      }, 
+      "text": null, 
+      "object_type": "InstanceReference"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "db2c48ea-4a67-433e-8788-5ceff7e72001", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -3500.0, 
+          38500.0, 
+          1250.0
+        ], 
+        "min": [
+          -3500.0, 
+          38500.0, 
+          1250.0
+        ], 
+        "max": [
+          -3500.0, 
+          38500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P06", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "8a944e87-64b2-43a9-bf98-4e471a3a9c4b", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -10500.0, 
+          38500.0, 
+          1250.0
+        ], 
+        "min": [
+          -10500.0, 
+          38500.0, 
+          1250.0
+        ], 
+        "max": [
+          -10500.0, 
+          38500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P05", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "4ff08658-e8df-4a70-a3a8-d424191ac7ed", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -7000.0, 
+          31500.0, 
+          1250.0
+        ], 
+        "min": [
+          -7000.0, 
+          31500.0, 
+          1250.0
+        ], 
+        "max": [
+          -7000.0, 
+          31500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P04", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "a5e72a92-7687-4c71-94ad-d44e2238284a", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -3500.0, 
+          24500.0, 
+          1250.0
+        ], 
+        "min": [
+          -3500.0, 
+          24500.0, 
+          1250.0
+        ], 
+        "max": [
+          -3500.0, 
+          24500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P03", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "aedeaf42-3497-4107-a65d-5489d7a72210", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -10500.0, 
+          24500.0, 
+          1250.0
+        ], 
+        "min": [
+          -10500.0, 
+          24500.0, 
+          1250.0
+        ], 
+        "max": [
+          -10500.0, 
+          24500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P02", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "f474e1dd-984d-4e3c-a840-cf443e3ba46d", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          0.0, 
+          0.0, 
+          0.0
+        ], 
+        "center": [
+          -7000.0, 
+          17500.0, 
+          1250.0
+        ], 
+        "min": [
+          -7000.0, 
+          17500.0, 
+          1250.0
+        ], 
+        "max": [
+          -7000.0, 
+          17500.0, 
+          1250.0
+        ]
+      }, 
+      "text": "P01", 
+      "object_type": "TextDot"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "8388fd14-ca32-49ed-ab93-5ab845a64ebc", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          100.0
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          3350.0
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          3300.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          3400.0
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "b3ccf49d-a3f2-497e-93ce-7c995060258d", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          100.0
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          -50.0
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          -100.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          0.0
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "fa8cd92d-fbbb-489c-accc-f1824600964f", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          3300.0000000000005
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          1650.0000000000002
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          0.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          3300.0000000000005
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "7a3c2233-cd36-4b1e-917f-3f777d1358ca", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          100.0
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          3350.0
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          3300.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          3400.0
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "a68da6a3-0a4c-4cf5-b030-a03127ce69ed", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          100.0
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          -50.0
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          -100.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          0.0
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }, 
+    {
+      "name": "", 
+      "layer": "room", 
+      "id": "e0812911-5739-4324-b454-bc6cec33b9c6", 
+      "user_strings": {}, 
+      "bbox": {
+        "size": [
+          14400.0, 
+          42400.0, 
+          3300.0000000000005
+        ], 
+        "center": [
+          -7000.0, 
+          21000.0, 
+          1650.0000000000002
+        ], 
+        "min": [
+          -14200.0, 
+          -200.0, 
+          0.0
+        ], 
+        "max": [
+          200.0, 
+          42200.0, 
+          3300.0000000000005
+        ]
+      }, 
+      "text": null, 
+      "object_type": "Brep"
+    }
+  ], 
+  "layer_count": 26, 
+  "unit_system": "Millimeters", 
+  "document_bbox": {
+    "size": [
+      14400.0, 
+      42400.0, 
+      3500.0
+    ], 
+    "center": [
+      -7000.0, 
+      21000.0, 
+      1650.0
+    ], 
+    "min": [
+      -14200.0, 
+      -200.0, 
+      -100.0
+    ], 
+    "max": [
+      200.0, 
+      42200.0, 
+      3400.0
+    ]
+  }, 
+  "document_name": "baseRoom.3dm", 
+  "object_count": 1680, 
+  "layers": [
+    {
+      "name": "Default", 
+      "index": 0, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Layer 01", 
+      "index": 1, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Layer 02", 
+      "index": 2, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Layer 03", 
+      "index": 3, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Layer 04", 
+      "index": 4, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Layer 05", 
+      "index": 5, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "GH_Parametric_Wood_Floor", 
+      "index": 6, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Grasshopper", 
+      "index": 7, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Grasshopper::Surfaces", 
+      "index": 8, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Grasshopper::Meshes", 
+      "index": 9, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "__SCENE_SAMPLER_BLOCK_PREVIEW__", 
+      "index": 10, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "bakeThings", 
+      "index": 11, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "GROUP", 
+      "index": 12, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "VARIABLE", 
+      "index": 13, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY", 
+      "index": 14, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY::ASYMMETRY", 
+      "index": 15, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY::BBOX", 
+      "index": 16, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY::CONVEX", 
+      "index": 17, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY::BODY_PROXY", 
+      "index": 18, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "PROXY::BP_UNITED", 
+      "index": 19, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "GEOMETRY", 
+      "index": 20, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "Edit", 
+      "index": 21, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "room", 
+      "index": 22, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "backup", 
+      "index": 23, 
+      "is_visible": false, 
+      "is_locked": false
+    }, 
+    {
+      "name": "By Parent", 
+      "index": 24, 
+      "is_visible": true, 
+      "is_locked": false
+    }, 
+    {
+      "name": "VisualARQ Locked Levels", 
+      "index": 25, 
+      "is_visible": true, 
+      "is_locked": true
+    }
+  ]
+}

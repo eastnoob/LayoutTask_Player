@@ -29,9 +29,12 @@ describe("TutorialController", () => {
     expect(controller.handle("object_selected", { objectId: "chair_01" })).toBe(true);
     expect(controller.handle("object_moved_or_rotated")).toBe(true);
     expect(controller.handle("confidence_chosen")).toBe(true);
+    expect(controller.getCurrentStep()).toMatchObject({ id: "save_first", anchor: "confidence" });
     expect(controller.handle("object_deselected")).toBe(true);
     expect(controller.handle("object_selected", { objectId: "table_01" })).toBe(true);
     expect(controller.handle("confidence_chosen")).toBe(true);
+    expect(controller.getCurrentStep()).toMatchObject({ id: "save_second", anchor: "confidence" });
+    expect(controller.handle("object_deselected")).toBe(true);
     expect(controller.handle("submitted")).toBe(true);
 
     expect(controller.isComplete()).toBe(true);

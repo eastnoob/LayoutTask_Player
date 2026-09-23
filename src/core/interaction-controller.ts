@@ -46,7 +46,7 @@ export class InteractionController {
         canEnterObjectEdit(objectId: string): { ok: true } | { ok: false; reason: string; groupId: string };
         enterObjectEdit(objectId: string): void;
         canLeaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
-        leaveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
+        saveActiveGroup(): { ok: true } | { ok: false; reason: string; groupId: string };
       };
       tutorial?: {
         onObjectSelected(objectId: string): void;
@@ -81,15 +81,16 @@ export class InteractionController {
 
     const confidenceGate = this.options.confidence?.canEnterObjectEdit(objectId);
     if (confidenceGate && !confidenceGate.ok) {
-      this.options.renderer.setStatus("Choose a confidence rating for this furniture group before exiting edit mode.");
+      this.options.renderer.setStatus("Choose a confidence rating, then select Save before editing another furniture group.");
       this.options.renderer.focusConfidence();
       return;
     }
 
     if (this.activeObjectId && this.activeObjectId !== objectId) {
       this.options.renderer.setStatus(
-        `Editing ${this.activeObjectId}. Tap the stage background to exit before selecting another object.`,
+        `Editing ${this.activeObjectId}. Save its confidence rating before selecting another object.`,
       );
+      this.options.renderer.focusConfidence();
       return;
     }
 
@@ -98,7 +99,7 @@ export class InteractionController {
     this.options.renderer.activateObject(objectId);
     this.options.renderer.updateControlsDisabled(objectId);
     this.options.renderer.showConfidenceForActiveGroup();
-    this.options.renderer.setStatus(`Editing ${objectId}. Tap the stage background to exit edit mode.`);
+    this.options.renderer.setStatus(`Editing ${objectId}. Choose confidence and select Save when finished.`);
     this.options.tutorial?.onObjectSelected(objectId);
   }
 
@@ -107,9 +108,8 @@ export class InteractionController {
       return;
     }
 
-    const confidenceGate = this.options.confidence?.leaveActiveGroup();
-    if (confidenceGate && !confidenceGate.ok) {
-      this.options.renderer.setStatus("Choose a confidence rating for this furniture group before exiting edit mode.");
+    if (this.options.confidence) {
+      this.options.renderer.setStatus("Choose a confidence rating, then select Save to finish editing this furniture group.");
       this.options.renderer.focusConfidence();
       return;
     }
@@ -118,6 +118,26 @@ export class InteractionController {
     this.activeObjectId = undefined;
     this.options.renderer.clearActiveObject();
     this.options.renderer.setStatus(`Exited ${previousObjectId} edit mode.`);
+    this.options.tutorial?.onObjectDeselected(previousObjectId);
+  }
+
+  saveActiveConfidence(): void {
+    if (!this.bound || !this.activeObjectId || this.dragSession || !this.options.confidence) {
+      return;
+    }
+
+    const confidenceGate = this.options.confidence.saveActiveGroup();
+    if (!confidenceGate.ok) {
+      this.options.renderer.setStatus("Choose a confidence rating before saving this furniture group.");
+      this.options.renderer.focusConfidence();
+      return;
+    }
+
+    const previousObjectId = this.activeObjectId;
+    this.activeObjectId = undefined;
+    this.options.renderer.clearActiveObject();
+    this.options.renderer.hideConfidence();
+    this.options.renderer.setStatus(`Saved confidence for ${previousObjectId}. Select another furniture group or confirm.`);
     this.options.tutorial?.onObjectDeselected(previousObjectId);
   }
 

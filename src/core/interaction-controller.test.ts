@@ -306,7 +306,7 @@ describe("InteractionController", () => {
     expect(renderer.clearActiveObject).toHaveBeenCalledOnce();
   });
 
-  it("blocks deselect when active group requires confidence", () => {
+  it("keeps confidence-enabled edit mode active when the stage background is clicked", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
     const renderer = createRendererStub();
@@ -318,16 +318,8 @@ describe("InteractionController", () => {
       confidence: {
         canEnterObjectEdit: vi.fn(() => ({ ok: true as const })),
         enterObjectEdit: vi.fn(),
-        canLeaveActiveGroup: vi.fn(() => ({
-          ok: false,
-          reason: "confidence_required",
-          groupId: "chair_group",
-        })),
-        leaveActiveGroup: vi.fn(() => ({
-          ok: false,
-          reason: "confidence_required",
-          groupId: "chair_group",
-        })),
+        canLeaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+        saveActiveGroup: vi.fn(() => ({ ok: true as const })),
       },
     });
 
@@ -338,8 +330,67 @@ describe("InteractionController", () => {
     expect(controller.getActiveObjectId()).toBe("chair_01");
     expect(renderer.clearActiveObject).not.toHaveBeenCalled();
     expect(renderer.setStatus).toHaveBeenLastCalledWith(
-      "Choose a confidence rating for this furniture group before exiting edit mode.",
+      "Choose a confidence rating, then select Save to finish editing this furniture group.",
     );
+    expect(renderer.focusConfidence).toHaveBeenCalledOnce();
+  });
+
+  it("saves confidence before clearing the active edit mode", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const saveActiveGroup = vi.fn(() => ({ ok: true as const }));
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder: createRecorderStub(),
+      confidence: {
+        canEnterObjectEdit: vi.fn(() => ({ ok: true as const })),
+        enterObjectEdit: vi.fn(),
+        canLeaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+        saveActiveGroup,
+      },
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    controller.saveActiveConfidence();
+
+    expect(saveActiveGroup).toHaveBeenCalledOnce();
+    expect(controller.getActiveObjectId()).toBeUndefined();
+    expect(renderer.clearActiveObject).toHaveBeenCalledOnce();
+    expect(renderer.hideConfidence).toHaveBeenCalledOnce();
+  });
+
+  it("does not clear edit mode when confidence save is requested without a rating", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder: createRecorderStub(),
+      confidence: {
+        canEnterObjectEdit: vi.fn(() => ({ ok: true as const })),
+        enterObjectEdit: vi.fn(),
+        canLeaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+        saveActiveGroup: vi.fn(() => ({
+          ok: false as const,
+          reason: "confidence_required",
+          groupId: "chair_group",
+        })),
+      },
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    controller.saveActiveConfidence();
+
+    expect(controller.getActiveObjectId()).toBe("chair_01");
+    expect(renderer.clearActiveObject).not.toHaveBeenCalled();
+    expect(renderer.focusConfidence).toHaveBeenCalledOnce();
   });
 
   it("blocks switching objects when active group requires confidence", () => {
@@ -368,7 +419,7 @@ describe("InteractionController", () => {
         ),
         enterObjectEdit: vi.fn(),
         canLeaveActiveGroup: vi.fn(() => ({ ok: true as const })),
-        leaveActiveGroup: vi.fn(() => ({ ok: true as const })),
+        saveActiveGroup: vi.fn(() => ({ ok: true as const })),
       },
     });
 
@@ -380,7 +431,7 @@ describe("InteractionController", () => {
     expect(renderer.activateObject).toHaveBeenCalledWith("chair_01");
     expect(renderer.activateObject).not.toHaveBeenCalledWith("table_01");
     expect(renderer.setStatus).toHaveBeenLastCalledWith(
-      "Choose a confidence rating for this furniture group before exiting edit mode.",
+      "Choose a confidence rating, then select Save before editing another furniture group.",
     );
   });
 
@@ -572,6 +623,7 @@ function createRendererStub(): LayoutTaskRenderer {
     setDragging: vi.fn(),
     focusConfidence: vi.fn(),
     showConfidenceForActiveGroup: vi.fn(),
+    hideConfidence: vi.fn(),
   } as unknown as LayoutTaskRenderer;
 }
 

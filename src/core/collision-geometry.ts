@@ -27,9 +27,14 @@ export interface EvaluateCollisionInput {
   objectPoses?: Record<string, ObjectPose>;
   areas: CollisionAreaConfig[];
   worldViewBox: ViewBox;
+  objectVisualFlipY?: boolean;
 }
 
 const EPSILON = 1e-9;
+
+export interface ObjectCollisionTransformOptions {
+  flipY?: boolean;
+}
 
 // ===== Collision policy =====
 // Collision is intentionally discrete: each candidate pose is accepted or rejected
@@ -39,7 +44,8 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
     return { ok: true };
   }
 
-  const movingPolygons = createObjectCollisionPolygons(input.movingObject, input.candidatePose);
+  const transformOptions = { flipY: input.objectVisualFlipY };
+  const movingPolygons = createObjectCollisionPolygons(input.movingObject, input.candidatePose, transformOptions);
   const containAreas = input.areas.filter((area) => area.type === "contain");
   const blockAreas = input.areas.filter((area) => area.type === "block");
   // contain areas define where an object may stay. If none are authored, the task
@@ -68,7 +74,7 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
       continue;
     }
     const pose = input.objectPoses?.[object.id] ?? { x: object.x, y: object.y, r: object.rotation };
-    const objectPolygons = createObjectCollisionPolygons(object, pose);
+    const objectPolygons = createObjectCollisionPolygons(object, pose, transformOptions);
     if (
       movingPolygons.some((movingPolygon) =>
         objectPolygons.some((objectPolygon) => doPolygonsIntersect(movingPolygon, objectPolygon)),
@@ -81,17 +87,25 @@ export function evaluateCollision(input: EvaluateCollisionInput): CollisionResul
   return { ok: true };
 }
 
-export function createObjectCollisionPolygons(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon[] {
+export function createObjectCollisionPolygons(
+  object: RuntimeTaskObject,
+  pose: ObjectPose,
+  options: ObjectCollisionTransformOptions = {},
+): CollisionPolygon[] {
   if (object.collision.shape === "box") {
-    return [createObjectCollisionPolygon(object, pose)];
+    return [createObjectCollisionPolygon(object, pose, options)];
   }
 
   // Polygon padding is intentionally not applied in v1. Authored object-local
   // collider polygons are transformed verbatim to avoid an implicit offset model.
-  return object.collision.polygons.map((polygon) => transformObjectLocalPolygon(object, pose, polygon.points));
+  return object.collision.polygons.map((polygon) => transformObjectLocalPolygon(object, pose, polygon.points, options));
 }
 
-export function createObjectCollisionPolygon(object: RuntimeTaskObject, pose: ObjectPose): CollisionPolygon {
+export function createObjectCollisionPolygon(
+  object: RuntimeTaskObject,
+  pose: ObjectPose,
+  options: ObjectCollisionTransformOptions = {},
+): CollisionPolygon {
   const padding = object.collision.padding;
   const width = object.width + padding * 2;
   const height = object.height + padding * 2;
@@ -107,16 +121,14 @@ export function createObjectCollisionPolygon(object: RuntimeTaskObject, pose: Ob
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
 
-  return corners.map((point) => ({
-    x: pose.x + point.x * cos - point.y * sin,
-    y: pose.y + point.x * sin + point.y * cos,
-  }));
+  return corners.map((point) => transformLocalPointToWorld(point, pose, cos, sin, options));
 }
 
 function transformObjectLocalPolygon(
   object: RuntimeTaskObject,
   pose: ObjectPose,
   points: CollisionPolygon,
+  options: ObjectCollisionTransformOptions,
 ): CollisionPolygon {
   const originX = object.anchor === "center" ? object.width / 2 : 0;
   const originY = object.anchor === "center" ? object.height / 2 : 0;
@@ -127,12 +139,23 @@ function transformObjectLocalPolygon(
   return points.map((point) => {
     const localX = point.x - originX;
     const localY = point.y - originY;
-
-    return {
-      x: pose.x + localX * cos - localY * sin,
-      y: pose.y + localX * sin + localY * cos,
-    };
+    return transformLocalPointToWorld({ x: localX, y: localY }, pose, cos, sin, options);
   });
+}
+
+function transformLocalPointToWorld(
+  point: CollisionPoint,
+  pose: ObjectPose,
+  cos: number,
+  sin: number,
+  options: ObjectCollisionTransformOptions,
+): CollisionPoint {
+  const localY = options.flipY ? -point.y : point.y;
+
+  return {
+    x: pose.x + point.x * cos - localY * sin,
+    y: pose.y + point.x * sin + localY * cos,
+  };
 }
 
 export function areaToPolygon(area: CollisionAreaConfig): CollisionPolygon {

@@ -46,7 +46,11 @@ export class CompletionController {
 
     const confidenceGate = this.options.confidence?.canSubmit();
     if (confidenceGate && !confidenceGate.ok) {
-      this.options.renderer.setStatus("Choose a confidence rating for this furniture group before submitting.");
+      this.options.renderer.setStatus(
+        confidenceGate.reason === "confidence_save_required"
+          ? "Select Save to store the confidence rating before submitting."
+          : "Choose a confidence rating for this furniture group before submitting.",
+      );
       this.options.renderer.focusConfidence();
       return;
     }

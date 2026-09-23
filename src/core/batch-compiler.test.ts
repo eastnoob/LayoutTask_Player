@@ -33,6 +33,7 @@ const createBatch = (): BatchConfig => ({
     stage: { fit: "contain", max_height_ratio: 0.72, padding: 16 },
     messages: { status_ready: "Ready." },
     requirements: { min_viewport: { width: 800, height: 600 } },
+    collision: { enabled: true, mode: "discrete", areas: [] },
   },
   trials: [
     {
@@ -257,6 +258,7 @@ describe("compileBatch", () => {
     expect(task.data_save).toEqual({ mode: "copy" });
     expect(task.flow).toEqual({ mode: "direct_reconstruction" });
     expect(task.stage).toEqual({ fit: "contain", max_height_ratio: 0.72, padding: 16 });
+    expect(task.collision).toEqual({ enabled: true, mode: "discrete", areas: [] });
     expect(task.messages).toEqual({ status_ready: "Ready." });
     expect(task.requirements).toEqual({ min_viewport: { width: 800, height: 600 } });
     expect(task.display_image).toBeUndefined();

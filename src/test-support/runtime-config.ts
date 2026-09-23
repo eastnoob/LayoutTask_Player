@@ -115,7 +115,7 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       status_copy_again_ok: "Encoded result copied again.",
       status_copy_again_fail: "Copy failed. Please copy the encoded result manually.",
       instruction_edit_mode:
-        "Click an object to enter edit mode. Controls stay visible until you tap the stage background to exit.",
+        "Click an object to enter edit mode. Choose a confidence rating, then select Save to finish editing this furniture group.",
       reconstruction_hint_title: "Reconstruct the scene from memory.",
       reconstruction_hint_drag: "Drag movable objects to place them.",
       reconstruction_hint_button: "Use the arrow buttons to move selected objects.",
@@ -129,6 +129,7 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       padding: 16,
       display_rotation_deg: 0,
       display_flip_y: false,
+      background_flip_y: false,
     },
     collision: {
       enabled: false,

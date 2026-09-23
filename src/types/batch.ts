@@ -52,6 +52,7 @@ export interface BatchSharedConfig {
   flow?: FlowConfig;
   messages?: MessagesConfig;
   requirements?: RequirementsConfig;
+  collision?: TaskCollisionConfig;
 }
 
 /**

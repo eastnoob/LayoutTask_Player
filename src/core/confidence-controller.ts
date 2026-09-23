@@ -2,7 +2,11 @@ import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 
 export type ConfidenceGateResult =
   | { ok: true }
-  | { ok: false; reason: "confidence_required" | "missing_confidence"; groupId: string };
+  | {
+      ok: false;
+      reason: "confidence_required" | "confidence_save_required" | "missing_confidence";
+      groupId: string;
+    };
 
 export interface ConfidenceControllerOptions {
   config: RuntimeTaskConfig;
@@ -67,23 +71,35 @@ export class ConfidenceController {
     }
 
     this.activeValue = value;
-    this.finalValues.set(this.activeGroupId, value);
   }
 
   canLeaveActiveGroup(): ConfidenceGateResult {
-    if (!this.options.required || !this.activeGroupId || this.activeValue !== undefined) {
+    if (!this.options.required || !this.activeGroupId) {
       return { ok: true };
     }
 
-    return { ok: false, reason: "confidence_required", groupId: this.activeGroupId };
+    return {
+      ok: false,
+      reason: this.activeValue === undefined ? "confidence_required" : "confidence_save_required",
+      groupId: this.activeGroupId,
+    };
   }
 
-  leaveActiveGroup(): ConfidenceGateResult {
-    const gate = this.canLeaveActiveGroup();
-    if (!gate.ok) {
-      return gate;
+  saveActiveGroup(): ConfidenceGateResult {
+    if (!this.activeGroupId) {
+      return { ok: true };
     }
 
+    if (this.activeValue === undefined) {
+      if (this.options.required) {
+        return { ok: false, reason: "confidence_required", groupId: this.activeGroupId };
+      }
+
+      this.activeGroupId = undefined;
+      return { ok: true };
+    }
+
+    this.finalValues.set(this.activeGroupId, this.activeValue);
     this.activeGroupId = undefined;
     this.activeValue = undefined;
     return { ok: true };

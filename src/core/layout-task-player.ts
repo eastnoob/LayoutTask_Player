@@ -79,6 +79,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
             confidence?.choose(value);
             advanceTutorial("confidence_chosen");
           },
+          onSave: () => interaction?.saveActiveConfidence(),
         }
       : undefined,
     onAction: (objectId, action, event) => {

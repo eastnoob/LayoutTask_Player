@@ -84,7 +84,7 @@ function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
   assignIfDefined(task, "stage", mergeConfig(batch.shared.stage, trial.stage));
   assignIfDefined(task, "messages", mergeConfig(batch.shared.messages, trial.messages));
   assignIfDefined(task, "requirements", mergeConfig(batch.shared.requirements, trial.requirements));
-  assignIfDefined(task, "collision", trial.collision);
+  assignIfDefined(task, "collision", mergeConfig(batch.shared.collision, trial.collision));
 
   return task;
 }

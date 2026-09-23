@@ -101,6 +101,7 @@ export class LayoutTaskRenderer {
         scale: number[];
         labels: Record<string, string>;
         onChoose(value: number): void;
+        onSave(): void;
       };
     },
   ) {
@@ -197,6 +198,10 @@ export class LayoutTaskRenderer {
     background.setAttribute("y", String(this.options.config.background.y));
     background.setAttribute("width", String(this.options.config.background.width));
     background.setAttribute("height", String(this.options.config.background.height));
+    const backgroundTransform = getBackgroundDisplayTransform(this.options.config);
+    if (backgroundTransform) {
+      background.setAttribute("transform", backgroundTransform);
+    }
     background.classList.add("layout-task-background");
     displayLayer.append(background);
 
@@ -333,7 +338,7 @@ export class LayoutTaskRenderer {
     const confirmButton = document.createElement("button");
     confirmButton.className = "layout-task-primary-button";
     confirmButton.type = "button";
-    confirmButton.textContent = "Confirm and copy result";
+    confirmButton.textContent = "Confirm";
     confirmButton.dataset.layoutTaskAnchor = "confirm";
     confirmButton.addEventListener("click", () => this.options.onConfirm?.());
 
@@ -448,6 +453,12 @@ export class LayoutTaskRenderer {
     const buttons = document.createElement("div");
     buttons.className = "layout-task-confidence-buttons";
 
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "layout-task-confidence-save layout-task-primary-button";
+    saveButton.textContent = "Save";
+    saveButton.disabled = true;
+
     const confidence = this.options.confidence;
     if (confidence) {
       for (const value of confidence.scale) {
@@ -460,15 +471,20 @@ export class LayoutTaskRenderer {
             item.classList.remove("is-selected");
           }
           button.classList.add("is-selected");
+          saveButton.disabled = false;
           confidence.onChoose(value);
           this.refs.confidenceElement?.classList.remove("is-required");
           this.setStatus(`Confidence rating selected: ${button.textContent}`);
         });
         buttons.append(button);
       }
+
+      saveButton.addEventListener("click", () => {
+        confidence.onSave();
+      });
     }
 
-    wrapper.append(title, buttons);
+    wrapper.append(title, buttons, saveButton);
     return wrapper;
   }
 
@@ -479,13 +495,27 @@ export class LayoutTaskRenderer {
 
     this.refs.confidenceElement.hidden = false;
     this.refs.confidenceElement.classList.add("is-required");
-    for (const item of this.refs.confidenceElement.querySelectorAll("button")) {
+    for (const item of this.refs.confidenceElement.querySelectorAll(".layout-task-confidence-button")) {
       item.classList.remove("is-selected");
+    }
+    const saveButton = this.refs.confidenceElement.querySelector<HTMLButtonElement>(".layout-task-confidence-save");
+    if (saveButton) {
+      saveButton.disabled = true;
     }
   }
 
   focusConfidence(): void {
-    this.refs.confidenceElement?.querySelector<HTMLButtonElement>("button")?.focus();
+    this.refs.confidenceElement?.classList.add("is-required");
+    this.refs.confidenceElement?.querySelector<HTMLButtonElement>(".layout-task-confidence-button")?.focus();
+  }
+
+  hideConfidence(): void {
+    if (!this.refs.confidenceElement) {
+      return;
+    }
+
+    this.refs.confidenceElement.hidden = true;
+    this.refs.confidenceElement.classList.remove("is-required");
   }
 
   showTutorialStep(step: { anchor: string; message: string }): void {
@@ -979,9 +1009,10 @@ export class LayoutTaskRenderer {
       return;
     }
 
-    // Control spacing comes from rendered, rotation-aware bounds, then clamps
-    // through screen-aware min/max gaps so tiny and large assets stay usable.
-    const movementRotationDeg = this.options.store.getObjectState(objectId).r;
+    // Keep movement controls on the object's authored local axes. Rotating the
+    // furniture changes its visual bounds, but must not rotate its move system.
+    const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
+    const movementRotationDeg = objectConfig?.rotation ?? 0;
     const bounds = this.getObjectVisualBounds(objectId);
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const positions = getObjectControlLayout({
@@ -1565,7 +1596,20 @@ export function getStageDisplayTransform(config: RuntimeTaskConfig): string | un
 }
 
 export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): string | undefined {
-  return config.stage.display_flip_y ? "scale(1 -1)" : undefined;
+  // The parent display layer already applies the stage Y transform to the
+  // furniture and its controls. A second flip here would desynchronise the
+  // visible SVG from the collider geometry.
+  void config;
+  return undefined;
+}
+
+export function getBackgroundDisplayTransform(config: RuntimeTaskConfig): string | undefined {
+  if (!config.stage.background_flip_y) {
+    return undefined;
+  }
+
+  const background = config.background;
+  return `translate(0 ${background.y * 2 + background.height}) scale(1 -1)`;
 }
 
 export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement): {

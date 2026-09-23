@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { scoringReferenceSchema } from "../../src/schemas/batch.schema";
 import type { ScoringReferenceConfig, ScoringReferenceObject } from "../../src/types/batch";
 import type { FinalObjectState, FinalState, RelativeFinalObjectState, ResultContextObject } from "../../src/types/result";
+import { localStepsToWorldDelta, normalizeRotation } from "../../src/utils/geometry";
 import {
   isAbsoluteFinalState,
   isRelativeFinalState,
@@ -184,9 +185,15 @@ function getObservedAbsolute(
     // Relative final states are enough to score the task canonically.
     // When context is present, we also project them back into world coordinates
     // so analysis exports can compare against optional `target.absolute`.
+    const movementDelta = localStepsToWorldDelta(
+      state.dx_steps,
+      state.dy_steps,
+      context.movement_step,
+      context.origin.r,
+    );
     return {
-      x: context.origin.x + state.dx_steps * context.movement_step,
-      y: context.origin.y + state.dy_steps * context.movement_step,
+      x: context.origin.x + movementDelta.x,
+      y: context.origin.y + movementDelta.y,
       rotationDeg: normalizeRotation(context.origin.r + state.rotation_steps * context.rotation_step),
     };
   }
@@ -243,9 +250,4 @@ function circularRotationError(observed?: number, target?: number): CsvNumber {
 
   const diffDeg = Math.abs(normalizeRotation(observed) - normalizeRotation(target));
   return Math.min(diffDeg, 360 - diffDeg);
-}
-
-function normalizeRotation(rotation: number): number {
-  const normalized = rotation % 360;
-  return normalized < 0 ? normalized + 360 : normalized;
 }

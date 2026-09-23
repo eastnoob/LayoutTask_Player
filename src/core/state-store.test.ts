@@ -91,6 +91,33 @@ describe("StateStore action limits", () => {
     expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 0, ySteps: 0 });
   });
 
+  it("keeps movement on the initial local axes after the object rotates", () => {
+    const base = createRuntimeConfig();
+    const store = new StateStore(
+      createRuntimeConfig({
+        objects: [
+          {
+            ...base.objects[0],
+            x: 3,
+            y: 7,
+            rotation: 45,
+          },
+        ],
+      }),
+    );
+
+    store.applyAction("chair_01", "rotate_cw");
+    store.applyAction("chair_01", "rotate_cw");
+    store.applyAction("chair_01", "move_right");
+
+    const delta = 25 / Math.sqrt(2);
+    const moved = store.getObjectState("chair_01");
+    expect(moved.r).toBe(135);
+    expect(moved.x).toBeCloseTo(3 + delta, 6);
+    expect(moved.y).toBeCloseTo(7 + delta, 6);
+    expect(store.getObjectOffsets("chair_01")).toMatchObject({ xSteps: 1, ySteps: 0, rotationSteps: 2 });
+  });
+
   it("limits rotation by offset from the initial rotation", () => {
     const store = new StateStore(createRuntimeConfig());
 

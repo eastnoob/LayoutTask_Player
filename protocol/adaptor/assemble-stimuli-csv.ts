@@ -9,8 +9,59 @@ const legacyDefaultBehaviorTemplate = "drag500_rotate45_limited";
 const defaultBehaviorTemplate = "button500_rotate45_limited";
 const taskIdSafePattern = /[^A-Za-z0-9_-]+/g;
 const defaultColliderSuffix = "_COLLISION";
+const blankBackgroundAssetId = "blank_background";
+const blankBackgroundSrc = "assets/backgrounds/blank_background.svg";
+const blankBackgroundSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>\n`;
 
-const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>] [--attach-collider-svg] [--collider-suffix <suffix>]`;
+const roomPointRhinoY: Record<string, number> = {
+  P01: 17500,
+  P02: 24500,
+  P03: 24500,
+  P04: 31500,
+  P05: 38500,
+  P06: 38500,
+};
+
+const roomSvgHeight = 10476;
+const authoredStageHeight = 42000;
+const roomSlotRows = {
+  top: 69,
+  rowP05P06: 2135,
+  rowP04: 4202,
+  rowP02P03: 6269,
+  rowP01: 8311,
+};
+
+function roomSlotCenterY(topRow: number, bottomRow: number): number {
+  return (((topRow + bottomRow) / 2) / roomSvgHeight) * authoredStageHeight;
+}
+
+// Treat the current manually verified furniture placements as the canonical
+// visual slot centers for this vertical room SVG. The room art is illustrative,
+// not a metric Rhino drawing; these offsets are the final calibration that makes
+// each group land at the perceived center of its grid cell in the rendered page.
+// The vertical offsets form the calibrated slot sequence from top to bottom:
+// P05/P06 +2800, P04 +1400, P02/P03 0, P01 -1400. P02/P03 are therefore the
+// inferred middle baseline between the upper and lower calibrated rows.
+const roomPointVisualCenterOffsetY: Record<string, number> = {
+  P01: -1400,
+  P02: 0,
+  P03: 0,
+  P04: 1400,
+  P05: 2800,
+  P06: 2800,
+};
+
+const roomPointDisplayY: Record<string, number> = {
+  P01: roomSlotCenterY(roomSlotRows.rowP02P03, roomSlotRows.rowP01) + roomPointVisualCenterOffsetY.P01,
+  P02: roomSlotCenterY(roomSlotRows.rowP04, roomSlotRows.rowP02P03) + roomPointVisualCenterOffsetY.P02,
+  P03: roomSlotCenterY(roomSlotRows.rowP04, roomSlotRows.rowP02P03) + roomPointVisualCenterOffsetY.P03,
+  P04: roomSlotCenterY(roomSlotRows.rowP05P06, roomSlotRows.rowP04) + roomPointVisualCenterOffsetY.P04,
+  P05: roomSlotCenterY(roomSlotRows.top, roomSlotRows.rowP05P06) + roomPointVisualCenterOffsetY.P05,
+  P06: roomSlotCenterY(roomSlotRows.top, roomSlotRows.rowP05P06) + roomPointVisualCenterOffsetY.P06,
+};
+
+const usage = `Usage: tsx protocol/adaptor/assemble-stimuli-csv.ts --csv <file> --out <dir> --experiment-id <id> [--title <title>] [--trust-svg-viewbox] [--svg-viewbox-scale <number>] [--attach-collider-svg] [--collider-suffix <suffix>] [--rebuild-objects-from-scene-state] [--map-y-to-room-points] [--blank-background] [--display-flip-y] [--background-flip-y] [--rhino-y-up-to-svg-y-down] [--rhino-y-affine-offset <number>] [--rhino-y-affine-scale <number>]`;
 
 interface CliArgs {
   csv?: string;
@@ -21,6 +72,19 @@ interface CliArgs {
   svgViewBoxScale: number;
   attachColliderSvg: boolean;
   colliderSuffix: string;
+  rebuildObjectsFromSceneState: boolean;
+  mapYToRoomPoints: boolean;
+  blankBackground: boolean;
+  displayFlipY: boolean;
+  backgroundFlipY: boolean;
+  rhinoYUpToSvgYDown: boolean;
+  rhinoYAffineOffset?: number;
+  rhinoYAffineScale?: number;
+}
+
+interface YTransform {
+  offset?: number;
+  scale?: number;
 }
 
 type CsvRow = Record<string, string | undefined>;
@@ -29,6 +93,18 @@ type JsonObject = Record<string, unknown>;
 interface OutputFile {
   target: string;
   value: unknown;
+}
+
+export function collisionConfigForColliderAttachment(attachColliderSvg: boolean): JsonObject | undefined {
+  if (!attachColliderSvg) {
+    return undefined;
+  }
+
+  return {
+    enabled: true,
+    mode: "discrete",
+    areas: [],
+  };
 }
 
 export function jsonValuesEqual(left: unknown, right: unknown): boolean {
@@ -89,6 +165,12 @@ export function parseArgs(args: string[]): CliArgs {
     svgViewBoxScale: 1,
     attachColliderSvg: false,
     colliderSuffix: defaultColliderSuffix,
+    rebuildObjectsFromSceneState: false,
+    mapYToRoomPoints: false,
+    blankBackground: false,
+    displayFlipY: false,
+    backgroundFlipY: false,
+    rhinoYUpToSvgYDown: false,
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -170,11 +252,72 @@ export function parseArgs(args: string[]): CliArgs {
       continue;
     }
 
+    if (arg === "--rebuild-objects-from-scene-state") {
+      parsed.rebuildObjectsFromSceneState = true;
+      continue;
+    }
+
+    if (arg === "--map-y-to-room-points") {
+      parsed.mapYToRoomPoints = true;
+      continue;
+    }
+
+    if (arg === "--blank-background") {
+      parsed.blankBackground = true;
+      continue;
+    }
+
+    if (arg === "--display-flip-y") {
+      parsed.displayFlipY = true;
+      continue;
+    }
+
+    if (arg === "--background-flip-y") {
+      parsed.backgroundFlipY = true;
+      continue;
+    }
+
+    if (arg === "--rhino-y-up-to-svg-y-down") {
+      parsed.rhinoYUpToSvgYDown = true;
+      continue;
+    }
+
+    if (arg === "--rhino-y-affine-offset") {
+      parsed.rhinoYAffineOffset = Number(requireValue(args, index, "--rhino-y-affine-offset"));
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--rhino-y-affine-offset=")) {
+      parsed.rhinoYAffineOffset = Number(arg.slice("--rhino-y-affine-offset=".length));
+      continue;
+    }
+
+    if (arg === "--rhino-y-affine-scale") {
+      parsed.rhinoYAffineScale = Number(requireValue(args, index, "--rhino-y-affine-scale"));
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--rhino-y-affine-scale=")) {
+      parsed.rhinoYAffineScale = Number(arg.slice("--rhino-y-affine-scale=".length));
+      continue;
+    }
+
     throw new Error(`Unknown option: ${arg}`);
   }
 
   if (!Number.isFinite(parsed.svgViewBoxScale) || parsed.svgViewBoxScale <= 0) {
     throw new Error("--svg-viewbox-scale must be a positive number");
+  }
+
+  if (parsed.rhinoYAffineOffset !== undefined || parsed.rhinoYAffineScale !== undefined) {
+    if (!parsed.rhinoYUpToSvgYDown) {
+      throw new Error("--rhino-y-affine-* requires --rhino-y-up-to-svg-y-down");
+    }
+    if (!Number.isFinite(parsed.rhinoYAffineOffset) || !Number.isFinite(parsed.rhinoYAffineScale)) {
+      throw new Error("--rhino-y-affine-offset and --rhino-y-affine-scale must both be finite numbers");
+    }
   }
 
   return parsed;
@@ -329,6 +472,226 @@ function applyDisplayImage(trial: JsonObject, imageSrc: string): void {
   trial.display_image = displayImage;
 }
 
+function staticContextBehavior(): JsonObject {
+  return {
+    config: {
+      movement: { mode: "none" },
+      free_drag: { enabled: false },
+    },
+  };
+}
+
+function placementPose(value: unknown, label: string): JsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`Scene-state placement is missing ${label}`);
+  }
+
+  const pose = value as JsonObject;
+  for (const key of ["x", "y", "rotation_deg"]) {
+    if (typeof pose[key] !== "number" || !Number.isFinite(pose[key])) {
+      throw new Error(`Scene-state placement ${label}.${key} must be a finite number`);
+    }
+  }
+
+  return pose;
+}
+
+function assetDimensionRecord(sceneState: JsonObject, modelId: string): JsonObject {
+  const assetDimensions = sceneState.asset_dimensions;
+  if (!assetDimensions || typeof assetDimensions !== "object" || Array.isArray(assetDimensions)) {
+    throw new Error("Scene-state JSON is missing asset_dimensions");
+  }
+
+  const record = (assetDimensions as JsonObject)[modelId];
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    throw new Error(`Scene-state JSON is missing asset_dimensions.${modelId}`);
+  }
+
+  return record as JsonObject;
+}
+
+function placementRelativeTarget(placement: JsonObject): JsonObject {
+  const state =
+    placement.variable_state && typeof placement.variable_state === "object" && !Array.isArray(placement.variable_state)
+      ? (placement.variable_state as JsonObject)
+      : placement.final_state_json &&
+          typeof placement.final_state_json === "object" &&
+          !Array.isArray(placement.final_state_json) &&
+          (placement.final_state_json as JsonObject).variable_group &&
+          typeof (placement.final_state_json as JsonObject).variable_group === "object" &&
+          !Array.isArray((placement.final_state_json as JsonObject).variable_group)
+        ? ((placement.final_state_json as JsonObject).variable_group as JsonObject)
+        : undefined;
+
+  if (!state) {
+    throw new Error("Scene-state placement is missing variable_state");
+  }
+
+  for (const key of ["dx_steps", "dy_steps", "rotation_steps"]) {
+    if (typeof state[key] !== "number" || !Number.isFinite(state[key])) {
+      throw new Error(`Scene-state placement variable_state.${key} must be a finite number`);
+    }
+  }
+
+  return {
+    dx_steps: state.dx_steps,
+    dy_steps: state.dy_steps,
+    rotation_steps: state.rotation_steps,
+    frame: "placed_group_local",
+  };
+}
+
+export function rebuildTrialObjectsFromSceneState(trial: JsonObject, sceneState: JsonObject): void {
+  const placements = sceneState.placements;
+  if (!Array.isArray(placements)) {
+    throw new Error("Scene-state JSON is missing placements");
+  }
+
+  const taskId = String(trial.task_id ?? placeholderTaskId);
+  trial.objects = placements.map((placementValue) => {
+    if (!placementValue || typeof placementValue !== "object" || Array.isArray(placementValue)) {
+      throw new Error("Scene-state placement must be an object");
+    }
+
+    const placement = placementValue as JsonObject;
+    const modelId = String(placement.model_id ?? "").trim();
+    if (!modelId) {
+      throw new Error("Scene-state placement is missing model_id");
+    }
+
+    const modelKey = modelId.toLowerCase();
+    const assetRecord = assetDimensionRecord(sceneState, modelId);
+    const groupAsset = String(assetRecord.group_asset ?? `${modelKey}_group`);
+    const variableAsset = String(assetRecord.variable_asset ?? `${modelKey}_variable`);
+    const groupPose = placementPose(placement.group_pose, "group_pose");
+    const initialPose = placementPose(placement.variable_initial_pose, "variable_initial_pose");
+    const correctPose = placementPose(placement.variable_correct_pose, "variable_correct_pose");
+    const groupId = `${taskId}_${modelKey}`;
+
+    return [
+      {
+        id: `${groupId}_group`,
+        role: "fixed",
+        group_id: groupId,
+        asset: groupAsset,
+        x: groupPose.x,
+        y: groupPose.y,
+        rotation: groupPose.rotation_deg,
+        initial: { x: groupPose.x, y: groupPose.y, rotation_deg: groupPose.rotation_deg },
+        anchor: "center",
+        behavior: staticContextBehavior(),
+      },
+      {
+        id: `${groupId}_variable`,
+        role: "variable",
+        group_id: groupId,
+        asset: variableAsset,
+        x: initialPose.x,
+        y: initialPose.y,
+        rotation: initialPose.rotation_deg,
+        initial: { x: initialPose.x, y: initialPose.y, rotation_deg: initialPose.rotation_deg },
+        anchor: "center",
+        behavior: { template: defaultBehaviorTemplate },
+        initial_state_label: String(placement.variable_state_label ?? "scene-state-initial"),
+        target: {
+          relative: placementRelativeTarget(placement),
+          absolute: { x: correctPose.x, y: correctPose.y, rotation_deg: correctPose.rotation_deg },
+        },
+      },
+    ];
+  }).flat();
+}
+
+function mapPoseYToRoomPointDisplay(pose: JsonObject, pointId: string, world: JsonObject): JsonObject {
+  const rhinoPointY = roomPointRhinoY[pointId];
+  const displayPointY = roomPointDisplayY[pointId];
+  const viewBox = world.viewBox as JsonObject | undefined;
+  const viewBoxY = Number(viewBox?.y ?? 0);
+  const viewBoxHeight = Number(viewBox?.height);
+
+  if (!Number.isFinite(rhinoPointY) || !Number.isFinite(displayPointY)) {
+    throw new Error(`Cannot map room point y for unknown point_id: ${pointId}`);
+  }
+  if (!Number.isFinite(viewBoxHeight)) {
+    throw new Error("Cannot map room point y without world.viewBox.height");
+  }
+
+  const y = Number(pose.y);
+  const displayY = displayPointY - (y - rhinoPointY);
+  return {
+    ...pose,
+    y: viewBoxY * 2 + viewBoxHeight - displayY,
+  };
+}
+
+export function mapTrialObjectYToRoomPoints(trial: JsonObject, sceneState: JsonObject): void {
+  const placements = sceneState.placements;
+  const world = trial.world;
+  if (!Array.isArray(placements)) {
+    throw new Error("Scene-state JSON is missing placements");
+  }
+  if (!world || typeof world !== "object" || Array.isArray(world)) {
+    throw new Error("Cannot map room point y without trial.world");
+  }
+
+  const taskId = String(trial.task_id ?? placeholderTaskId);
+  for (const placementValue of placements) {
+    if (!placementValue || typeof placementValue !== "object" || Array.isArray(placementValue)) {
+      continue;
+    }
+
+    const placement = placementValue as JsonObject;
+    const modelId = String(placement.model_id ?? "").trim();
+    const pointId = String(placement.point_id ?? "").trim();
+    if (!modelId || !pointId) {
+      continue;
+    }
+
+    const modelKey = modelId.toLowerCase();
+    const groupId = `${taskId}_${modelKey}`;
+    const groupObject = Array.isArray(trial.objects)
+      ? trial.objects.find((object) => object && typeof object === "object" && (object as JsonObject).id === `${groupId}_group`)
+      : undefined;
+    const variableObject = Array.isArray(trial.objects)
+      ? trial.objects.find((object) => object && typeof object === "object" && (object as JsonObject).id === `${groupId}_variable`)
+      : undefined;
+
+    if (groupObject && typeof groupObject === "object") {
+      const mapped = mapPoseYToRoomPointDisplay(placementPose(placement.group_pose, "group_pose"), pointId, world as JsonObject);
+      const objectConfig = groupObject as JsonObject;
+      objectConfig.y = mapped.y;
+      if (objectConfig.initial && typeof objectConfig.initial === "object" && !Array.isArray(objectConfig.initial)) {
+        (objectConfig.initial as JsonObject).y = mapped.y;
+      }
+    }
+
+    if (variableObject && typeof variableObject === "object") {
+      const mappedInitial = mapPoseYToRoomPointDisplay(
+        placementPose(placement.variable_initial_pose, "variable_initial_pose"),
+        pointId,
+        world as JsonObject,
+      );
+      const mappedCorrect = mapPoseYToRoomPointDisplay(
+        placementPose(placement.variable_correct_pose, "variable_correct_pose"),
+        pointId,
+        world as JsonObject,
+      );
+      const objectConfig = variableObject as JsonObject;
+      objectConfig.y = mappedInitial.y;
+      if (objectConfig.initial && typeof objectConfig.initial === "object" && !Array.isArray(objectConfig.initial)) {
+        (objectConfig.initial as JsonObject).y = mappedInitial.y;
+      }
+      const target = objectConfig.target;
+      if (target && typeof target === "object" && !Array.isArray(target)) {
+        const absolute = (target as JsonObject).absolute;
+        if (absolute && typeof absolute === "object" && !Array.isArray(absolute)) {
+          (absolute as JsonObject).y = mappedCorrect.y;
+        }
+      }
+    }
+  }
+}
+
 function normalizeDefaultBehaviorTemplate(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => normalizeDefaultBehaviorTemplate(item));
@@ -435,6 +798,106 @@ function withColliderCollision(collision: unknown, colliderSrc: string): JsonObj
   };
 }
 
+function normalizeRotation(rotation: number): number {
+  const normalized = rotation % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+}
+
+function transformYInViewBox(y: number, world: JsonObject, yTransform: YTransform = {}): number {
+  if (yTransform.offset !== undefined && yTransform.scale !== undefined) {
+    return yTransform.offset + yTransform.scale * y;
+  }
+
+  const viewBox = world.viewBox as JsonObject | undefined;
+  if (!viewBox) {
+    throw new Error("Cannot apply --rhino-y-up-to-svg-y-down without world.viewBox");
+  }
+
+  const viewBoxY = Number(viewBox.y);
+  const viewBoxHeight = Number(viewBox.height);
+  if (!Number.isFinite(viewBoxY) || !Number.isFinite(viewBoxHeight)) {
+    throw new Error("Cannot apply --rhino-y-up-to-svg-y-down with invalid world.viewBox");
+  }
+
+  return viewBoxY * 2 + viewBoxHeight - y;
+}
+
+function transformRelativeTarget(value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return;
+  }
+
+  const relative = value as JsonObject;
+  if (typeof relative.dy_steps === "number") {
+    relative.dy_steps = -relative.dy_steps;
+  }
+  if (typeof relative.rotation_steps === "number") {
+    relative.rotation_steps = -relative.rotation_steps;
+  }
+}
+
+function transformAbsoluteTarget(value: unknown, world: JsonObject, yTransform: YTransform): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return;
+  }
+
+  const absolute = value as JsonObject;
+  if (typeof absolute.y === "number") {
+    absolute.y = transformYInViewBox(absolute.y, world, yTransform);
+  }
+  if (typeof absolute.rotation_deg === "number") {
+    absolute.rotation_deg = normalizeRotation(-absolute.rotation_deg);
+  }
+}
+
+export function transformRhinoYUpTrialToSvgYDown(trial: JsonObject, world: unknown, yTransform: YTransform = {}): void {
+  if (!world || typeof world !== "object" || Array.isArray(world)) {
+    throw new Error("Cannot apply --rhino-y-up-to-svg-y-down without a resolved world");
+  }
+
+  const worldConfig = world as JsonObject;
+  const objects = Array.isArray(trial.objects) ? trial.objects : [];
+  for (const object of objects) {
+    if (!object || typeof object !== "object" || Array.isArray(object)) {
+      continue;
+    }
+
+    const objectConfig = object as JsonObject;
+    if (typeof objectConfig.y === "number") {
+      objectConfig.y = transformYInViewBox(objectConfig.y, worldConfig, yTransform);
+    }
+    if (typeof objectConfig.rotation === "number") {
+      objectConfig.rotation = normalizeRotation(-objectConfig.rotation);
+    }
+
+    const initial = objectConfig.initial;
+    if (initial && typeof initial === "object" && !Array.isArray(initial)) {
+      const initialConfig = initial as JsonObject;
+      if (typeof initialConfig.y === "number") {
+        initialConfig.y = transformYInViewBox(initialConfig.y, worldConfig, yTransform);
+      }
+      if (typeof initialConfig.rotation_deg === "number") {
+        initialConfig.rotation_deg = normalizeRotation(-initialConfig.rotation_deg);
+      }
+    }
+
+    const target = objectConfig.target;
+    if (target && typeof target === "object" && !Array.isArray(target)) {
+      transformRelativeTarget((target as JsonObject).relative);
+      transformAbsoluteTarget((target as JsonObject).absolute, worldConfig, yTransform);
+    }
+  }
+}
+
+export function useBlankBackground(trial: JsonObject): void {
+  const background = trial.background;
+  if (!background || typeof background !== "object" || Array.isArray(background)) {
+    throw new Error("Cannot apply --blank-background without trial.background");
+  }
+
+  (background as JsonObject).asset = blankBackgroundAssetId;
+}
+
 export function attachColliderSvgToTrialObjects(
   trial: JsonObject,
   objectAssets: JsonObject,
@@ -532,6 +995,13 @@ function assemble(
   svgViewBoxScale: number,
   attachColliderSvg: boolean,
   colliderSuffix: string,
+  rebuildObjectsFromSceneState: boolean,
+  mapYToRoomPoints: boolean,
+  blankBackground: boolean,
+  displayFlipY: boolean,
+  backgroundFlipY: boolean,
+  rhinoYUpToSvgYDown: boolean,
+  yTransform: YTransform,
 ): {
   batch: JsonObject;
   objectLibrary: JsonObject;
@@ -574,6 +1044,18 @@ function assemble(
 
     applyDisplayImage(trial, displayImageFromRow(row));
     trial = normalizeDefaultBehaviorTemplate(trial) as JsonObject;
+    const sceneState = parseJsonCell(row, "scene_state_json", false);
+    if (rebuildObjectsFromSceneState) {
+      if (!sceneState) {
+        throw new Error(`Row ${rowNumber} is missing scene_state_json`);
+      }
+      rebuildTrialObjectsFromSceneState(trial, sceneState);
+      if (mapYToRoomPoints) {
+        mapTrialObjectYToRoomPoints(trial, sceneState);
+      }
+    } else if (mapYToRoomPoints) {
+      throw new Error("--map-y-to-room-points requires --rebuild-objects-from-scene-state");
+    }
 
     const objectLibrary = parseJsonCell(row, "object_assets_json");
     const backgroundLibrary = parseJsonCell(row, "background_assets_json");
@@ -589,19 +1071,37 @@ function assemble(
     }
     mergeLibraryObjects(objectAssets, objectLibrary?.objects, "object");
     mergeLibraryObjects(backgroundAssets, backgroundLibrary?.backgrounds, "background");
+    if (blankBackground) {
+      useBlankBackground(trial);
+    }
     if (attachColliderSvg) {
       attachColliderSvgToTrialObjects(trial, (objectLibrary?.objects ?? {}) as JsonObject, colliderSuffix);
     }
+    if (rhinoYUpToSvgYDown) {
+      transformRhinoYUpTrialToSvgYDown(trial, trial.world, yTransform);
+    }
     trials.push(trial);
   });
+
+  const stage: JsonObject = { fit: "contain", max_height_ratio: 0.72, padding: 16 };
+  if (displayFlipY) {
+    stage.display_flip_y = true;
+  }
+  if (backgroundFlipY) {
+    stage.background_flip_y = true;
+  }
 
   const shared: JsonObject = {
     asset_library: "assets/objects.json",
     background_library: "assets/backgrounds.json",
     behavior_library: "behaviors/behaviors.json",
     flow: { mode: "direct_reconstruction" },
-    stage: { fit: "contain", max_height_ratio: 0.72, padding: 16 },
+    stage,
   };
+  const collision = collisionConfigForColliderAttachment(attachColliderSvg);
+  if (collision !== undefined) {
+    shared.collision = collision;
+  }
   const sharedWorld = extractSharedWorld(trials);
   if (sharedWorld !== undefined) {
     shared.world = sharedWorld;
@@ -623,7 +1123,16 @@ function assemble(
     },
     backgroundLibrary: {
       schema: "layouttask.assets.backgrounds.v1",
-      backgrounds: backgroundAssets,
+      backgrounds: blankBackground
+        ? {
+            ...backgroundAssets,
+            [blankBackgroundAssetId]: {
+              type: "svg",
+              src: blankBackgroundSrc,
+              intrinsic_unit: "cad_unit",
+            },
+          }
+        : backgroundAssets,
     },
     behaviorLibrary: defaultBehaviorLibrary(),
   };
@@ -688,6 +1197,13 @@ async function main(): Promise<void> {
       args.svgViewBoxScale,
       args.attachColliderSvg,
       args.colliderSuffix,
+      args.rebuildObjectsFromSceneState,
+      args.mapYToRoomPoints,
+      args.blankBackground,
+      args.displayFlipY,
+      args.backgroundFlipY,
+      args.rhinoYUpToSvgYDown,
+      { offset: args.rhinoYAffineOffset, scale: args.rhinoYAffineScale },
     );
     const parsedBatch = batchSchema.parse(assembled.batch);
     const files = [
@@ -699,6 +1215,10 @@ async function main(): Promise<void> {
       resolveOutputFile(args.out, "assets/backgrounds.json", assembled.backgroundLibrary),
       resolveOutputFile(args.out, "behaviors/behaviors.json", assembled.behaviorLibrary),
     ];
+
+    if (args.blankBackground) {
+      files.push(resolveOutputFile(args.out, blankBackgroundSrc, blankBackgroundSvg));
+    }
 
     for (const file of files) {
       await writeJsonFile(file);

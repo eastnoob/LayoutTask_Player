@@ -15,7 +15,7 @@ async function writeText(filePath: string, value: string): Promise<void> {
   await writeFile(filePath, value, "utf8");
 }
 
-async function createPackage(root: string, collisionSource: string): Promise<void> {
+async function createPackage(root: string, collisionSource: string, variableRotation = 0): Promise<void> {
   await writeJson(join(root, "manifest.json"), {
     schema: "layouttask.manifest.v1",
     experiment_id: "preflight_test",
@@ -75,6 +75,7 @@ async function createPackage(root: string, collisionSource: string): Promise<voi
         asset: "variable_asset",
         x: 100,
         y: 100,
+        rotation: variableRotation,
         behavior: { template: "button10" },
         collision: { enabled: true, shape: "box", padding: 0 },
         target: { relative: { dx_steps: 1, dy_steps: 0, rotation_steps: 0 } },
@@ -160,5 +161,19 @@ describe("validateRuntimePackage", () => {
       reason: "object",
       collided_with: "context_01",
     });
+  });
+
+  it("checks relative targets along the object's initial local axes", async ({ task }) => {
+    const packageRoot = join(tmpRoot, task.id, "rotated-target");
+    await createPackage(packageRoot, "assets/collision/objects/context_COLLISION.svg", 90);
+    await writeText(
+      join(packageRoot, "assets/collision/objects/context_COLLISION.svg"),
+      '<svg viewBox="0 0 100 100"><rect x="60" y="40" width="20" height="20"/></svg>',
+    );
+
+    const report = await validateRuntimePackage({ baseDir: packageRoot, checkTargets: true });
+
+    expect(report.ok).toBe(true);
+    expect(report.failures).toEqual([]);
   });
 });

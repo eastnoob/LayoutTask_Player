@@ -128,6 +128,7 @@ export const batchSharedSchema = z.object({
   flow: flowSchema.optional(),
   messages: messagesSchema.optional(),
   requirements: requirementsSchema.optional(),
+  collision: taskCollisionSchema.optional(),
 });
 
 export const batchSchema = z

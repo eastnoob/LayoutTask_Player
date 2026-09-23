@@ -227,6 +227,7 @@ export interface StageConfig {
   padding?: number;
   display_rotation_deg?: number;
   display_flip_y?: boolean;
+  background_flip_y?: boolean;
 }
 
 export type CollisionAreaType = "contain" | "block";

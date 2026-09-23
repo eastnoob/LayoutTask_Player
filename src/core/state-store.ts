@@ -1,7 +1,7 @@
 import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 import type { FinalState, ObjectRuntimeState } from "../types/result";
 import type { LayoutAction, ObjectOffsets, ObjectPose, OperationCounts } from "../types/events";
-import { normalizeRotation, snapToGrid } from "../utils/geometry";
+import { localStepsToWorldDelta, normalizeRotation, snapToGrid } from "../utils/geometry";
 import { evaluateCollision } from "./collision-geometry";
 
 // StateStore is the rule engine for object state.
@@ -434,6 +434,7 @@ export class StateStore {
       objectPoses: this.getObjectPoses(),
       areas: this.config.collision.areas,
       worldViewBox: this.config.world.viewBox,
+      objectVisualFlipY: this.config.stage.display_flip_y,
     }).ok;
   }
 }
@@ -463,16 +464,7 @@ function getButtonMoveDelta(
   initialRotation: number,
 ): { x: number; y: number } {
   const local = getLocalMoveSteps(action);
-  const radians = (normalizeRotation(initialRotation) * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const localX = local.xSteps * step;
-  const localY = local.ySteps * step;
-
-  return {
-    x: localX * cos - localY * sin,
-    y: localX * sin + localY * cos,
-  };
+  return localStepsToWorldDelta(local.xSteps, local.ySteps, step, initialRotation);
 }
 
 function getLocalMoveSteps(action: "move_left" | "move_right" | "move_up" | "move_down") {
