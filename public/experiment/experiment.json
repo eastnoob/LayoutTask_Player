@@ -5,8 +5,10 @@
   "order": "fixed",
   "tutorial": {
     "enabled": true,
-    "taskId": "scene_be84fc97a8d1",
-    "qid": "Q_scene_be84fc97a8d1",
+    "baseUrl": "../layout-task-tutorial/",
+    "taskId": "scene_edc634ac7856",
+    "qid": "Q_scene_edc634ac7856",
+    "packageVersion": "tutorial-edc634ac7856-v1",
     "referenceBoard": {
       "enabled": true,
       "continueLabel": "Continue",

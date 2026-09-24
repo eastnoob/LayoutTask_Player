@@ -3,6 +3,7 @@ import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
   createExperimentFilename,
+  createTutorialResultFile,
 } from "./experiment-data";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 
@@ -123,8 +124,16 @@ describe("experiment data export", () => {
         hash8: "deadbeef",
         result,
       },
-      { trialType: "tutorial", taskId: "tutorial", qid: "Q_TUTORIAL" },
     ],
+    tutorialResult: {
+      trialType: "tutorial",
+      taskId: "tutorial_room",
+      qid: "Q_TUTORIAL",
+      encoded: "TUTORIAL_ENC",
+      hash8: "tutorial8",
+      result: { ...result, task_id: "tutorial_room", qid: "Q_TUTORIAL" },
+    },
+    tutorialPackageVersion: "tutorial-edc634ac7856-v1",
   };
 
   it("builds session, results, and events CSV files", () => {
@@ -136,6 +145,7 @@ describe("experiment data export", () => {
       "layout_raw_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
       "layout_debug_P001_S001.json",
+      "layout_tutorial_result_P001_S001.json",
     ]);
     expect(files.map((file) => file.contentType)).toEqual([
       "text/csv",
@@ -143,26 +153,41 @@ describe("experiment data export", () => {
       "text/csv",
       "text/csv",
       "application/json",
+      "application/json",
     ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
-    expect(files[1].data).toContain("trial_index,task_id,qid,object_id,confidence");
+    expect(files[1].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid");
+    expect(files[1].data).toContain("tutorial");
+    expect(files[1].data).toContain("formal");
     expect(files[1].data).not.toContain(",encoded,");
-    expect(files[1].data).toContain("0,scene_001,Q001,group_a,4");
+    expect(files[1].data).toContain("formal,P001,S001,layout_task_v1,0,scene_001,Q001,group_a,4");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
-    expect(files[2].data).toContain("trial_index,task_id,qid,hash8,result_json");
-    const rawResultRow = parseCsvRecords(files[2].data)[1];
-    expect(rawResultRow).toHaveLength(8);
-    expect(JSON.parse(rawResultRow[7])).toEqual(result);
-    expect(files[3].data).toContain("event_index,event_time_ms,object_id,action,valid");
+    expect(files[2].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
+    const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[5] === "scene_001")!;
+    expect(rawResultRow).toHaveLength(9);
+    expect(JSON.parse(rawResultRow[8])).toEqual(result);
+    expect(files[3].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
+    expect(files[3].data).toContain("tutorial");
     expect(files[3].data).toContain("0,12,group_a,move_right,true");
+    for (const index of [1, 2, 3]) {
+      const records = parseCsvRecords(files[index].data);
+      expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
+    }
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[4])).toEqual(["0"]);
     expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",
       session_id: "S001",
       experiment_id: "layout_task_v1",
-      trial_count: 2,
+      trial_count: 1,
     });
+    expect(JSON.parse(files[5].data)).toMatchObject({
+      schema: "layouttask.tutorial-result.v1",
+      trial_type: "tutorial",
+      package_version: "tutorial-edc634ac7856-v1",
+    });
+    expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
   });
 
   it("uses a configured filename prefix", () => {
@@ -174,6 +199,7 @@ describe("experiment data export", () => {
       "layout-task_raw_results_P001_S001.csv",
       "layout-task_events_P001_S001.csv",
       "layout-task_debug_P001_S001.json",
+      "layout-task_tutorial_result_P001_S001.json",
     ]);
   });
 
@@ -191,6 +217,7 @@ describe("experiment data export", () => {
       "layout_raw_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
       "layout_debug_P001_S001.json",
+      "layout_tutorial_result_P001_S001.json",
     ]);
     expect(payloads.every((payload) => payload.experimentID === "mshCnq690sD5")).toBe(true);
   });

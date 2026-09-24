@@ -3,6 +3,7 @@ import { initJsPsych } from "jspsych";
 import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
+  collectTutorialTrialResult,
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
@@ -307,6 +308,7 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
     on_finish: async () => {
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
+      const tutorialResult = collectTutorialTrialResult(rows);
       const tutorialRow = rows.find((row) => row.tutorial);
       const files = createExperimentCsvFiles({
         participantId,
@@ -319,6 +321,8 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         tutorialDurationMs: Number(tutorialRow?.rt ?? 0),
         trialOrder: config.trials.map((trial) => trial.taskId),
         trialResults,
+        tutorialResult,
+        tutorialPackageVersion: config.tutorial.packageVersion,
       });
       renderSavingPage();
       renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, participantId, sessionId, files }));

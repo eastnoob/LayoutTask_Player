@@ -26,8 +26,10 @@ const tutorialReferenceBoardItemSchema = z.object({
 const tutorialSchema = z
   .object({
     enabled: z.boolean().default(false),
+    baseUrl: z.string().min(1).optional(),
     taskId: z.string().min(1).optional(),
     qid: z.string().min(1).optional(),
+    packageVersion: z.string().min(1).optional(),
     referenceBoard: z
       .object({
         enabled: z.boolean().default(false),

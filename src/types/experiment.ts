@@ -20,8 +20,10 @@ export interface ExperimentTutorialReferenceBoardConfig {
 
 export interface ExperimentTutorialConfig {
   enabled: boolean;
+  baseUrl?: string;
   taskId?: string;
   qid?: string;
+  packageVersion?: string;
   referenceBoard?: ExperimentTutorialReferenceBoardConfig;
 }
 

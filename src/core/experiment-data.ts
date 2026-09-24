@@ -28,6 +28,8 @@ export interface ExperimentCsvInput {
   tutorialDurationMs: number;
   trialOrder: string[];
   trialResults: ExperimentTrialResultItem[];
+  tutorialResult?: ExperimentTrialResultItem;
+  tutorialPackageVersion?: string;
 }
 
 export interface ExperimentCsvFile {
@@ -43,7 +45,7 @@ export interface ExperimentDataPipePayloadsInput {
 
 export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentCsvFile[] {
   const prefix = input.filenamePrefix ?? "layout";
-  return [
+  const files: ExperimentCsvFile[] = [
     {
       filename: createExperimentFilename(`${prefix}_session`, input.participantId, input.sessionId),
       contentType: "text/csv",
@@ -70,6 +72,43 @@ export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentC
       data: createDebugJson(input),
     },
   ];
+  if (input.tutorialResult) {
+    files.push(createTutorialResultFile(input));
+  }
+  return files;
+}
+
+export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentCsvFile {
+  const tutorial = input.tutorialResult;
+  if (!tutorial) {
+    throw new Error("tutorialResult is required to create tutorial_result.json");
+  }
+
+  return {
+    filename: createExperimentFilename(
+      `${input.filenamePrefix ?? "layout"}_tutorial_result`,
+      input.participantId,
+      input.sessionId,
+      "json",
+    ),
+    contentType: "application/json",
+    data: `${JSON.stringify(
+      {
+        schema: "layouttask.tutorial-result.v1",
+        trial_type: "tutorial",
+        package_version: input.tutorialPackageVersion,
+        participant_id: input.participantId,
+        session_id: input.sessionId,
+        task_id: tutorial.taskId,
+        qid: tutorial.qid,
+        encoded: tutorial.encoded,
+        hash8: tutorial.hash8,
+        result: tutorial.result,
+      },
+      null,
+      2,
+    )}\n`,
+  };
 }
 
 export function createExperimentFilename(
@@ -112,6 +151,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "viewport_height",
       "screen_width",
       "screen_height",
+      "tutorial_package_version",
     ],
     [
       [
@@ -130,6 +170,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         firstResult?.display?.viewport.height,
         firstResult?.display?.screen.width,
         firstResult?.display?.screen.height,
+        input.tutorialPackageVersion,
       ],
     ],
   );
@@ -137,7 +178,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
 
 function createResultsCsv(input: ExperimentCsvInput): string {
   const rows: CsvValue[][] = [];
-  input.trialResults.forEach((trial, trialIndex) => {
+  exportTrials(input).forEach(({ trial, trialIndex }) => {
     if (!isLayoutTaskResult(trial.result)) {
       return;
     }
@@ -146,6 +187,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       const context = trial.result.context?.objects[objectId];
       const final = getFinalObjectValues(trial.result, objectId);
       rows.push([
+        trial.trialType,
         input.participantId,
         input.sessionId,
         input.experimentId,
@@ -178,6 +220,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
 
   return csv(
     [
+      "trial_type",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -211,12 +254,13 @@ function createResultsCsv(input: ExperimentCsvInput): string {
 
 function createRawResultsCsv(input: ExperimentCsvInput): string {
   const rows: CsvValue[][] = [];
-  input.trialResults.forEach((trial, trialIndex) => {
+  exportTrials(input).forEach(({ trial, trialIndex }) => {
     if (!isLayoutTaskResult(trial.result)) {
       return;
     }
 
     rows.push([
+      trial.trialType,
       input.participantId,
       input.sessionId,
       input.experimentId,
@@ -230,6 +274,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
 
   return csv(
     [
+      "trial_type",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -245,13 +290,14 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
 
 function createEventsCsv(input: ExperimentCsvInput): string {
   const rows: CsvValue[][] = [];
-  input.trialResults.forEach((trial, trialIndex) => {
+  exportTrials(input).forEach(({ trial, trialIndex }) => {
     if (!isLayoutTaskResult(trial.result)) {
       return;
     }
 
     for (const event of trial.result.events) {
       rows.push([
+        trial.trialType,
         input.participantId,
         input.sessionId,
         input.experimentId,
@@ -283,6 +329,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
 
   return csv(
     [
+      "trial_type",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -325,10 +372,13 @@ function createDebugJson(input: ExperimentCsvInput): string {
       duration_ms: input.endTime - input.startTime,
       tutorial_completed: input.tutorialCompleted,
       tutorial_duration_ms: input.tutorialDurationMs,
+      tutorial_present: Boolean(input.tutorialResult),
+      tutorial_package_version: input.tutorialPackageVersion,
       trial_count: input.trialResults.length,
       trial_order: input.trialOrder,
       trials: input.trialResults.map((trial, trialIndex) => ({
         trial_index: trialIndex,
+        trial_type: trial.trialType,
         task_id: trial.taskId,
         qid: trial.qid,
         encoded_present: Boolean(trial.encoded),
@@ -350,6 +400,15 @@ function csv(headers: string[], rows: CsvValue[][]): string {
 
 function isLayoutTaskResult(value: unknown): value is LayoutTaskResult {
   return Boolean(value && typeof value === "object" && (value as { schema?: unknown }).schema === "layouttask.result.v1");
+}
+
+function exportTrials(input: ExperimentCsvInput): Array<{
+  trial: ExperimentTrialResultItem;
+  trialIndex: number | "";
+}> {
+  const tutorial = input.tutorialResult ? [{ trial: input.tutorialResult, trialIndex: "" as const }] : [];
+  const formal = input.trialResults.map((trial, trialIndex) => ({ trial, trialIndex }));
+  return [...tutorial, ...formal];
 }
 
 function getFinalObjectValues(result: LayoutTaskResult, objectId: string): {
