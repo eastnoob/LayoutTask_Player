@@ -127,6 +127,23 @@ export interface DisplayChangeEvent {
   snapshot: DisplayChangeSnapshot;
 }
 
+export interface ReferenceAssistanceInfo {
+  mode: "persistent";
+  reference_image_visible: true;
+  reference_image_zoom_attempts: number;
+  browser_zoom_observations: Array<{
+    t: number;
+    scale?: number;
+    viewport_width: number;
+    viewport_height: number;
+  }>;
+  prohibited_events: Array<{
+    t: number;
+    type: "ctrl_wheel" | "reference_image_pointer_zoom" | "browser_zoom_change";
+    handled: boolean;
+  }>;
+}
+
 export interface ObjectRuntimeState extends ObjectPose {
   id: string;
   counts: OperationCounts;
@@ -224,6 +241,7 @@ export interface LayoutTaskResult {
   duration_ms: number;
   page_timing?: PageTimingInfo;
   display?: DisplayInfo;
+  reference_assistance?: ReferenceAssistanceInfo;
   flow?: ResultFlowInfo;
   confidence?: Record<string, number>;
   restore?: ResultRestoreInfo;

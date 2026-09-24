@@ -1,6 +1,12 @@
 import type { LayoutTaskEvent } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
-import type { DisplayInfo, LayoutTaskResult, PageTimingInfo, ResultFlowInfo } from "../types/result";
+import type {
+  DisplayInfo,
+  LayoutTaskResult,
+  PageTimingInfo,
+  ReferenceAssistanceInfo,
+  ResultFlowInfo,
+} from "../types/result";
 import { elapsedMs, now } from "../utils/time";
 
 interface RecorderOptions {
@@ -11,6 +17,7 @@ interface RecorderOptions {
   getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
   getFlowInfo?: () => ResultFlowInfo;
   getConfidence?: () => Record<string, number> | undefined;
+  getReferenceAssistance?: () => ReferenceAssistanceInfo | undefined;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
 }
@@ -70,6 +77,7 @@ export class Recorder {
       duration_ms: elapsedMs(this.startTime, this.endTime),
       page_timing: pageTiming,
       display,
+      reference_assistance: this.options.getReferenceAssistance?.(),
       flow: this.options.getFlowInfo?.() ?? { mode: this.options.config.flow.mode },
       task_config_hash: this.options.config.taskConfigHash,
       // context makes the payload self-describing for offline analysis.

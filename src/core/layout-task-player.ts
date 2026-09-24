@@ -11,6 +11,7 @@ import { FlowController } from "./flow-controller";
 import { InteractionController } from "./interaction-controller";
 import { PageTimingCollector } from "./page-timing";
 import { Recorder } from "./recorder";
+import { ReferenceAssistanceRecorder } from "./reference-assistance-recorder";
 import { LayoutTaskRenderer } from "./renderer";
 import { StateStore } from "./state-store";
 import { createSessionId } from "../utils/time";
@@ -51,6 +52,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let interaction: InteractionController | undefined;
   let completion: CompletionController | undefined;
   let displayChangeRecorder: DisplayChangeRecorder | undefined;
+  let referenceAssistanceRecorder: ReferenceAssistanceRecorder | undefined;
   let flow: FlowController | undefined;
   let confidence: ConfidenceController | undefined;
   let tutorial: TutorialController | undefined;
@@ -133,6 +135,13 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           ? new DisplayChangeRecorder({ refs })
           : undefined;
       displayChangeRecorder?.start();
+      referenceAssistanceRecorder =
+        options.config.referenceMode === "persistent" && typeof window !== "undefined" && refs.displayImageFrameElement
+          ? new ReferenceAssistanceRecorder()
+          : undefined;
+      if (referenceAssistanceRecorder && refs.displayImageFrameElement) {
+        referenceAssistanceRecorder.start(refs.displayImageFrameElement, window);
+      }
 
       const displayCollector = new DisplayInfoCollector(refs, options.config, displayChangeRecorder);
       recorder = new Recorder({
@@ -143,6 +152,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getPageTiming: (submitTime, playerStartTime) => pageTiming.collect(submitTime, playerStartTime),
         getFlowInfo: () => flow?.getFlowInfo() ?? { mode: options.config.flow.mode },
         getConfidence: () => confidence?.getFinalConfidence(),
+        getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
       });
       confidence = options.confidence
         ? new ConfidenceController({
@@ -201,6 +211,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       interaction?.unbind();
       flow?.destroy();
       displayChangeRecorder?.stop();
+      referenceAssistanceRecorder?.stop();
       renderer.destroy();
     },
 

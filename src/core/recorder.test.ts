@@ -153,6 +153,27 @@ describe("Recorder", () => {
 
     expect(result.confidence).toEqual({ chair_group: 4 });
   });
+
+  it("includes reference assistance when supplied", async () => {
+    const recorder = new Recorder({
+      config: createRuntimeConfig(),
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      getReferenceAssistance: () => ({
+        mode: "persistent",
+        reference_image_visible: true,
+        reference_image_zoom_attempts: 1,
+        browser_zoom_observations: [],
+        prohibited_events: [],
+      }),
+      nowImpl: createNowSequence([1_000, 2_000]),
+    });
+
+    recorder.start();
+    const result = await recorder.finish();
+
+    expect(result.reference_assistance?.reference_image_zoom_attempts).toBe(1);
+  });
 });
 
 function createNowSequence(values: number[]): () => number {
