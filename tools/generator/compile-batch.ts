@@ -117,6 +117,9 @@ async function writeJsonFile(file: OutputFile): Promise<void> {
 }
 
 export async function compileBatchToDirectory(options: CompileToDirectoryOptions): Promise<CompileToDirectoryResult> {
+  if (path.basename(path.resolve(options.out)) === "layout-task-tutorial") {
+    throw new Error("Refusing to compile into the protected tutorial package");
+  }
   const raw = await readFile(options.input, "utf8");
   const batch = batchSchema.parse(JSON.parse(raw));
   const compiled = compileBatch(batch);

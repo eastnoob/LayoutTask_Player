@@ -124,4 +124,13 @@ describe("compileBatchToDirectory", () => {
       expect(existsSync(join(example.out, "behaviors", "behaviors.json"))).toBe(true);
     }
   });
+
+  it("rejects the protected tutorial package as a compiler output root", async () => {
+    const root = mkdtempSync(join(tmpdir(), "layout-task-protected-tutorial-"));
+    const out = join(root, "public", "layout-task-tutorial");
+    const input = join(process.cwd(), "protocol", "examples", "minimal-batch.json");
+
+    await expect(compileBatchToDirectory({ input, out })).rejects.toThrow(/protected tutorial package/i);
+    expect(existsSync(join(out, "manifest.json"))).toBe(false);
+  });
 });
