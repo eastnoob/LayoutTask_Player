@@ -10,6 +10,7 @@ import { OBJECT_ROLES } from "../protocol/constants";
  */
 export const worldUnitSchema = z.enum(["mm", "cm", "m", "px", "cad_unit", "unknown"]);
 export const objectRoleSchema = z.enum(OBJECT_ROLES);
+export const referenceModeSchema = z.enum(["preview_10s", "persistent"] as const).default("preview_10s");
 
 export const viewBoxSchema = z.object({
   x: z.number().finite(),
@@ -451,6 +452,7 @@ export const taskSchema = z.object({
   task_id: z.string().min(1),
   qid: z.string().min(1),
   title: z.string().optional(),
+  reference_mode: referenceModeSchema,
   world: worldSchema,
   background: taskBackgroundSchema,
   objects: z.array(taskObjectSchema),

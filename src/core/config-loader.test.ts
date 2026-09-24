@@ -355,6 +355,22 @@ describe("resolveRuntimeConfig flow", () => {
   });
 });
 
+describe("resolveRuntimeConfig reference mode", () => {
+  it("defaults to preview_10s, honors task mode, and applies an isolated caller override", () => {
+    const input = createBehaviorConfigInput({ template: "move25" });
+    const defaultConfig = resolveRuntimeConfig(input);
+    expect(defaultConfig.referenceMode).toBe("preview_10s");
+
+    input.task.reference_mode = "persistent";
+    const authoredConfig = resolveRuntimeConfig(input);
+    expect(authoredConfig.referenceMode).toBe("persistent");
+
+    const overrideConfig = resolveRuntimeConfig({ ...input, referenceMode: "preview_10s" });
+    expect(overrideConfig.referenceMode).toBe("preview_10s");
+    expect(input.task.reference_mode).toBe("persistent");
+  });
+});
+
 describe("resolveRuntimeConfig SVG viewBox sizing", () => {
   it("uses object SVG viewBox when object and asset dimensions are omitted", () => {
     const input = createBehaviorConfigInput({ template: "move25" });

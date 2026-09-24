@@ -11,6 +11,7 @@ import type {
   PartialBehaviorConfig,
   TaskObjectBehaviorConfig,
   TaskConfig,
+  ReferenceMode,
   ViewBox,
 } from "../types/config";
 import type { RuntimeTaskConfig } from "../types/runtime";
@@ -37,6 +38,7 @@ export interface ConfigLoaderOptions {
 export interface TaskSelection {
   taskId?: string;
   qid?: string;
+  referenceMode?: ReferenceMode;
 }
 
 const DEFAULT_COMPLETION = {
@@ -167,6 +169,7 @@ export class ConfigLoader {
 
     await this.attachInlineSvgLibraryAssets({
       task,
+      referenceMode: selection.referenceMode,
       objectLibrary,
       backgroundLibrary,
     });
@@ -342,6 +345,7 @@ interface ResolveRuntimeConfigInput {
   backgroundLibrary: BackgroundLibraryConfig;
   behaviorLibrary: BehaviorLibraryConfig;
   task: TaskConfig;
+  referenceMode?: ReferenceMode;
 }
 
 export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeTaskConfig {
@@ -384,6 +388,7 @@ export function resolveRuntimeConfig(input: ResolveRuntimeConfigInput): RuntimeT
     qid: input.task.qid,
     taskId: input.task.task_id,
     title: input.task.title,
+    referenceMode: input.referenceMode ?? input.task.reference_mode ?? "preview_10s",
     baseUrl: input.baseUrl,
     world: input.task.world,
     background: {

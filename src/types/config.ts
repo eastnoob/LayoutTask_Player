@@ -167,6 +167,7 @@ export interface DisplayImageConfig {
 }
 
 export type FlowMode = "direct_reconstruction" | "preview_then_reconstruct";
+export type ReferenceMode = "preview_10s" | "persistent";
 export type PreviewStageMode = "hidden" | "locked";
 
 export interface PreviewThenReconstructFlowConfig {
@@ -385,6 +386,7 @@ export interface TaskConfig {
   task_id: string;
   qid: string;
   title?: string;
+  reference_mode?: ReferenceMode;
   world: WorldConfig;
   background: TaskBackgroundConfig;
   objects: TaskObjectConfig[];

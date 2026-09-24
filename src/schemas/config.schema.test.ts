@@ -452,6 +452,26 @@ describe("taskSchema flow", () => {
   });
 });
 
+describe("taskSchema reference mode", () => {
+  const task = {
+    schema: "layouttask.task.v1" as const,
+    task_id: "room01",
+    qid: "Q1",
+    world: { viewBox: { x: 0, y: 0, width: 100, height: 100 }, origin: { x: 0, y: 0 }, grid: { size: 10 } },
+    background: { asset: "room" },
+    objects: [],
+  };
+
+  it("defaults an omitted reference mode to preview_10s and accepts persistent", () => {
+    expect(taskSchema.parse(task).reference_mode).toBe("preview_10s");
+    expect(taskSchema.parse({ ...task, reference_mode: "persistent" }).reference_mode).toBe("persistent");
+  });
+
+  it("rejects an unknown reference mode", () => {
+    expect(() => taskSchema.parse({ ...task, reference_mode: "always" })).toThrow();
+  });
+});
+
 describe("taskSchema data_save", () => {
   it("accepts copy mode by default and requires experiment_id for datapipe", () => {
     const baseTask = {

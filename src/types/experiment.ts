@@ -1,3 +1,5 @@
+import type { ReferenceMode } from "./config";
+
 export interface ExperimentTrialRef {
   taskId: string;
   qid?: string;
@@ -62,6 +64,7 @@ export interface ExperimentConfig {
   schema: "layouttask.experiment.v1";
   experimentId: string;
   baseUrl: string;
+  referenceMode: ReferenceMode;
   order: "fixed";
   tutorial: ExperimentTutorialConfig;
   confidence: ExperimentConfidenceConfig;

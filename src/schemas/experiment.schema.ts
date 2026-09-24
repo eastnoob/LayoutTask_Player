@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ExperimentConfig } from "../types/experiment";
+import { referenceModeSchema } from "./config.schema";
 
 const defaultConfidenceLabels = {
   "1": "Very unsure",
@@ -95,6 +96,7 @@ const experimentSchema = z.object({
   schema: z.literal("layouttask.experiment.v1"),
   experiment_id: z.string().min(1),
   baseUrl: z.string().min(1),
+  reference_mode: referenceModeSchema,
   order: z.literal("fixed").default("fixed"),
   tutorial: tutorialSchema,
   confidence: confidenceSchema,
@@ -129,6 +131,7 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     schema: parsed.schema,
     experimentId: parsed.experiment_id,
     baseUrl: parsed.baseUrl,
+    referenceMode: parsed.reference_mode,
     order: parsed.order,
     tutorial: parsed.tutorial,
     confidence: parsed.confidence,

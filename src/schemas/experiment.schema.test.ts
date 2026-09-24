@@ -37,6 +37,15 @@ function baseExperiment() {
 }
 
 describe("parseExperimentConfig", () => {
+  it("defaults reference mode to preview_10s and accepts persistent", () => {
+    expect(parseExperimentConfig(baseExperiment()).referenceMode).toBe("preview_10s");
+    expect(parseExperimentConfig({ ...baseExperiment(), reference_mode: "persistent" }).referenceMode).toBe("persistent");
+  });
+
+  it("rejects an unknown reference mode", () => {
+    expect(() => parseExperimentConfig({ ...baseExperiment(), reference_mode: "always" })).toThrow();
+  });
+
   it("accepts the v1 experiment config shape", () => {
     expect(parseExperimentConfig(baseExperiment())).toMatchObject({
       schema: "layouttask.experiment.v1",

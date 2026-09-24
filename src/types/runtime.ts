@@ -14,6 +14,7 @@ import type {
   ObjectCollisionPolygon,
   OutputConfig,
   PreviewStageMode,
+  ReferenceMode,
   RecordingConfig,
   StageConfig,
   WorldConfig,
@@ -127,6 +128,7 @@ export interface RuntimeTaskConfig {
   qid: string;
   taskId: string;
   title?: string;
+  referenceMode: ReferenceMode;
   baseUrl: string;
   world: WorldConfig;
   background: RuntimeBackground;
