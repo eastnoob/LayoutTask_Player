@@ -104,6 +104,7 @@ describe("buildExperimentTimeline", () => {
 
   it("shows the reference board before the interactive tutorial room", () => {
     const config = experimentConfig();
+    config.tutorial.baseUrl = "/layout-task-tutorial/";
     config.tutorial.referenceBoard = {
       enabled: true,
       continueLabel: "Continue",
@@ -133,9 +134,9 @@ describe("buildExperimentTimeline", () => {
     });
     expect(typeof timeline[0].on_load).toBe("function");
     expect(timeline[0].pages).toHaveLength(1);
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/variable/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
     expect(String(timeline[0].pages[0])).toContain(">1 / 4<");
     expect(String(timeline[1].pages[0])).toContain(">2 / 4<");
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });

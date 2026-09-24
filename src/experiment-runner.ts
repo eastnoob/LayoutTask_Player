@@ -20,7 +20,8 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
   if (config.tutorial.enabled) {
     if (config.tutorial.referenceBoard?.enabled) {
       const board = config.tutorial.referenceBoard;
-      const pages = buildTutorialReferenceBoardPages({ baseUrl: config.baseUrl, board });
+      const tutorialBaseUrl = config.tutorial.baseUrl ?? config.baseUrl;
+      const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board });
       const continueLabel = board.continueLabel ?? "Continue";
       for (const [index, page] of pages.entries()) {
         const item = board.items[index];
