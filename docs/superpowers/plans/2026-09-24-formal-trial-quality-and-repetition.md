@@ -36,10 +36,10 @@
 
 ---
 
-### Task 0: Integrate the persistent branch and create the feature branch
+### Task 0: Integrate the persistent branch and create the feature branch in the main checkout
 
 **Files:**
-- Inspect only: `git status`, `git diff`, `git log`, `git diff main...persistent-reference-condition`
+- Inspect only in the existing main checkout: `git status`, `git diff`, `git log`, `git diff main...persistent-reference-condition`
 - Preserve unchanged: all existing dirty source/assets and `public/layout-task-run12-core23-compiled/assets/collision/`
 - Create after integration: new branch `codex/formal-trial-quality-and-repetition`
 
@@ -47,7 +47,7 @@
 - Consumes the existing branch `persistent-reference-condition` and its commits through `609e4f5`.
 - Produces a clean feature branch based on updated `main`, containing the persistent-reference implementation and its committed verification artifacts.
 
-- [ ] **Step 1: Record the dirty worktree before any branch operation.** Run:
+- [ ] **Step 1: Record the dirty working tree before any branch operation.** Run:
 
 ```powershell
 git status --short
@@ -56,7 +56,7 @@ git ls-files --others --exclude-standard
 ```
 
 Save the output in the task log. Do not use `reset --hard`, `checkout --`, or a blanket destructive clean.
-- [ ] **Step 2: Classify every dirty path.** Paths that are already part of the persistent implementation must be reviewed against `git diff persistent-reference-condition`; user-owned furniture/material files and collision assets must be preserved exactly. If a dirty change is required by the persistent implementation, commit it on `persistent-reference-condition` with a focused message before merging. If it is unrelated, leave it untouched and use a temporary worktree or a narrowly scoped WIP commit whose paths are explicitly listed.
+- [ ] **Step 2: Classify every dirty path.** Paths that are already part of the persistent implementation must be reviewed against `git diff persistent-reference-condition`; user-owned furniture/material files and collision assets must be preserved exactly. If a dirty change is required by the persistent implementation, commit it on `persistent-reference-condition` with a focused message before merging. If it is unrelated, preserve it with an explicitly scoped WIP commit or an exact patch backup in the same checkout; do not create another worktree.
 - [ ] **Step 3: Verify branch ancestry and main divergence.** Run:
 
 ```powershell
@@ -66,14 +66,14 @@ git diff --stat main...persistent-reference-condition
 ```
 
 Expected: the persistent branch contains the intended persistent-reference commits; any main-side commits are reviewed before integration.
-- [ ] **Step 4: Integrate persistent work into main.** Only after the worktree is clean for the paths being merged, switch to `main` and use fast-forward merge when possible:
+- [ ] **Step 4: Integrate persistent work into main.** Only after the current checkout is clean for the paths being merged, switch to `main` and use fast-forward merge when possible:
 
 ```powershell
 git switch main
 git merge --ff-only persistent-reference-condition
 ```
 
-If fast-forward is impossible, stop and report the exact divergence instead of inventing a conflict resolution. Do not merge unrelated WIP changes.
+If fast-forward is impossible, stop and report the exact divergence instead of inventing a conflict resolution. Do not merge unrelated WIP changes. Do all of this in the existing checkout; no `git worktree add` is permitted for this plan.
 - [ ] **Step 5: Verify the integrated persistent baseline.** Run the existing persistent tests and build:
 
 ```powershell
@@ -82,13 +82,13 @@ npm run build
 ```
 
 Expected: PASS before new feature work begins.
-- [ ] **Step 6: Create the new branch from updated main.**
+- [ ] **Step 6: Create the new branch from updated main in the same checkout.**
 
 ```powershell
 git switch -c codex/formal-trial-quality-and-repetition
 ```
 
-Confirm `git branch --show-current` and `git status --short` before continuing.
+Confirm `git branch --show-current` and `git status --short` before continuing. The only new isolation boundary is the ordinary branch `codex/formal-trial-quality-and-repetition`; do not create a second checkout.
 - [ ] **Step 7: Grill-me check.** Confirm no uncommitted user asset was merged, no collision asset was deleted, persistent reference behavior is present on the new branch, and the new branch is based on the integrated `main`. If any answer is unclear, stop and repair the branch state before Task 1.
 - [ ] **Step 8: Do not create a branch-bookkeeping commit.** The merge commit or fast-forward history and the new branch ref are the required record.
 
@@ -367,7 +367,7 @@ Implement docs/superpowers/plans/2026-09-24-formal-trial-quality-and-repetition.
 
 Required process:
 1. Read and follow superpowers:using-superpowers, superpowers:executing-plans or superpowers:subagent-driven-development, superpowers:test-driven-development, superpowers:verification-before-completion, and stop-that-shit.
-2. Start with Task 0. Protect all existing dirty user changes and public/layout-task-run12-core23-compiled/assets/collision/. Verify persistent-reference-condition, merge it safely into main, then create codex/formal-trial-quality-and-repetition from the updated main. Do not use destructive git commands.
+2. Start with Task 0 in the existing main checkout. Protect all existing dirty user changes and public/layout-task-run12-core23-compiled/assets/collision/. Verify persistent-reference-condition, merge it safely into main, then create codex/formal-trial-quality-and-repetition from the updated main in that same checkout. Do not create another worktree and do not use destructive git commands.
 3. Execute each task with TDD: write the failing test, run and record the failure, implement the smallest change, run focused tests, perform the task's Grill-me check, and commit only that task's files.
 4. Keep 23 unique scenes and 25 formal presentations distinct. Both repeated scenes must save complete independent answers and use the unlabelled source images.
 5. Generate the Williams-based schedule from the package contents, use 46 base sequences for 23 unique scenes, insert repeats with at least seven intervening presentations, and validate the final 25-presentation schedules.
