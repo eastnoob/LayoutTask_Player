@@ -18,7 +18,7 @@ The tutorial package must therefore become a versioned static release artifact, 
 
 ### 1. Fixed, self-contained tutorial package
 
-`public/layout-task-tutorial/` is the sole source of truth for the tutorial. It must contain:
+`public/layout-task-tutorial/` is the sole source of truth for the tutorial source package. It must contain:
 
 - the fixed tutorial manifest and selected task JSON;
 - all referenced object SVGs;
@@ -35,6 +35,10 @@ Both of these flows must resolve against the tutorial package base URL:
 - the tutorial reference board.
 
 Formal trials and formal-only assets must continue to resolve against the formal package base URL.
+
+For a deployable R12 release, the compiler must create a verified copy at `public/layout-task-run12-core23-preview/tutorial/`. This release copy is part of the R12 package and is the tutorial base used by the published experiment. The source package remains outside the formal package so formal compilation cannot regenerate or accidentally edit it. The release copy must be byte-for-byte derived from the locked source package and must include its lock file.
+
+The published experiment configuration must resolve both the reference board and interactive tutorial against the R12-local `tutorial/` directory. Deploying the R12 release directory, or the complete Vite `dist/` directory containing it, must not require the separate source package to be present.
 
 ### 2. Package integrity and version identity
 
@@ -142,7 +146,8 @@ The implementation may choose a different internal shape if the resulting export
 ## Non-goals
 
 - Do not regenerate the tutorial from a new random source on each compiler run.
-- Do not move formal run assets into the tutorial package merely for convenience.
+- Do not move formal run assets into the tutorial source package merely for convenience.
+- Do not make the published R12 package depend on a sibling `layout-task-tutorial/` directory.
 - Do not insert free-standing section headings into CSV files; `trial_type` is the machine-readable heading/classification.
 - Do not count the tutorial as one of the formal 23 trials.
 - Do not change furniture coordinates, rotations, collision geometry, or visual behavior as part of this data/package change.
@@ -152,9 +157,11 @@ The implementation may choose a different internal shape if the resulting export
 ### Package tests
 
 - all manifest-referenced task, behavior, background, display, object, collision, SVG, and GIF files exist below `public/layout-task-tutorial/`;
-- reference-board asset URLs use the tutorial base URL;
+- the R12 release output contains `tutorial/manifest.json`, its lock file, and every locked asset;
+- reference-board asset URLs use the R12-local tutorial release base URL;
 - tutorial task ID is absent from the formal manifest;
-- compiler/build checks do not modify the tutorial package;
+- compiler/build checks do not modify the tutorial source package;
+- R12 compilation creates or refreshes only the R12-local tutorial release copy;
 - lock file detects missing or changed files.
 
 ### Data tests
@@ -172,7 +179,7 @@ The implementation may choose a different internal shape if the resulting export
 
 - `npm test` passes;
 - `npm run build` passes;
-- the static experiment entry loads the fixed tutorial from `layout-task-tutorial/`;
+- the static experiment entry loads the fixed tutorial from the R12-local `tutorial/` release directory;
 - a formal task still loads from `layout-task-run12-core23-preview/`;
 - the final exported files show one `tutorial` classification and 23 `formal` trial classifications without changing formal trial order.
 
@@ -180,11 +187,11 @@ The implementation may choose a different internal shape if the resulting export
 
 ### Challenge 1: Could reference assets still leak from the formal package?
 
-**Resolution:** Reference-board URLs must resolve through `tutorial.baseUrl`, and all four SVG/GIF pairs must be copied into the tutorial package. Add an assertion against the generated HTML/URL base.
+**Resolution:** Reference-board URLs must resolve through the R12-local tutorial release base, and all four SVG/GIF pairs must be copied into and locked within the tutorial package. Add an assertion against the generated HTML/URL base.
 
 ### Challenge 2: Could the compiler erase the fixed tutorial?
 
-**Resolution:** Treat `public/layout-task-tutorial/` as a protected release artifact. Add a package integrity/build test and keep compiler output rooted at the formal package directory.
+**Resolution:** Treat `public/layout-task-tutorial/` as a protected source artifact. The compiler copies its verified contents into `run12/tutorial/` and never writes to the source root. Add a package integrity/build test for both roots.
 
 ### Challenge 3: Could adding tutorial rows break CSV parsers?
 
@@ -202,8 +209,12 @@ The implementation may choose a different internal shape if the resulting export
 
 **Resolution:** The plugin writes rich result data; CSV event/raw rows and the independent JSON preserve detailed tutorial behavior. Session CSV contains only the summary fields intended for session-level analysis.
 
+### Challenge 7: Could GitHub Pages receive the formal package without the tutorial?
+
+**Resolution:** The published R12 package contains a local `tutorial/` copy and the experiment configuration points to it. End-to-end tests must resolve assets from the release directory alone, without reading the sibling source package.
+
 ## Open assumptions
 
 - The existing receiver and DataPipe endpoints accept additional files without requiring a server-side schema migration. If the VPS rejects unknown filenames, the client must use the existing generic file envelope rather than changing the formal CSV contract.
 - The tutorial package version is a static identifier derived from the lock file, not a runtime-generated timestamp.
-
+- The deployable unit is either the complete Vite `dist/` directory or the complete R12 package plus its experiment entry; deployment will not selectively upload only the formal package while omitting its generated `tutorial/` child directory.
