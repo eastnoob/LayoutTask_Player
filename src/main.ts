@@ -3,12 +3,23 @@ import { ConfigLoader } from "./core/config-loader";
 import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
 import { createRunnableExperiment } from "./experiment-runner";
-import { parseLayoutTaskUrlParams } from "./utils/url";
+import { isTutorialBaseUrl, parseLayoutTaskUrlParams } from "./utils/url";
 
 // main.ts is the standalone-page adapter.
 // 真正的业务流已经收进 createLayoutTaskPlayer()，这里仅负责 URL + config 装配。
 const DEFAULT_TASK_ID = "room01";
 const DEFAULT_QID = "Q1";
+const STANDALONE_CONFIDENCE = {
+  required: true,
+  scale: [1, 2, 3, 4, 5],
+  labels: {
+    "1": "Very unsure",
+    "2": "Unsure",
+    "3": "Neutral",
+    "4": "Sure",
+    "5": "Very sure",
+  },
+};
 
 async function bootstrap(): Promise<void> {
   const root = document.querySelector<HTMLDivElement>("#app");
@@ -22,7 +33,9 @@ async function bootstrap(): Promise<void> {
       baseUrl: new URL("./", window.location.href).toString(),
       configPath: experimentParams.get("config") ?? "experiment.json",
     });
-    const { jsPsych, timeline } = createRunnableExperiment(await loader.load(), root);
+    const config = await loader.load();
+    const developerDebug = experimentParams.get("debug") === "1" || experimentParams.get("config") === "experiment-debug.json";
+    const { jsPsych, timeline } = createRunnableExperiment(config, root, developerDebug ? { participantId: "9999" } : undefined);
     await jsPsych.run(timeline);
     return;
   }
@@ -42,6 +55,8 @@ async function bootstrap(): Promise<void> {
   const player = createLayoutTaskPlayer({
     root,
     config,
+    confidence: STANDALONE_CONFIDENCE,
+    tutorialMode: isTutorialBaseUrl(baseUrl, window.location.href),
   });
   player.start();
 }

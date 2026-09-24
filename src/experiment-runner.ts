@@ -367,8 +367,12 @@ export async function saveExperimentFiles(input: {
   }
 }
 
-export function createRunnableExperiment(config: ExperimentConfig, displayElement?: HTMLElement) {
-  const participantId = getParticipantId({ storage: globalThis.localStorage });
+export function createRunnableExperiment(
+  config: ExperimentConfig,
+  displayElement?: HTMLElement,
+  options: { participantId?: string } = {},
+) {
+  const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const sessionId = createSessionId();
   const startTime = Date.now();
   const jsPsych = initJsPsych({

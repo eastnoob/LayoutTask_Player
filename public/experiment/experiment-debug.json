@@ -1,0 +1,168 @@
+{
+  "schema": "layouttask.experiment.v1",
+  "experiment_id": "run_12_core_23_debug",
+  "baseUrl": "../layout-task-run12-core23-persistent/",
+  "schedule_path": "../layout-task-run12-core23-persistent/schedule.json",
+  "reference_mode": "persistent",
+  "order": "fixed",
+  "tutorial": {
+    "enabled": true,
+    "baseUrl": "../layout-task-run12-core23-persistent/tutorial/",
+    "taskId": "scene_edc634ac7856",
+    "qid": "Q_scene_edc634ac7856",
+    "packageVersion": "tutorial-edc634ac7856-v1",
+    "referenceBoard": {
+      "enabled": true,
+      "continueLabel": "Continue",
+      "items": [
+        {
+          "id": "m01",
+          "name": "Armchairs and Coffee Table",
+          "allSvg": "assets/tutorial-reference/tutorial/whole/svg/armchairAndTeatable.svg",
+          "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/armchairAndTeatable.svg",
+          "allAnimation": "assets/tutorial-reference/tutorial/whole/armchairAndTeatable.gif",
+          "variableAnimation": "assets/tutorial-reference/tutorial/variable/armchairAndTeatable.gif"
+        },
+        {
+          "id": "m03",
+          "name": "Dining Table and Chairs",
+          "allSvg": "assets/tutorial-reference/tutorial/whole/svg/diningTable.svg",
+          "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/dining tablle_VARIABLE.svg",
+          "allAnimation": "assets/tutorial-reference/tutorial/whole/diningTable.gif",
+          "variableAnimation": "assets/tutorial-reference/tutorial/variable/dining tablle_VARIABLE.gif"
+        },
+        {
+          "id": "m04",
+          "name": "Bookcase",
+          "allSvg": "assets/tutorial-reference/tutorial/whole/svg/shortBookShelf.svg",
+          "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/shortBookShelf.svg",
+          "allAnimation": "assets/tutorial-reference/tutorial/whole/shortBookShelf.gif",
+          "variableAnimation": "assets/tutorial-reference/tutorial/variable/shortBookShelf.gif"
+        },
+        {
+          "id": "m05",
+          "name": "Sofa and Coffee Table",
+          "allSvg": "assets/tutorial-reference/tutorial/whole/svg/sofaAndTeatable_FIXED.svg",
+          "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/sofaAndTeatable_VARIABLE.svg",
+          "allAnimation": "assets/tutorial-reference/tutorial/whole/sofaAndTeatable_FIXED.gif",
+          "variableAnimation": "assets/tutorial-reference/tutorial/variable/sofaAndTeatable_VARIABLE.gif"
+        }
+      ]
+    }
+  },
+  "confidence": {
+    "required": true,
+    "scale": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "labels": {
+      "1": "Very unsure",
+      "2": "Unsure",
+      "3": "Neutral",
+      "4": "Sure",
+      "5": "Very sure"
+    }
+  },
+  "data_save": {
+    "mode": "copy",
+    "filename_prefix": "run-12-core-23-debug"
+  },
+  "trials": [
+    {
+      "taskId": "scene_be84fc97a8d1",
+      "qid": "Q_scene_be84fc97a8d1"
+    },
+    {
+      "taskId": "scene_40c935d28aa9",
+      "qid": "Q_scene_40c935d28aa9"
+    },
+    {
+      "taskId": "scene_15d8ce4dbde3",
+      "qid": "Q_scene_15d8ce4dbde3"
+    },
+    {
+      "taskId": "scene_e33c1f2ee9d8",
+      "qid": "Q_scene_e33c1f2ee9d8"
+    },
+    {
+      "taskId": "scene_8a5600c7b766",
+      "qid": "Q_scene_8a5600c7b766"
+    },
+    {
+      "taskId": "scene_843f53756ca5",
+      "qid": "Q_scene_843f53756ca5"
+    },
+    {
+      "taskId": "scene_31f06e134f06",
+      "qid": "Q_scene_31f06e134f06"
+    },
+    {
+      "taskId": "scene_7909d181cd64",
+      "qid": "Q_scene_7909d181cd64"
+    },
+    {
+      "taskId": "scene_8902bfd7b7e4",
+      "qid": "Q_scene_8902bfd7b7e4"
+    },
+    {
+      "taskId": "scene_286f75c14389",
+      "qid": "Q_scene_286f75c14389"
+    },
+    {
+      "taskId": "scene_44de6961764d",
+      "qid": "Q_scene_44de6961764d"
+    },
+    {
+      "taskId": "scene_ffa9be5f52f4",
+      "qid": "Q_scene_ffa9be5f52f4"
+    },
+    {
+      "taskId": "scene_af8fab999cae",
+      "qid": "Q_scene_af8fab999cae"
+    },
+    {
+      "taskId": "scene_c2df50a485bd",
+      "qid": "Q_scene_c2df50a485bd"
+    },
+    {
+      "taskId": "scene_a2b1066832b7",
+      "qid": "Q_scene_a2b1066832b7"
+    },
+    {
+      "taskId": "scene_06398790d57e",
+      "qid": "Q_scene_06398790d57e"
+    },
+    {
+      "taskId": "scene_64b3b35fb323",
+      "qid": "Q_scene_64b3b35fb323"
+    },
+    {
+      "taskId": "scene_01e8f8366e77",
+      "qid": "Q_scene_01e8f8366e77"
+    },
+    {
+      "taskId": "scene_c487a33947b5",
+      "qid": "Q_scene_c487a33947b5"
+    },
+    {
+      "taskId": "scene_e9a1b84008b8",
+      "qid": "Q_scene_e9a1b84008b8"
+    },
+    {
+      "taskId": "scene_6f20b299b0e5",
+      "qid": "Q_scene_6f20b299b0e5"
+    },
+    {
+      "taskId": "scene_85b04c9ff8c0",
+      "qid": "Q_scene_85b04c9ff8c0"
+    },
+    {
+      "taskId": "scene_395dba77481f",
+      "qid": "Q_scene_395dba77481f"
+    }
+  ]
+}
