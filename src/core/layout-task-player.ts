@@ -17,6 +17,7 @@ import { LayoutTaskRenderer } from "./renderer";
 import { StateStore } from "./state-store";
 import { createSessionId } from "../utils/time";
 import { TutorialController, type TutorialEvent } from "./tutorial-controller";
+import { UploadState } from "./upload-state";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -47,7 +48,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   const store = new StateStore(options.config);
   const clipboard = new ClipboardService();
   const encoder = new LayoutTaskEncoder();
-  const dataSave = new DataSaveService({ config: options.config.dataSave });
+  const dataSave = new DataSaveService({ config: options.config.dataSave, uploadState: new UploadState() });
   const pageTiming = new PageTimingCollector();
 
   let recorder: Recorder | undefined;
