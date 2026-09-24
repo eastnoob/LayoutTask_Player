@@ -6,7 +6,10 @@ import type {
   RelativeFinalState,
 } from "../types/result";
 
+export type ExperimentTrialType = "tutorial" | "formal";
+
 export interface ExperimentTrialResultItem {
+  trialType: ExperimentTrialType;
   taskId: string;
   qid?: string;
   encoded?: string;

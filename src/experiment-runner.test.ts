@@ -3,6 +3,7 @@ import InstructionsPlugin from "@jspsych/plugin-instructions";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
   buildExperimentTimeline,
+  collectTutorialTrialResult,
   collectFormalTrialResults,
   createSavingPageHtml,
   createRunnableExperiment,
@@ -64,6 +65,26 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("uses the separate tutorial package only for the interactive tutorial task", () => {
+    const config = experimentConfig();
+    config.tutorial.baseUrl = "/layout-task-tutorial/";
+
+    const timeline = buildExperimentTimeline(config);
+
+    expect(timeline[0]).toMatchObject({
+      type: LayoutTaskPlugin,
+      baseUrl: "/layout-task-tutorial/",
+      taskId: "tutorial_room",
+      writeEncodedToData: true,
+      writeResultToData: true,
+    });
+    expect(timeline[2]).toMatchObject({
+      type: LayoutTaskPlugin,
+      baseUrl: "/layout-task-generated/",
+      taskId: "scene_001",
+    });
+  });
+
   it("creates tutorial then formal LayoutTask trials in fixed order", () => {
     const timeline = buildExperimentTimeline(experimentConfig());
 
@@ -230,18 +251,68 @@ describe("createSavingPageHtml", () => {
 describe("collectFormalTrialResults", () => {
   it("keeps encoded and result fields for formal trials only", () => {
     const results = collectFormalTrialResults([
-      { tutorial: true, task_id: "tutorial_room" },
-      { task_id: "scene_001", qid: "Q001", encoded: "ENC1", result: { task_id: "scene_001" } },
+      { tutorial: true, trial_type: "tutorial", task_id: "tutorial_room" },
+      { formal: true, trial_type: "formal", task_id: "scene_001", qid: "Q001", encoded: "ENC1", result: { task_id: "scene_001" } },
     ]);
 
     expect(results).toEqual([
       {
+        trialType: "formal",
         taskId: "scene_001",
         qid: "Q001",
         encoded: "ENC1",
         result: { task_id: "scene_001" },
       },
     ]);
+  });
+});
+
+describe("trial classification", () => {
+  const tutorialResult = { schema: "layouttask.result.v1", task_id: "tutorial_room" };
+
+  it("collects an explicitly classified tutorial result and preserves its payload", () => {
+    const rows = [
+      {
+        tutorial: true,
+        trial_type: "tutorial",
+        task_id: "tutorial_room",
+        qid: "QTUTORIAL",
+        encoded: "TUTORIAL_ENC",
+        hash8: "TUT_HASH",
+        result: tutorialResult,
+      },
+      { formal: true, trial_type: "formal", task_id: "scene_001", encoded: "FORMAL_1" },
+      { formal: true, trial_type: "formal", task_id: "scene_002", encoded: "FORMAL_2" },
+    ];
+
+    expect(collectTutorialTrialResult(rows)).toEqual({
+      trialType: "tutorial",
+      taskId: "tutorial_room",
+      qid: "QTUTORIAL",
+      encoded: "TUTORIAL_ENC",
+      hash8: "TUT_HASH",
+      result: tutorialResult,
+    });
+    expect(collectFormalTrialResults(rows)).toEqual([
+      expect.objectContaining({ trialType: "formal", taskId: "scene_001" }),
+      expect.objectContaining({ trialType: "formal", taskId: "scene_002" }),
+    ]);
+  });
+
+  it("ignores an unclassified row instead of inferring it as formal", () => {
+    expect(
+      collectFormalTrialResults([
+        { task_id: "scene_unclassified", encoded: "ENCODED", result: { task_id: "scene_unclassified" } },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("lets explicit trial_type metadata win over legacy boolean flags", () => {
+    expect(
+      collectFormalTrialResults([
+        { tutorial: true, trial_type: "formal", task_id: "scene_001", encoded: "FORMAL_1" },
+      ]),
+    ).toEqual([expect.objectContaining({ trialType: "formal", taskId: "scene_001" })]);
   });
 });
 

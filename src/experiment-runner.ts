@@ -3,6 +3,7 @@ import { initJsPsych } from "jspsych";
 import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
+  type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
 } from "./core/experiment-data";
@@ -46,14 +47,14 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
     if (config.tutorial.taskId) {
       timeline.push({
         type: LayoutTaskPlugin,
-        baseUrl: config.baseUrl,
+        baseUrl: config.tutorial.baseUrl ?? config.baseUrl,
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
         confidence: config.confidence,
         autoFinishTrial: true,
-        writeEncodedToData: false,
-        writeResultToData: false,
+        writeEncodedToData: true,
+        writeResultToData: true,
         writeHeaderToData: true,
         data: { tutorial: true },
       });
@@ -137,14 +138,46 @@ export function startReferenceBoardContinueCountdown(input: {
 
 export function collectFormalTrialResults(rows: Array<Record<string, unknown>>): ExperimentTrialResultItem[] {
   return rows
-    .filter((row) => !row.tutorial && (row.encoded || row.result))
+    .filter((row) => getTrialType(row) === "formal" && (row.encoded || row.result))
     .map((row) => ({
+      trialType: "formal",
       taskId: String(row.task_id ?? row.taskId ?? ""),
       qid: row.qid ? String(row.qid) : undefined,
       encoded: row.encoded ? String(row.encoded) : undefined,
       hash8: row.hash8 ? String(row.hash8) : undefined,
       result: row.result,
     }));
+}
+
+export function collectTutorialTrialResult(
+  rows: Array<Record<string, unknown>>,
+): ExperimentTrialResultItem | undefined {
+  const row = rows.find((candidate) => getTrialType(candidate) === "tutorial" && (candidate.encoded || candidate.result));
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    trialType: "tutorial",
+    taskId: String(row.task_id ?? row.taskId ?? ""),
+    qid: row.qid ? String(row.qid) : undefined,
+    encoded: row.encoded ? String(row.encoded) : undefined,
+    hash8: row.hash8 ? String(row.hash8) : undefined,
+    result: row.result,
+  };
+}
+
+function getTrialType(row: Record<string, unknown>): ExperimentTrialType | undefined {
+  if (row.trial_type === "tutorial" || row.trial_type === "formal") {
+    return row.trial_type;
+  }
+  if (row.tutorial === true) {
+    return "tutorial";
+  }
+  if (row.formal === true) {
+    return "formal";
+  }
+  return undefined;
 }
 
 export async function saveExperimentFiles(input: {

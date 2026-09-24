@@ -116,13 +116,14 @@ describe("experiment data export", () => {
     trialOrder: ["scene_001"],
     trialResults: [
       {
+        trialType: "formal",
         taskId: "scene_001",
         qid: "Q001",
         encoded: "LAYOUTTASK1|Q001|...",
         hash8: "deadbeef",
         result,
       },
-      { taskId: "tutorial", qid: "Q_TUTORIAL" },
+      { trialType: "tutorial", taskId: "tutorial", qid: "Q_TUTORIAL" },
     ],
   };
 
