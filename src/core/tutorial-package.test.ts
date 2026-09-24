@@ -11,6 +11,7 @@ type JsonRecord = Record<string, any>;
 
 const projectRoot = resolve(process.cwd());
 const tutorialRoot = resolve(projectRoot, 'public/layout-task-tutorial');
+const releaseTutorialRoot = resolve(projectRoot, 'public/layout-task-run12-core23-preview/tutorial');
 const formalManifestPath = resolve(projectRoot, 'public/layout-task-run12-core23-preview/manifest.json');
 
 function readJson(path: string): JsonRecord {
@@ -98,5 +99,19 @@ describe('tutorial package', () => {
       qid: 'Q_scene_edc634ac7856',
       fileCount: expect.any(Number),
     });
+  });
+
+  it('publishes an independently loadable R12 tutorial copy', () => {
+    const formalRoot = resolve(projectRoot, 'public/layout-task-run12-core23-preview');
+    const verification = verifyTutorialPackage(releaseTutorialRoot, formalRoot);
+
+    expect(verification).toMatchObject({
+      packageVersion: 'tutorial-edc634ac7856-v1',
+      taskId: 'scene_edc634ac7856',
+      qid: 'Q_scene_edc634ac7856',
+    });
+    expect(existsSync(resolve(releaseTutorialRoot, 'manifest.json'))).toBe(true);
+    expect(existsSync(resolve(releaseTutorialRoot, 'tutorial-package.lock.json'))).toBe(true);
+    expect(readJson(formalManifestPath).tasks).toHaveLength(23);
   });
 });
