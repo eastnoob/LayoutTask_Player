@@ -15,6 +15,7 @@ import type {
   TaskConfig,
   TaskObjectConfig,
   WorldConfig,
+  ReferenceMode,
 } from "./config";
 
 export type BatchMetadataValue = string | number | boolean | null;
@@ -194,6 +195,7 @@ export interface CompiledBatchTask {
 export interface BatchGenerationReport {
   schema: "layouttask.generation-report.v1";
   experiment_id: string;
+  reference_mode: ReferenceMode;
   task_count: number;
   generated_files: string[];
   warnings: string[];

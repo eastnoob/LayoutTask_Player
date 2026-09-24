@@ -1,0 +1,20 @@
+{
+  "schema": "layouttask.generation-report.v1",
+  "experiment_id": "tutorial_scene_edc634ac7856",
+  "task_count": 1,
+  "generated_files": [
+    "tasks/scene_edc634ac7856.json",
+    "assets/objects.json",
+    "assets/backgrounds.json",
+    "behaviors/behaviors.json",
+    "scoring/scoring-reference.json",
+    "manifest.json"
+  ],
+  "source_generation_root": "E:/260917",
+  "source_generation_record": "E:/260917/data.csv",
+  "selected_row_index": 1609,
+  "selected_combination_id": "edc634ac7856",
+  "formal_exclusion_source": "public/layout-task-run12-core23-preview/manifest.json",
+  "selection_rule": "random completed E:/260917 record excluding every formal run12 combination",
+  "warnings": []
+}

@@ -1,0 +1,189 @@
+{
+  "schema": "layouttask.tutorial-package-lock.v1",
+  "package_version": "tutorial-edc634ac7856-v1",
+  "task_id": "scene_edc634ac7856",
+  "qid": "Q_scene_edc634ac7856",
+  "source_generation": "E:/260917",
+  "files": [
+    {
+      "path": "assets/backgrounds.json",
+      "sha256": "519824a7ab7c1f2c5cfdb386e2994045579a6a5068b2b15bf7fca9c375a6d8fa"
+    },
+    {
+      "path": "assets/backgrounds/room_scene_0001_bg.svg",
+      "sha256": "009c7e8ba86eeb2b701398cab275123787ee5ef0862f24f434bd29b6136c442f"
+    },
+    {
+      "path": "assets/collision/objects/m01_group_COLLISION.svg",
+      "sha256": "84af7b85ac062b467aa4945c86b4ebcfff2545e7cf4bec9546d590328f4dab0c"
+    },
+    {
+      "path": "assets/collision/objects/m01_variable_COLLISION.svg",
+      "sha256": "ad8c3e471134a9dc74b270548af51cc60f786856920bc0d812172636d9a501d1"
+    },
+    {
+      "path": "assets/collision/objects/m03_group_COLLISION.svg",
+      "sha256": "c49d40ffab0206b0686533f4ef6b53772027222601e0f07189248bee99a96f8d"
+    },
+    {
+      "path": "assets/collision/objects/m03_variable_COLLISION.svg",
+      "sha256": "79fc7ce186cfbaf1c05018926f2990e510e492c2c2c2fc5bbd31c839fbd36083"
+    },
+    {
+      "path": "assets/collision/objects/m04_group_COLLISION.svg",
+      "sha256": "e36bdcd959866145d1cebd3bbb713428e6ca8af057a2d7e9b3c7ed98be7e0498"
+    },
+    {
+      "path": "assets/collision/objects/m04_variable_COLLISION.svg",
+      "sha256": "3fb9d56a9bfbafe487e1f6a0aeedb650609ae28bd92ad89233fcb7c68571b32e"
+    },
+    {
+      "path": "assets/collision/objects/m05_group_COLLISION.svg",
+      "sha256": "a6b8dc6638ce8ed7c03c3fe2af2f7a045f3ce9e65dc5b3066a4004deea88a37f"
+    },
+    {
+      "path": "assets/collision/objects/m05_variable_COLLISION.svg",
+      "sha256": "2ef35cccb1b33876c4a7f9393d2c031558d74c454dacb5cc5b208185d965625c"
+    },
+    {
+      "path": "assets/images/stimulus/e88186a19384_perspective_stimulus_1920x1080.png",
+      "sha256": "c96f311da115fe6fb414282af940317cafaff28080d664c70611c240b7e1e83f"
+    },
+    {
+      "path": "assets/images/stimulus/edc634ac7856_perspective_stimulus_1920x1080.png",
+      "sha256": "757d816967d051030d09b2a93c34cd1f3436c19d886b201be16ac2c3ef507ff8"
+    },
+    {
+      "path": "assets/objects.json",
+      "sha256": "26fcebb96e01f691d7e2ccfd0ae264330710cf3d1c2755835d9c3963c33302ed"
+    },
+    {
+      "path": "assets/objects/m01_group.svg",
+      "sha256": "deb0c40f933d2c21669ac541fd238b4b28988fc4b8ce034b780083bd85f98ef8"
+    },
+    {
+      "path": "assets/objects/m01_variable.svg",
+      "sha256": "3f7e8c68d953ce6132454fdae930ed3e8118c484f5ecd6e8af01723b9489d758"
+    },
+    {
+      "path": "assets/objects/m02_group.svg",
+      "sha256": "787a5ff1c856e386f713dbc0d2b43121c651a06ce7c2fb669c6d2bf29c64c519"
+    },
+    {
+      "path": "assets/objects/m02_variable.svg",
+      "sha256": "17d1eaf178be24976d4d6f6503ea298110077108cd464b59bc46d27a3f15de2a"
+    },
+    {
+      "path": "assets/objects/m03_group.svg",
+      "sha256": "b7cdf94773d03fbd5acef0d21a5540456c395f14d8bd05abab9f7ce68fc5749b"
+    },
+    {
+      "path": "assets/objects/m03_variable.svg",
+      "sha256": "48ec47e7187d22392b26b208c2565564b81b5721953f887c41223a26904a70d0"
+    },
+    {
+      "path": "assets/objects/m04_group.svg",
+      "sha256": "20a88127827c3611bf8014a4e27b6d9e2d758bf9588f04274130c0b7da2c8395"
+    },
+    {
+      "path": "assets/objects/m04_variable.svg",
+      "sha256": "3c871634c0cad96e6aacf8d58314231be22f551be9d9b40d6754fcda179540a5"
+    },
+    {
+      "path": "assets/objects/m05_group.svg",
+      "sha256": "5fd763f2b63a29ef66d1d3fa19dc1f15f4be8c009753ae9e1d323a8f65eee1c0"
+    },
+    {
+      "path": "assets/objects/m05_variable.svg",
+      "sha256": "d3e14d0a859a5e39a8b32fa8e09f034904df1ff25dd0f9a100dd1cb453c230e2"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/armchairAndTeatable.gif",
+      "sha256": "bf1cb38b5e573f194ddb92784b451cabb6cb3d8e11e35fb84738834f52d572fa"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/dining tablle_VARIABLE.gif",
+      "sha256": "11a531d414fd97b07ea5abdb35dce06e60dc8987fa35f9a74e4b1a3fbd9be17d"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/shortBookShelf.gif",
+      "sha256": "2f7b9ed35465cc5d28f8eeaf28b8c9438ec4106d4019b796079646d0418655d5"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/sofaAndTeatable_VARIABLE.gif",
+      "sha256": "c7e1d6aea62ff412dc5286d8a1fd38eea7d8c204d0e4812466d029f2353f9c29"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/svg/armchairAndTeatable.svg",
+      "sha256": "e7989092ea98fc8802a45241c41e4cc4caf08014d0ddaff70d96e3ebf327eb17"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/svg/dining tablle_VARIABLE.svg",
+      "sha256": "6dccac9074d9df3256467ed809753abb1732b3227dc7d289c974da7ea2b27460"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/svg/shortBookShelf.svg",
+      "sha256": "3c68bc3677608a3c15bf3dd3961e0315d9ac09283ca212d36ffe7e083de1aa7b"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/variable/svg/sofaAndTeatable_VARIABLE.svg",
+      "sha256": "02b7bc37d1c9c8919365fbbf766f8e89d987d603cf415fe221158e4c33e026a2"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/armchairAndTeatable.gif",
+      "sha256": "c58b86de3d2039f92ed0bfdc4f24ce9087dcd6eb611eca00923e9b1e3ac497d5"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/diningTable.gif",
+      "sha256": "2bb74a250357d36c15c7d4b30a1d224fffd2ada1112fdad76ae8af9fc4d5e7ee"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/shortBookShelf.gif",
+      "sha256": "00e936cd61de1a1673deec4d568875c6d56b32e73033a070654d75e6ef42ec2c"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/sofaAndTeatable_FIXED.gif",
+      "sha256": "8bd70bf66b82c96c5ab741f2ad50089210fd4d219c8cdfe9638071a6b51e9f4a"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/svg/armchairAndTeatable.svg",
+      "sha256": "2856a0bb4affa753195791b15a2251eb6672b33abcb3e802d1b82eb0f66b710b"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/svg/diningTable.svg",
+      "sha256": "6d79b0c120e59f04c5ca7f10deba78a610b3687b5b119495972d03e27ff78b29"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/svg/shortBookShelf.svg",
+      "sha256": "416d6b81b0f79fa9b11b2885099484dbd332508f956781356c028c2f7833ebe4"
+    },
+    {
+      "path": "assets/tutorial-reference/tutorial/whole/svg/sofaAndTeatable_FIXED.svg",
+      "sha256": "04b97fcf50c0151a18a378e9df0eeb681d576639c6bfffa718adccb6f893da27"
+    },
+    {
+      "path": "behaviors/behaviors.json",
+      "sha256": "67db474e4d66f9b6995dae5df03202087e04f37585cd3007378b29c9254d7d64"
+    },
+    {
+      "path": "generation-report.json",
+      "sha256": "d8a5f2daa45f0775205969171ceb9056b41a309f0b10b185f17b65a8c440b871"
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "302281eccf201d023924bf5c28ecab25cdd81fa63ea19289d647c415af18a374"
+    },
+    {
+      "path": "scoring/scoring-reference.json",
+      "sha256": "6fd2ffa803623fc9c8989cde91255b034b9d6ca5a69f433b655a2f557cf50d2e"
+    },
+    {
+      "path": "tasks/scene_e88186a19384.json",
+      "sha256": "168386d32cbc3289f267c8b264cc53248129c8dbd8649037023bbcfac22684ad"
+    },
+    {
+      "path": "tasks/scene_edc634ac7856.json",
+      "sha256": "2be8719b7a96362255d94c80c676c8cc5e82a9e74916cb1b16a7fc9698216261"
+    }
+  ]
+}

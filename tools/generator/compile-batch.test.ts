@@ -8,6 +8,15 @@ import { compileBatchToDirectory } from "./compile-batch";
 import { readTutorialPackageLock, verifyTutorialPackage } from "../../src/core/tutorial-package-lock";
 
 describe("compileBatchToDirectory", () => {
+  it("rejects an invalid reference mode before compiling", async () => {
+    const root = mkdtempSync(join(tmpdir(), "layout-task-reference-mode-"));
+    const input = join(process.cwd(), "protocol", "examples", "minimal-batch.json");
+
+    await expect(
+      compileBatchToDirectory({ input, out: join(root, "out"), referenceMode: "always" as never }),
+    ).rejects.toThrow(/reference mode/i);
+  });
+
   it("copies only assets referenced by the compiled runtime package", async () => {
     const root = mkdtempSync(join(tmpdir(), "layout-task-compile-"));
     const source = join(root, "source");

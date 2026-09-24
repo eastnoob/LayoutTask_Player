@@ -7,12 +7,13 @@ import type {
   ScoringReferenceConfig,
   ScoringReferenceObject,
 } from "../types/batch";
-import type { ManifestConfig, TaskConfig, TaskObjectConfig, WorldConfig } from "../types/config";
+import type { ManifestConfig, ReferenceMode, TaskConfig, TaskObjectConfig, WorldConfig } from "../types/config";
 
-export function compileBatch(batch: BatchConfig): CompiledBatch {
+export function compileBatch(batch: BatchConfig, options: { referenceMode?: ReferenceMode | string } = {}): CompiledBatch {
+  const referenceMode = normalizeReferenceMode(options.referenceMode);
   const tasks = batch.trials.map((trial) => ({
     file: getTaskFile(trial.task_id),
-    config: compileTrial(batch, trial),
+    config: compileTrial(batch, trial, referenceMode),
   }));
 
   const manifest: ManifestConfig = {
@@ -21,6 +22,7 @@ export function compileBatch(batch: BatchConfig): CompiledBatch {
     asset_library: batch.shared.asset_library,
     background_library: batch.shared.background_library,
     behavior_library: batch.shared.behavior_library,
+    reference_mode: referenceMode,
     tasks: tasks.map((task) => ({
       qid: task.config.qid,
       task_id: task.config.task_id,
@@ -52,6 +54,7 @@ export function compileBatch(batch: BatchConfig): CompiledBatch {
     report: {
       schema: "layouttask.generation-report.v1",
       experiment_id: batch.experiment_id,
+      reference_mode: referenceMode,
       task_count: tasks.length,
       generated_files: [
         "manifest.json",
@@ -64,7 +67,7 @@ export function compileBatch(batch: BatchConfig): CompiledBatch {
   };
 }
 
-function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
+function compileTrial(batch: BatchConfig, trial: BatchTrialConfig, referenceMode: ReferenceMode): TaskConfig {
   const task: TaskConfig = {
     schema: "layouttask.task.v1",
     task_id: trial.task_id,
@@ -72,6 +75,7 @@ function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
     world: trial.world ?? requireSharedWorld(batch.shared.world),
     background: trial.background,
     objects: trial.objects.map(toRuntimeObject),
+    reference_mode: referenceMode,
   };
 
   assignIfDefined(task, "title", trial.title);
@@ -87,6 +91,16 @@ function compileTrial(batch: BatchConfig, trial: BatchTrialConfig): TaskConfig {
   assignIfDefined(task, "collision", mergeConfig(batch.shared.collision, trial.collision));
 
   return task;
+}
+
+function normalizeReferenceMode(value: ReferenceMode | string | undefined): ReferenceMode {
+  if (value === undefined || value === "preview_10s") {
+    return "preview_10s";
+  }
+  if (value === "persistent") {
+    return value;
+  }
+  throw new Error(`Invalid reference mode: ${value}`);
 }
 
 function toRuntimeObject(object: BatchObjectConfig): TaskObjectConfig {

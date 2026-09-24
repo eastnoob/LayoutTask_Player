@@ -1,0 +1,273 @@
+{
+  "schema": "layouttask.task.v1",
+  "task_id": "scene_c2df50a485bd",
+  "qid": "Q_scene_c2df50a485bd",
+  "world": {
+    "unit": "mm",
+    "viewBox": {
+      "x": -14000,
+      "y": 0,
+      "width": 14000,
+      "height": 42000
+    },
+    "origin": {
+      "x": -14000,
+      "y": 0
+    },
+    "grid": {
+      "size": 500,
+      "visible": true,
+      "snap": true,
+      "origin": {
+        "x": -14000,
+        "y": 0
+      }
+    }
+  },
+  "background": {
+    "asset": "room_scene_0001_bg",
+    "x": -14000,
+    "y": 0,
+    "width": 14000,
+    "height": 42000
+  },
+  "objects": [
+    {
+      "id": "scene_c2df50a485bd_m01_group",
+      "asset": "m01_group",
+      "x": -10500,
+      "y": 21008.472909507447,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c2df50a485bd_m01",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m01_variable",
+      "asset": "m01_variable",
+      "x": -10488.978,
+      "y": 21010.022909507446,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c2df50a485bd_m01",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m03_group",
+      "asset": "m03_group",
+      "x": -3507.532,
+      "y": 21010.022909507446,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c2df50a485bd_m03",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m03_variable",
+      "asset": "m03_variable",
+      "x": -2639.009,
+      "y": 20490.849909507448,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c2df50a485bd_m03",
+      "rotation": 0,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m04_group",
+      "asset": "m04_group",
+      "x": -7000,
+      "y": 14173.19587628866,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c2df50a485bd_m04",
+      "rotation": 45,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m04_variable",
+      "asset": "m04_variable",
+      "x": -7000,
+      "y": 14173.19587628866,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c2df50a485bd_m04",
+      "rotation": 45,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m05_group",
+      "asset": "m05_group",
+      "x": -6450.468,
+      "y": 28545.90949026346,
+      "behavior": {
+        "config": {
+          "movement": {
+            "mode": "none"
+          },
+          "free_drag": {
+            "enabled": false
+          }
+        }
+      },
+      "role": "fixed",
+      "group_id": "scene_c2df50a485bd_m05",
+      "rotation": 90,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_group_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    },
+    {
+      "id": "scene_c2df50a485bd_m05_variable",
+      "asset": "m05_variable",
+      "x": -7612.688,
+      "y": 26800.135490263456,
+      "behavior": {
+        "template": "button500_rotate45_limited"
+      },
+      "role": "variable",
+      "group_id": "scene_c2df50a485bd_m05",
+      "rotation": 90,
+      "anchor": "center",
+      "collision": {
+        "enabled": true,
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+        },
+        "padding": 0
+      }
+    }
+  ],
+  "reference_mode": "persistent",
+  "display_image": {
+    "enabled": true,
+    "src": "assets/images/stimulus/c2df50a485bd_perspective_stimulus_1920x1080.png",
+    "alt": "Reference image",
+    "record_metrics": true
+  },
+  "flow": {
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 10,
+      "require_preview_ack": true,
+      "intro_message": "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Next, you will have {seconds} seconds to study the image.",
+      "message_after": "Please reconstruct the scene from memory."
+    }
+  },
+  "stage": {
+    "fit": "contain",
+    "max_height_ratio": 0.88,
+    "padding": 16,
+    "display_rotation_deg": 0,
+    "display_flip_y": true,
+    "background_flip_y": true
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "areas": []
+  }
+}

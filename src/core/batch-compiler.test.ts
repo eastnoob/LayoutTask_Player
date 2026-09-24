@@ -106,6 +106,18 @@ describe("protocol examples", () => {
 });
 
 describe("compileBatch", () => {
+  it("emits the selected reference mode while preserving the default", () => {
+    const preview = compileBatch(createBatch());
+    const persistent = compileBatch(createBatch(), { referenceMode: "persistent" });
+
+    expect(preview.manifest.reference_mode).toBe("preview_10s");
+    expect(preview.tasks[0].config.reference_mode).toBe("preview_10s");
+    expect(persistent.manifest.reference_mode).toBe("persistent");
+    expect(persistent.tasks[0].config.reference_mode).toBe("persistent");
+    expect(persistent.tasks[0].config.objects).toEqual(preview.tasks[0].config.objects);
+    expect(persistent.scoringReference).toEqual(preview.scoringReference);
+  });
+
   it("creates a manifest entry and runtime task file", () => {
     const compiled = compileBatch(createBatch());
 
@@ -114,6 +126,7 @@ describe("compileBatch", () => {
       experiment_id: "floorplan_coherence_v1",
       title: "Generated batch",
       config_version: "2026-06-16",
+      reference_mode: "preview_10s",
       asset_library: "assets/objects.json",
       background_library: "assets/backgrounds.json",
       behavior_library: "behaviors/behaviors.json",
@@ -416,6 +429,7 @@ describe("compileBatch", () => {
     expect(report).toEqual({
       schema: "layouttask.generation-report.v1",
       experiment_id: "floorplan_coherence_v1",
+      reference_mode: "preview_10s",
       task_count: 1,
       generated_files: [
         "manifest.json",

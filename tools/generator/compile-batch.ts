@@ -4,15 +4,17 @@ import { pathToFileURL } from "node:url";
 import { compileBatch } from "../../src/core/batch-compiler";
 import { batchSchema } from "../../src/schemas/batch.schema";
 import type { BatchConfig } from "../../src/types/batch";
+import type { ReferenceMode } from "../../src/types/config";
 import { readTutorialPackageLock, verifyTutorialPackage } from "../../src/core/tutorial-package-lock";
 
 const defaultOutDir = "public/layout-task-generated";
-const usage = `Usage: tsx tools/generator/compile-batch.ts --input <file> [--out <dir>]
-       tsx tools/generator/compile-batch.ts <file> [--out <dir>]`;
+const usage = `Usage: tsx tools/generator/compile-batch.ts --input <file> [--out <dir>] [--reference-mode preview_10s|persistent]
+       tsx tools/generator/compile-batch.ts <file> [--out <dir>] [--reference-mode preview_10s|persistent]`;
 
 interface CliArgs {
   input?: string;
   out: string;
+  referenceMode: ReferenceMode;
 }
 
 interface OutputFile {
@@ -24,6 +26,7 @@ interface CompileToDirectoryOptions {
   input: string;
   out: string;
   tutorialSourceRoot?: string;
+  referenceMode?: ReferenceMode | string;
 }
 
 interface CompileToDirectoryResult {
@@ -41,7 +44,7 @@ function requireValue(args: string[], index: number, option: string): string {
 }
 
 function parseArgs(args: string[]): CliArgs {
-  const parsed: CliArgs = { out: defaultOutDir };
+  const parsed: CliArgs = { out: defaultOutDir, referenceMode: "preview_10s" };
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -73,6 +76,17 @@ function parseArgs(args: string[]): CliArgs {
         throw new Error("--out requires a value");
       }
       parsed.out = value;
+      continue;
+    }
+
+    if (arg === "--reference-mode") {
+      parsed.referenceMode = parseReferenceMode(requireValue(args, index, "--reference-mode"));
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--reference-mode=")) {
+      parsed.referenceMode = parseReferenceMode(arg.slice("--reference-mode=".length));
       continue;
     }
 
@@ -122,9 +136,10 @@ export async function compileBatchToDirectory(options: CompileToDirectoryOptions
   if (path.basename(path.resolve(options.out)) === "layout-task-tutorial") {
     throw new Error("Refusing to compile into the protected tutorial package");
   }
+  const referenceMode = parseReferenceMode(options.referenceMode);
   const raw = await readFile(options.input, "utf8");
   const batch = batchSchema.parse(JSON.parse(raw));
-  const compiled = compileBatch(batch);
+  const compiled = compileBatch(batch, { referenceMode });
   const outputFiles = [
     resolveOutputFile(options.out, "manifest.json", compiled.manifest),
     ...compiled.tasks.map((task) => resolveOutputFile(options.out, task.file, task.config)),
@@ -149,6 +164,16 @@ export async function compileBatchToDirectory(options: CompileToDirectoryOptions
   });
 
   return { taskCount: compiled.tasks.length };
+}
+
+function parseReferenceMode(value: string | undefined): ReferenceMode {
+  if (value === undefined || value === "preview_10s") {
+    return "preview_10s";
+  }
+  if (value === "persistent") {
+    return value;
+  }
+  throw new Error(`Invalid reference mode: ${value}. Expected preview_10s or persistent.`);
 }
 
 async function copyVerifiedTutorialPackage(input: {
@@ -289,9 +314,10 @@ function getCollisionSourcePath(collision: BatchConfig["trials"][number]["object
 async function main(): Promise<void> {
   let input: string | undefined;
   let out = defaultOutDir;
+  let referenceMode: ReferenceMode = "preview_10s";
 
   try {
-    ({ input, out } = parseArgs(process.argv.slice(2)));
+    ({ input, out, referenceMode } = parseArgs(process.argv.slice(2)));
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     console.error(usage);
@@ -306,7 +332,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await compileBatchToDirectory({ input, out });
+    const result = await compileBatchToDirectory({ input, out, referenceMode });
     console.log(`Compiled ${result.taskCount} task(s) to ${out}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
