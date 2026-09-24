@@ -3,7 +3,6 @@ import { initJsPsych } from "jspsych";
 import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
-  collectTutorialTrialResult,
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,

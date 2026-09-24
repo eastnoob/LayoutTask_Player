@@ -5,6 +5,7 @@ import {
   createExperimentFilename,
   createTutorialResultFile,
 } from "./experiment-data";
+import type { ExperimentCsvInput } from "./experiment-data";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 
 describe("participant/session ids", () => {
@@ -106,7 +107,7 @@ describe("experiment data export", () => {
     },
   } as const;
 
-  const rowInput = {
+  const rowInput: ExperimentCsvInput = {
     participantId: "P001",
     sessionId: "S001",
     experimentId: "layout_task_v1",

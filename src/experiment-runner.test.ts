@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import InstructionsPlugin from "@jspsych/plugin-instructions";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
@@ -12,6 +14,7 @@ import {
   createRecoveryOutput,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
+import { parseExperimentConfig } from "./schemas/experiment.schema";
 import { initJsPsych } from "jspsych";
 
 vi.mock("jspsych", () => ({
@@ -66,6 +69,30 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("keeps the real static flow split between tutorial and 23 formal trials", () => {
+    const config = parseExperimentConfig(
+      JSON.parse(readFileSync(resolve(process.cwd(), "public/experiment/experiment.json"), "utf8")),
+    );
+    const timeline = buildExperimentTimeline(config);
+    const layoutTaskTrials = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+    const tutorialTrial = layoutTaskTrials.find((trial) => trial.tutorialMode === true);
+    const boardPages = timeline.filter((trial) => trial.data?.tutorial_reference_board);
+
+    expect(config.tutorial.baseUrl).toContain("layout-task-tutorial");
+    expect(config.baseUrl).toContain("layout-task-run12-core23-preview");
+    expect(config.trials).toHaveLength(23);
+    expect(tutorialTrial).toMatchObject({
+      baseUrl: config.tutorial.baseUrl,
+      taskId: "scene_edc634ac7856",
+      writeEncodedToData: true,
+      writeResultToData: true,
+    });
+    expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true)).toHaveLength(23);
+    expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true).every((trial) => trial.baseUrl === config.baseUrl)).toBe(true);
+    expect(boardPages).toHaveLength(4);
+    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-tutorial"))).toBe(true);
+  });
+
   it("uses the separate tutorial package only for the interactive tutorial task", () => {
     const config = experimentConfig();
     config.tutorial.baseUrl = "/layout-task-tutorial/";

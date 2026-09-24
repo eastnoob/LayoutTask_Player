@@ -73,7 +73,7 @@ export function verifyTutorialPackage(
   const formalManifestPath = join(resolve(formalRoot), "manifest.json");
   if (existsSync(formalManifestPath)) {
     const formalManifest = readJson(formalManifestPath);
-    const formalTaskIds = new Set((formalManifest.tasks ?? []).map((task) => String(task.task_id)));
+    const formalTaskIds = new Set((formalManifest.tasks ?? []).map((task: JsonRecord) => String(task.task_id)));
     if (formalTaskIds.has(lock.task_id)) {
       throw new Error(`Tutorial task ${lock.task_id} is present in the formal manifest`);
     }
