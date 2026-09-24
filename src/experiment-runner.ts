@@ -18,9 +18,9 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
   const timeline: ExperimentTimeline = [];
 
   if (config.tutorial.enabled) {
+    const tutorialBaseUrl = config.tutorial.baseUrl ?? `${config.baseUrl}tutorial/`;
     if (config.tutorial.referenceBoard?.enabled) {
       const board = config.tutorial.referenceBoard;
-      const tutorialBaseUrl = config.tutorial.baseUrl ?? config.baseUrl;
       const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board });
       const continueLabel = board.continueLabel ?? "Continue";
       for (const [index, page] of pages.entries()) {
@@ -48,7 +48,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
     if (config.tutorial.taskId) {
       timeline.push({
         type: LayoutTaskPlugin,
-        baseUrl: config.tutorial.baseUrl ?? config.baseUrl,
+        baseUrl: tutorialBaseUrl,
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,

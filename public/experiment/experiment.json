@@ -5,7 +5,7 @@
   "order": "fixed",
   "tutorial": {
     "enabled": true,
-    "baseUrl": "../layout-task-tutorial/",
+    "baseUrl": "../layout-task-run12-core23-preview/tutorial/",
     "taskId": "scene_edc634ac7856",
     "qid": "Q_scene_edc634ac7856",
     "packageVersion": "tutorial-edc634ac7856-v1",

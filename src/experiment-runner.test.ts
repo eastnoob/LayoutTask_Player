@@ -78,7 +78,7 @@ describe("buildExperimentTimeline", () => {
     const tutorialTrial = layoutTaskTrials.find((trial) => trial.tutorialMode === true);
     const boardPages = timeline.filter((trial) => trial.data?.tutorial_reference_board);
 
-    expect(config.tutorial.baseUrl).toContain("layout-task-tutorial");
+    expect(config.tutorial.baseUrl).toContain("layout-task-run12-core23-preview/tutorial");
     expect(config.baseUrl).toContain("layout-task-run12-core23-preview");
     expect(config.trials).toHaveLength(23);
     expect(tutorialTrial).toMatchObject({
@@ -90,18 +90,18 @@ describe("buildExperimentTimeline", () => {
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true)).toHaveLength(23);
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true).every((trial) => trial.baseUrl === config.baseUrl)).toBe(true);
     expect(boardPages).toHaveLength(4);
-    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-tutorial"))).toBe(true);
+    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-run12-core23-preview/tutorial"))).toBe(true);
   });
 
   it("uses the separate tutorial package only for the interactive tutorial task", () => {
     const config = experimentConfig();
-    config.tutorial.baseUrl = "/layout-task-tutorial/";
+    config.tutorial.baseUrl = "/layout-task-run12-core23-preview/tutorial/";
 
     const timeline = buildExperimentTimeline(config);
 
     expect(timeline[0]).toMatchObject({
       type: LayoutTaskPlugin,
-      baseUrl: "/layout-task-tutorial/",
+      baseUrl: "/layout-task-run12-core23-preview/tutorial/",
       taskId: "tutorial_room",
       writeEncodedToData: true,
       writeResultToData: true,
@@ -132,7 +132,7 @@ describe("buildExperimentTimeline", () => {
 
   it("shows the reference board before the interactive tutorial room", () => {
     const config = experimentConfig();
-    config.tutorial.baseUrl = "/layout-task-tutorial/";
+    config.tutorial.baseUrl = "/layout-task-run12-core23-preview/tutorial/";
     config.tutorial.referenceBoard = {
       enabled: true,
       continueLabel: "Continue",
@@ -162,9 +162,9 @@ describe("buildExperimentTimeline", () => {
     });
     expect(typeof timeline[0].on_load).toBe("function");
     expect(timeline[0].pages).toHaveLength(1);
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
     expect(String(timeline[0].pages[0])).toContain(">1 / 4<");
     expect(String(timeline[1].pages[0])).toContain(">2 / 4<");
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
@@ -199,6 +199,7 @@ describe("buildExperimentTimeline", () => {
       reference_board_page: 4,
       reference_board_total: 4,
     });
+    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/tutorial/");
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 
