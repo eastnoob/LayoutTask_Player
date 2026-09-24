@@ -17,16 +17,19 @@ export interface FlowControllerOptions {
   referenceMode: ReferenceMode;
   renderer: FlowRenderer;
   nowImpl?: () => number;
-  setTimeoutImpl?: typeof globalThis.setTimeout;
-  clearTimeoutImpl?: typeof globalThis.clearTimeout;
+  setTimeoutImpl?: (handler: (...args: any[]) => void, timeout?: number) => ReturnType<typeof globalThis.setTimeout>;
+  clearTimeoutImpl?: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
   onPreviewAcknowledged?: () => void;
   onReconstructionStart: () => void;
 }
 
+type SetTimeoutImpl = NonNullable<FlowControllerOptions["setTimeoutImpl"]>;
+type ClearTimeoutImpl = NonNullable<FlowControllerOptions["clearTimeoutImpl"]>;
+
 export class FlowController {
   private readonly nowImpl: () => number;
-  private readonly setTimeoutImpl: typeof globalThis.setTimeout;
-  private readonly clearTimeoutImpl: typeof globalThis.clearTimeout;
+  private readonly setTimeoutImpl: SetTimeoutImpl;
+  private readonly clearTimeoutImpl: ClearTimeoutImpl;
   private readonly flowInfo: ResultFlowInfo;
   private activeTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
   private destroyed = false;

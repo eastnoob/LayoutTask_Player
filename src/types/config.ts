@@ -325,7 +325,7 @@ export interface ManifestConfig {
   experiment_id: string;
   title?: string;
   config_version?: string;
-  reference_mode: ReferenceMode;
+  reference_mode?: ReferenceMode;
   asset_base_url?: string;
   asset_library: string;
   background_library: string;

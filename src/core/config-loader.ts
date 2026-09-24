@@ -241,6 +241,7 @@ export class ConfigLoader {
 
   private async attachInlineSvgLibraryAssets(input: {
     task: TaskConfig;
+    referenceMode?: ReferenceMode;
     objectLibrary: ObjectLibraryConfig;
     backgroundLibrary: BackgroundLibraryConfig;
   }): Promise<void> {

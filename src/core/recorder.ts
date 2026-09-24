@@ -71,6 +71,7 @@ export class Recorder {
       exp: this.options.config.experimentId,
       qid: this.options.config.qid,
       task_id: this.options.config.taskId,
+      reference_mode: this.options.config.referenceMode,
       session: this.options.sessionId,
       start_time: this.startTime,
       end_time: this.endTime,
