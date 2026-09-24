@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ExperimentConfig } from "../types/experiment";
 import { referenceModeSchema } from "./config.schema";
+import { experimentScheduleSchema } from "./schedule.schema";
 
 const defaultConfidenceLabels = {
   "1": "Very unsure",
@@ -102,6 +103,7 @@ const experimentSchema = z.object({
   confidence: confidenceSchema,
   data_save: dataSaveSchema,
   trials: z.array(trialSchema).min(1),
+  schedule: experimentScheduleSchema.optional(),
 });
 
 export function parseExperimentConfig(input: unknown): ExperimentConfig {
@@ -137,5 +139,6 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     confidence: parsed.confidence,
     dataSave,
     trials: parsed.trials,
+    schedule: parsed.schedule,
   };
 }

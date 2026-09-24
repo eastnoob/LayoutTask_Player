@@ -46,6 +46,32 @@ describe("parseExperimentConfig", () => {
     expect(() => parseExperimentConfig({ ...baseExperiment(), reference_mode: "always" })).toThrow();
   });
 
+  it("accepts an explicit compiled schedule artifact", () => {
+    const schedule = {
+      schema: "layouttask.schedule.v1",
+      strategy: "williams_balanced_first_order",
+      uniqueSceneCount: 2,
+      presentationCount: 2,
+      baseSequenceCount: 2,
+      minimumInterveningTrials: 0,
+      repeatGroups: [],
+      sequences: [{
+        sequenceId: 1,
+        presentations: [{
+          presentationId: "p1",
+          taskId: "scene_001",
+          repeatGroupId: null,
+          repeatIndex: 0,
+          repeatOfTaskId: null,
+          trialIndex: 1,
+          trialTotal: 2,
+        }],
+      }],
+    };
+
+    expect(parseExperimentConfig({ ...baseExperiment(), schedule })).toMatchObject({ schedule });
+  });
+
   it("accepts the v1 experiment config shape", () => {
     expect(parseExperimentConfig(baseExperiment())).toMatchObject({
       schema: "layouttask.experiment.v1",

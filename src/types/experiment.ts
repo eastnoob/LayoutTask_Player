@@ -1,4 +1,5 @@
 import type { ReferenceMode } from "./config";
+import type { ExperimentSchedule } from "./schedule";
 
 export interface ExperimentTrialRef {
   taskId: string;
@@ -70,4 +71,5 @@ export interface ExperimentConfig {
   confidence: ExperimentConfidenceConfig;
   dataSave: ExperimentDataSaveConfig;
   trials: ExperimentTrialRef[];
+  schedule?: ExperimentSchedule;
 }
