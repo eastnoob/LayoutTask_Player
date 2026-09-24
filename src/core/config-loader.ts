@@ -181,6 +181,7 @@ export class ConfigLoader {
       backgroundLibrary,
       behaviorLibrary,
       task,
+      referenceMode: selection.referenceMode,
     });
 
     await this.attachInlineSvgObjectAssets(runtimeConfig);

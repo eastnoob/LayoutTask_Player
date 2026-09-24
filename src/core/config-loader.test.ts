@@ -542,6 +542,22 @@ describe("ConfigLoader SVG viewBox sizing", () => {
   });
 });
 
+describe("ConfigLoader reference mode", () => {
+  it("forwards an explicit persistent reference mode into the runtime config", async () => {
+    const loader = new ConfigLoader({
+      baseUrl: "http://example.test/layout-task/",
+      fetchImpl: createConfigFetch({}),
+    });
+
+    const config = await loader.loadRuntimeConfig({
+      taskId: "room01",
+      referenceMode: "persistent",
+    });
+
+    expect(config.referenceMode).toBe("persistent");
+  });
+});
+
 describe("resolveRuntimeConfig collision", () => {
   it("applies default runtime collision values", () => {
     const config = resolveRuntimeConfig(createBehaviorConfigInput({
