@@ -184,6 +184,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       recorder.start();
       flow = new FlowController({
         flow: options.config.flow,
+        referenceMode: options.config.referenceMode,
         renderer,
         onPreviewAcknowledged: () => advanceTutorial("preview_acknowledged"),
         onReconstructionStart: () => {

@@ -4,6 +4,7 @@ import { ConfigLoader } from "../core/config-loader";
 import { createLayoutTaskPlayer } from "../core/layout-task-player";
 import type { CompletionPayload } from "../core/completion-controller";
 import type { RuntimeTaskConfig } from "../types/runtime";
+import type { ReferenceMode } from "../types/config";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -29,6 +30,7 @@ export interface LayoutTaskPluginParams {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  referenceMode?: ReferenceMode;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -83,6 +85,10 @@ const info = {
     tutorialMode: {
       type: ParameterType.BOOL,
       default: false,
+    },
+    referenceMode: {
+      type: ParameterType.STRING,
+      default: null,
     },
   },
 };
@@ -165,7 +171,7 @@ export default LayoutTaskPlugin;
 async function loadPluginConfig(trial: LayoutTaskTrial): Promise<RuntimeTaskConfig> {
   // Researcher-provided config is already resolved; 不再二次校验/加载，避免改写调用方输入。
   if (trial.config) {
-    return trial.config as RuntimeTaskConfig;
+    return trial.referenceMode ? { ...(trial.config as RuntimeTaskConfig), referenceMode: trial.referenceMode } : trial.config as RuntimeTaskConfig;
   }
 
   // Manifest loading path is deliberately delegated to ConfigLoader.
@@ -178,6 +184,7 @@ async function loadPluginConfig(trial: LayoutTaskTrial): Promise<RuntimeTaskConf
   return loader.loadRuntimeConfig({
     taskId: trial.taskId ?? undefined,
     qid: trial.qid ?? undefined,
+    referenceMode: trial.referenceMode ?? undefined,
   });
 }
 

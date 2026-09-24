@@ -1,4 +1,5 @@
 import type { ResultFlowInfo } from "../types/result";
+import type { ReferenceMode } from "../types/config";
 import type { RuntimeFlowConfig } from "../types/runtime";
 import type { LayoutTaskRenderer } from "./renderer";
 
@@ -13,6 +14,7 @@ type FlowRenderer = Pick<
 
 export interface FlowControllerOptions {
   flow: RuntimeFlowConfig;
+  referenceMode: ReferenceMode;
   renderer: FlowRenderer;
   nowImpl?: () => number;
   setTimeoutImpl?: typeof globalThis.setTimeout;
@@ -40,6 +42,12 @@ export class FlowController {
   // object-state rules themselves. direct_reconstruction starts interactive
   // immediately; preview_then_reconstruct delays interaction until preview ends.
   start(): void {
+    if (this.options.referenceMode === "persistent") {
+      const message = this.options.flow.mode === "preview_then_reconstruct" ? this.options.flow.config.message_after : undefined;
+      this.startReconstruction(message);
+      return;
+    }
+
     if (this.options.flow.mode === "direct_reconstruction") {
       this.startReconstruction();
       return;
@@ -142,7 +150,7 @@ export class FlowController {
     // Reconstruction start is the handoff point where preview-gated players
     // finally bind interaction, while direct flow reaches the same state at once.
     this.flowInfo.reconstruction_started_at = this.nowImpl();
-    this.options.renderer.enterReconstructionFlow(message);
+    this.options.renderer.enterReconstructionFlow(message, this.options.referenceMode);
     this.options.onReconstructionStart();
   }
 }

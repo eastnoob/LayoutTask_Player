@@ -3,11 +3,43 @@ import { FlowController } from "./flow-controller";
 import type { LayoutTaskRenderer } from "./renderer";
 
 describe("FlowController", () => {
+  it("starts persistent reference mode immediately without a preview gate", () => {
+    const renderer = createRendererDouble();
+    const onReconstructionStart = vi.fn();
+    const controller = new FlowController({
+      flow: {
+        mode: "preview_then_reconstruct",
+        config: {
+          preview_duration_sec: 10,
+          require_preview_ack: true,
+          stage_during_preview: "hidden",
+          show_countdown: true,
+          intro_message: "Study first.",
+          intro_confirm_label: "Start",
+          message_before: "Study.",
+          message_after: "Keep the image visible.",
+        },
+      },
+      referenceMode: "persistent",
+      renderer,
+      onReconstructionStart,
+      setTimeoutImpl: vi.fn(),
+    });
+
+    controller.start();
+
+    expect(renderer.showPreviewAcknowledgement).not.toHaveBeenCalled();
+    expect(renderer.enterPreviewFlow).not.toHaveBeenCalled();
+    expect(renderer.enterReconstructionFlow).toHaveBeenCalledWith("Keep the image visible.", "persistent");
+    expect(onReconstructionStart).toHaveBeenCalledOnce();
+  });
+
   it("starts reconstruction immediately for direct flow", () => {
     const renderer = createRendererDouble();
     const onReconstructionStart = vi.fn();
     const controller = new FlowController({
       flow: { mode: "direct_reconstruction" },
+      referenceMode: "preview_10s",
       renderer,
       onReconstructionStart,
       nowImpl: () => 1000,
@@ -15,7 +47,7 @@ describe("FlowController", () => {
 
     controller.start();
 
-    expect(renderer.enterReconstructionFlow).toHaveBeenCalledWith(undefined);
+    expect(renderer.enterReconstructionFlow).toHaveBeenCalledWith(undefined, "preview_10s");
     expect(onReconstructionStart).toHaveBeenCalledOnce();
     expect(controller.getFlowInfo()).toEqual({
       mode: "direct_reconstruction",
@@ -42,6 +74,7 @@ describe("FlowController", () => {
           message_after: "Reconstruct now.",
         },
       },
+      referenceMode: "preview_10s",
       renderer,
       onReconstructionStart,
       nowImpl: () => nowValues.shift() ?? 11_000,
@@ -69,7 +102,7 @@ describe("FlowController", () => {
 
     scheduled.shift()?.();
 
-    expect(renderer.enterReconstructionFlow).toHaveBeenCalledWith("Reconstruct now.");
+    expect(renderer.enterReconstructionFlow).toHaveBeenCalledWith("Reconstruct now.", "preview_10s");
     expect(onReconstructionStart).toHaveBeenCalledOnce();
     expect(controller.getFlowInfo()).toEqual({
       mode: "preview_then_reconstruct",

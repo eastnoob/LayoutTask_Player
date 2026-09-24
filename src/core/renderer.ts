@@ -1,4 +1,5 @@
 import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
+import type { ReferenceMode } from "../types/config";
 import type { PreviewStageMode } from "../types/config";
 import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
@@ -712,8 +713,9 @@ export class LayoutTaskRenderer {
     }
   }
 
-  enterReconstructionFlow(message?: string): void {
-    this.setDisplayImageVisible(false);
+  enterReconstructionFlow(message?: string, referenceMode: ReferenceMode = "preview_10s"): void {
+    this.setDisplayImageVisible(referenceMode === "persistent");
+    this.refs.displayImageFrameElement?.classList.toggle("is-persistent-reference", referenceMode === "persistent");
     this.setPreviewStageMode(undefined);
     if (this.refs.flowCountdownElement) {
       this.refs.flowCountdownElement.hidden = true;

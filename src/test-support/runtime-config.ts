@@ -4,6 +4,7 @@ import type { RuntimeTaskConfig } from "../types/runtime";
 // 统一测试输入后，controller / recorder / completion 的行为更容易横向比较。
 export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}): RuntimeTaskConfig {
   return {
+    referenceMode: "preview_10s",
     schema: "layouttask.runtime.v1",
     experimentId: "test_exp",
     qid: "Q1",
