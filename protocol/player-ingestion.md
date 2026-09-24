@@ -246,6 +246,10 @@ The browser scales the SVG stage to fit the available screen area, but object po
 
 After confirmation, the Player emits a result payload. Depending on output settings, this may be copied as JSON, encoded text, or sent to a data pipe.
 
+For production DataPipe use, configure the task-level backup as `mode: "datapipe"`, `payload_format: "json-envelope"`, `save_encoded: true`, and `save_result: false`. The resulting `layouttask.backup.v1` JSON envelope contains the compressed `LAYOUTTASK1` transport string plus its task/session/hash metadata. `lz-uri` is compression and transport encoding; it is not encryption.
+
+The experiment-level end-of-session export is separate. It sends `session.csv`, `results.csv`, `raw_results.csv`, `events.csv`, and `debug.json`. `results.csv` is the object-level analysis table and contains no compressed transport column. `raw_results.csv` has one formal trial per row and stores the complete plain `LayoutTaskResult` in `result_json`, quoted as a CSV cell. Tutorial rows are excluded from that file.
+
 Important result fields include:
 
 - `qid`, `task_id`, `session`

@@ -489,13 +489,17 @@ describe("taskSchema data_save", () => {
         data_save: {
           mode: "datapipe",
           experiment_id: "EXP123",
-          payload_format: "csv-row",
+          payload_format: "json-envelope",
+          save_encoded: true,
+          save_result: false,
         },
       }).data_save,
     ).toMatchObject({
       mode: "datapipe",
       experiment_id: "EXP123",
-      payload_format: "csv-row",
+      payload_format: "json-envelope",
+      save_encoded: true,
+      save_result: false,
     });
   });
 });

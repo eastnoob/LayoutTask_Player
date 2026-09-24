@@ -280,6 +280,9 @@ describe("resolveRuntimeConfig display image", () => {
         data_save: {
           mode: "datapipe",
           experiment_id: "EXP123",
+          payload_format: "json-envelope",
+          save_encoded: true,
+          save_result: false,
         },
       },
     });
@@ -291,7 +294,7 @@ describe("resolveRuntimeConfig display image", () => {
       filename_prefix: "layout-task",
       payload_format: "json-envelope",
       save_encoded: true,
-      save_result: true,
+      save_result: false,
     });
   });
 });
