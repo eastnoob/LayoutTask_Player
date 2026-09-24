@@ -1,5 +1,6 @@
 import type { FinalState } from "../types/result";
 import type { RuntimeTaskConfig } from "../types/runtime";
+import type { ReferencePresentation } from "../types/schedule";
 import { ClipboardService } from "./clipboard-service";
 import { CompletionController, type CompletionPayload } from "./completion-controller";
 import { DisplayChangeRecorder } from "./display-change-recorder";
@@ -26,6 +27,7 @@ export interface LayoutTaskPlayerOptions {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
 }
 
@@ -153,6 +155,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getFlowInfo: () => flow?.getFlowInfo() ?? { mode: options.config.flow.mode },
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
+        getPresentation: () => options.presentation,
       });
       confidence = options.confidence
         ? new ConfidenceController({

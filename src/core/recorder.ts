@@ -7,6 +7,7 @@ import type {
   ReferenceAssistanceInfo,
   ResultFlowInfo,
 } from "../types/result";
+import type { ReferencePresentation } from "../types/schedule";
 import { elapsedMs, now } from "../utils/time";
 
 interface RecorderOptions {
@@ -18,6 +19,7 @@ interface RecorderOptions {
   getFlowInfo?: () => ResultFlowInfo;
   getConfidence?: () => Record<string, number> | undefined;
   getReferenceAssistance?: () => ReferenceAssistanceInfo | undefined;
+  getPresentation?: () => ReferencePresentation | undefined;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
 }
@@ -71,6 +73,7 @@ export class Recorder {
       exp: this.options.config.experimentId,
       qid: this.options.config.qid,
       task_id: this.options.config.taskId,
+      presentation: this.options.getPresentation?.(),
       reference_mode: this.options.config.referenceMode,
       session: this.options.sessionId,
       start_time: this.startTime,

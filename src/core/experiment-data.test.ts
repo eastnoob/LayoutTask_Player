@@ -6,6 +6,7 @@ import {
   createTutorialResultFile,
 } from "./experiment-data";
 import type { ExperimentCsvInput } from "./experiment-data";
+import type { ReferencePresentation } from "../types/schedule";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 
 describe("participant/session ids", () => {
@@ -125,6 +126,15 @@ describe("experiment data export", () => {
         encoded: "LAYOUTTASK1|Q001|...",
         hash8: "deadbeef",
         result,
+        presentation: {
+          presentationId: "presentation-1",
+          taskId: "scene_001",
+          repeatGroupId: null,
+          repeatIndex: 1,
+          repeatOfTaskId: null,
+          trialIndex: 1,
+          trialTotal: 25,
+        } satisfies ReferencePresentation,
       },
     ],
     tutorialResult: {
@@ -165,12 +175,13 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain("tutorial");
     expect(files[1].data).toContain("formal");
     expect(files[1].data).not.toContain(",encoded,");
-    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,0,scene_001,Q001,group_a,4");
+    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,1,scene_001,Q001,group_a,4");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(10);
+    expect(rawResultRow).toHaveLength(15);
     expect(JSON.parse(rawResultRow[9])).toEqual(result);
+    expect(rawResultRow.slice(10)).toEqual(["presentation-1", "", "1", "", "25"]);
     expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
     expect(files[3].data).toContain("tutorial");
     expect(files[3].data).toContain("0,12,group_a,move_right,true");
@@ -178,7 +189,14 @@ describe("experiment data export", () => {
       const records = parseCsvRecords(files[index].data);
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["0"]);
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["1"]);
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-5)).toEqual([
+      "presentation-1",
+      "",
+      "1",
+      "",
+      "25",
+    ]);
     expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",

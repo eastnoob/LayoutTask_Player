@@ -5,6 +5,7 @@ import { createLayoutTaskPlayer } from "../core/layout-task-player";
 import type { CompletionPayload } from "../core/completion-controller";
 import type { RuntimeTaskConfig } from "../types/runtime";
 import type { ReferenceMode } from "../types/config";
+import type { ReferencePresentation } from "../types/schedule";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -31,6 +32,7 @@ export interface LayoutTaskPluginParams {
   };
   tutorialMode?: boolean;
   referenceMode?: ReferenceMode;
+  presentation?: ReferencePresentation;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -90,6 +92,10 @@ const info = {
       type: ParameterType.STRING,
       default: null,
     },
+    presentation: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
   },
 };
 
@@ -99,6 +105,7 @@ type LayoutTaskTrial = TrialType<Info>;
 export interface LayoutTaskTrialData {
   trial_type?: "tutorial" | "formal";
   reference_mode?: ReferenceMode;
+  presentation?: ReferencePresentation;
   qid?: string;
   task_id?: string;
   session?: string;
@@ -136,6 +143,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           config,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
+          presentation: trial.presentation,
           onComplete: (payload) => {
             if (finished) {
               return;
@@ -193,12 +201,13 @@ async function loadPluginConfig(trial: LayoutTaskTrial): Promise<RuntimeTaskConf
 export function buildTrialData(
   config: RuntimeTaskConfig,
   payload: CompletionPayload,
-  flags: Pick<LayoutTaskTrial, "writeEncodedToData" | "writeResultToData" | "writeHeaderToData" | "tutorialMode">,
+  flags: Pick<LayoutTaskTrial, "writeEncodedToData" | "writeResultToData" | "writeHeaderToData" | "tutorialMode" | "presentation">,
 ): LayoutTaskTrialData {
   const data: LayoutTaskTrialData = {};
 
   data.trial_type = flags.tutorialMode ? "tutorial" : "formal";
   data.reference_mode = config.referenceMode;
+  data.presentation = flags.presentation;
 
   // Header/meta fields make exported jsPsych CSV easier to scan without decoding the payload.
   // 关闭时仍然不影响 encoded/result 本身。

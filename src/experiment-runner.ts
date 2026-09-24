@@ -11,6 +11,7 @@ import { createSessionId, getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
+import type { ReferencePresentation } from "./types/schedule";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -82,19 +83,37 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
     }
   }
 
-  for (const trial of config.trials) {
+  const formalPresentations: ReferencePresentation[] = config.schedule?.sequences[0]?.presentations
+    ?? config.trials.map((trial, index) => ({
+      presentationId: `trial-${index + 1}`,
+      taskId: trial.taskId,
+      repeatGroupId: null,
+      repeatIndex: 0,
+      repeatOfTaskId: null,
+      trialIndex: index + 1,
+      trialTotal: config.trials.length,
+    }));
+
+  for (const presentation of formalPresentations) {
+    const trial = config.trials.find((candidate) => candidate.taskId === presentation.taskId);
+    if (!trial) {
+      throw new Error(`Scheduled formal task ${presentation.taskId} is missing from experiment trials`);
+    }
     timeline.push({
       type: LayoutTaskPlugin,
       baseUrl: config.baseUrl,
       taskId: trial.taskId,
       qid: trial.qid,
+      presentation,
+      trialIndex: presentation.trialIndex,
+      trialTotal: presentation.trialTotal,
       referenceMode: config.referenceMode,
       confidence: config.confidence,
       autoFinishTrial: true,
       writeEncodedToData: true,
       writeResultToData: true,
       writeHeaderToData: true,
-      data: { formal: true, taskId: trial.taskId, qid: trial.qid },
+      data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
 
@@ -149,6 +168,7 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
       encoded: row.encoded ? String(row.encoded) : undefined,
       hash8: row.hash8 ? String(row.hash8) : undefined,
       result: row.result,
+      presentation: row.presentation as ReferencePresentation | undefined,
     }));
 }
 
@@ -167,6 +187,7 @@ export function collectTutorialTrialResult(
     encoded: row.encoded ? String(row.encoded) : undefined,
     hash8: row.hash8 ? String(row.hash8) : undefined,
     result: row.result,
+    presentation: row.presentation as ReferencePresentation | undefined,
   };
 }
 

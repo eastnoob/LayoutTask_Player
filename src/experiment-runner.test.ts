@@ -16,6 +16,7 @@ import {
 import type { ExperimentConfig } from "./types/experiment";
 import { parseExperimentConfig } from "./schemas/experiment.schema";
 import { initJsPsych } from "jspsych";
+import { createPresentationSchedule, generateWilliamsBaseSequences } from "./core/schedule-generator";
 
 vi.mock("jspsych", () => ({
   initJsPsych: vi.fn(() => ({ data: { get: () => ({ values: () => [] }) } })),
@@ -101,6 +102,28 @@ describe("buildExperimentTimeline", () => {
     const tasks = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
 
     expect(tasks.every((trial) => trial.referenceMode === "persistent")).toBe(true);
+  });
+
+  it("uses the selected 25-presentation schedule and preserves repeat metadata", () => {
+    const config = experimentConfig();
+    config.trials = Array.from({ length: 23 }, (_, index) => ({
+      taskId: `scene_${String(index + 1).padStart(3, "0")}`,
+      qid: `Q${String(index + 1).padStart(3, "0")}`,
+    }));
+    const base = generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId));
+    config.schedule = createPresentationSchedule(base, ["scene_001", "scene_002"], 7);
+
+    const timeline = buildExperimentTimeline(config);
+    const formal = timeline.filter((trial) => trial.type === LayoutTaskPlugin && trial.tutorialMode !== true);
+
+    expect(formal).toHaveLength(25);
+    expect(formal[0]).toMatchObject({
+      taskId: config.schedule.sequences[0].presentations[0].taskId,
+      trialIndex: config.schedule.sequences[0].presentations[0].trialIndex,
+      trialTotal: 25,
+      presentation: config.schedule.sequences[0].presentations[0],
+    });
+    expect(formal.filter((trial) => trial.presentation?.repeatIndex === 2)).toHaveLength(2);
   });
 
   it("uses the separate tutorial package only for the interactive tutorial task", () => {

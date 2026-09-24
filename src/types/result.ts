@@ -1,5 +1,6 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
 import type { ViewBox, WorldUnit } from "./config";
+import type { ReferencePresentation } from "./schedule";
 
 // Result types are the serialized protocol surface shared by runtime, encoder,
 // decoder, and downstream analysis scripts. 这一层是实验结果交换格式，不只是前端内部状态。
@@ -235,6 +236,7 @@ export interface LayoutTaskResult {
   exp: string;
   qid: string;
   task_id: string;
+  presentation?: ReferencePresentation;
   reference_mode?: "preview_10s" | "persistent";
   session: string;
   start_time: number;

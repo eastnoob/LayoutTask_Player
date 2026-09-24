@@ -6,6 +6,7 @@ import type {
   RelativeFinalState,
 } from "../types/result";
 import type { ReferenceMode } from "../types/config";
+import type { ReferencePresentation } from "../types/schedule";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -16,6 +17,7 @@ export interface ExperimentTrialResultItem {
   encoded?: string;
   hash8?: string;
   result?: LayoutTaskResult | unknown;
+  presentation?: ReferencePresentation;
 }
 
 export interface ExperimentCsvInput {
@@ -220,6 +222,11 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         trial.result.flow?.preview_duration_ms,
         trial.result.task_config_hash,
         trial.hash8,
+        presentationValue(trial, "presentationId"),
+        presentationValue(trial, "repeatGroupId"),
+        presentationValue(trial, "repeatIndex"),
+        presentationValue(trial, "repeatOfTaskId"),
+        presentationValue(trial, "trialTotal"),
       ]);
     }
   });
@@ -254,6 +261,11 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "preview_duration_ms",
       "task_config_hash",
       "hash8",
+      "presentation_id",
+      "repeat_group_id",
+      "repeat_index",
+      "repeat_of_task_id",
+      "trial_total",
     ],
     rows,
   );
@@ -277,6 +289,11 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       trial.result.qid,
       trial.hash8,
       JSON.stringify(trial.result),
+      presentationValue(trial, "presentationId"),
+      presentationValue(trial, "repeatGroupId"),
+      presentationValue(trial, "repeatIndex"),
+      presentationValue(trial, "repeatOfTaskId"),
+      presentationValue(trial, "trialTotal"),
     ]);
   });
 
@@ -292,6 +309,11 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "qid",
       "hash8",
       "result_json",
+      "presentation_id",
+      "repeat_group_id",
+      "repeat_index",
+      "repeat_of_task_id",
+      "trial_total",
     ],
     rows,
   );
@@ -333,6 +355,11 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         event.pointer?.clientY,
         event.pointer?.worldX,
         event.pointer?.worldY,
+        presentationValue(trial, "presentationId"),
+        presentationValue(trial, "repeatGroupId"),
+        presentationValue(trial, "repeatIndex"),
+        presentationValue(trial, "repeatOfTaskId"),
+        presentationValue(trial, "trialTotal"),
       ]);
     }
   });
@@ -366,6 +393,11 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "pointer_client_y",
       "pointer_world_x",
       "pointer_world_y",
+      "presentation_id",
+      "repeat_group_id",
+      "repeat_index",
+      "repeat_of_task_id",
+      "trial_total",
     ],
     rows,
   );
@@ -398,6 +430,11 @@ function createDebugJson(input: ExperimentCsvInput): string {
         hash8: trial.hash8,
         result_schema:
           trial.result && typeof trial.result === "object" ? (trial.result as { schema?: unknown }).schema : undefined,
+        presentation_id: presentationValue(trial, "presentationId"),
+        repeat_group_id: presentationValue(trial, "repeatGroupId"),
+        repeat_index: presentationValue(trial, "repeatIndex"),
+        repeat_of_task_id: presentationValue(trial, "repeatOfTaskId"),
+        trial_total: presentationValue(trial, "trialTotal"),
       })),
     },
     null,
@@ -420,8 +457,29 @@ function exportTrials(input: ExperimentCsvInput): Array<{
   trialIndex: number | "";
 }> {
   const tutorial = input.tutorialResult ? [{ trial: input.tutorialResult, trialIndex: "" as const }] : [];
-  const formal = input.trialResults.map((trial, trialIndex) => ({ trial, trialIndex }));
+  const formal = input.trialResults.map((trial, trialIndex) => ({
+    trial,
+    trialIndex: trial.presentation?.trialIndex ?? getResultPresentation(trial)?.trialIndex ?? trialIndex,
+  }));
   return [...tutorial, ...formal];
+}
+
+function getResultPresentation(trial: ExperimentTrialResultItem): ReferencePresentation | undefined {
+  if (!trial.result || typeof trial.result !== "object") {
+    return undefined;
+  }
+  return (trial.result as LayoutTaskResult).presentation;
+}
+
+function getPresentation(trial: ExperimentTrialResultItem): ReferencePresentation | undefined {
+  return trial.presentation ?? getResultPresentation(trial);
+}
+
+function presentationValue(
+  trial: ExperimentTrialResultItem,
+  key: "presentationId" | "repeatGroupId" | "repeatIndex" | "repeatOfTaskId" | "trialTotal",
+): string | number | undefined {
+  return getPresentation(trial)?.[key] ?? undefined;
 }
 
 function getFinalObjectValues(result: LayoutTaskResult, objectId: string): {
