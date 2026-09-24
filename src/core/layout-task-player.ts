@@ -125,7 +125,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
       if (options.tutorialMode) {
-        tutorial = new TutorialController();
+        tutorial = new TutorialController(options.config.referenceMode);
         showTutorial();
       }
       // Browser-only observer: in Node unit tests there is no window, so skip it.

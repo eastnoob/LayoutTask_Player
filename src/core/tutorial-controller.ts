@@ -90,15 +90,20 @@ const steps: TutorialStep[] = [
   {
     id: "complete",
     anchor: "status",
-    message: "Tutorial complete.",
+    message: "**Tutorial complete.**",
   },
 ];
 
 export class TutorialController {
   private index = 0;
+  private readonly steps: TutorialStep[];
+
+  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s") {
+    this.steps = referenceMode === "persistent" ? createPersistentSteps() : steps;
+  }
 
   getCurrentStep(): TutorialStep {
-    return steps[this.index];
+    return this.steps[this.index];
   }
 
   isComplete(): boolean {
@@ -110,7 +115,22 @@ export class TutorialController {
       return false;
     }
 
-    this.index = Math.min(this.index + 1, steps.length - 1);
+    this.index = Math.min(this.index + 1, this.steps.length - 1);
     return true;
   }
+}
+
+function createPersistentSteps(): TutorialStep[] {
+  return steps
+    .filter((step) => step.id !== "preview")
+    .map((step) =>
+      step.id === "intro"
+        ? {
+            ...step,
+            expectedEvent: "reconstruction_started" as const,
+            message:
+              "**You may refer to the perspective image at any time.** Do not enlarge it using browser zoom, **Ctrl + scroll**, or any magnification tool. These actions may be recorded. You may use the floor-plan zoom controls; they do not enlarge the perspective image.",
+          }
+        : step,
+    );
 }

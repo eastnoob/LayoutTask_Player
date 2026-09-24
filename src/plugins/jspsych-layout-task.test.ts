@@ -216,7 +216,7 @@ describe("buildTrialData", () => {
         writeResultToData: false,
         writeHeaderToData: false,
       }),
-    ).toEqual({});
+    ).toEqual({ trial_type: "formal", reference_mode: "preview_10s" });
 
     expect(
       buildTrialData(config, payload, {
@@ -226,6 +226,8 @@ describe("buildTrialData", () => {
       }),
     ).toEqual({
       qid: "Q1",
+      trial_type: "formal",
+      reference_mode: "preview_10s",
       task_id: "room01",
       session: "SESSION1",
       hash8: "HASH0001",

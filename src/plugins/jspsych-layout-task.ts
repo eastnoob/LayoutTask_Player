@@ -97,6 +97,8 @@ type Info = typeof info;
 type LayoutTaskTrial = TrialType<Info>;
 
 export interface LayoutTaskTrialData {
+  trial_type?: "tutorial" | "formal";
+  reference_mode?: ReferenceMode;
   qid?: string;
   task_id?: string;
   session?: string;
@@ -191,9 +193,12 @@ async function loadPluginConfig(trial: LayoutTaskTrial): Promise<RuntimeTaskConf
 export function buildTrialData(
   config: RuntimeTaskConfig,
   payload: CompletionPayload,
-  flags: Pick<LayoutTaskTrial, "writeEncodedToData" | "writeResultToData" | "writeHeaderToData">,
+  flags: Pick<LayoutTaskTrial, "writeEncodedToData" | "writeResultToData" | "writeHeaderToData" | "tutorialMode">,
 ): LayoutTaskTrialData {
   const data: LayoutTaskTrialData = {};
+
+  data.trial_type = flags.tutorialMode ? "tutorial" : "formal";
+  data.reference_mode = config.referenceMode;
 
   // Header/meta fields make exported jsPsych CSV easier to scan without decoding the payload.
   // 关闭时仍然不影响 encoded/result 本身。

@@ -5,6 +5,7 @@ import type {
   RelativeFinalObjectState,
   RelativeFinalState,
 } from "../types/result";
+import type { ReferenceMode } from "../types/config";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -21,6 +22,7 @@ export interface ExperimentCsvInput {
   participantId: string;
   sessionId: string;
   experimentId: string;
+  referenceMode: ReferenceMode;
   filenamePrefix?: string;
   startTime: number;
   endTime: number;
@@ -96,6 +98,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
       {
         schema: "layouttask.tutorial-result.v1",
         trial_type: "tutorial",
+        reference_mode: input.referenceMode,
         package_version: input.tutorialPackageVersion,
         participant_id: input.participantId,
         session_id: input.sessionId,
@@ -152,6 +155,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "screen_width",
       "screen_height",
       "tutorial_package_version",
+      "reference_mode",
     ],
     [
       [
@@ -171,6 +175,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         firstResult?.display?.screen.width,
         firstResult?.display?.screen.height,
         input.tutorialPackageVersion,
+        input.referenceMode,
       ],
     ],
   );
@@ -188,6 +193,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       const final = getFinalObjectValues(trial.result, objectId);
       rows.push([
         trial.trialType,
+        input.referenceMode,
         input.participantId,
         input.sessionId,
         input.experimentId,
@@ -221,6 +227,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
   return csv(
     [
       "trial_type",
+      "reference_mode",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -261,6 +268,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
 
     rows.push([
       trial.trialType,
+      input.referenceMode,
       input.participantId,
       input.sessionId,
       input.experimentId,
@@ -274,7 +282,8 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
 
   return csv(
     [
-      "trial_type",
+    "trial_type",
+    "reference_mode",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -298,6 +307,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
     for (const event of trial.result.events) {
       rows.push([
         trial.trialType,
+        input.referenceMode,
         input.participantId,
         input.sessionId,
         input.experimentId,
@@ -330,6 +340,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
   return csv(
     [
       "trial_type",
+      "reference_mode",
       "participant_id",
       "session_id",
       "experiment_id",
@@ -367,6 +378,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
+      reference_mode: input.referenceMode,
       started_at: input.startTime,
       ended_at: input.endTime,
       duration_ms: input.endTime - input.startTime,
@@ -379,6 +391,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       trials: input.trialResults.map((trial, trialIndex) => ({
         trial_index: trialIndex,
         trial_type: trial.trialType,
+        reference_mode: input.referenceMode,
         task_id: trial.taskId,
         qid: trial.qid,
         encoded_present: Boolean(trial.encoded),

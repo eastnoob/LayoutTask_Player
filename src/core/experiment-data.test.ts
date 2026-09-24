@@ -111,6 +111,7 @@ describe("experiment data export", () => {
     participantId: "P001",
     sessionId: "S001",
     experimentId: "layout_task_v1",
+    referenceMode: "persistent",
     startTime: 1000,
     endTime: 3000,
     tutorialCompleted: true,
@@ -158,30 +159,33 @@ describe("experiment data export", () => {
     ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
-    expect(files[1].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid");
+    expect(files[1].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid");
+    expect(files[1].data).toContain("reference_mode");
+    expect(files[0].data).toContain("reference_mode");
     expect(files[1].data).toContain("tutorial");
     expect(files[1].data).toContain("formal");
     expect(files[1].data).not.toContain(",encoded,");
-    expect(files[1].data).toContain("formal,P001,S001,layout_task_v1,0,scene_001,Q001,group_a,4");
+    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,0,scene_001,Q001,group_a,4");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
-    expect(files[2].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
-    const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[5] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(9);
-    expect(JSON.parse(rawResultRow[8])).toEqual(result);
-    expect(files[3].data).toContain("trial_type,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
+    expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
+    const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
+    expect(rawResultRow).toHaveLength(10);
+    expect(JSON.parse(rawResultRow[9])).toEqual(result);
+    expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
     expect(files[3].data).toContain("tutorial");
     expect(files[3].data).toContain("0,12,group_a,move_right,true");
     for (const index of [1, 2, 3]) {
       const records = parseCsvRecords(files[index].data);
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[4])).toEqual(["0"]);
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["0"]);
     expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",
       session_id: "S001",
       experiment_id: "layout_task_v1",
       trial_count: 1,
+      reference_mode: "persistent",
     });
     expect(JSON.parse(files[5].data)).toMatchObject({
       schema: "layouttask.tutorial-result.v1",

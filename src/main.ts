@@ -17,7 +17,11 @@ async function bootstrap(): Promise<void> {
   }
 
   if (isExperimentPath(window.location.pathname)) {
-    const loader = new ExperimentLoader({ baseUrl: new URL("./", window.location.href).toString() });
+    const experimentParams = new URLSearchParams(window.location.search);
+    const loader = new ExperimentLoader({
+      baseUrl: new URL("./", window.location.href).toString(),
+      configPath: experimentParams.get("config") ?? "experiment.json",
+    });
     const { jsPsych, timeline } = createRunnableExperiment(await loader.load(), root);
     await jsPsych.run(timeline);
     return;

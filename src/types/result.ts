@@ -235,6 +235,7 @@ export interface LayoutTaskResult {
   exp: string;
   qid: string;
   task_id: string;
+  reference_mode?: "preview_10s" | "persistent";
   session: string;
   start_time: number;
   end_time: number;

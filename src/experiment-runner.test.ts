@@ -93,6 +93,15 @@ describe("buildExperimentTimeline", () => {
     expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-run12-core23-preview/tutorial"))).toBe(true);
   });
 
+  it("passes persistent mode to the tutorial and every formal trial", () => {
+    const config = experimentConfig();
+    config.referenceMode = "persistent";
+    const timeline = buildExperimentTimeline(config);
+    const tasks = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+
+    expect(tasks.every((trial) => trial.referenceMode === "persistent")).toBe(true);
+  });
+
   it("uses the separate tutorial package only for the interactive tutorial task", () => {
     const config = experimentConfig();
     config.tutorial.baseUrl = "/layout-task-run12-core23-preview/tutorial/";

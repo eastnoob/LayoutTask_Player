@@ -52,6 +52,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
+        referenceMode: config.referenceMode,
         confidence: config.confidence,
         autoFinishTrial: true,
         writeEncodedToData: true,
@@ -87,6 +88,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
       baseUrl: config.baseUrl,
       taskId: trial.taskId,
       qid: trial.qid,
+      referenceMode: config.referenceMode,
       confidence: config.confidence,
       autoFinishTrial: true,
       writeEncodedToData: true,
@@ -322,6 +324,7 @@ export function createRunnableExperiment(config: ExperimentConfig, displayElemen
         trialResults,
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
+        referenceMode: config.referenceMode,
       });
       renderSavingPage();
       renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, participantId, sessionId, files }));

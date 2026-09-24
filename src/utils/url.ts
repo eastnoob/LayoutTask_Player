@@ -2,6 +2,7 @@ export interface LayoutTaskUrlParams {
   task?: string;
   q?: string;
   base?: string;
+  config?: string;
 }
 
 export function parseLayoutTaskUrlParams(input: string): LayoutTaskUrlParams {
@@ -12,5 +13,6 @@ export function parseLayoutTaskUrlParams(input: string): LayoutTaskUrlParams {
     task: params.get("task") ?? undefined,
     q: params.get("q") ?? undefined,
     base: params.get("base") ?? undefined,
+    config: params.get("config") ?? undefined,
   };
 }
