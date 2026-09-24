@@ -33,8 +33,15 @@ async function bootstrap(): Promise<void> {
       baseUrl: new URL("./", window.location.href).toString(),
       configPath: experimentParams.get("config") ?? "experiment.json",
     });
-    const config = await loader.load();
+    const loadedConfig = await loader.load();
     const developerDebug = experimentParams.get("debug") === "1" || experimentParams.get("config") === "experiment-debug.json";
+    const config = developerDebug
+      ? {
+          ...loadedConfig,
+          experimentId: "run_12_core_23_debug",
+          dataSave: { mode: "copy" as const, filenamePrefix: "run-12-core-23-debug" },
+        }
+      : loadedConfig;
     const { jsPsych, timeline } = createRunnableExperiment(config, root, developerDebug ? { participantId: "9999" } : undefined);
     await jsPsych.run(timeline);
     return;
