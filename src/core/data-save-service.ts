@@ -102,10 +102,10 @@ function createDataPipeData(config: Extract<RuntimeDataSaveConfig, { mode: "data
     return createCsvRow(payload);
   }
 
-  // Store a compact envelope so OSF files remain self-describing.
-  // encoded 适合直接回填问卷；result 适合后期 JSON 检查，两者都可配置开关。
+  // Store the compressed trial backup in a self-describing envelope.
+  // lz-uri is compression/transport encoding, not encryption.
   return JSON.stringify({
-    schema: "layouttask.datapipe.payload.v1",
+    schema: "layouttask.backup.v1",
     saved_at: new Date().toISOString(),
     qid: payload.result.qid,
     task_id: payload.result.task_id,

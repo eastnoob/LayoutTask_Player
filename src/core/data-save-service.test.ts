@@ -24,7 +24,7 @@ describe("DataSaveService", () => {
         filename_prefix: "layout-task",
         payload_format: "json-envelope",
         save_encoded: true,
-        save_result: true,
+        save_result: false,
       },
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
@@ -46,12 +46,15 @@ describe("DataSaveService", () => {
     expect(body.experimentID).toBe("EXP123");
     expect(body.filename).toBe("layout-task_room01_Q1_SESSION1.json");
     expect(JSON.parse(body.data)).toMatchObject({
-      schema: "layouttask.datapipe.payload.v1",
+      schema: "layouttask.backup.v1",
+      qid: "Q1",
+      task_id: "room01",
+      session: "SESSION1",
+      hash8: "HASH0001",
+      encoding: "plain-json",
       encoded: "ENCODED",
-      result: {
-        task_id: "room01",
-      },
     });
+    expect(JSON.parse(body.data)).not.toHaveProperty("result");
   });
 
   it("can post only the encoded result as a text file", async () => {
