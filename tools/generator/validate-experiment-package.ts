@@ -6,7 +6,7 @@ import type { ExperimentConfig } from "../../src/types/experiment";
 import { validateRuntimePackage } from "./validate-runtime-package";
 
 export interface ExperimentPackageFailure {
-  type: "load_error" | "missing_task" | "formal_trial_flow" | "formal_trial_display_image";
+  type: "load_error" | "missing_task" | "formal_trial_flow" | "formal_trial_display_image" | "tutorial_package";
   taskId?: string;
   message: string;
 }
@@ -34,6 +34,7 @@ export async function validateExperimentPackage(options: ValidateExperimentPacka
   }
 
   const taskBaseDir = path.resolve(baseDir, config.baseUrl);
+  const tutorialBaseDir = path.resolve(baseDir, config.tutorial.baseUrl ?? config.baseUrl);
   let manifest: { tasks: Array<{ task_id: string; file: string }> };
   try {
     manifest = JSON.parse(await readFile(path.join(taskBaseDir, "manifest.json"), "utf8")) as {
@@ -44,12 +45,31 @@ export async function validateExperimentPackage(options: ValidateExperimentPacka
   }
 
   const taskEntries = new Map(manifest.tasks.map((task) => [task.task_id, task]));
-  if (config.tutorial.enabled && config.tutorial.taskId && !taskEntries.has(config.tutorial.taskId)) {
+  let tutorialEntries = taskEntries;
+  try {
+    const tutorialManifest = JSON.parse(await readFile(path.join(tutorialBaseDir, "manifest.json"), "utf8")) as { tasks: Array<{ task_id: string; file: string }> };
+    tutorialEntries = new Map(tutorialManifest.tasks.map((task) => [task.task_id, task]));
+  } catch (error) {
+    if (config.tutorial.enabled && config.tutorial.baseUrl) {
+      failures.push({ type: "tutorial_package", message: `Tutorial package could not be loaded: ${errorMessage(error)}` });
+    }
+  }
+
+  if (config.tutorial.enabled && config.tutorial.taskId && !tutorialEntries.has(config.tutorial.taskId)) {
     failures.push({
       type: "missing_task",
       taskId: config.tutorial.taskId,
-      message: `Tutorial task ${config.tutorial.taskId} is missing from manifest`,
+      message: `Tutorial task ${config.tutorial.taskId} is missing from tutorial manifest`,
     });
+  }
+
+  if (config.tutorial.enabled && config.tutorial.taskId && tutorialEntries.has(config.tutorial.taskId) && tutorialBaseDir !== taskBaseDir) {
+    const entry = tutorialEntries.get(config.tutorial.taskId)!;
+    try {
+      await readFile(path.join(tutorialBaseDir, entry.file), "utf8");
+    } catch (error) {
+      failures.push({ type: "tutorial_package", taskId: config.tutorial.taskId, message: `Tutorial task ${config.tutorial.taskId} could not be loaded: ${errorMessage(error)}` });
+    }
   }
 
   for (const trial of config.trials) {

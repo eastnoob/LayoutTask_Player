@@ -69,4 +69,31 @@ describe("validateExperimentPackage", () => {
       message: "Formal trial scene_001 must use flow.mode preview_then_reconstruct",
     });
   });
+
+  it("loads tutorial task from its own package instead of formal manifest", async ({ task }) => {
+    const root = join(process.cwd(), ".tmp", "validate-experiment-package", task.id);
+    await createBase(root);
+    const experimentPath = join(root, "experiment.json");
+    const experiment = JSON.parse(await (await import("node:fs/promises")).readFile(experimentPath, "utf8")) as Record<string, unknown>;
+    experiment.tutorial = { enabled: true, baseUrl: "./tutorial/", taskId: "tutorial_room", qid: "QTUTORIAL" };
+    await writeJson(experimentPath, experiment);
+    await writeJson(join(root, "layout-task", "manifest.json"), {
+      schema: "layouttask.manifest.v1",
+      tasks: [{ task_id: "scene_001", qid: "Q001", file: "tasks/scene_001.json" }],
+    });
+    await writeJson(join(root, "tutorial", "manifest.json"), {
+      schema: "layouttask.manifest.v1",
+      tasks: [{ task_id: "tutorial_room", qid: "QTUTORIAL", file: "tasks/tutorial_room.json" }],
+    });
+    await writeJson(join(root, "tutorial", "tasks", "tutorial_room.json"), {
+      schema: "layouttask.task.v1",
+      task_id: "tutorial_room",
+      qid: "QTUTORIAL",
+    });
+
+    const report = await validateExperimentPackage({ baseDir: root, skipRuntimePreflight: true });
+
+    expect(report.ok).toBe(true);
+    expect(report.failures).toEqual([]);
+  });
 });
