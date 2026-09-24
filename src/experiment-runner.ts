@@ -346,6 +346,10 @@ export function renderSavingPage(): void {
   document.body.innerHTML = createSavingPageHtml();
 }
 
+export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
+  return files.map((file) => `--- ${file.filename} ---\n${file.data}`).join("\n");
+}
+
 function renderEndPage(
   files: ExperimentCsvFile[],
   saveResult: { ok: boolean; error?: string; failedFilename?: string },
@@ -376,7 +380,7 @@ function renderEndPage(
   if (!saveResult.ok) {
     const output = document.createElement("textarea");
     output.className = "layout-task-output";
-    output.value = files.map((file) => `--- ${file.filename} ---\n${file.data}`).join("\n");
+    output.value = createRecoveryOutput(files);
     output.readOnly = true;
     section.append(output);
   }

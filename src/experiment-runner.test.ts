@@ -9,6 +9,7 @@ import {
   createRunnableExperiment,
   startReferenceBoardContinueCountdown,
   saveExperimentFiles,
+  createRecoveryOutput,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
 import { initJsPsych } from "jspsych";
@@ -330,11 +331,12 @@ describe("saveExperimentFiles", () => {
         { filename: "layout-task_results_P001_S001.csv", contentType: "text/csv", data: "b\n2\n" },
         { filename: "layout-task_events_P001_S001.csv", contentType: "text/csv", data: "c\n3\n" },
         { filename: "layout-task_debug_P001_S001.json", contentType: "application/json", data: "{}" },
+        { filename: "layout-task_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' },
       ],
       fetchImpl,
     });
 
-    expect(result).toEqual({ ok: true, saved: 4 });
+    expect(result).toEqual({ ok: true, saved: 5 });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledWith("https://data.example.com/submit", {
       method: "POST",
@@ -358,6 +360,7 @@ describe("saveExperimentFiles", () => {
         { filename: "layout-task_results_P001_S001.csv", content_type: "text/csv", data: "b\n2\n" },
         { filename: "layout-task_events_P001_S001.csv", content_type: "text/csv", data: "c\n3\n" },
         { filename: "layout-task_debug_P001_S001.json", content_type: "application/json", data: "{}" },
+        { filename: "layout-task_tutorial_result_P001_S001.json", content_type: "application/json", data: '{"tutorial":true}' },
       ],
     });
   });
@@ -399,18 +402,52 @@ describe("saveExperimentFiles", () => {
         { filename: "layout_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" },
         { filename: "layout_results_P001_S001.csv", contentType: "text/csv", data: "b\n2\n" },
         { filename: "layout_events_P001_S001.csv", contentType: "text/csv", data: "c\n3\n" },
+        { filename: "layout_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' },
       ],
       fetchImpl,
     });
 
     expect(result.ok).toBe(true);
-    expect(result.saved).toBe(3);
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(result.saved).toBe(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
     expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body))).toEqual({
       experimentID: "layout_task_v1",
       filename: "layout_results_P001_S001.csv",
       data: "b\n2\n",
     });
+    expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[3][1].body))).toMatchObject({
+      filename: "layout_tutorial_result_P001_S001.json",
+      data: '{"tutorial":true}',
+    });
+  });
+
+  it("keeps tutorial files in copy mode and recovery output", async () => {
+    const files = [{ filename: "layout_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' }];
+    await expect(
+      saveExperimentFiles({
+        dataSave: { mode: "copy", filenamePrefix: "layout-task" },
+        files,
+      }),
+    ).resolves.toEqual({ ok: true, saved: 0 });
+    expect(createRecoveryOutput(files)).toContain("layout_tutorial_result_P001_S001.json");
+    expect(createRecoveryOutput(files)).toContain('{"tutorial":true}');
+  });
+
+  it("keeps tutorial data available after a failed DataPipe save", async () => {
+    const files = [
+      { filename: "layout_results_P001_S001.csv", contentType: "text/csv", data: "formal\n" },
+      { filename: "layout_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' },
+    ];
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 503, statusText: "Unavailable" })) as unknown as typeof fetch;
+
+    const result = await saveExperimentFiles({
+      dataSave: experimentConfig().dataSave,
+      files,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(createRecoveryOutput(files)).toContain("layout_tutorial_result_P001_S001.json");
   });
 
   it("fails a DataPipe file that takes longer than the timeout", async () => {
