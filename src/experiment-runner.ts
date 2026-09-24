@@ -11,6 +11,7 @@ import { createSessionId, getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
+import type { RuntimeDataSaveConfig } from "./types/runtime";
 import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
@@ -19,6 +20,7 @@ type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
 export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
+  const taskDataSave = toRuntimeTaskDataSave(config.dataSave);
 
   if (config.tutorial.enabled) {
     const tutorialBaseUrl = config.tutorial.baseUrl ?? `${config.baseUrl}tutorial/`;
@@ -61,6 +63,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
         writeEncodedToData: true,
         writeResultToData: true,
         writeHeaderToData: true,
+        dataSave: taskDataSave,
         data: { tutorial: true },
       });
       timeline.push({
@@ -115,11 +118,27 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
       writeEncodedToData: true,
       writeResultToData: true,
       writeHeaderToData: true,
+      dataSave: taskDataSave,
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
 
   return timeline;
+}
+
+export function toRuntimeTaskDataSave(dataSave: ExperimentDataSaveConfig): RuntimeDataSaveConfig {
+  if (dataSave.mode === "copy") {
+    return { mode: "copy" };
+  }
+  return {
+    mode: "datapipe",
+    experiment_id: dataSave.experimentId,
+    endpoint: dataSave.endpoint,
+    filename_prefix: dataSave.filenamePrefix,
+    payload_format: "json-envelope",
+    save_encoded: true,
+    save_result: false,
+  };
 }
 
 export function startReferenceBoardContinueCountdown(input: {

@@ -6,6 +6,7 @@ import type { CompletionPayload } from "../core/completion-controller";
 import type { RuntimeTaskConfig } from "../types/runtime";
 import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
+import type { RuntimeDataSaveConfig } from "../types/runtime";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -33,6 +34,7 @@ export interface LayoutTaskPluginParams {
   tutorialMode?: boolean;
   referenceMode?: ReferenceMode;
   presentation?: ReferencePresentation;
+  dataSave?: RuntimeDataSaveConfig;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -96,6 +98,10 @@ const info = {
       type: ParameterType.OBJECT,
       default: null,
     },
+    dataSave: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
   },
 };
 
@@ -133,6 +139,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
       // Reuse the same config loading rule as standalone mode:
       // direct config first, then manifest + task selection. 规则统一，少一个隐藏分支。
       const config = await loadPluginConfig(trial);
+      const runtimeConfig = trial.dataSave ? { ...config, dataSave: trial.dataSave } : config;
       let finished = false;
 
       // The core player owns rendering, interaction, completion, encoding and clipboard.
@@ -140,7 +147,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
       return new Promise<void>((resolve) => {
         const player = createLayoutTaskPlayer({
           root: displayElement,
-          config,
+          config: runtimeConfig,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
           presentation: trial.presentation,
@@ -149,7 +156,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
               return;
             }
 
-            const trialData = buildTrialData(config, payload, trial);
+            const trialData = buildTrialData(runtimeConfig, payload, trial);
 
             // write* flags decide the payload shape.
             // autoFinishTrial only decides whether jsPsych advances immediately,
@@ -191,11 +198,12 @@ async function loadPluginConfig(trial: LayoutTaskTrial): Promise<RuntimeTaskConf
     manifestPath: trial.manifestPath,
   });
 
-  return loader.loadRuntimeConfig({
+  const config = await loader.loadRuntimeConfig({
     taskId: trial.taskId ?? undefined,
     qid: trial.qid ?? undefined,
     referenceMode: trial.referenceMode ?? undefined,
   });
+  return trial.dataSave ? { ...config, dataSave: trial.dataSave } : config;
 }
 
 export function buildTrialData(
