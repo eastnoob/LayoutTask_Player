@@ -119,20 +119,20 @@ describe("resultSchema confidence", () => {
   it("accepts confidence values on result payloads", () => {
     const result = createMinimalResult();
     result.confidence = {
-      chair_group: 4,
-      table_group: 2,
+      chair_group: { position: 4, rotation: 3 },
+      table_group: { position: 2, rotation: 1 },
     };
 
     expect(resultSchema.parse(result).confidence).toEqual({
-      chair_group: 4,
-      table_group: 2,
+      chair_group: { position: 4, rotation: 3 },
+      table_group: { position: 2, rotation: 1 },
     });
   });
 
   it("rejects invalid confidence values", () => {
     const result = createMinimalResult();
     result.confidence = {
-      chair_group: 0,
+      chair_group: { position: 0, rotation: 3 },
     };
 
     expect(() => resultSchema.parse(result)).toThrow();

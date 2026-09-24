@@ -1,4 +1,5 @@
 import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
+import type { ConfidenceByGroup, ConfidenceDimension } from "../types/result";
 
 export type ConfidenceGateResult =
   | { ok: true }
@@ -17,8 +18,8 @@ export interface ConfidenceControllerOptions {
 
 export class ConfidenceController {
   private activeGroupId: string | undefined;
-  private activeValue: number | undefined;
-  private readonly finalValues = new Map<string, number>();
+  private activeValues: Partial<Record<ConfidenceDimension, number>> = {};
+  private readonly finalValues = new Map<string, { position: number; rotation: number }>();
   private readonly objectToGroup = new Map<string, string>();
   private readonly requiredGroupIds: string[];
 
@@ -57,20 +58,20 @@ export class ConfidenceController {
     const groupId = this.objectToGroup.get(objectId);
     if (!groupId || !this.requiredGroupIds.includes(groupId)) {
       this.activeGroupId = undefined;
-      this.activeValue = undefined;
+      this.activeValues = {};
       return;
     }
 
     this.activeGroupId = groupId;
-    this.activeValue = undefined;
+    this.activeValues = {};
   }
 
-  choose(value: number): void {
+  choose(dimension: ConfidenceDimension, value: number): void {
     if (!this.activeGroupId || !this.options.scale.includes(value)) {
       return;
     }
 
-    this.activeValue = value;
+    this.activeValues[dimension] = value;
   }
 
   canLeaveActiveGroup(): ConfidenceGateResult {
@@ -78,11 +79,10 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    return {
-      ok: false,
-      reason: this.activeValue === undefined ? "confidence_required" : "confidence_save_required",
-      groupId: this.activeGroupId,
-    };
+    const complete = this.activeValues.position !== undefined && this.activeValues.rotation !== undefined;
+    return complete
+      ? { ok: false, reason: "confidence_save_required", groupId: this.activeGroupId }
+      : { ok: false, reason: "confidence_required", groupId: this.activeGroupId };
   }
 
   saveActiveGroup(): ConfidenceGateResult {
@@ -90,7 +90,7 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    if (this.activeValue === undefined) {
+    if (this.activeValues.position === undefined || this.activeValues.rotation === undefined) {
       if (this.options.required) {
         return { ok: false, reason: "confidence_required", groupId: this.activeGroupId };
       }
@@ -99,9 +99,12 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    this.finalValues.set(this.activeGroupId, this.activeValue);
+    this.finalValues.set(this.activeGroupId, {
+      position: this.activeValues.position,
+      rotation: this.activeValues.rotation,
+    });
     this.activeGroupId = undefined;
-    this.activeValue = undefined;
+    this.activeValues = {};
     return { ok: true };
   }
 
@@ -117,7 +120,7 @@ export class ConfidenceController {
     return this.activeGroupId;
   }
 
-  getFinalConfidence(): Record<string, number> {
+  getFinalConfidence(): ConfidenceByGroup {
     return Object.fromEntries(this.finalValues);
   }
 }

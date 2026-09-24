@@ -43,7 +43,8 @@ describe("ConfidenceController", () => {
     });
 
     controller.enterObjectEdit("chair_seat");
-    controller.choose(4);
+    controller.choose("position", 4);
+    controller.choose("rotation", 3);
 
     expect(controller.getFinalConfidence()).toEqual({});
     expect(controller.canSubmit()).toEqual({
@@ -53,8 +54,30 @@ describe("ConfidenceController", () => {
     });
 
     expect(controller.saveActiveGroup()).toEqual({ ok: true });
-    expect(controller.getFinalConfidence()).toEqual({ chair_group: 4 });
+    expect(controller.getFinalConfidence()).toEqual({ chair_group: { position: 4, rotation: 3 } });
     expect(controller.canSubmit()).toEqual({ ok: true });
+  });
+
+  it("requires both position and rotation confidence before saving", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: true,
+      scale: [1, 2, 3, 4, 5],
+    });
+
+    controller.enterObjectEdit("chair_seat");
+    controller.choose("position", 4);
+
+    expect(controller.saveActiveGroup()).toEqual({
+      ok: false,
+      reason: "confidence_required",
+      groupId: "chair_group",
+    });
+    expect(controller.canLeaveActiveGroup()).toEqual({
+      ok: false,
+      reason: "confidence_required",
+      groupId: "chair_group",
+    });
   });
 
   it("blocks switching groups until active confidence is chosen", () => {
@@ -72,7 +95,8 @@ describe("ConfidenceController", () => {
       groupId: "chair_group",
     });
 
-    controller.choose(5);
+    controller.choose("position", 5);
+    controller.choose("rotation", 4);
 
     expect(controller.canEnterObjectEdit("table_top")).toEqual({
       ok: false,
@@ -93,15 +117,17 @@ describe("ConfidenceController", () => {
     });
 
     controller.enterObjectEdit("chair_seat");
-    controller.choose(3);
+    controller.choose("position", 3);
+    controller.choose("rotation", 2);
     controller.saveActiveGroup();
     controller.enterObjectEdit("table_top");
-    controller.choose(2);
+    controller.choose("position", 2);
+    controller.choose("rotation", 1);
     controller.saveActiveGroup();
 
     expect(controller.getFinalConfidence()).toEqual({
-      chair_group: 3,
-      table_group: 2,
+      chair_group: { position: 3, rotation: 2 },
+      table_group: { position: 2, rotation: 1 },
     });
     expect(controller.canSubmit()).toEqual({ ok: true });
   });
@@ -115,7 +141,8 @@ describe("ConfidenceController", () => {
     });
 
     controller.enterObjectEdit("chair_seat");
-    controller.choose(4);
+    controller.choose("position", 4);
+    controller.choose("rotation", 4);
     controller.saveActiveGroup();
 
     expect(controller.canSubmit()).toEqual({ ok: true });
@@ -131,10 +158,11 @@ describe("ConfidenceController", () => {
     });
 
     controller.enterObjectEdit("solo");
-    controller.choose(1);
+    controller.choose("position", 1);
+    controller.choose("rotation", 1);
     controller.saveActiveGroup();
 
-    expect(controller.getFinalConfidence()).toEqual({ solo: 1 });
+    expect(controller.getFinalConfidence()).toEqual({ solo: { position: 1, rotation: 1 } });
   });
 
   it("refuses to save an active group before a confidence is chosen", () => {
@@ -162,9 +190,10 @@ describe("ConfidenceController", () => {
     });
 
     controller.enterObjectEdit("chair_seat");
-    controller.choose(4);
+    controller.choose("position", 4);
+    controller.choose("rotation", 4);
     controller.saveActiveGroup();
 
-    expect(controller.getFinalConfidence()).toEqual({ chair_group: 4 });
+    expect(controller.getFinalConfidence()).toEqual({ chair_group: { position: 4, rotation: 4 } });
   });
 });

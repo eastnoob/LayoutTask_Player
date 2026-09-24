@@ -2,6 +2,7 @@ import type { LayoutTaskEvent } from "../types/events";
 import type { RuntimeTaskConfig } from "../types/runtime";
 import type {
   DisplayInfo,
+  ConfidenceByGroup,
   LayoutTaskResult,
   PageTimingInfo,
   ReferenceAssistanceInfo,
@@ -17,7 +18,7 @@ interface RecorderOptions {
   getFinalState: () => LayoutTaskResult["final_state"];
   getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
   getFlowInfo?: () => ResultFlowInfo;
-  getConfidence?: () => Record<string, number> | undefined;
+  getConfidence?: () => ConfidenceByGroup | undefined;
   getReferenceAssistance?: () => ReferenceAssistanceInfo | undefined;
   getPresentation?: () => ReferencePresentation | undefined;
   nowImpl?: () => number;

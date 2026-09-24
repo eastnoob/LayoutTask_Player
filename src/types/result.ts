@@ -246,7 +246,7 @@ export interface LayoutTaskResult {
   display?: DisplayInfo;
   reference_assistance?: ReferenceAssistanceInfo;
   flow?: ResultFlowInfo;
-  confidence?: Record<string, number>;
+  confidence?: ConfidenceByGroup;
   restore?: ResultRestoreInfo;
   task_config_hash?: string;
   context?: ResultContext;
@@ -257,3 +257,6 @@ export interface LayoutTaskResult {
   copy_timestamp?: number;
   user_agent?: string;
 }
+
+export type ConfidenceDimension = "position" | "rotation";
+export type ConfidenceByGroup = Record<string, { position: number; rotation: number }>;

@@ -144,14 +144,14 @@ describe("Recorder", () => {
       config: createRuntimeConfig(),
       sessionId: "SESSION1",
       getFinalState: () => ({}),
-      getConfidence: () => ({ chair_group: 4 }),
+      getConfidence: () => ({ chair_group: { position: 4, rotation: 3 } }),
       nowImpl: createNowSequence([1_000, 2_000]),
     });
 
     recorder.start();
     const result = await recorder.finish();
 
-    expect(result.confidence).toEqual({ chair_group: 4 });
+    expect(result.confidence).toEqual({ chair_group: { position: 4, rotation: 3 } });
   });
 
   it("includes reference assistance when supplied", async () => {

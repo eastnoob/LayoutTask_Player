@@ -217,7 +217,12 @@ export const resultFlowSchema = z.object({
   reconstruction_started_at: z.number().finite().optional(),
 });
 
-export const resultConfidenceSchema = z.record(z.number().int().min(1).max(5));
+export const resultConfidenceSchema = z.record(
+  z.object({
+    position: z.number().int().min(1).max(5),
+    rotation: z.number().int().min(1).max(5),
+  }),
+);
 
 export const resultRestoreSchema = z.object({
   recovered: z.boolean(),

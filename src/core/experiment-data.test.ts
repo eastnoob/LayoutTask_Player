@@ -59,7 +59,7 @@ describe("experiment data export", () => {
     duration_ms: 800,
     flow: { mode: "preview_then_reconstruct", preview_duration_ms: 10000 },
     task_config_hash: "abc123",
-    confidence: { group_a: 4 },
+    confidence: { group_a: { position: 4, rotation: 3 } },
     context: {
       world: {
         unit: "px",
@@ -175,7 +175,7 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain("tutorial");
     expect(files[1].data).toContain("formal");
     expect(files[1].data).not.toContain(",encoded,");
-    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,1,scene_001,Q001,group_a,4");
+    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,1,scene_001,Q001,group_a,4,3");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
