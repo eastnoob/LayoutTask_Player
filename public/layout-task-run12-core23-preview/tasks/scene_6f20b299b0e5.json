@@ -244,7 +244,17 @@
     "record_metrics": true
   },
   "flow": {
-    "mode": "direct_reconstruction"
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 10,
+      "require_preview_ack": true,
+      "intro_message": "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Next, you will have {seconds} seconds to study the image.",
+      "message_after": "Please reconstruct the scene from memory."
+    }
   },
   "stage": {
     "fit": "contain",

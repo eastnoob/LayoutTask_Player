@@ -7,7 +7,12 @@
     "background_library": "assets/backgrounds.json",
     "behavior_library": "behaviors/behaviors.json",
     "flow": {
-      "mode": "direct_reconstruction"
+      "mode": "preview_then_reconstruct",
+      "config": {
+        "preview_duration_sec": 10,
+        "require_preview_ack": true,
+        "stage_during_preview": "hidden"
+      }
     },
     "stage": {
       "fit": "contain",
@@ -352,7 +357,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -669,7 +679,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -986,7 +1001,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -1303,7 +1323,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -1620,7 +1645,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -1937,7 +1967,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -2254,7 +2289,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -2571,7 +2611,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -2888,7 +2933,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -3205,7 +3255,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -3522,7 +3577,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -3839,7 +3899,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -4156,7 +4221,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -4473,7 +4543,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -4790,7 +4865,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -5107,7 +5187,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -5424,7 +5509,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -5741,7 +5831,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -6058,7 +6153,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -6375,7 +6475,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -6692,7 +6797,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -7009,7 +7119,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
@@ -7326,7 +7441,12 @@
         }
       ],
       "flow": {
-        "mode": "direct_reconstruction"
+        "mode": "preview_then_reconstruct",
+        "config": {
+          "preview_duration_sec": 10,
+          "require_preview_ack": true,
+          "stage_during_preview": "hidden"
+        }
       },
       "metadata": {
         "source": "rhino_gh",
