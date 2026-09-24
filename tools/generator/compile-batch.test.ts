@@ -1,10 +1,11 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { compileBatchToDirectory } from "./compile-batch";
+import { readTutorialPackageLock, verifyTutorialPackage } from "../../src/core/tutorial-package-lock";
 
 describe("compileBatchToDirectory", () => {
   it("copies only assets referenced by the compiled runtime package", async () => {
@@ -132,5 +133,36 @@ describe("compileBatchToDirectory", () => {
 
     await expect(compileBatchToDirectory({ input, out })).rejects.toThrow(/protected tutorial package/i);
     expect(existsSync(join(out, "manifest.json"))).toBe(false);
+  });
+
+  it("copies the verified tutorial package into the release output without changing the source", async () => {
+    const root = mkdtempSync(join(tmpdir(), "layout-task-tutorial-release-"));
+    const source = join(root, "tutorial-source");
+    const out = join(root, "release");
+    const batchPath = join(process.cwd(), "protocol", "examples", "minimal-batch.json");
+    const fixedSource = join(process.cwd(), "public", "layout-task-tutorial");
+    await cp(fixedSource, source, { recursive: true });
+    const lockBefore = await readFile(join(source, "tutorial-package.lock.json"), "utf8");
+    const sourceLock = readTutorialPackageLock(source);
+    const sourceSnapshot = new Map<string, string>();
+    for (const entry of sourceLock.files) {
+      sourceSnapshot.set(entry.path, (await readFile(join(source, entry.path))).toString("base64"));
+    }
+
+    await compileBatchToDirectory({ input: batchPath, out, tutorialSourceRoot: source });
+
+    expect(existsSync(join(out, "tutorial", "tutorial-package.lock.json"))).toBe(true);
+    const releaseLock = readTutorialPackageLock(join(out, "tutorial"));
+    expect(releaseLock.files.length).toBeGreaterThan(0);
+    for (const entry of releaseLock.files) {
+      expect(existsSync(join(out, "tutorial", entry.path))).toBe(true);
+    }
+    expect(await readFile(join(source, "tutorial-package.lock.json"), "utf8")).toBe(lockBefore);
+    for (const entry of sourceLock.files) {
+      expect((await readFile(join(source, entry.path))).toString("base64")).toBe(sourceSnapshot.get(entry.path));
+    }
+
+    await rm(source, { recursive: true, force: true });
+    expect(() => verifyTutorialPackage(join(out, "tutorial"), out)).not.toThrow();
   });
 });

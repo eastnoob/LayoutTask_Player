@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { compileBatch } from "../../src/core/batch-compiler";
 import { batchSchema } from "../../src/schemas/batch.schema";
 import type { BatchConfig } from "../../src/types/batch";
+import { readTutorialPackageLock, verifyTutorialPackage } from "../../src/core/tutorial-package-lock";
 
 const defaultOutDir = "public/layout-task-generated";
 const usage = `Usage: tsx tools/generator/compile-batch.ts --input <file> [--out <dir>]
@@ -22,6 +23,7 @@ interface OutputFile {
 interface CompileToDirectoryOptions {
   input: string;
   out: string;
+  tutorialSourceRoot?: string;
 }
 
 interface CompileToDirectoryResult {
@@ -140,7 +142,47 @@ export async function compileBatchToDirectory(options: CompileToDirectoryOptions
     outDir: options.out,
   });
 
+  await copyVerifiedTutorialPackage({
+    sourceRoot: options.tutorialSourceRoot ?? path.resolve("public/layout-task-tutorial"),
+    formalRoot: options.out,
+    outDir: options.out,
+  });
+
   return { taskCount: compiled.tasks.length };
+}
+
+async function copyVerifiedTutorialPackage(input: {
+  sourceRoot: string;
+  formalRoot: string;
+  outDir: string;
+}): Promise<void> {
+  const sourceRoot = path.resolve(input.sourceRoot);
+  const outDir = path.resolve(input.outDir);
+  verifyTutorialPackage(sourceRoot, input.formalRoot);
+  const lock = readTutorialPackageLock(sourceRoot);
+  const tutorialOut = path.resolve(outDir, "tutorial");
+
+  for (const entry of lock.files) {
+    const source = resolveWithin(sourceRoot, entry.path, "read");
+    const target = resolveWithin(tutorialOut, entry.path, "write");
+    await mkdir(path.dirname(target), { recursive: true });
+    await copyFile(source, target);
+  }
+
+  const lockTarget = resolveWithin(tutorialOut, "tutorial-package.lock.json", "write");
+  await mkdir(path.dirname(lockTarget), { recursive: true });
+  await copyFile(resolveWithin(sourceRoot, "tutorial-package.lock.json", "read"), lockTarget);
+
+  verifyTutorialPackage(tutorialOut, input.formalRoot);
+}
+
+function resolveWithin(root: string, relativeFile: string, operation: "read" | "write"): string {
+  const resolvedRoot = path.resolve(root);
+  const target = path.resolve(resolvedRoot, relativeFile);
+  if (!isInside(resolvedRoot, target)) {
+    throw new Error(`Refusing to ${operation} outside tutorial package: ${relativeFile}`);
+  }
+  return target;
 }
 
 async function copyRuntimeAssets(input: { batch: BatchConfig; sourceRoot: string; outDir: string }): Promise<void> {
