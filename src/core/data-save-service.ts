@@ -1,16 +1,20 @@
 import type { RuntimeDataSaveConfig } from "../types/runtime";
 import type { CompletionPayload } from "./completion-controller";
+import type { UploadState } from "./upload-state";
 
 export interface DataSaveResult {
   ok: boolean;
   provider: "copy" | "datapipe";
   filename?: string;
   error?: string;
+  backupId?: string;
+  attempts?: number;
 }
 
 export interface DataSaveServiceOptions {
   config: RuntimeDataSaveConfig;
   fetchImpl?: typeof fetch;
+  uploadState?: UploadState;
 }
 
 // Optional browser-side cloud save. 默认 copy-only；Datapipe 只是额外保存，不替代复制兜底。
@@ -27,11 +31,13 @@ export class DataSaveService {
     }
 
     if (!this.fetchImpl) {
-      return {
+      const filename = createDataPipeFilename(this.options.config.filename_prefix, this.options.config.payload_format, payload);
+      return this.withAttempt({
         ok: false,
         provider: "datapipe",
         error: "fetch is unavailable",
-      };
+        filename,
+      }, filename, "failed", "fetch is unavailable");
     }
 
     const filename = createDataPipeFilename(this.options.config.filename_prefix, this.options.config.payload_format, payload);
@@ -50,23 +56,36 @@ export class DataSaveService {
 
       if (!response.ok) {
         const errorDetail = await readDataPipeError(response);
-        return {
+        return this.withAttempt({
           ok: false,
           provider: "datapipe",
           filename,
           error: `DataPipe save failed: ${response.status} ${response.statusText}${errorDetail}`,
-        };
+        }, filename, "failed", `DataPipe save failed: ${response.status} ${response.statusText}${errorDetail}`);
       }
 
-      return { ok: true, provider: "datapipe", filename };
+      return this.withAttempt({ ok: true, provider: "datapipe", filename }, filename, "success");
     } catch (error) {
-      return {
+      return this.withAttempt({
         ok: false,
         provider: "datapipe",
         filename,
         error: error instanceof Error ? error.message : "Unknown DataPipe save error",
-      };
+      }, filename, "failed", error instanceof Error ? error.message : "Unknown DataPipe save error");
     }
+  }
+
+  private withAttempt(
+    result: DataSaveResult,
+    filename: string,
+    status: "success" | "failed" | "timeout",
+    error?: string,
+  ): DataSaveResult {
+    if (!this.options.uploadState) {
+      return result;
+    }
+    const attempt = this.options.uploadState.recordAttempt(filename, status, error);
+    return { ...result, backupId: attempt.backupId, attempts: attempt.attempts };
   }
 }
 

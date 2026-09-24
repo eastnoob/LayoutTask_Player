@@ -11,6 +11,8 @@ import { createSessionId, getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
+import { UploadState } from "./core/upload-state";
+import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
@@ -211,7 +213,14 @@ export async function saveExperimentFiles(input: {
   sessionId?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
-}): Promise<{ ok: boolean; error?: string; saved: number; failedFilename?: string }> {
+}): Promise<{
+  ok: boolean;
+  error?: string;
+  saved: number;
+  failedFilename?: string;
+  recoveryZip?: Blob;
+  uploadManifest?: ReturnType<UploadState["getManifest"]>;
+}> {
   if (input.dataSave.mode === "copy") {
     return { ok: true, saved: 0 };
   }
@@ -279,6 +288,9 @@ export async function saveExperimentFiles(input: {
     files: input.files,
   });
   const dataSave = input.dataSave;
+  const uploadState = new UploadState();
+  const failedFilenames: string[] = [];
+  const failureMessages: string[] = [];
 
   try {
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
@@ -298,22 +310,37 @@ export async function saveExperimentFiles(input: {
           payload.filename,
         );
       } catch (error) {
-        return {
-          ok: false,
-          saved,
-          failedFilename: payload.filename,
-          error: error instanceof Error ? error.message : String(error),
-        };
+        const message = error instanceof Error ? error.message : String(error);
+        uploadState.recordAttempt(payload.filename, "timeout", message);
+        failedFilenames.push(payload.filename);
+        failureMessages.push(message);
+        continue;
       }
       if (!response.ok) {
-        return {
-          ok: false,
-          saved,
-          failedFilename: payload.filename,
-          error: `${response.status} ${response.statusText}${await readSaveError(response)}`,
-        };
+        const message = `${response.status} ${response.statusText}${await readSaveError(response)}`;
+        uploadState.recordAttempt(payload.filename, "failed", message);
+        failedFilenames.push(payload.filename);
+        failureMessages.push(message);
+        continue;
       }
+      uploadState.recordAttempt(payload.filename, "success");
       saved += 1;
+    }
+    if (failedFilenames.length > 0) {
+      const recoveryZip = await createCompleteRecoveryZip(input.files, {
+        participantId: input.participantId ?? "unknown",
+        sessionId: input.sessionId ?? "unknown",
+        experimentId: dataSave.experimentId,
+        failedFilenames,
+      });
+      return {
+        ok: false,
+        saved,
+        failedFilename: failedFilenames[0],
+        error: `Upload failed for ${failedFilenames.length} file(s): ${failureMessages.join("; ")}. A complete recovery ZIP is available.`,
+        recoveryZip,
+        uploadManifest: uploadState.getManifest(),
+      };
     }
     return { ok: true, saved };
   } catch (error) {

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@jspsych/plugin-instructions": "^2.1.0",
+    "fflate": "0.8.2",
     "jspsych": "^8.0.0",
     "lz-string": "^1.5.0",
     "zod": "^3.23.8"
