@@ -144,6 +144,7 @@ export async function compileBatchToDirectory(options: CompileToDirectoryOptions
     resolveOutputFile(options.out, "manifest.json", compiled.manifest),
     ...compiled.tasks.map((task) => resolveOutputFile(options.out, task.file, task.config)),
     resolveOutputFile(options.out, "scoring/scoring-reference.json", compiled.scoringReference),
+    resolveOutputFile(options.out, "schedule.json", compiled.schedule),
     resolveOutputFile(options.out, "generation-report.json", compiled.report),
   ];
 

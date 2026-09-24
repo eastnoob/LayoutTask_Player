@@ -104,6 +104,7 @@ const experimentSchema = z.object({
   data_save: dataSaveSchema,
   trials: z.array(trialSchema).min(1),
   schedule: experimentScheduleSchema.optional(),
+  schedule_path: z.string().min(1).optional(),
 });
 
 export function parseExperimentConfig(input: unknown): ExperimentConfig {
@@ -140,5 +141,6 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     dataSave,
     trials: parsed.trials,
     schedule: parsed.schedule,
+    schedulePath: parsed.schedule_path,
   };
 }

@@ -72,4 +72,5 @@ export interface ExperimentConfig {
   dataSave: ExperimentDataSaveConfig;
   trials: ExperimentTrialRef[];
   schedule?: ExperimentSchedule;
+  schedulePath?: string;
 }

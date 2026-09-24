@@ -29,6 +29,7 @@
     "tasks/scene_85b04c9ff8c0.json",
     "tasks/scene_395dba77481f.json",
     "scoring/scoring-reference.json",
+    "schedule.json",
     "generation-report.json"
   ],
   "warnings": []

@@ -1,6 +1,7 @@
 import { parseExperimentConfig } from "../schemas/experiment.schema";
 import type { ExperimentConfig } from "../types/experiment";
 import type { ReferenceMode } from "../types/config";
+import { parseExperimentSchedule } from "../schemas/schedule.schema";
 
 export interface ExperimentLoaderOptions {
   baseUrl: string;
@@ -28,6 +29,9 @@ export class ExperimentLoader {
       throw new Error(`Failed to load ${this.configPath}: ${response.status} ${response.statusText}`);
     }
     const config = parseExperimentConfig(await response.json());
+    const schedule = config.schedulePath
+      ? await this.loadSchedule(config.schedulePath)
+      : config.schedule;
     return {
       ...config,
       referenceMode: this.referenceMode ?? config.referenceMode,
@@ -38,7 +42,16 @@ export class ExperimentLoader {
           ? new URL(config.tutorial.baseUrl, this.baseUrl).toString()
           : undefined,
       },
+      schedule,
     };
+  }
+
+  private async loadSchedule(schedulePath: string) {
+    const response = await this.fetchImpl(new URL(schedulePath, this.baseUrl).toString());
+    if (!response.ok) {
+      throw new Error(`Failed to load ${schedulePath}: ${response.status} ${response.statusText}`);
+    }
+    return parseExperimentSchedule(await response.json());
   }
 }
 

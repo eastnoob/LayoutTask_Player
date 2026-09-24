@@ -8,6 +8,10 @@ import type {
   ScoringReferenceObject,
 } from "../types/batch";
 import type { ManifestConfig, ReferenceMode, TaskConfig, TaskObjectConfig, WorldConfig } from "../types/config";
+import { createPresentationSchedule, generateWilliamsBaseSequences } from "./schedule-generator";
+import type { ExperimentSchedule } from "../types/schedule";
+
+const R12_REPEAT_GROUPS = ["scene_8902bfd7b7e4", "scene_15d8ce4dbde3"];
 
 export function compileBatch(batch: BatchConfig, options: { referenceMode?: ReferenceMode | string } = {}): CompiledBatch {
   const referenceMode = normalizeReferenceMode(options.referenceMode);
@@ -47,10 +51,17 @@ export function compileBatch(batch: BatchConfig, options: { referenceMode?: Refe
     ),
   };
 
+  const baseSchedule = generateWilliamsBaseSequences(tasks.map((task) => task.config.task_id));
+  const repeatGroups = R12_REPEAT_GROUPS.every((taskId) => tasks.some((task) => task.config.task_id === taskId))
+    ? R12_REPEAT_GROUPS
+    : [];
+  const schedule: ExperimentSchedule = createPresentationSchedule(baseSchedule, repeatGroups, 7);
+
   return {
     manifest,
     tasks,
     scoringReference,
+    schedule,
     report: {
       schema: "layouttask.generation-report.v1",
       experiment_id: batch.experiment_id,
@@ -60,6 +71,7 @@ export function compileBatch(batch: BatchConfig, options: { referenceMode?: Refe
         "manifest.json",
         ...tasks.map((task) => task.file),
         "scoring/scoring-reference.json",
+        "schedule.json",
         "generation-report.json",
       ],
       warnings: [],

@@ -2,6 +2,7 @@
   "schema": "layouttask.experiment.v1",
   "experiment_id": "run_12_core_23_persistent",
   "baseUrl": "../layout-task-run12-core23-persistent/",
+  "schedule_path": "../layout-task-run12-core23-persistent/schedule.json",
   "reference_mode": "persistent",
   "order": "fixed",
   "tutorial": {

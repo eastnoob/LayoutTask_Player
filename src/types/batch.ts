@@ -17,6 +17,7 @@ import type {
   WorldConfig,
   ReferenceMode,
 } from "./config";
+import type { ExperimentSchedule } from "./schedule";
 
 export type BatchMetadataValue = string | number | boolean | null;
 export type BatchMetadata = Record<string, BatchMetadataValue>;
@@ -185,6 +186,7 @@ export interface CompiledBatch {
   tasks: CompiledBatchTask[];
   scoringReference: ScoringReferenceConfig;
   report: BatchGenerationReport;
+  schedule: ExperimentSchedule;
 }
 
 export interface CompiledBatchTask {

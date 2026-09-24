@@ -435,6 +435,7 @@ describe("compileBatch", () => {
         "manifest.json",
         "tasks/room_generated_001.json",
         "scoring/scoring-reference.json",
+        "schedule.json",
         "generation-report.json",
       ],
       warnings: [],

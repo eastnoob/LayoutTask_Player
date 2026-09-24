@@ -47,6 +47,38 @@ describe("ExperimentLoader", () => {
     expect(config.tutorial.baseUrl).toBe("http://example.test/layout-task-tutorial/");
   });
 
+  it("loads a compiled schedule artifact referenced by the experiment config", async () => {
+    const fetchImpl = vi.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => url.endsWith("schedule.json")
+        ? {
+            schema: "layouttask.schedule.v1",
+            strategy: "williams_balanced_first_order",
+            uniqueSceneCount: 2,
+            presentationCount: 2,
+            baseSequenceCount: 2,
+            minimumInterveningTrials: 0,
+            repeatGroups: [],
+            sequences: [{ sequenceId: 1, presentations: [] }],
+          }
+        : {
+            schema: "layouttask.experiment.v1",
+            experiment_id: "layout_task_v1",
+            baseUrl: "./layout-task-formal/",
+            schedule_path: "../layout-task-formal/schedule.json",
+            order: "fixed",
+            trials: [{ taskId: "scene_001" }],
+          },
+    })) as unknown as typeof fetch;
+
+    const config = await new ExperimentLoader({ baseUrl: "/experiment/", fetchImpl }).load();
+
+    expect(config.schedule?.presentationCount).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledWith("http://example.test/layout-task-formal/schedule.json");
+  });
+
   it("loads and parses experiment.json from a static base URL", async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,

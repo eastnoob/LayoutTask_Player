@@ -174,4 +174,26 @@ describe("compileBatchToDirectory", () => {
     await rm(source, { recursive: true, force: true });
     expect(() => verifyTutorialPackage(join(out, "tutorial"), out)).not.toThrow();
   });
+
+  it("emits a validated 25-presentation schedule for the real R12 batch", async () => {
+    const root = mkdtempSync(join(tmpdir(), "layout-task-r12-schedule-"));
+    const out = join(root, "persistent");
+    const input = join(process.cwd(), "assets", "generated-experiments", "run_12_core_23", "source", "batch.json");
+
+    await compileBatchToDirectory({ input, out, referenceMode: "persistent" });
+
+    const schedulePath = join(out, "schedule.json");
+    const schedule = JSON.parse(await readFile(schedulePath, "utf8")) as {
+      uniqueSceneCount: number;
+      presentationCount: number;
+      baseSequenceCount: number;
+      sequences: Array<{ presentations: Array<{ taskId: string }> }>;
+    };
+    expect(schedule.uniqueSceneCount).toBe(23);
+    expect(schedule.presentationCount).toBe(25);
+    expect(schedule.baseSequenceCount).toBe(46);
+    expect(schedule.sequences.every((sequence) => sequence.presentations)).toBe(true);
+    expect(JSON.parse(await readFile(join(out, "tasks", "scene_be84fc97a8d1.json"), "utf8")).display_image.src)
+      .toContain("be84fc97a8d1_perspective_stimulus_1920x1080.png");
+  });
 });

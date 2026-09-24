@@ -20,22 +20,20 @@ export function generateWilliamsBaseSequences(
   if (options.tutorialTaskId && uniqueTaskIds.includes(options.tutorialTaskId)) {
     throw new Error(`Tutorial task ${options.tutorialTaskId} cannot be scheduled as formal`);
   }
-  if (uniqueTaskIds.length < 2) {
-    throw new Error("Formal schedule requires at least two unique tasks");
-  }
-
   const forward = createWilliamsOrder(uniqueTaskIds);
   const reverse = [...forward].reverse();
-  const baseSequences = [
-    ...createCyclicSequences(forward),
-    ...createCyclicSequences(reverse),
-  ];
+  const baseSequences = uniqueTaskIds.length === 1
+    ? createCyclicSequences(forward)
+    : [
+        ...createCyclicSequences(forward),
+        ...createCyclicSequences(reverse),
+      ];
 
   return {
     schema: "layouttask.schedule.v1",
     strategy: "williams_balanced_first_order",
     uniqueSceneCount: uniqueTaskIds.length,
-    presentationCount: uniqueTaskIds.length + 2,
+    presentationCount: uniqueTaskIds.length,
     baseSequenceCount: baseSequences.length,
     minimumInterveningTrials: 7,
     repeatGroups: [],
@@ -51,6 +49,30 @@ export function generateWilliamsBaseSequences(
         trialTotal: uniqueTaskIds.length,
       })),
     })),
+  };
+}
+
+export function createPresentationSchedule(
+  baseSchedule: ExperimentSchedule,
+  repeatGroups: string[] = [],
+  minimumInterveningTrials = 7,
+): ExperimentSchedule {
+  const sequences = baseSchedule.sequences.map((sequence) => {
+    const presentations = repeatGroups.length === 0
+      ? sequence.presentations.map((presentation, index) => ({
+          ...presentation,
+          trialIndex: index + 1,
+          trialTotal: baseSchedule.uniqueSceneCount,
+        }))
+      : insertRepeatedPresentations(sequence, repeatGroups, minimumInterveningTrials);
+    return { sequenceId: sequence.sequenceId, presentations };
+  });
+  return {
+    ...baseSchedule,
+    presentationCount: baseSchedule.uniqueSceneCount + repeatGroups.length,
+    minimumInterveningTrials,
+    repeatGroups,
+    sequences,
   };
 }
 
