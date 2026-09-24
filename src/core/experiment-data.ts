@@ -52,6 +52,11 @@ export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentC
       data: createResultsCsv(input),
     },
     {
+      filename: createExperimentFilename(`${prefix}_raw_results`, input.participantId, input.sessionId),
+      contentType: "text/csv",
+      data: createRawResultsCsv(input),
+    },
+    {
       filename: createExperimentFilename(`${prefix}_events`, input.participantId, input.sessionId),
       contentType: "text/csv",
       data: createEventsCsv(input),
@@ -163,7 +168,6 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         trial.result.flow?.mode,
         trial.result.flow?.preview_duration_ms,
         trial.result.task_config_hash,
-        trial.encoded,
         trial.hash8,
       ]);
     }
@@ -196,8 +200,41 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "flow_mode",
       "preview_duration_ms",
       "task_config_hash",
-      "encoded",
       "hash8",
+    ],
+    rows,
+  );
+}
+
+function createRawResultsCsv(input: ExperimentCsvInput): string {
+  const rows: CsvValue[][] = [];
+  input.trialResults.forEach((trial, trialIndex) => {
+    if (!isLayoutTaskResult(trial.result)) {
+      return;
+    }
+
+    rows.push([
+      input.participantId,
+      input.sessionId,
+      input.experimentId,
+      trialIndex,
+      trial.result.task_id,
+      trial.result.qid,
+      trial.hash8,
+      JSON.stringify(trial.result),
+    ]);
+  });
+
+  return csv(
+    [
+      "participant_id",
+      "session_id",
+      "experiment_id",
+      "trial_index",
+      "task_id",
+      "qid",
+      "hash8",
+      "result_json",
     ],
     rows,
   );

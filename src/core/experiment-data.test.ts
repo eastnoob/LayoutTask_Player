@@ -97,7 +97,7 @@ describe("experiment data export", () => {
       },
     },
     locked: true,
-    user_agent: "TestBrowser",
+    user_agent: 'Test, "Browser"\nwith newline',
     display: {
       viewport: { width: 1200, height: 800 },
       screen: { width: 1920, height: 1080, availWidth: 1920, availHeight: 1040 },
@@ -122,6 +122,7 @@ describe("experiment data export", () => {
         hash8: "deadbeef",
         result,
       },
+      { taskId: "tutorial", qid: "Q_TUTORIAL" },
     ],
   };
 
@@ -131,23 +132,35 @@ describe("experiment data export", () => {
     expect(files.map((file) => file.filename)).toEqual([
       "layout_session_P001_S001.csv",
       "layout_results_P001_S001.csv",
+      "layout_raw_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
       "layout_debug_P001_S001.json",
     ]);
-    expect(files.map((file) => file.contentType)).toEqual(["text/csv", "text/csv", "text/csv", "application/json"]);
+    expect(files.map((file) => file.contentType)).toEqual([
+      "text/csv",
+      "text/csv",
+      "text/csv",
+      "text/csv",
+      "application/json",
+    ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
     expect(files[1].data).toContain("trial_index,task_id,qid,object_id,confidence");
+    expect(files[1].data).not.toContain(",encoded,");
     expect(files[1].data).toContain("0,scene_001,Q001,group_a,4");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
-    expect(files[2].data).toContain("event_index,event_time_ms,object_id,action,valid");
-    expect(files[2].data).toContain("0,12,group_a,move_right,true");
-    expect(JSON.parse(files[3].data)).toMatchObject({
+    expect(files[2].data).toContain("trial_index,task_id,qid,hash8,result_json");
+    const rawResultRow = parseCsvRecords(files[2].data)[1];
+    expect(rawResultRow).toHaveLength(8);
+    expect(JSON.parse(rawResultRow[7])).toEqual(result);
+    expect(files[3].data).toContain("event_index,event_time_ms,object_id,action,valid");
+    expect(files[3].data).toContain("0,12,group_a,move_right,true");
+    expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",
       session_id: "S001",
       experiment_id: "layout_task_v1",
-      trial_count: 1,
+      trial_count: 2,
     });
   });
 
@@ -157,6 +170,7 @@ describe("experiment data export", () => {
     expect(files.map((file) => file.filename)).toEqual([
       "layout-task_session_P001_S001.csv",
       "layout-task_results_P001_S001.csv",
+      "layout-task_raw_results_P001_S001.csv",
       "layout-task_events_P001_S001.csv",
       "layout-task_debug_P001_S001.json",
     ]);
@@ -173,9 +187,52 @@ describe("experiment data export", () => {
     expect(payloads.map((payload) => payload.filename)).toEqual([
       "layout_session_P001_S001.csv",
       "layout_results_P001_S001.csv",
+      "layout_raw_results_P001_S001.csv",
       "layout_events_P001_S001.csv",
       "layout_debug_P001_S001.json",
     ]);
     expect(payloads.every((payload) => payload.experimentID === "mshCnq690sD5")).toBe(true);
   });
 });
+
+function parseCsvRecords(data: string): string[][] {
+  const records: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let index = 0; index < data.length; index += 1) {
+    const character = data[index];
+    if (quoted) {
+      if (character === '"') {
+        if (data[index + 1] === '"') {
+          cell += '"';
+          index += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        cell += character;
+      }
+    } else if (character === '"' && cell.length === 0) {
+      quoted = true;
+    } else if (character === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (character === "\n") {
+      row.push(cell.replace(/\r$/, ""));
+      records.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += character;
+    }
+  }
+
+  if (cell || row.length > 0) {
+    row.push(cell);
+    records.push(row);
+  }
+
+  return records;
+}
