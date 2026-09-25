@@ -6,6 +6,7 @@ export interface RecoveryManifestInput {
   participantId: string;
   sessionId: string;
   experimentId: string;
+  completionCode?: string;
   failedFilenames?: string[];
   sequenceId?: number;
   pauseSummary?: PauseSummary;
@@ -20,6 +21,7 @@ export async function createCompleteRecoveryZip(
     participant_id: input.participantId,
     session_id: input.sessionId,
     experiment_id: input.experimentId,
+    completion_code: input.completionCode ?? "",
     sequence_id: input.sequenceId,
     failed_filenames: input.failedFilenames ?? [],
     pause: input.pauseSummary,

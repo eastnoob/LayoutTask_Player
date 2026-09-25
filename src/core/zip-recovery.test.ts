@@ -15,6 +15,7 @@ describe("createCompleteRecoveryZip", () => {
         participantId: "P1",
         sessionId: "S1",
         experimentId: "E1",
+        completionCode: "  CODE-17  ",
         failedFilenames: ["results.csv"],
         pauseSummary: { pause_used: true, pause_count: 1, pause_duration_ms: 5_000, pause_events: [] },
       },
@@ -32,6 +33,7 @@ describe("createCompleteRecoveryZip", () => {
       participant_id: "P1",
       failed_filenames: ["results.csv"],
       pause: { pause_used: true, pause_count: 1 },
+      completion_code: "  CODE-17  ",
     });
   });
 });

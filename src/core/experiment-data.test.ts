@@ -196,7 +196,7 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain(",true,1,5000,800");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(21);
+    expect(rawResultRow).toHaveLength(22);
     expect(JSON.parse(rawResultRow[9])).toEqual(result);
     expect(rawResultRow.slice(10, 15)).toEqual(["presentation-1", "", "1", "", "25"]);
     expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
@@ -207,7 +207,7 @@ describe("experiment data export", () => {
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
     expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["1"]);
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-11, -6)).toEqual([
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-12, -7)).toEqual([
       "presentation-1",
       "",
       "1",
@@ -229,6 +229,17 @@ describe("experiment data export", () => {
       pause: expect.objectContaining({ pause_used: true }),
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
+  });
+
+  it("persists the exact completion code in every final output", () => {
+    const files = createExperimentCsvFiles({ ...rowInput, completionCode: "  CODE-17  " });
+
+    for (const file of files) {
+      expect(file.data).toContain("completion_code");
+      expect(file.data).toContain("  CODE-17  ");
+    }
+    expect(JSON.parse(files[4].data).completion_code).toBe("  CODE-17  ");
+    expect(JSON.parse(files[5].data).completion_code).toBe("  CODE-17  ");
   });
 
   it("uses a configured filename prefix", () => {

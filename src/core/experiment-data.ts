@@ -35,6 +35,7 @@ export interface ExperimentCsvInput {
   trialResults: ExperimentTrialResultItem[];
   tutorialResult?: ExperimentTrialResultItem;
   tutorialPackageVersion?: string;
+  completionCode?: string;
   pauseSummary?: PauseSummary;
 }
 
@@ -110,6 +111,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         qid: tutorial.qid,
         encoded: tutorial.encoded,
         hash8: tutorial.hash8,
+        completion_code: input.completionCode ?? "",
         pause: isLayoutTaskResult(tutorial.result) ? tutorial.result.pause ?? input.pauseSummary : input.pauseSummary,
         result: tutorial.result,
       },
@@ -169,6 +171,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "active_duration_ms",
+      "completion_code",
     ],
     [
       [
@@ -197,6 +200,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         Math.max(0, input.endTime - input.startTime - (input.pauseSummary?.pause_duration_ms ?? 0)),
+        input.completionCode ?? "",
       ],
     ],
   );
@@ -253,6 +257,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         Math.max(0, trial.result.duration_ms),
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
+        input.completionCode ?? "",
       ]);
     }
   });
@@ -299,6 +304,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "active_duration_ms",
       "pause_end_reason",
       "pause_events_json",
+      "completion_code",
     ],
     rows,
   );
@@ -333,6 +339,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       Math.max(0, trial.result.duration_ms),
       input.pauseSummary?.pause_end_reason,
       input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
+      input.completionCode ?? "",
     ]);
   });
 
@@ -359,6 +366,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "active_duration_ms",
       "pause_end_reason",
       "pause_events_json",
+      "completion_code",
     ],
     rows,
   );
@@ -410,6 +418,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_duration_ms,
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
+        input.completionCode ?? "",
       ]);
     }
   });
@@ -453,6 +462,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "pause_duration_ms",
       "pause_end_reason",
       "pause_events_json",
+      "completion_code",
     ],
     rows,
   );
@@ -465,6 +475,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
+      completion_code: input.completionCode ?? "",
       reference_mode: input.referenceMode,
       started_at: input.startTime,
       ended_at: input.endTime,

@@ -293,6 +293,7 @@ export async function saveExperimentFiles(input: {
   files: ExperimentCsvFile[];
   participantId?: string;
   sessionId?: string;
+  completionCode?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
@@ -312,6 +313,7 @@ export async function saveExperimentFiles(input: {
       participantId: input.participantId ?? "unknown",
       sessionId: input.sessionId ?? "unknown",
       experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
+      completionCode: input.completionCode,
       failedFilenames: input.files.map((file) => file.filename),
       pauseSummary: input.pauseSummary,
     });
@@ -379,6 +381,7 @@ export async function saveExperimentFiles(input: {
         participantId: input.participantId,
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
+        completionCode: input.completionCode,
         failedFilenames: ["receiver batch"],
         pauseSummary: input.pauseSummary,
       });
@@ -423,6 +426,7 @@ export async function saveExperimentFiles(input: {
       participantId: input.participantId,
       sessionId: input.sessionId,
       experimentId: dataSave.experimentId,
+      completionCode: input.completionCode,
       failedFilenames: ["receiver archive"],
       pauseSummary: input.pauseSummary,
     });
@@ -483,6 +487,7 @@ export async function saveExperimentFiles(input: {
         participantId: input.participantId ?? "unknown",
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
+        completionCode: input.completionCode,
         failedFilenames,
         pauseSummary: input.pauseSummary,
       });
@@ -567,8 +572,6 @@ export function createRunnableExperiment(
         completionCode = await gate.waitForCompletion();
         gate.destroy();
       }
-      void completionCode;
-
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
       const tutorialResult = collectTutorialTrialResult(rows);
@@ -586,6 +589,7 @@ export function createRunnableExperiment(
         trialResults,
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
+        completionCode,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
       });
@@ -597,6 +601,7 @@ export function createRunnableExperiment(
         sessionId,
         files,
         localBackup,
+        completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
       });
       if (saveResult.ok) {
