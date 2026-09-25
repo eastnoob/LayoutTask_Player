@@ -19,6 +19,7 @@ import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/l
 import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
 import { createExperimentPauseUi } from "./core/experiment-pause-ui";
+import { CompletionCodeGate } from "./core/completion-code-gate";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -249,6 +250,10 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
       result: row.result,
       presentation: row.presentation as ReferencePresentation | undefined,
     }));
+}
+
+export function shouldShowCompletionCodeGate(config: ExperimentConfig): boolean {
+  return config.locale === "zh-CN" && config.completionCodeGate.enabled;
 }
 
 export function collectTutorialTrialResult(
@@ -550,6 +555,20 @@ export function createRunnableExperiment(
       pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
     },
     on_finish: async () => {
+      pauseUi.setPageActive(false);
+      let completionCode = "";
+      if (shouldShowCompletionCodeGate(config)) {
+        const gateRoot = displayElement ?? document.body;
+        gateRoot.replaceChildren();
+        const gate = new CompletionCodeGate({
+          minDisplayMs: config.completionCodeGate.minDisplayMs,
+        });
+        gate.mount(gateRoot);
+        completionCode = await gate.waitForCompletion();
+        gate.destroy();
+      }
+      void completionCode;
+
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
       const tutorialResult = collectTutorialTrialResult(rows);
@@ -570,7 +589,6 @@ export function createRunnableExperiment(
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
       });
-      pauseUi.setPageActive(false);
       pauseUi.destroy();
       renderSavingPage();
       const saveResult = await saveExperimentFiles({

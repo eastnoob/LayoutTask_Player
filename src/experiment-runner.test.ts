@@ -13,6 +13,7 @@ import {
   startReferenceBoardContinueCountdown,
   saveExperimentFiles,
   createRecoveryOutput,
+  shouldShowCompletionCodeGate,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
 import { parseExperimentConfig } from "./schemas/experiment.schema";
@@ -75,6 +76,19 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("only enables the completion-code gate for explicit Chinese configuration", () => {
+    const english = experimentConfig();
+    expect(shouldShowCompletionCodeGate(english)).toBe(false);
+
+    const disabledChinese = { ...english, locale: "zh-CN" as const };
+    expect(shouldShowCompletionCodeGate(disabledChinese)).toBe(false);
+
+    expect(shouldShowCompletionCodeGate({
+      ...disabledChinese,
+      completionCodeGate: { enabled: true, minDisplayMs: 15_000 },
+    })).toBe(true);
+  });
+
   it("recognizes tutorial pause pages from the started trial callback data", () => {
     expect(isTutorialPausePage({ data: { tutorial: true } })).toBe(true);
     expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(false);
