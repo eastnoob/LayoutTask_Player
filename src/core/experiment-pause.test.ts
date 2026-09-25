@@ -60,6 +60,8 @@ describe("ExperimentPauseController", () => {
     expect(practice.snapshot().status).toBe("practice_paused");
     now += 10_000;
     practice.advance();
+    expect(practice.snapshot().status).toBe("practice_paused");
+    practice.resume("manual_resume");
     expect(practice.snapshot()).toMatchObject({ status: "practice_consumed", pauseDurationMs: 10_000 });
     expect(practice.snapshot().pauseUsed).toBe(false);
     expect(formal.snapshot().pauseUsed).toBe(false);

@@ -863,6 +863,13 @@ body {
   margin: 0;
 }
 
+.layout-task-tutorial-complete-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+}
+
 .layout-task-reference-board-trial .jspsych-instructions-nav,
 .layout-task-tutorial-complete-trial .jspsych-instructions-nav,
 .layout-task-tutorial-intro-trial .jspsych-instructions-nav {

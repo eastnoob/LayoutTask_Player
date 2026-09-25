@@ -125,8 +125,8 @@ export class ExperimentPauseController {
       return;
     }
     const limit = this.mode === "formal" ? FORMAL_PAUSE_LIMIT_MS : PRACTICE_PAUSE_LIMIT_MS;
-    if (this.now() - this.current.pauseStartedAt >= limit) {
-      this.resume(this.mode === "formal" ? "auto_resume_15m" : "auto_resume_15m");
+    if (this.mode === "formal" && this.now() - this.current.pauseStartedAt >= limit) {
+      this.resume("auto_resume_15m");
     }
   }
 

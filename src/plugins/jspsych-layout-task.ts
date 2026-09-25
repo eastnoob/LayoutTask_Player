@@ -40,6 +40,7 @@ export interface LayoutTaskPluginParams {
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  practicePause?: Pick<ExperimentPauseController, "subscribe">;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -119,6 +120,10 @@ const info = {
       type: ParameterType.OBJECT,
       default: null,
     },
+    practicePause: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
   },
 };
 
@@ -187,6 +192,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           },
           localBackup: trial.localBackup ?? undefined,
           pause: trial.pause ?? undefined,
+          practicePause: trial.practicePause ?? undefined,
         });
 
         player.start();

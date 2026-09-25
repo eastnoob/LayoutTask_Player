@@ -35,10 +35,33 @@ describe("TutorialController", () => {
     expect(controller.handle("confidence_chosen")).toBe(true);
     expect(controller.getCurrentStep()).toMatchObject({ id: "save_second", anchor: "confidence" });
     expect(controller.handle("object_deselected")).toBe(true);
+    expect(controller.handle("pause_practice_started")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("pause_practice_resume");
+    expect(controller.handle("pause_practice_resumed")).toBe(true);
     expect(controller.handle("submitted")).toBe(true);
 
     expect(controller.isComplete()).toBe(true);
     expect(controller.getCurrentStep().id).toBe("complete");
+  });
+
+  it("requires a tutorial-only pause practice before tutorial submission", () => {
+    const controller = new TutorialController();
+    controller.handle("preview_acknowledged");
+    controller.handle("reconstruction_started");
+    controller.handle("object_selected", { objectId: "chair_01" });
+    controller.handle("object_moved_or_rotated");
+    controller.handle("confidence_chosen");
+    controller.handle("object_deselected");
+    controller.handle("object_selected", { objectId: "table_01" });
+    controller.handle("confidence_chosen");
+    controller.handle("object_deselected");
+
+    expect(controller.getCurrentStep()).toMatchObject({ id: "pause_practice" });
+    expect(controller.handle("submitted")).toBe(false);
+    expect(controller.handle("pause_practice_started")).toBe(true);
+    expect(controller.handle("pause_practice_started")).toBe(false);
+    expect(controller.handle("pause_practice_resumed")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("submit");
   });
 
   it("uses persistent-reference guidance without a preview gate", () => {

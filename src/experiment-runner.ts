@@ -24,7 +24,7 @@ type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController } = {},
+  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
@@ -95,6 +95,7 @@ export function buildExperimentTimeline(
         dataSave: taskDataSave,
         localBackup: options.localBackup,
         pause: options.pause,
+        practicePause: options.practicePause,
         data: { tutorial: true },
       });
       timeline.push({
@@ -108,10 +109,13 @@ export function buildExperimentTimeline(
               <p class="layout-task-meta">Study image -> Reconstruct scene -> Rate confidence -> Submit</p>
             </header>
             <div class="layout-task-tutorial-complete-note">
-              <p><strong>This is an experiment, not a test.</strong> Mistakes and uncertainty are normal. If you are very unsure, report very low confidence.</p>
-              <p>Please take every question seriously. We use behavior-based attention checks; inattentive responses may be rejected, which may mean you cannot receive the compensation.</p>
-              <p>The complete study takes about 15 minutes.</p>
-              <p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>
+              <ul class="layout-task-tutorial-complete-list">
+                <li><strong>This is an experiment, not a test.</strong> Mistakes and uncertainty are normal. If you are very unsure, report very low confidence.</li>
+                <li>You have one formal pause opportunity: a one-time 15-minute break.</li>
+                <li>You may stop if the experiment causes discomfort, without payment or penalty.</li>
+                <li>Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses.</li>
+                <li>The complete study takes about 15 minutes.</li>
+              </ul>
             </div>
           </section>`,
         ],
@@ -156,6 +160,7 @@ export function buildExperimentTimeline(
       dataSave: taskDataSave,
       localBackup: options.localBackup,
       pause: options.pause,
+      practicePause: options.practicePause,
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
@@ -527,7 +532,16 @@ export function createRunnableExperiment(
   const startTime = Date.now();
   const jsPsych = initJsPsych({
     display_element: displayElement,
-    on_trial_start: () => pauseUi.setPageActive(true),
+    on_trial_start: () => {
+      pauseUi.setPageActive(true);
+      const currentTrial = (jsPsych as unknown as {
+        getCurrentTrial?: () => { tutorialMode?: boolean; data?: Record<string, unknown> };
+      }).getCurrentTrial?.();
+      const data = currentTrial?.data;
+      pauseUi.setTutorialPracticeEnabled(Boolean(
+        currentTrial?.tutorialMode || data?.tutorial || data?.tutorial_intro || data?.tutorial_reference_board,
+      ));
+    },
     on_finish: async () => {
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
@@ -572,6 +586,7 @@ export function createRunnableExperiment(
       participantId,
       localBackup,
       pause,
+      practicePause,
     }),
   };
 }

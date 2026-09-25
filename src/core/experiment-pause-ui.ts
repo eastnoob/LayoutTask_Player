@@ -9,6 +9,8 @@ export interface ExperimentPauseUiOptions {
   practiceController?: ExperimentPauseController;
   documentRef?: Document;
   now?: () => number;
+  onTutorialPracticeStarted?: () => void;
+  onTutorialPracticeResumed?: () => void;
 }
 
 export interface ExperimentPauseUi {
@@ -76,7 +78,14 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
     return practiceEnabled && options.practiceController ? options.practiceController : options.controller;
   }
 
-  function update(): void {
+  function update(changedSnapshot?: ReturnType<ExperimentPauseController["snapshot"]>): void {
+    const lastEvent = changedSnapshot?.events.at(-1);
+    if (lastEvent?.mode === "tutorial_practice" && lastEvent.type === "pause_confirmed") {
+      options.onTutorialPracticeStarted?.();
+    }
+    if (lastEvent?.mode === "tutorial_practice" && lastEvent.type === "pause_resumed") {
+      options.onTutorialPracticeResumed?.();
+    }
     const controller = activeController();
     const snapshot = controller.snapshot();
     const isPractice = practiceEnabled && Boolean(options.practiceController);

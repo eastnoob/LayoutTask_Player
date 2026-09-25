@@ -176,6 +176,9 @@ describe("buildExperimentTimeline", () => {
     expect(String(timeline[2].pages[0])).toContain("layout-task-tutorial-complete-shell");
     expect(String(timeline[2].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(String(timeline[2].pages[0])).toContain("This is an experiment, not a test");
+    expect(String(timeline[2].pages[0])).toContain("one-time 15-minute break");
+    expect(String(timeline[2].pages[0])).toContain("without payment or penalty");
+    expect(String(timeline[2].pages[0])).toContain("truthfully");
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
   });

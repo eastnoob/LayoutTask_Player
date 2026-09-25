@@ -5,6 +5,8 @@ export type TutorialEvent =
   | "object_moved_or_rotated"
   | "confidence_chosen"
   | "object_deselected"
+  | "pause_practice_started"
+  | "pause_practice_resumed"
   | "submitted";
 
 export interface TutorialStep {
@@ -18,6 +20,8 @@ export interface TutorialStep {
     | "select_second"
     | "confidence_second"
     | "save_second"
+    | "pause_practice"
+    | "pause_practice_resume"
     | "submit"
     | "complete";
   anchor: string;
@@ -83,6 +87,18 @@ const steps: TutorialStep[] = [
     anchor: "confidence",
     message: "Click **Save** below to exit this object's edit mode. **Repeat this for every yellow object before submitting the tutorial.**",
     expectedEvent: "object_deselected",
+  },
+  {
+    id: "pause_practice",
+    anchor: "status",
+    message: "**Practice the pause control.** Click **Pause**, wait for the 10-second practice countdown, then click **Resume**. This practice pause does not use your formal pause opportunity.",
+    expectedEvent: "pause_practice_started",
+  },
+  {
+    id: "pause_practice_resume",
+    anchor: "status",
+    message: "**Keep the experiment paused until the countdown ends, then click Resume** to continue the tutorial.",
+    expectedEvent: "pause_practice_resumed",
   },
   {
     id: "submit",
