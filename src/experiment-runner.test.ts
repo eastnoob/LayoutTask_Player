@@ -5,6 +5,7 @@ import InstructionsPlugin from "@jspsych/plugin-instructions";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
   buildExperimentTimeline,
+  isTutorialPausePage,
   collectTutorialTrialResult,
   collectFormalTrialResults,
   createSavingPageHtml,
@@ -72,6 +73,11 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("recognizes tutorial pause pages from the started trial callback data", () => {
+    expect(isTutorialPausePage({ data: { tutorial: true } })).toBe(true);
+    expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(true);
+    expect(isTutorialPausePage({ data: { tutorial: false } })).toBe(false);
+  });
   it("passes the developer shortcut only when explicitly enabled", () => {
     const normal = buildExperimentTimeline(experimentConfig());
     const debug = buildExperimentTimeline(experimentConfig(), { developerMode: true });

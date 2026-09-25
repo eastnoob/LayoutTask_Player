@@ -69,6 +69,7 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
   let pageActive = true;
   let practiceEnabled = false;
   let interval: ReturnType<typeof setInterval> | undefined;
+  let lastPracticeEventKey = "";
   const unsubscribe = [options.controller.subscribe(update)];
   if (options.practiceController) {
     unsubscribe.push(options.practiceController.subscribe(update));
@@ -80,11 +81,16 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
 
   function update(changedSnapshot?: ReturnType<ExperimentPauseController["snapshot"]>): void {
     const lastEvent = changedSnapshot?.events.at(-1);
-    if (lastEvent?.mode === "tutorial_practice" && lastEvent.type === "pause_confirmed") {
-      options.onTutorialPracticeStarted?.();
-    }
-    if (lastEvent?.mode === "tutorial_practice" && lastEvent.type === "pause_resumed") {
-      options.onTutorialPracticeResumed?.();
+    const practiceEventKey = lastEvent?.mode === "tutorial_practice" && lastEvent
+      ? `${lastEvent.type}:${lastEvent.at}`
+      : "";
+    if (practiceEventKey && practiceEventKey !== lastPracticeEventKey) {
+      lastPracticeEventKey = practiceEventKey;
+      if (lastEvent?.type === "pause_confirmed") {
+        options.onTutorialPracticeStarted?.();
+      } else if (lastEvent?.type === "pause_resumed") {
+        options.onTutorialPracticeResumed?.();
+      }
     }
     const controller = activeController();
     const snapshot = controller.snapshot();
