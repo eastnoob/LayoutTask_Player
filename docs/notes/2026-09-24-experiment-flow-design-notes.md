@@ -1,6 +1,6 @@
 # Experiment Flow Design Notes
 
-**Date:** 2026-09-24  
+**Date:** 2026-09-24
 **Status:** Design note; no implementation changes are authorized by this note alone.
 
 ## Scope

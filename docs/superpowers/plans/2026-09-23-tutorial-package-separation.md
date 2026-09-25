@@ -65,4 +65,3 @@
 - [ ] Run `npm run build`.
 - [ ] Confirm the tutorial package is present in the static output and the formal package remains present.
 - [ ] Open the experiment entry and verify the first interactive tutorial task loads from `layout-task-tutorial`, while formal trial data still points to `layout-task-run12-core23-preview`.
-
