@@ -176,6 +176,31 @@ describe("LayoutTaskPlugin", () => {
     await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
+  it("passes the developer shortcut flag only to the core player when enabled", async () => {
+    const config = createRuntimeConfig();
+    vi.mocked(createLayoutTaskPlayer).mockReturnValue(createPlayerStub());
+    const plugin = new LayoutTaskPlugin({ finishTrial: vi.fn() } as unknown as JsPsych);
+
+    const trialPromise = plugin.trial(createDisplayElement(), {
+      type: LayoutTaskPlugin,
+      config,
+      baseUrl: "/layout-task/",
+      manifestPath: "manifest.json",
+      taskId: null,
+      qid: null,
+      autoFinishTrial: true,
+      writeEncodedToData: true,
+      writeResultToData: true,
+      writeHeaderToData: true,
+      title: "Layout Task",
+      developerMode: true,
+    } as never);
+
+    await flushPromises();
+    expect(createLayoutTaskPlayer).toHaveBeenCalledWith(expect.objectContaining({ developerMode: true }));
+    await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
+  });
+
   it("finishes with error data when config loading fails", async () => {
     // Config errors should be visible both in UI and in jsPsych data.
     const finishTrial = vi.fn();

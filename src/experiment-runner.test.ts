@@ -17,6 +17,7 @@ import type { ExperimentConfig } from "./types/experiment";
 import { parseExperimentConfig } from "./schemas/experiment.schema";
 import { initJsPsych } from "jspsych";
 import { createPresentationSchedule, generateWilliamsBaseSequences } from "./core/schedule-generator";
+import { createMemoryLocalBackupStore } from "./core/local-backup-store";
 
 vi.mock("jspsych", () => ({
   initJsPsych: vi.fn(() => ({ data: { get: () => ({ values: () => [] }) } })),
@@ -71,6 +72,14 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("passes the developer shortcut only when explicitly enabled", () => {
+    const normal = buildExperimentTimeline(experimentConfig());
+    const debug = buildExperimentTimeline(experimentConfig(), { developerMode: true });
+
+    expect(normal.filter((trial) => trial.type === LayoutTaskPlugin).every((trial) => trial.developerMode !== true)).toBe(true);
+    expect(debug.filter((trial) => trial.type === LayoutTaskPlugin).every((trial) => trial.developerMode === true)).toBe(true);
+  });
+
   it("keeps the real static flow split between tutorial and 23 formal trials", () => {
     const config = parseExperimentConfig(
       JSON.parse(readFileSync(resolve(process.cwd(), "public/experiment/experiment.json"), "utf8")),
@@ -132,14 +141,14 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
-    expect(timeline[0]).toMatchObject({
+    expect(timeline[1]).toMatchObject({
       type: LayoutTaskPlugin,
       baseUrl: "/layout-task-run12-core23-preview/tutorial/",
       taskId: "tutorial_room",
       writeEncodedToData: true,
       writeResultToData: true,
     });
-    expect(timeline[2]).toMatchObject({
+    expect(timeline[3]).toMatchObject({
       type: LayoutTaskPlugin,
       baseUrl: "/layout-task-generated/",
       taskId: "scene_001",
@@ -149,18 +158,26 @@ describe("buildExperimentTimeline", () => {
   it("creates tutorial then formal LayoutTask trials in fixed order", () => {
     const timeline = buildExperimentTimeline(experimentConfig());
 
-    expect(timeline).toHaveLength(4);
-    expect(timeline[0]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
-    expect(timeline[1].pages[0]).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
-    expect(timeline[1]).toMatchObject({
+    expect(timeline).toHaveLength(5);
+    expect(timeline[0]).toMatchObject({
+      type: InstructionsPlugin,
+      css_classes: "layout-task-tutorial-intro-trial",
+      allow_backward: false,
+      data: { tutorial_intro: true },
+    });
+    expect(String(timeline[0].pages[0])).toContain("reconstruct the furniture layout");
+    expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
+    expect(timeline[2].pages[0]).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
+    expect(timeline[2]).toMatchObject({
       button_label_next: "Start formal experiment",
       css_classes: "layout-task-tutorial-complete-trial",
       data: { tutorial_complete: true },
     });
-    expect(String(timeline[1].pages[0])).toContain("layout-task-tutorial-complete-shell");
-    expect(String(timeline[1].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
-    expect(timeline[2]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
-    expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
+    expect(String(timeline[2].pages[0])).toContain("layout-task-tutorial-complete-shell");
+    expect(String(timeline[2].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
+    expect(String(timeline[2].pages[0])).toContain("This is an experiment, not a test");
+    expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
+    expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
   });
 
   it("shows the reference board before the interactive tutorial room", () => {
@@ -181,28 +198,28 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
-    expect(timeline.slice(0, 4).map((trial) => trial.data)).toEqual([
+    expect(timeline.slice(1, 5).map((trial) => trial.data)).toEqual([
       { tutorial_reference_board: true, reference_board_item_id: "m01", reference_board_page: 1, reference_board_total: 4 },
       { tutorial_reference_board: true, reference_board_item_id: "m03", reference_board_page: 2, reference_board_total: 4 },
       { tutorial_reference_board: true, reference_board_item_id: "m04", reference_board_page: 3, reference_board_total: 4 },
       { tutorial_reference_board: true, reference_board_item_id: "m05", reference_board_page: 4, reference_board_total: 4 },
     ]);
-    expect(timeline[0]).toMatchObject({
+    expect(timeline[1]).toMatchObject({
       type: InstructionsPlugin,
       allow_backward: false,
       button_label_next: "Continue",
       css_classes: "layout-task-reference-board-trial",
     });
-    expect(typeof timeline[0].on_load).toBe("function");
-    expect(timeline[0].pages).toHaveLength(1);
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
-    expect(String(timeline[0].pages[0])).toContain(">1 / 4<");
-    expect(String(timeline[1].pages[0])).toContain(">2 / 4<");
-    expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
-    expect(timeline[5]).toMatchObject({ button_label_next: "Start formal experiment" });
-    expect(timeline[6]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+    expect(typeof timeline[1].on_load).toBe("function");
+    expect(timeline[1].pages).toHaveLength(1);
+    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
+    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
+    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
+    expect(String(timeline[1].pages[0])).toContain(">1 / 4<");
+    expect(String(timeline[2].pages[0])).toContain(">2 / 4<");
+    expect(timeline[5]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
+    expect(timeline[6]).toMatchObject({ button_label_next: "Start formal experiment" });
+    expect(timeline[7]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 
   it("can run a board-only tutorial before formal trials", () => {
@@ -224,16 +241,17 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
-    expect(timeline.slice(0, 4).every((trial) => trial.type === InstructionsPlugin)).toBe(true);
-    expect(timeline[0]).toMatchObject({ button_label_next: "Continue" });
-    expect(timeline[3].data).toEqual({
+    expect(timeline.slice(1, 5).every((trial) => trial.type === InstructionsPlugin)).toBe(true);
+    expect(timeline[0]).toMatchObject({ button_label_next: "Start tutorial" });
+    expect(timeline[1]).toMatchObject({ button_label_next: "Continue" });
+    expect(timeline[4].data).toEqual({
       tutorial_reference_board: true,
       reference_board_item_id: "m05",
       reference_board_page: 4,
       reference_board_total: 4,
     });
-    expect(String(timeline[0].pages[0])).toContain("/layout-task-generated/tutorial/");
-    expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+    expect(String(timeline[0].pages[0])).toContain("reconstruct the furniture layout");
+    expect(timeline[5]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 
   it("keeps each reference-board continue button locked for five seconds", () => {
@@ -380,6 +398,50 @@ describe("trial classification", () => {
 });
 
 describe("saveExperimentFiles", () => {
+  it("persists final files before receiver upload and clears them after archive success", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files,
+      participantId: "P001",
+      sessionId: "S001",
+      fetchImpl,
+      localBackup: backup,
+    });
+
+    expect(result).toEqual({ ok: true, saved: 1 });
+    expect(await backup.listFiles()).toEqual([]);
+  });
+
+  it("builds recovery data from all local files when receiver archive fails", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    await backup.saveFile({ filename: "trial.json", contentType: "application/json", data: '{"trial":1}' });
+    let archiveAttempts = 0;
+    const fetchImpl = async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/archive")) {
+        archiveAttempts += 1;
+        return new Response(JSON.stringify({ error: "archive_unavailable" }), { status: 503, statusText: "Unavailable" });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 201 });
+    };
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
+      participantId: "P001",
+      sessionId: "S001",
+      fetchImpl,
+      localBackup: backup,
+    });
+
+    expect(archiveAttempts).toBe(2);
+    expect(result.recoveryZip).toBeInstanceOf(Blob);
+    expect(await backup.listFiles()).toHaveLength(2);
+  });
+
   it("posts one batch submission to the self-hosted receiver", async () => {
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
 
@@ -398,7 +460,7 @@ describe("saveExperimentFiles", () => {
     });
 
     expect(result).toEqual({ ok: true, saved: 5 });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(fetchImpl).toHaveBeenCalledWith("https://data.example.com/submit", {
       method: "POST",
       headers: {
@@ -424,6 +486,9 @@ describe("saveExperimentFiles", () => {
         { filename: "layout-task_tutorial_result_P001_S001.json", content_type: "application/json", data: '{"tutorial":true}' },
       ],
     });
+    expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body)).schema).toBe(
+      "layouttask.receiver.archive.v1",
+    );
   });
 
   it("reports receiver JSON error details", async () => {
@@ -482,16 +547,98 @@ describe("saveExperimentFiles", () => {
     });
   });
 
+  it("archives a receiver session after the final upload", async () => {
+    const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+    const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+      requests.push({ url: String(input), body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+      return new Response(JSON.stringify({ ok: true, archive_status: "archived" }), { status: 201 });
+    };
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
+      participantId: "P001",
+      sessionId: "S001",
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(requests).toHaveLength(2);
+    expect(requests[0].url).toBe("https://data.example.com/submit");
+    expect(requests[1].url).toBe("https://data.example.com/archive");
+    expect(requests[1].body).toMatchObject({
+      schema: "layouttask.receiver.archive.v1",
+      experiment_id: "layout_task_v1",
+      participant_id: "P001",
+      session_id: "S001",
+    });
+  });
+
+  it("retries receiver archive once and returns recovery data after the second failure", async () => {
+    let archiveAttempts = 0;
+    const fetchImpl = async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/archive")) {
+        archiveAttempts += 1;
+        return new Response(JSON.stringify({ error: "archive_unavailable" }), { status: 503, statusText: "Unavailable" });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 201 });
+    };
+
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
+      participantId: "P001",
+      sessionId: "S001",
+      fetchImpl,
+    });
+
+    expect(archiveAttempts).toBe(2);
+    expect(result.ok).toBe(false);
+    expect(result.recoveryZip).toBeInstanceOf(Blob);
+    expect(result.error).toContain("archive");
+  });
+
   it("keeps tutorial files in copy mode and recovery output", async () => {
     const files = [{ filename: "layout_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' }];
+    const backup = createMemoryLocalBackupStore("P001:S001");
     await expect(
       saveExperimentFiles({
         dataSave: { mode: "copy", filenamePrefix: "layout-task" },
         files,
+        localBackup: backup,
       }),
     ).resolves.toEqual({ ok: true, saved: 0 });
+    expect(await backup.listFiles()).toEqual(files);
     expect(createRecoveryOutput(files)).toContain("layout_tutorial_result_P001_S001.json");
     expect(createRecoveryOutput(files)).toContain('{"tutorial":true}');
+  });
+
+  it("clears local final files after all DataPipe uploads succeed", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, statusText: "OK" })) as unknown as typeof fetch;
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "formal\n" }];
+
+    await expect(saveExperimentFiles({
+      dataSave: experimentConfig().dataSave,
+      files,
+      fetchImpl,
+      localBackup: backup,
+    })).resolves.toMatchObject({ ok: true });
+    expect(await backup.listFiles()).toEqual([]);
+  });
+
+  it("keeps local final files after a DataPipe upload failure", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 503, statusText: "Unavailable" })) as unknown as typeof fetch;
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "formal\n" }];
+
+    await expect(saveExperimentFiles({
+      dataSave: experimentConfig().dataSave,
+      files,
+      fetchImpl,
+      localBackup: backup,
+    })).resolves.toMatchObject({ ok: false });
+    expect(await backup.listFiles()).toEqual(files);
   });
 
   it("keeps tutorial data available after a failed DataPipe save", async () => {

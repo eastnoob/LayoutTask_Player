@@ -59,6 +59,46 @@ def valid_submission():
 
 
 class StorageTests(unittest.TestCase):
+    def test_deferred_submit_keeps_spool_until_session_archive(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            backend = ToggleArchiveBackend()
+            storage = ReceiverStorage(data_dir, archive_backend=backend, delete_local_after_success=True, archive_on_submit=False)
+
+            stored = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            self.assertEqual(stored.archive_status, "pending")
+            self.assertTrue((data_dir / "spool" / stored.id).exists())
+            self.assertEqual(backend.calls, [])
+
+            backend.fail = False
+            result = storage.archive_session("layout_task_v1", "P001", "S001")
+
+            self.assertTrue(result.ok)
+            self.assertFalse((data_dir / "spool" / stored.id).exists())
+            self.assertEqual(len(backend.calls), 1)
+            self.assertTrue(backend.calls[0][1].endswith("/P001/S001"))
+            with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
+                self.assertEqual(db.execute("SELECT archive_status FROM submissions").fetchone(), ("archived",))
+            metadata = json.loads((data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines()[0])
+            self.assertEqual(metadata["archive_status"], "archived")
+            self.assertTrue(all(file_info["archive_status"] == "archived" for file_info in metadata["files"]))
+
+    def test_session_archive_is_idempotent_after_success(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            backend = ToggleArchiveBackend()
+            storage = ReceiverStorage(data_dir, archive_backend=backend, delete_local_after_success=True, archive_on_submit=False)
+            storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+            backend.fail = False
+
+            first = storage.archive_session("layout_task_v1", "P001", "S001")
+            second = storage.archive_session("layout_task_v1", "P001", "S001")
+
+            self.assertTrue(first.ok)
+            self.assertTrue(second.ok)
+            self.assertEqual(len(backend.calls), 1)
+
     def test_save_submission_archives_files_and_indexes_each_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir)

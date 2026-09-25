@@ -15,15 +15,40 @@ import type { RuntimeDataSaveConfig } from "./types/runtime";
 import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
+import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
-export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTimeline {
+export function buildExperimentTimeline(
+  config: ExperimentConfig,
+  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore } = {},
+): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
-  const taskDataSave = toRuntimeTaskDataSave(config.dataSave);
+  const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
 
   if (config.tutorial.enabled) {
     const tutorialBaseUrl = config.tutorial.baseUrl ?? `${config.baseUrl}tutorial/`;
+    timeline.push({
+      type: InstructionsPlugin,
+      css_classes: "layout-task-tutorial-intro-trial",
+      pages: [
+        `<section class="layout-task-shell layout-task-tutorial-intro-shell">
+          <header class="layout-task-header layout-task-tutorial-intro-header">
+            <p class="layout-task-eyebrow">Tutorial</p>
+            <h1>Reconstruct the furniture layout</h1>
+            <p class="layout-task-meta">Study the image, then rebuild the furniture arrangement shown there.</p>
+          </header>
+          <div class="layout-task-tutorial-intro-note">
+            <p><strong>Your task is to study each reference image and reconstruct the furniture layout on the floor plan as closely as possible.</strong></p>
+            <p>You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it.</p>
+          </div>
+        </section>`,
+      ],
+      show_clickable_nav: true,
+      allow_backward: false,
+      button_label_next: "Start tutorial",
+      data: { tutorial_intro: true },
+    });
     if (config.tutorial.referenceBoard?.enabled) {
       const board = config.tutorial.referenceBoard;
       const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board });
@@ -57,6 +82,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
+        developerMode: options.developerMode,
         referenceMode: config.referenceMode,
         confidence: config.confidence,
         autoFinishTrial: true,
@@ -64,6 +90,7 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
         writeResultToData: true,
         writeHeaderToData: true,
         dataSave: taskDataSave,
+        localBackup: options.localBackup,
         data: { tutorial: true },
       });
       timeline.push({
@@ -77,6 +104,9 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
               <p class="layout-task-meta">Study image -> Reconstruct scene -> Rate confidence -> Submit</p>
             </header>
             <div class="layout-task-tutorial-complete-note">
+              <p><strong>This is an experiment, not a test.</strong> Mistakes and uncertainty are normal. If you are very unsure, report very low confidence.</p>
+              <p>Please take every question seriously. We use behavior-based attention checks; inattentive responses may be rejected, which may mean you cannot receive the compensation.</p>
+              <p>The complete study takes about 15 minutes.</p>
               <p>The formal experiment must be completed in one sitting. Do not refresh, close, or leave this page temporarily, otherwise you may be unable to receive the required compensation.</p>
             </div>
           </section>`,
@@ -113,12 +143,14 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
       trialIndex: presentation.trialIndex,
       trialTotal: presentation.trialTotal,
       referenceMode: config.referenceMode,
+      developerMode: options.developerMode,
       confidence: config.confidence,
       autoFinishTrial: true,
       writeEncodedToData: true,
       writeResultToData: true,
       writeHeaderToData: true,
       dataSave: taskDataSave,
+      localBackup: options.localBackup,
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
@@ -126,9 +158,25 @@ export function buildExperimentTimeline(config: ExperimentConfig): ExperimentTim
   return timeline;
 }
 
-export function toRuntimeTaskDataSave(dataSave: ExperimentDataSaveConfig): RuntimeDataSaveConfig {
+export function toRuntimeTaskDataSave(
+  dataSave: ExperimentDataSaveConfig,
+  participantId = "unknown",
+): RuntimeDataSaveConfig {
   if (dataSave.mode === "copy") {
     return { mode: "copy" };
+  }
+  if (dataSave.mode === "receiver") {
+    return {
+      mode: "receiver",
+      experiment_id: dataSave.experimentId,
+      endpoint: dataSave.endpoint,
+      filename_prefix: dataSave.filenamePrefix,
+      participant_id: participantId,
+      submit_token: dataSave.submitToken,
+      payload_format: "json-envelope",
+      save_encoded: true,
+      save_result: false,
+    };
   }
   return {
     mode: "datapipe",
@@ -232,6 +280,7 @@ export async function saveExperimentFiles(input: {
   sessionId?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  localBackup?: LocalBackupStore;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -240,6 +289,24 @@ export async function saveExperimentFiles(input: {
   recoveryZip?: Blob;
   uploadManifest?: ReturnType<UploadState["getManifest"]>;
 }> {
+  try {
+    await input.localBackup?.saveFiles(input.files);
+  } catch (error) {
+    const recoveryZip = await createCompleteRecoveryZip(input.files, {
+      participantId: input.participantId ?? "unknown",
+      sessionId: input.sessionId ?? "unknown",
+      experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
+      failedFilenames: input.files.map((file) => file.filename),
+    });
+    return {
+      ok: false,
+      saved: 0,
+      failedFilename: "local backup",
+      error: error instanceof Error ? error.message : String(error),
+      recoveryZip,
+    };
+  }
+
   if (input.dataSave.mode === "copy") {
     return { ok: true, saved: 0 };
   }
@@ -256,7 +323,7 @@ export async function saveExperimentFiles(input: {
     }
 
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
-    const timeoutMs = input.timeoutMs ?? 60_000;
+    const timeoutMs = input.timeoutMs ?? 30_000;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (dataSave.submitToken) {
       headers["X-Submit-Token"] = dataSave.submitToken;
@@ -291,15 +358,62 @@ export async function saveExperimentFiles(input: {
     }
 
     if (!response.ok) {
+      const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
+        participantId: input.participantId,
+        sessionId: input.sessionId,
+        experimentId: dataSave.experimentId,
+        failedFilenames: ["receiver batch"],
+      });
       return {
         ok: false,
         saved: 0,
         failedFilename: "receiver batch",
         error: `${response.status} ${response.statusText}${await readSaveError(response)}`,
+        recoveryZip,
       };
     }
 
-    return { ok: true, saved: input.files.length };
+    const archiveEndpoint = deriveArchiveEndpoint(dataSave.endpoint);
+    const archiveRequest = {
+      schema: "layouttask.receiver.archive.v1" as const,
+      experiment_id: dataSave.experimentId,
+      participant_id: input.participantId,
+      session_id: input.sessionId,
+    };
+    let archiveError = "archive failed";
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const archiveResponse = await fetchWithTimeout(
+          () => fetchImpl(archiveEndpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(archiveRequest),
+          }),
+          timeoutMs,
+          "receiver archive",
+        );
+        if (archiveResponse.ok) {
+          await input.localBackup?.clear();
+          return { ok: true, saved: input.files.length };
+        }
+        archiveError = `${archiveResponse.status} ${archiveResponse.statusText}${await readSaveError(archiveResponse)}`;
+      } catch (error) {
+        archiveError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
+      participantId: input.participantId,
+      sessionId: input.sessionId,
+      experimentId: dataSave.experimentId,
+      failedFilenames: ["receiver archive"],
+    });
+    return {
+      ok: false,
+      saved: input.files.length,
+      failedFilename: "receiver archive",
+      error: `Archive failed after 2 attempts: ${archiveError}. A complete recovery ZIP is available.`,
+      recoveryZip,
+    };
   }
 
   const payloads = createExperimentDataPipePayloads({
@@ -346,7 +460,7 @@ export async function saveExperimentFiles(input: {
       saved += 1;
     }
     if (failedFilenames.length > 0) {
-      const recoveryZip = await createCompleteRecoveryZip(input.files, {
+      const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
         participantId: input.participantId ?? "unknown",
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
@@ -361,19 +475,36 @@ export async function saveExperimentFiles(input: {
         uploadManifest: uploadState.getManifest(),
       };
     }
+    await input.localBackup?.clear();
     return { ok: true, saved };
   } catch (error) {
     return { ok: false, saved: 0, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
+async function getRecoveryFiles(input: {
+  files: ExperimentCsvFile[];
+  localBackup?: LocalBackupStore;
+}): Promise<ExperimentCsvFile[]> {
+  if (!input.localBackup) {
+    return input.files;
+  }
+  try {
+    const files = await input.localBackup.listFiles();
+    return files.length > 0 ? files : input.files;
+  } catch {
+    return input.files;
+  }
+}
+
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string } = {},
+  options: { participantId?: string; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const sessionId = createSessionId();
+  const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
   const startTime = Date.now();
   const jsPsych = initJsPsych({
     display_element: displayElement,
@@ -398,11 +529,36 @@ export function createRunnableExperiment(
         referenceMode: config.referenceMode,
       });
       renderSavingPage();
-      renderEndPage(files, await saveExperimentFiles({ dataSave: config.dataSave, participantId, sessionId, files }));
+      const saveResult = await saveExperimentFiles({
+        dataSave: config.dataSave,
+        participantId,
+        sessionId,
+        files,
+        localBackup,
+      });
+      renderEndPage(files, saveResult);
     },
   });
 
-  return { jsPsych, timeline: buildExperimentTimeline(config) };
+  return {
+    jsPsych,
+    timeline: buildExperimentTimeline(config, {
+      developerMode: options.developerMode,
+      participantId,
+      localBackup,
+    }),
+  };
+}
+
+function createBrowserLocalBackup(
+  experimentId: string,
+  participantId: string,
+  sessionId: string,
+): LocalBackupStore | undefined {
+  if (typeof globalThis.indexedDB === "undefined") {
+    return undefined;
+  }
+  return createIndexedDbLocalBackupStore(`${experimentId}:${participantId}:${sessionId}`);
 }
 
 export function createSavingPageHtml(): string {
@@ -425,7 +581,7 @@ export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
 
 function renderEndPage(
   files: ExperimentCsvFile[],
-  saveResult: { ok: boolean; error?: string; failedFilename?: string },
+  saveResult: { ok: boolean; error?: string; failedFilename?: string; recoveryZip?: Blob },
 ): void {
   document.body.innerHTML = "";
   const section = document.createElement("section");
@@ -451,6 +607,14 @@ function renderEndPage(
   });
   section.append(title, detail, closeButton);
   if (!saveResult.ok) {
+    if (saveResult.recoveryZip) {
+      const recoveryLink = document.createElement("a");
+      recoveryLink.className = "layout-task-recovery-download";
+      recoveryLink.textContent = "Download recovery ZIP";
+      recoveryLink.download = "layout-task-recovery.zip";
+      recoveryLink.href = URL.createObjectURL(saveResult.recoveryZip);
+      section.append(recoveryLink);
+    }
     const output = document.createElement("textarea");
     output.className = "layout-task-output";
     output.value = createRecoveryOutput(files);
@@ -477,6 +641,12 @@ function createReceiverSubmission(input: {
       data: file.data,
     })),
   };
+}
+
+function deriveArchiveEndpoint(endpoint: string): string {
+  const url = new URL(endpoint, globalThis.location?.href ?? "http://localhost/");
+  url.pathname = url.pathname.replace(/\/$/, "").replace(/\/submit$/, "") + "/archive";
+  return url.toString();
 }
 
 async function readSaveError(response: Response): Promise<string> {

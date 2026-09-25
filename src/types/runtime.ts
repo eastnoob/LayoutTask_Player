@@ -160,4 +160,19 @@ export interface RuntimeDataPipeSaveConfig {
   save_result: boolean;
 }
 
-export type RuntimeDataSaveConfig = RuntimeCopyDataSaveConfig | RuntimeDataPipeSaveConfig;
+export interface RuntimeReceiverSaveConfig {
+  mode: "receiver";
+  experiment_id: string;
+  endpoint: string;
+  filename_prefix: string;
+  participant_id: string;
+  submit_token?: string;
+  payload_format: "json-envelope";
+  save_encoded: boolean;
+  save_result: boolean;
+}
+
+export type RuntimeDataSaveConfig =
+  | RuntimeCopyDataSaveConfig
+  | RuntimeDataPipeSaveConfig
+  | RuntimeReceiverSaveConfig;

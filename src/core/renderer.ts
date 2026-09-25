@@ -1,6 +1,8 @@
 import type { RuntimeTaskConfig, RuntimeTaskObject } from "../types/runtime";
 import type { ReferenceMode } from "../types/config";
 import type { PreviewStageMode } from "../types/config";
+import type { ConfidenceDimension } from "../types/result";
+import type { ReferencePresentation } from "../types/schedule";
 import type { LayoutAction } from "../types/events";
 import type { CopyResult } from "./clipboard-service";
 import type { StateStore } from "./state-store";
@@ -21,6 +23,7 @@ export interface RendererPointer {
 export interface RendererRefs {
   root: HTMLElement;
   svg?: SVGSVGElement;
+  cameraLayer?: SVGElement;
   stageWrapElement?: HTMLElement;
   backgroundElement?: SVGElement;
   displayImageFrameElement?: HTMLElement;
@@ -48,6 +51,8 @@ export interface RendererRefs {
   confidenceElement?: HTMLElement;
   tutorialBubbleElement?: HTMLElement;
   tutorialBubbleMessageElement?: HTMLElement;
+  savingBubbleElement?: HTMLElement;
+  savingBubbleMessageElement?: HTMLElement;
 }
 
 interface LocalRect {
@@ -81,6 +86,10 @@ export class LayoutTaskRenderer {
   private hideControlsTimer: number | undefined;
   private feedbackTimer: number | undefined;
   private viewportListenerBound = false;
+  private viewportZoom = DEFAULT_VIEWPORT_ZOOM;
+  private viewportPan = { x: 0, y: 0 };
+  private viewportPanPointerId: number | undefined;
+  private viewportPanLast: { x: number; y: number } | undefined;
   private readonly debugShadowEnabled =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug_shadow") === "1";
 
@@ -89,6 +98,9 @@ export class LayoutTaskRenderer {
       root: HTMLElement;
       config: RuntimeTaskConfig;
       store: StateStore;
+      tutorialMode?: boolean;
+      developerMode?: boolean;
+      presentation?: ReferencePresentation;
       onAction?: (objectId: string, action: LayoutAction, event: MouseEvent | KeyboardEvent) => void;
       onObjectSelect?: (objectId: string) => void;
       onStageBackgroundClick?: () => void;
@@ -97,11 +109,12 @@ export class LayoutTaskRenderer {
       onDragEnd?: (objectId: string, pointer: RendererPointer) => void;
       onDragCancel?: (objectId: string, pointer: RendererPointer) => void;
       onConfirm?: () => void;
+      onDeveloperShortcut?: () => void;
       onCopyAgain?: () => void;
       confidence?: {
         scale: number[];
         labels: Record<string, string>;
-        onChoose(value: number): void;
+        onChoose(dimension: ConfidenceDimension, value: number): void;
         onSave(): void;
       };
     },
@@ -127,6 +140,10 @@ export class LayoutTaskRenderer {
     this.refs.controlElements.clear();
     this.refs.controlButtons.clear();
     this.clearLimitFeedback();
+    this.viewportZoom = DEFAULT_VIEWPORT_ZOOM;
+    this.viewportPan = { x: 0, y: 0 };
+    this.viewportPanPointerId = undefined;
+    this.viewportPanLast = undefined;
 
     // The shell contains the SVG stage and a persistent side panel.
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
@@ -141,12 +158,21 @@ export class LayoutTaskRenderer {
     eyebrow.className = "layout-task-eyebrow";
     eyebrow.textContent = "Layout Task";
 
+    const headerContent = getTrialHeaderContent({
+      tutorialMode: this.options.tutorialMode,
+      taskId: this.options.config.taskId,
+      qid: this.options.config.qid,
+      objectCount: this.options.config.objects.length,
+      presentation: this.options.presentation,
+    });
+
     const title = document.createElement("h1");
-    title.textContent = this.options.config.title ?? this.options.config.taskId;
+    title.className = this.options.tutorialMode ? "layout-task-trial-label is-tutorial" : "layout-task-trial-label";
+    title.textContent = headerContent.title;
 
     const meta = document.createElement("p");
     meta.className = "layout-task-meta";
-    meta.textContent = `QID: ${this.options.config.qid} - Objects: ${this.options.config.objects.length}`;
+    meta.textContent = headerContent.meta;
 
     const viewportWarning = document.createElement("p");
     viewportWarning.className = "layout-task-viewport-warning";
@@ -182,8 +208,17 @@ export class LayoutTaskRenderer {
         this.options.onStageBackgroundClick?.();
       }
     });
+    svg.addEventListener("contextmenu", (event) => event.preventDefault());
+    svg.addEventListener("pointerdown", this.handleViewportPointerDown);
+    svg.addEventListener("pointermove", this.handleViewportPointerMove);
+    svg.addEventListener("pointerup", this.handleViewportPointerUp);
+    svg.addEventListener("pointercancel", this.handleViewportPointerUp);
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     svg.append(defs);
+
+    const cameraLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    cameraLayer.classList.add("layout-task-camera-layer");
+    svg.append(cameraLayer);
 
     const displayLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     displayLayer.classList.add("layout-task-display-layer");
@@ -191,7 +226,7 @@ export class LayoutTaskRenderer {
     if (displayTransform) {
       displayLayer.setAttribute("transform", displayTransform);
     }
-    svg.append(displayLayer);
+    cameraLayer.append(displayLayer);
 
     const background = document.createElementNS("http://www.w3.org/2000/svg", "image");
     background.setAttribute("href", this.options.config.background.asset.srcResolved);
@@ -254,9 +289,12 @@ export class LayoutTaskRenderer {
           this.options.onObjectSelect?.(objectConfig.id);
         });
         group.addEventListener("pointerenter", () => {
+          this.clearHideTimer();
+          this.setActiveControlsVisible(objectConfig.id, true);
           this.setObjectVisualHighlight(objectConfig.id, true);
         });
         group.addEventListener("pointerleave", () => {
+          this.scheduleActiveControlsHide(objectConfig.id);
           this.setObjectVisualHighlight(objectConfig.id, this.activeObjectId === objectConfig.id);
         });
         group.addEventListener("focus", () => {
@@ -292,7 +330,15 @@ export class LayoutTaskRenderer {
     }
 
     displayLayer.append(controlsLayer);
-    stageWrap.append(svg, feedbackOverlay);
+    const viewportTools = this.createViewportTools();
+    stageWrap.append(svg, feedbackOverlay, viewportTools);
+
+    // The SVG must be attached before measuring screen scale. The first pass
+    // above happens during construction and may use the coarse fallback scale,
+    // which would make the controls jump after the first interaction.
+    for (const objectConfig of this.options.config.objects) {
+      this.updateControlsLayout(objectConfig.id);
+    }
 
     const panel = document.createElement("aside");
     panel.className = "layout-task-panel";
@@ -343,6 +389,15 @@ export class LayoutTaskRenderer {
     confirmButton.dataset.layoutTaskAnchor = "confirm";
     confirmButton.addEventListener("click", () => this.options.onConfirm?.());
 
+    const developerShortcut = this.options.developerMode ? document.createElement("button") : undefined;
+    if (developerShortcut) {
+      developerShortcut.type = "button";
+      developerShortcut.className = "layout-task-developer-button";
+      developerShortcut.textContent = "Developer: fill default result";
+      developerShortcut.title = "Fill default poses and confidence through the normal interaction flow";
+      developerShortcut.addEventListener("click", () => this.options.onDeveloperShortcut?.());
+    }
+
     const status = document.createElement("p");
     status.className = "layout-task-status";
     status.textContent = this.options.config.messages.status_ready;
@@ -356,7 +411,7 @@ export class LayoutTaskRenderer {
     const copyAgainButton = document.createElement("button");
     copyAgainButton.className = "layout-task-secondary-button";
     copyAgainButton.type = "button";
-    copyAgainButton.textContent = "Copy again";
+    copyAgainButton.textContent = "Copy";
     copyAgainButton.hidden = true;
     copyAgainButton.addEventListener("click", () => this.options.onCopyAgain?.());
 
@@ -368,6 +423,7 @@ export class LayoutTaskRenderer {
       flowMessage,
       flowCountdown,
       confirmButton,
+      ...(developerShortcut ? [developerShortcut] : []),
       status,
       output,
       copyAgainButton,
@@ -386,10 +442,20 @@ export class LayoutTaskRenderer {
     tutorialBubble.append(tutorialMessage);
     shell.append(tutorialBubble);
 
+    const savingBubble = document.createElement("div");
+    savingBubble.className = "layout-task-saving-bubble";
+    savingBubble.hidden = true;
+    const savingMessage = document.createElement("p");
+    savingMessage.className = "layout-task-saving-message";
+    savingBubble.append(savingMessage);
+    shell.append(savingBubble);
+
     shell.append(flowModal);
     this.options.root.append(shell);
 
     this.refs.svg = svg;
+    this.refs.cameraLayer = cameraLayer;
+    this.updateViewportTransform();
     this.refs.workspaceElement = workspace;
     this.refs.stageWrapElement = stageWrap;
     this.refs.backgroundElement = background;
@@ -408,10 +474,13 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement = confidenceControl;
     this.refs.tutorialBubbleElement = tutorialBubble;
     this.refs.tutorialBubbleMessageElement = tutorialMessage;
+    this.refs.savingBubbleElement = savingBubble;
+    this.refs.savingBubbleMessageElement = savingMessage;
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
     this.refs.viewportWarningElement = viewportWarning;
 
+    this.scheduleControlsLayoutSync();
     this.updateViewportWarning();
     this.bindViewportWarning();
   }
@@ -451,8 +520,8 @@ export class LayoutTaskRenderer {
     title.className = "layout-task-confidence-title";
     title.textContent = "Choose your confidence rating for this furniture group";
 
-    const buttons = document.createElement("div");
-    buttons.className = "layout-task-confidence-buttons";
+    const questions = document.createElement("div");
+    questions.className = "layout-task-confidence-questions";
 
     const saveButton = document.createElement("button");
     saveButton.type = "button";
@@ -462,22 +531,39 @@ export class LayoutTaskRenderer {
 
     const confidence = this.options.confidence;
     if (confidence) {
-      for (const value of confidence.scale) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "layout-task-confidence-button";
-        button.textContent = `${value} ${confidence.labels[String(value)] ?? ""}`.trim();
-        button.addEventListener("click", () => {
-          for (const item of buttons.querySelectorAll("button")) {
-            item.classList.remove("is-selected");
-          }
-          button.classList.add("is-selected");
-          saveButton.disabled = false;
-          confidence.onChoose(value);
-          this.refs.confidenceElement?.classList.remove("is-required");
-          this.setStatus(`Confidence rating selected: ${button.textContent}`);
-        });
-        buttons.append(button);
+      for (const dimension of ["position", "rotation"] as const) {
+        const question = document.createElement("div");
+        question.className = "layout-task-confidence-question";
+        const label = document.createElement("p");
+        label.className = "layout-task-confidence-question-label";
+        label.append("How confident are you in the ");
+        const emphasis = document.createElement("strong");
+        emphasis.className = "layout-task-confidence-dimension";
+        emphasis.textContent = dimension;
+        label.append(emphasis, "?");
+        question.append(label);
+        const buttons = document.createElement("div");
+        buttons.className = "layout-task-confidence-buttons";
+        for (const value of [...confidence.scale].sort((a, b) => b - a)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "layout-task-confidence-button";
+          button.dataset.confidenceDimension = dimension;
+          button.textContent = `${value} ${confidence.labels[String(value)] ?? ""}`.trim();
+          button.addEventListener("click", () => {
+            for (const item of buttons.querySelectorAll("button")) {
+              item.classList.remove("is-selected");
+            }
+            button.classList.add("is-selected");
+            saveButton.disabled = questions.querySelectorAll(".is-selected").length !== 2;
+            confidence.onChoose(dimension, value);
+            this.refs.confidenceElement?.classList.remove("is-required");
+            this.setStatus(`Confidence for ${dimension} selected: ${button.textContent}`);
+          });
+          buttons.append(button);
+        }
+        question.append(buttons);
+        questions.append(question);
       }
 
       saveButton.addEventListener("click", () => {
@@ -485,7 +571,7 @@ export class LayoutTaskRenderer {
       });
     }
 
-    wrapper.append(title, buttons, saveButton);
+    wrapper.append(title, questions, saveButton);
     return wrapper;
   }
 
@@ -505,9 +591,47 @@ export class LayoutTaskRenderer {
     }
   }
 
+  private createViewportTools(): HTMLElement {
+    const tools = document.createElement("div");
+    tools.className = "layout-task-viewport-tools";
+
+    const zoomIn = this.createViewportButton("+", "Zoom in", () => this.adjustViewportZoom(1.25));
+    const zoomOut = this.createViewportButton("−", "Zoom out", () => this.adjustViewportZoom(0.8));
+    const reset = this.createViewportButton("↺", "Reset view", () => this.resetViewport());
+    tools.append(zoomIn, zoomOut, reset);
+    return tools;
+  }
+
+  private createViewportButton(label: string, ariaLabel: string, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "layout-task-viewport-button";
+    button.textContent = label;
+    button.setAttribute("aria-label", ariaLabel);
+    button.title = ariaLabel;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      onClick();
+    });
+    return button;
+  }
+
   focusConfidence(): void {
     this.refs.confidenceElement?.classList.add("is-required");
     this.refs.confidenceElement?.querySelector<HTMLButtonElement>(".layout-task-confidence-button")?.focus();
+  }
+
+  showSubmissionRequirement(): void {
+    const targets = [this.refs.statusElement, this.refs.confirmButton].filter(
+      (element): element is HTMLElement => element !== undefined,
+    );
+
+    for (const target of targets) {
+      target.classList.remove("is-submit-attention");
+      void target.offsetWidth;
+      target.classList.add("is-submit-attention");
+      window.setTimeout(() => target.classList.remove("is-submit-attention"), 850);
+    }
   }
 
   hideConfidence(): void {
@@ -526,7 +650,7 @@ export class LayoutTaskRenderer {
       return;
     }
 
-    message.textContent = step.message;
+    renderTutorialMessage(message, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
     this.setTutorialAttention(step.anchor);
@@ -734,6 +858,10 @@ export class LayoutTaskRenderer {
     if (message) {
       this.setStatus(message);
     }
+
+    // Hiding the reference image can change the workspace layout. Re-measure
+    // after that layout pass so the first visible controls use the real scale.
+    this.scheduleControlsLayoutSync();
   }
 
   waitForDisplayImageReady(): Promise<void> {
@@ -878,13 +1006,10 @@ export class LayoutTaskRenderer {
   }
 
   showCompletion(outputText: string, copyResult: CopyResult): void {
-    // Completion screen keeps the encoded text visible as a manual fallback.
-    // 剪贴板失败时，被试仍然可以手动复制同一份 locked payload。
-    this.setStatus(
-      copyResult.ok
-        ? "Locked and copied. Return to the survey and paste the encoded result."
-        : "Locked. Automatic copy failed; copy the encoded result below manually.",
-    );
+    // Completion never writes to the clipboard automatically. The participant
+    // copies the visible encoded result only when a prompt tells them to do so.
+    void copyResult;
+    this.setStatus("If you see any prompt, copy this text and follow the instructions.");
 
     if (this.refs.resultOutput) {
       this.refs.resultOutput.hidden = false;
@@ -896,7 +1021,88 @@ export class LayoutTaskRenderer {
     }
   }
 
+  showSaving(message: string): void {
+    if (!this.refs.savingBubbleElement || !this.refs.savingBubbleMessageElement) {
+      return;
+    }
+
+    this.refs.savingBubbleMessageElement.textContent = message;
+    this.refs.savingBubbleElement.hidden = false;
+  }
+
+  private adjustViewportZoom(factor: number): void {
+    this.viewportZoom = clampViewportZoom(this.viewportZoom * factor);
+    this.updateViewportTransform();
+  }
+
+  private resetViewport(): void {
+    this.viewportZoom = DEFAULT_VIEWPORT_ZOOM;
+    this.viewportPan = { x: 0, y: 0 };
+    this.updateViewportTransform();
+  }
+
+  private readonly handleViewportPointerDown = (event: PointerEvent): void => {
+    if (event.button !== 2 || !this.refs.svg) {
+      return;
+    }
+
+    event.preventDefault();
+    this.viewportPanPointerId = event.pointerId;
+    this.viewportPanLast = { x: event.clientX, y: event.clientY };
+    this.refs.svg.setPointerCapture(event.pointerId);
+    this.refs.stageWrapElement?.classList.add("is-viewport-panning");
+  };
+
+  private readonly handleViewportPointerMove = (event: PointerEvent): void => {
+    if (event.pointerId !== this.viewportPanPointerId || !this.viewportPanLast || !this.refs.svg) {
+      return;
+    }
+
+    event.preventDefault();
+    const scale = getSvgScreenScale(this.refs.svg);
+    const dx = (event.clientX - this.viewportPanLast.x) / (scale * this.viewportZoom);
+    const dy = (event.clientY - this.viewportPanLast.y) / (scale * this.viewportZoom);
+    this.viewportPan.x += dx;
+    this.viewportPan.y += dy;
+    this.viewportPanLast = { x: event.clientX, y: event.clientY };
+    this.updateViewportTransform();
+  };
+
+  private readonly handleViewportPointerUp = (event: PointerEvent): void => {
+    if (event.pointerId !== this.viewportPanPointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    if (this.refs.svg?.hasPointerCapture(event.pointerId)) {
+      this.refs.svg.releasePointerCapture(event.pointerId);
+    }
+    this.viewportPanPointerId = undefined;
+    this.viewportPanLast = undefined;
+    this.refs.stageWrapElement?.classList.remove("is-viewport-panning");
+  };
+
+  private updateViewportTransform(): void {
+    const cameraLayer = this.refs.cameraLayer;
+    if (!cameraLayer) {
+      return;
+    }
+
+    cameraLayer.setAttribute(
+      "transform",
+      getViewportCameraTransform(this.options.config, this.viewportZoom, this.viewportPan),
+    );
+    this.refs.stageWrapElement?.classList.toggle(
+      "is-viewport-transformed",
+      this.viewportZoom !== DEFAULT_VIEWPORT_ZOOM || this.viewportPan.x !== 0 || this.viewportPan.y !== 0,
+    );
+  }
+
   destroy(): void {
+    this.refs.svg?.removeEventListener("pointerdown", this.handleViewportPointerDown);
+    this.refs.svg?.removeEventListener("pointermove", this.handleViewportPointerMove);
+    this.refs.svg?.removeEventListener("pointerup", this.handleViewportPointerUp);
+    this.refs.svg?.removeEventListener("pointercancel", this.handleViewportPointerUp);
     this.clearHideTimer();
     this.clearLimitFeedback();
     this.unbindViewportWarning();
@@ -920,7 +1126,11 @@ export class LayoutTaskRenderer {
     point.x = clientX;
     point.y = clientY;
     const transformed = point.matrixTransform(matrix.inverse());
-    return { x: transformed.x, y: transformed.y };
+    const viewBox = this.options.config.world.viewBox;
+    return {
+      x: viewBox.x + (transformed.x - viewBox.x - this.viewportPan.x) / this.viewportZoom,
+      y: viewBox.y + (transformed.y - viewBox.y - this.viewportPan.y) / this.viewportZoom,
+    };
   }
 
   private createControls(objectId: string): SVGElement {
@@ -959,11 +1169,18 @@ export class LayoutTaskRenderer {
 
     const ui = getStageUiMetrics(this.options.config, this.refs.svg);
     const buttonMap = new Map<LayoutAction, SVGElement>();
+    const ring = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    ring.classList.add("layout-task-controls-ring");
+    ring.setAttribute("pointer-events", "none");
+    group.append(ring);
     const hotzone = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     hotzone.classList.add("layout-task-controls-hotzone");
     group.append(hotzone);
-    group.addEventListener("pointerenter", () => this.setActiveControlsVisible(objectId, true));
-    group.addEventListener("pointerleave", () => this.setActiveControlsVisible(objectId, false));
+    group.addEventListener("pointerenter", () => {
+      this.clearHideTimer();
+      this.setActiveControlsVisible(objectId, true);
+    });
+    group.addEventListener("pointerleave", () => this.scheduleActiveControlsHide(objectId));
 
     for (const control of [...movementControls, ...rotationControls]) {
       const button = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -1022,6 +1239,15 @@ export class LayoutTaskRenderer {
       ui,
       movementRotationDeg,
     });
+    const ringLayout = getObjectControlRingLayout(bounds, ui);
+    const ringElement = this.refs.controlElements
+      .get(objectId)
+      ?.querySelector<SVGCircleElement>(".layout-task-controls-ring");
+    if (ringElement) {
+      ringElement.setAttribute("cx", String(ringLayout.centerX));
+      ringElement.setAttribute("cy", String(ringLayout.centerY));
+      ringElement.setAttribute("r", String(ringLayout.radius));
+    }
 
     for (const [action, button] of buttons.entries()) {
       const position = positions[action as ControlButtonAction];
@@ -1084,19 +1310,16 @@ export class LayoutTaskRenderer {
   private getObjectVisualBounds(objectId: string): VisualBounds {
     const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
     const state = this.options.store.getObjectState(objectId);
-    const visual = this.refs.objectVisualElements.get(objectId);
-    const bbox = visual ? getSvgBBoxSafe(visual) : undefined;
-
-    // Prefer measured SVG bounds when available; configured width/height is only
-    // a fallback. That keeps control placement tied to what the participant sees.
+    // Use the compiled asset dimensions as the stable control-frame geometry.
+    // SVG getBBox() can become available only after the first interaction and
+    // may exclude viewBox whitespace, which otherwise makes the controls jump
+    // closer to the object after its first move.
     return getRotatedVisualBounds(
-      bbox?.width && bbox?.height
-        ? bbox
-        : getConfiguredObjectLocalRect({
-            width: objectConfig?.width ?? 0,
-            height: objectConfig?.height ?? 0,
-            anchor: objectConfig?.anchor ?? "center",
-          }),
+      getConfiguredObjectLocalRect({
+        width: objectConfig?.width ?? 0,
+        height: objectConfig?.height ?? 0,
+        anchor: objectConfig?.anchor ?? "center",
+      }),
       state.r,
     );
   }
@@ -1321,8 +1544,8 @@ export class LayoutTaskRenderer {
       return;
     }
 
-    // Selected-object mode keeps one control cluster visible until explicit deselect.
-    // 这比 hover-only 更适合 touch / tablet，也能减少相邻物体误触。
+    // Selection keeps edit mode active, while pointer hover controls whether the
+    // nearby handles remain visible. Leaving the object never exits edit mode.
     this.clearHideTimer();
     this.clearLimitFeedback();
 
@@ -1360,7 +1583,23 @@ export class LayoutTaskRenderer {
       return;
     }
 
+    if (visible) {
+      this.clearHideTimer();
+    }
+
     this.refs.controlElements.get(objectId)?.classList.toggle("is-controls-hidden", !visible);
+  }
+
+  private scheduleActiveControlsHide(objectId: string): void {
+    this.clearHideTimer();
+    if (this.activeObjectId !== objectId) {
+      return;
+    }
+
+    this.hideControlsTimer = window.setTimeout(() => {
+      this.hideControlsTimer = undefined;
+      this.setActiveControlsVisible(objectId, false);
+    }, 180);
   }
 
   private bindObjectPointerEvents(element: SVGElement, objectId: string): void {
@@ -1450,6 +1689,21 @@ export class LayoutTaskRenderer {
     }
   }
 
+  private scheduleControlsLayoutSync(): void {
+    const update = () => {
+      for (const objectConfig of this.options.config.objects) {
+        this.updateControlsLayout(objectConfig.id);
+      }
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(update);
+      return;
+    }
+
+    update();
+  }
+
   private clearLimitFeedback(): void {
     if (this.feedbackTimer !== undefined) {
       window.clearTimeout(this.feedbackTimer);
@@ -1471,22 +1725,15 @@ export function isObjectInteractive(objectConfig: RuntimeTaskObject): boolean {
 
 export function getObjectControlLayout(input: ControlLayoutInput): Record<ControlButtonAction, { x: number; y: number }> {
   const { bounds, ui, movementRotationDeg = 0 } = input;
-  const centerX = (bounds.minX + bounds.maxX) / 2;
-  const centerY = (bounds.minY + bounds.maxY) / 2;
-  const width = Math.max(bounds.maxX - bounds.minX, 0);
-  const height = Math.max(bounds.maxY - bounds.minY, 0);
-  const shortSide = Math.min(width, height);
-
-  const moveGap = clamp(shortSide * 0.22, 20 * ui.scale, 44 * ui.scale);
-  const rotateGap = clamp(shortSide * 0.28, 28 * ui.scale, 56 * ui.scale);
+  const { centerX, centerY, radius } = getObjectControlRingLayout(bounds, ui);
 
   const layout = {
-    move_up: { x: centerX, y: bounds.minY - moveGap },
-    move_down: { x: centerX, y: bounds.maxY + moveGap },
-    move_left: { x: bounds.minX - moveGap, y: centerY },
-    move_right: { x: bounds.maxX + moveGap, y: centerY },
-    rotate_ccw: { x: bounds.minX - rotateGap, y: bounds.minY - rotateGap },
-    rotate_cw: { x: bounds.maxX + rotateGap, y: bounds.minY - rotateGap },
+    move_up: { x: centerX, y: centerY - radius },
+    move_down: { x: centerX, y: centerY + radius },
+    move_left: { x: centerX - radius, y: centerY },
+    move_right: { x: centerX + radius, y: centerY },
+    rotate_ccw: pointOnCircle(centerX, centerY, radius, -135),
+    rotate_cw: pointOnCircle(centerX, centerY, radius, -45),
   };
 
   return {
@@ -1496,6 +1743,37 @@ export function getObjectControlLayout(input: ControlLayoutInput): Record<Contro
     move_right: rotatePointAround(layout.move_right, { x: centerX, y: centerY }, movementRotationDeg),
     rotate_ccw: rotatePointAround(layout.rotate_ccw, { x: centerX, y: centerY }, movementRotationDeg),
     rotate_cw: rotatePointAround(layout.rotate_cw, { x: centerX, y: centerY }, movementRotationDeg),
+  };
+}
+
+export function getTrialHeaderContent(input: {
+  tutorialMode?: boolean;
+  taskId: string;
+  qid?: string;
+  objectCount: number;
+  presentation?: Pick<ReferencePresentation, "trialIndex" | "trialTotal">;
+}): { title: string; meta: string } {
+  const meta = `${input.taskId} - QID: ${input.qid ?? ""} - Objects: ${input.objectCount}`;
+  if (input.tutorialMode) {
+    return { title: "Tutorial", meta };
+  }
+  const title = input.presentation
+    ? `Trial ${input.presentation.trialIndex} / ${input.presentation.trialTotal}`
+    : "Trial";
+  return { title, meta };
+}
+
+export function getObjectControlRingLayout(
+  bounds: VisualBounds,
+  ui: Pick<ReturnType<typeof getStageUiMetrics>, "controlRingRadius">,
+): { centerX: number; centerY: number; radius: number } {
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+
+  return {
+    centerX,
+    centerY,
+    radius: ui.controlRingRadius,
   };
 }
 
@@ -1564,8 +1842,12 @@ function rotatePointAround(
   };
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+function pointOnCircle(centerX: number, centerY: number, radius: number, angleDeg: number): { x: number; y: number } {
+  const radians = (angleDeg * Math.PI) / 180;
+  return {
+    x: centerX + Math.cos(radians) * radius,
+    y: centerY + Math.sin(radians) * radius,
+  };
 }
 
 export function getStageFitStyle(config: RuntimeTaskConfig): {
@@ -1579,6 +1861,33 @@ export function getStageFitStyle(config: RuntimeTaskConfig): {
     maxHeight: `${config.stage.max_height_ratio * 100}vh`,
     padding: `${config.stage.padding}px`,
   };
+}
+
+export function clampViewportZoom(zoom: number): number {
+  return Math.min(Math.max(zoom, 0.75), 3);
+}
+
+export const DEFAULT_VIEWPORT_ZOOM = 1.3;
+
+export function getViewportCameraTransform(
+  config: RuntimeTaskConfig,
+  zoom: number,
+  pan: { x: number; y: number },
+): string {
+  const viewBox = config.world.viewBox;
+  const centerX = viewBox.x + viewBox.width / 2;
+  const centerY = viewBox.y + viewBox.height / 2;
+  return `translate(${centerX + pan.x} ${centerY + pan.y}) scale(${clampViewportZoom(zoom)}) translate(${-centerX} ${-centerY})`;
+}
+
+function getSvgScreenScale(svg: SVGSVGElement): number {
+  const screenScale = svg.getScreenCTM()?.a;
+  if (screenScale && Number.isFinite(screenScale) && screenScale > 0) {
+    return screenScale;
+  }
+
+  const bounds = svg.getBoundingClientRect();
+  return bounds.width / svg.viewBox.baseVal.width || 1;
 }
 
 export function getStageDisplayTransform(config: RuntimeTaskConfig): string | undefined {
@@ -1598,11 +1907,38 @@ export function getStageDisplayTransform(config: RuntimeTaskConfig): string | un
 }
 
 export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): string | undefined {
-  // The parent display layer already applies the stage Y transform to the
-  // furniture and its controls. A second flip here would desynchronise the
-  // visible SVG from the collider geometry.
-  void config;
-  return undefined;
+  // Assets are authored in the source coordinate system while the stage is
+  // displayed in screen coordinates. Counter-flip only the furniture artwork
+  // so its authored orientation survives the stage's global Y flip.
+  return config.stage.display_flip_y ? "scale(1 -1)" : undefined;
+}
+
+function renderTutorialMessage(container: HTMLElement, source: string): void {
+  container.replaceChildren();
+  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\])/g;
+  let cursor = 0;
+
+  for (const match of source.matchAll(tokenPattern)) {
+    const start = match.index ?? 0;
+    if (start > cursor) {
+      container.append(document.createTextNode(source.slice(cursor, start)));
+    }
+
+    const token = match[0];
+    const strong = document.createElement("strong");
+    if (token.startsWith("[[yellow]]")) {
+      strong.className = "layout-task-tutorial-yellow-emphasis";
+      strong.textContent = token.slice("[[yellow]]".length, -"[[/yellow]]".length);
+    } else {
+      strong.textContent = token.slice(2, -2);
+    }
+    container.append(strong);
+    cursor = start + token.length;
+  }
+
+  if (cursor < source.length) {
+    container.append(document.createTextNode(source.slice(cursor)));
+  }
 }
 
 export function getBackgroundDisplayTransform(config: RuntimeTaskConfig): string | undefined {
@@ -1630,8 +1966,15 @@ export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement
   feedbackHaloStrokeWidth: number;
   feedbackDashLength: number;
   feedbackDashGap: number;
+  controlRingRadius: number;
 } {
   const scale = getWorldUiScale(config, svg);
+  const maxObjectRadius = Math.max(
+    ...config.objects
+      .filter(isObjectInteractive)
+      .map((object) => Math.hypot(object.width, object.height) / 2),
+    0,
+  );
   return {
     scale,
     controlGap: 44 * scale,
@@ -1648,6 +1991,9 @@ export function getStageUiMetrics(config: RuntimeTaskConfig, svg?: SVGSVGElement
     feedbackHaloStrokeWidth: 4 * scale,
     feedbackDashLength: 10 * scale,
     feedbackDashGap: 8 * scale,
+    // One shared radius keeps the controls visually consistent across objects.
+    // The largest interactive asset determines the minimum safe clearance.
+    controlRingRadius: maxObjectRadius + 34 * scale,
   };
 }
 

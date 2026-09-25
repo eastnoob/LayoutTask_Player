@@ -15,7 +15,7 @@ export interface CompletionPayload {
 }
 
 // CompletionController owns the irreversible part of the workflow.
-// 一旦进入 complete，它要保证结果被冻结，并且之后 copy again 始终复制同一份 payload。
+// 一旦进入 complete，它要保证结果被冻结；复制是用户明确点击 Copy 后才发生的动作。
 export class CompletionController {
   private lockedPayload: CompletionPayload | undefined;
   private readonly confirmImpl: (message: string) => boolean;
@@ -49,9 +49,15 @@ export class CompletionController {
       this.options.renderer.setStatus(
         confidenceGate.reason === "confidence_save_required"
           ? "Select Save to store the confidence rating before submitting."
-          : "Choose a confidence rating for this furniture group before submitting.",
+          : confidenceGate.reason === "missing_confidence"
+            ? "Open every yellow furniture object once, choose both confidence ratings, and select Save before submitting."
+            : "Choose a confidence rating for this furniture group before submitting.",
       );
-      this.options.renderer.focusConfidence();
+      if (confidenceGate.reason === "missing_confidence") {
+        this.options.renderer.showSubmissionRequirement();
+      } else {
+        this.options.renderer.focusConfidence();
+      }
       return;
     }
 
@@ -78,6 +84,8 @@ export class CompletionController {
       }
     }
 
+    this.options.renderer.showSaving("Saving, please wait...");
+
     // The current workflow assumes confirm means freeze.
     // lock_after_confirm 仍保留在 config shape 里，但当前产品流固定为 confirm 后锁定。
     this.options.store.lock();
@@ -85,11 +93,11 @@ export class CompletionController {
 
     const result = await this.options.recorder.finish(Date.now());
     const encoded = await this.options.encoder.encode(result, this.options.config.output);
-    const copyResult = await this.options.clipboard.copy(encoded.output);
+    const copyResult: CopyResult = { ok: false, method: "manual" };
     const payload: CompletionPayload = { result, encoded, copyResult };
     payload.dataSaveResult = await this.options.dataSave?.save(payload);
 
-    // Cache the first locked payload so "copy again" is stable and reproducible.
+    // Cache the first locked payload so the manual Copy action is stable and reproducible.
     // 不重新 encode，避免再次复制时出现不同 session/hash/时间语义。
     this.lockedPayload = payload;
     this.options.renderer.showCompletion(encoded.output, copyResult);
@@ -99,7 +107,7 @@ export class CompletionController {
 
   async copyAgain(): Promise<CopyResult> {
     if (!this.lockedPayload) {
-      // copy-again before lock is a usage error, not a silent no-op.
+      // Copy before lock is a usage error, not a silent no-op.
       const result: CopyResult = {
         ok: false,
         method: "manual",
@@ -129,13 +137,19 @@ export class CompletionController {
     }
 
     if (result.ok) {
-      this.options.renderer.setStatus(`Locked, copied, and saved to DataPipe: ${result.filename}`);
+      this.options.renderer.showSaving("Saved. Continuing...");
+      this.options.renderer.setStatus(
+        `Saved to DataPipe: ${result.filename}. If you see any prompt, copy this text and follow the instructions.`,
+      );
       console.info("[LayoutTask] DataPipe save succeeded", result);
       return;
     }
 
     this.options.renderer.setStatus(
-      `Locked and copied. DataPipe save failed: ${result.error ?? "Unknown error"}`,
+      `DataPipe save failed: ${result.error ?? "Unknown error"}. If you see any prompt, copy this text and follow the instructions.`,
+    );
+    this.options.renderer.showSaving(
+      result.error?.toLowerCase().includes("timed out") ? "Saving timed out. Continuing..." : "Save failed. Continuing...",
     );
     console.warn("[LayoutTask] DataPipe save failed", result);
   }

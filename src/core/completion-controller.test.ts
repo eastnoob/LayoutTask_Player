@@ -10,7 +10,7 @@ import { createRuntimeConfig } from "../test-support/runtime-config";
 describe("CompletionController", () => {
   const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
-  it("locks, encodes, copies, and reuses the same payload for copy again", async () => {
+  it("locks and encodes without copying until the user clicks Copy", async () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
     store.applyAction("chair_01", "move_left");
@@ -42,15 +42,16 @@ describe("CompletionController", () => {
     expect(store.isLocked()).toBe(true);
     expect(renderer.setLocked).toHaveBeenCalledWith(true);
     expect(encoder.encode).toHaveBeenCalledWith(result, config.output);
-    expect(renderer.showCompletion).toHaveBeenCalledWith(encoded.output, copyResult);
+    expect(clipboard.copy).not.toHaveBeenCalled();
+    expect(renderer.showCompletion).toHaveBeenCalledWith(encoded.output, { ok: false, method: "manual" });
     expect(dataSave.save).toHaveBeenCalledOnce();
     expect(onComplete).toHaveBeenCalledOnce();
     expect(onComplete.mock.calls[0][0].dataSaveResult).toEqual({ ok: true, provider: "copy" });
     expect(encoder.encode).toHaveBeenCalledTimes(1);
 
     await controller.copyAgain();
-    expect(clipboard.copy).toHaveBeenNthCalledWith(1, "PAYLOAD1");
-    expect(clipboard.copy).toHaveBeenNthCalledWith(2, "PAYLOAD1");
+    expect(clipboard.copy).toHaveBeenCalledOnce();
+    expect(clipboard.copy).toHaveBeenCalledWith("PAYLOAD1");
   });
 
   it("shows DataPipe failure details without undoing the locked result", async () => {
@@ -86,7 +87,7 @@ describe("CompletionController", () => {
     expect(store.isLocked()).toBe(true);
     expect(renderer.showCompletion).toHaveBeenCalled();
     expect(renderer.setStatus).toHaveBeenLastCalledWith(
-      "Locked and copied. DataPipe save failed: DataPipe save failed: 403 Forbidden",
+      "DataPipe save failed: DataPipe save failed: 403 Forbidden. If you see any prompt, copy this text and follow the instructions.",
     );
     expect(consoleWarnSpy).toHaveBeenCalled();
   });
@@ -226,14 +227,42 @@ describe("CompletionController", () => {
     );
     expect(recorder.finish).not.toHaveBeenCalled();
   });
+
+  it("visually nudges the confidence area when another furniture group is missing", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn() };
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: { encode: vi.fn() } as never,
+      clipboard: { copy: vi.fn() } as never,
+      confidence: {
+        canSubmit: () => ({ ok: false, reason: "missing_confidence", groupId: "table_group" }),
+      },
+      confirmImpl: () => true,
+    });
+
+    await controller.requestComplete();
+
+    expect(renderer.showSubmissionRequirement).toHaveBeenCalledOnce();
+    expect(renderer.setStatus).toHaveBeenCalledWith(
+      "Open every yellow furniture object once, choose both confidence ratings, and select Save before submitting.",
+    );
+  });
 });
 
 function createCompletionRendererStub(): LayoutTaskRenderer {
   return {
     setLocked: vi.fn(),
     showCompletion: vi.fn(),
+    showSaving: vi.fn(),
     setStatus: vi.fn(),
     focusConfidence: vi.fn(),
+    showSubmissionRequirement: vi.fn(),
   } as unknown as LayoutTaskRenderer;
 }
 

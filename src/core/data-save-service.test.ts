@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { DataSaveService } from "./data-save-service";
 import type { CompletionPayload } from "./completion-controller";
+import { createMemoryLocalBackupStore } from "./local-backup-store";
 
 describe("DataSaveService", () => {
   it("does nothing in copy mode", async () => {
@@ -36,11 +37,11 @@ describe("DataSaveService", () => {
       provider: "datapipe",
       filename: "layout-task_room01_Q1_SESSION1.json",
     });
-    expect(fetchImpl).toHaveBeenCalledWith("https://pipe.jspsych.org/api/data/", {
+    expect(fetchImpl).toHaveBeenCalledWith("https://pipe.jspsych.org/api/data/", expect.objectContaining({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: expect.any(String),
-    });
+    }));
 
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body.experimentID).toBe("EXP123");
@@ -55,6 +56,80 @@ describe("DataSaveService", () => {
       encoded: "ENCODED",
     });
     expect(JSON.parse(body.data)).not.toHaveProperty("result");
+  });
+
+  it("persists the exact trial file before a remote request", async () => {
+    const backup = createMemoryLocalBackupStore("session-1");
+    const fetchImpl = vi.fn(async () => {
+      expect((await backup.listFiles()).map((file) => file.filename)).toEqual([
+        "layout-task_room01_Q1_SESSION1.json",
+      ]);
+      return { ok: true, status: 200, statusText: "OK" } as Response;
+    });
+    const service = new DataSaveService({
+      config: {
+        mode: "datapipe",
+        experiment_id: "EXP123",
+        endpoint: "https://pipe.jspsych.org/api/data/",
+        filename_prefix: "layout-task",
+        payload_format: "json-envelope",
+        save_encoded: true,
+        save_result: false,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      localBackup: backup,
+    });
+
+    await expect(service.save(createPayload())).resolves.toMatchObject({ ok: true });
+    expect((await backup.listFiles())[0].data).toContain('"schema":"layouttask.backup.v1"');
+  });
+
+  it("keeps copy mode offline while writing the trial backup", async () => {
+    const backup = createMemoryLocalBackupStore("session-1");
+    const fetchImpl = vi.fn();
+    const service = new DataSaveService({
+      config: { mode: "copy" },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      localBackup: backup,
+    });
+
+    await expect(service.save(createPayload())).resolves.toMatchObject({ ok: true, provider: "copy" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect((await backup.listFiles()).map((file) => file.filename)).toEqual([
+      "layout-task_room01_Q1_SESSION1.json",
+    ]);
+  });
+
+  it("posts each task backup as a receiver submission when receiver mode is configured", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 201, statusText: "Created" });
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver",
+        experiment_id: "EXP123",
+        endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task",
+        participant_id: "9999",
+        payload_format: "json-envelope",
+        save_encoded: true,
+        save_result: false,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(service.save(createPayload())).resolves.toMatchObject({
+      ok: true,
+      provider: "receiver",
+    });
+
+    const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(body).toMatchObject({
+      schema: "layouttask.receiver.submission.v1",
+      experiment_id: "EXP123",
+      participant_id: "9999",
+      session_id: "SESSION1",
+      files: [{ content_type: "application/json" }],
+    });
+    expect(body).not.toHaveProperty("experimentID");
   });
 
   it("can post only the encoded result as a text file", async () => {
@@ -132,6 +207,30 @@ describe("DataSaveService", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("403 Forbidden");
     expect(result.error).toContain("DATA_COLLECTION_NOT_ACTIVE");
+  });
+
+  it("returns a timeout so the next task can continue", async () => {
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => undefined));
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver",
+        experiment_id: "EXP123",
+        endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task",
+        participant_id: "9999",
+        payload_format: "json-envelope",
+        save_encoded: true,
+        save_result: false,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      timeoutMs: 5,
+    });
+
+    await expect(service.save(createPayload())).resolves.toMatchObject({
+      ok: false,
+      provider: "receiver",
+      error: "Data save timed out after 5ms",
+    });
   });
 });
 

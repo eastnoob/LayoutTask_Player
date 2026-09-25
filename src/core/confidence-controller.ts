@@ -113,7 +113,19 @@ export class ConfidenceController {
       return { ok: true };
     }
 
-    return this.canLeaveActiveGroup();
+    const activeGate = this.canLeaveActiveGroup();
+    if (!activeGate.ok) {
+      return activeGate;
+    }
+
+    if (this.options.requireAllGroupsOnSubmit) {
+      const missingGroupId = this.requiredGroupIds.find((groupId) => !this.finalValues.has(groupId));
+      if (missingGroupId) {
+        return { ok: false, reason: "missing_confidence", groupId: missingGroupId };
+      }
+    }
+
+    return { ok: true };
   }
 
   getActiveGroupId(): string | undefined {

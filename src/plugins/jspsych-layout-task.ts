@@ -7,6 +7,7 @@ import type { RuntimeTaskConfig } from "../types/runtime";
 import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { RuntimeDataSaveConfig } from "../types/runtime";
+import type { LocalBackupStore } from "../core/local-backup-store";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -32,9 +33,11 @@ export interface LayoutTaskPluginParams {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  developerMode?: boolean;
   referenceMode?: ReferenceMode;
   presentation?: ReferencePresentation;
   dataSave?: RuntimeDataSaveConfig;
+  localBackup?: LocalBackupStore;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -90,6 +93,10 @@ const info = {
       type: ParameterType.BOOL,
       default: false,
     },
+    developerMode: {
+      type: ParameterType.BOOL,
+      default: false,
+    },
     referenceMode: {
       type: ParameterType.STRING,
       default: null,
@@ -99,6 +106,10 @@ const info = {
       default: null,
     },
     dataSave: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
+    localBackup: {
       type: ParameterType.OBJECT,
       default: null,
     },
@@ -150,6 +161,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           config: runtimeConfig,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
+          developerMode: trial.developerMode,
           presentation: trial.presentation,
           onComplete: (payload) => {
             if (finished) {
@@ -167,6 +179,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
               resolve();
             }
           },
+          localBackup: trial.localBackup ?? undefined,
         });
 
         player.start();

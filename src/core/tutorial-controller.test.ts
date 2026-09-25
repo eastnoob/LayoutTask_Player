@@ -40,4 +40,60 @@ describe("TutorialController", () => {
     expect(controller.isComplete()).toBe(true);
     expect(controller.getCurrentStep().id).toBe("complete");
   });
+
+  it("uses persistent-reference guidance without a preview gate", () => {
+    const controller = new TutorialController("persistent");
+
+    expect(controller.getCurrentStep()).toMatchObject({
+      id: "intro",
+      expectedEvent: "reconstruction_started",
+    });
+    expect(controller.getCurrentStep().message).toContain("perspective image at any time");
+    expect(controller.getCurrentStep().message).toContain("Ctrl + scroll");
+    expect(controller.handle("reconstruction_started")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("select_first");
+  });
+
+  it("keeps the operation instructions with the first confidence prompt", () => {
+    const controller = new TutorialController();
+
+    controller.handle("preview_acknowledged");
+    controller.handle("reconstruction_started");
+    controller.handle("object_selected", { objectId: "chair_01" });
+    controller.handle("object_moved_or_rotated");
+
+    expect(controller.getCurrentStep().message).toContain("finished with this object");
+    expect(controller.getCurrentStep().message).toContain("choose a confidence rating below");
+
+    expect(controller.handle("confidence_chosen")).toBe(true);
+    expect(controller.getCurrentStep()).toMatchObject({
+      id: "save_first",
+      message: expect.stringContaining("Click **Save** below"),
+    });
+
+    expect(controller.handle("object_deselected")).toBe(true);
+    expect(controller.getCurrentStep()).toMatchObject({
+      id: "select_second",
+      message: expect.stringContaining("You can now click another"),
+    });
+  });
+
+  it("marks important tutorial phrases for visual emphasis", () => {
+    const controller = new TutorialController();
+
+    controller.handle("preview_acknowledged");
+    controller.handle("reconstruction_started");
+    controller.handle("object_selected", { objectId: "chair_01" });
+
+    expect(controller.getCurrentStep().message).toContain("**Use the arrow buttons to move**");
+    expect(controller.getCurrentStep().message).toContain("**the rotate buttons to adjust**");
+    expect(controller.getCurrentStep().message).toContain("this does not exit edit mode");
+
+    const selectController = new TutorialController();
+    selectController.handle("preview_acknowledged");
+    selectController.handle("reconstruction_started");
+    expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow object[[/yellow]]");
+    expect(selectController.getCurrentStep().message).toContain("**Only yellow objects can be moved.**");
+    expect(selectController.getCurrentStep().message).toContain("zoom controls in the lower-right corner");
+  });
 });

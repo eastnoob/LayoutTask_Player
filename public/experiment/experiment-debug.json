@@ -68,7 +68,9 @@
     }
   },
   "data_save": {
-    "mode": "copy",
+    "mode": "receiver",
+    "experiment_id": "run_12_core_23_debug",
+    "endpoint": "https://datapipe.eastnoob.top/submit",
     "filename_prefix": "run-12-core-23-debug"
   },
   "trials": [

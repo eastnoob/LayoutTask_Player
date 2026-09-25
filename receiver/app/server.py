@@ -9,7 +9,7 @@ from typing import Any
 
 from .archive import build_archive_backend
 from .config import ReceiverConfig, load_config_from_env
-from .models import ValidationError, validate_submission
+from .models import ValidationError, safe_path_segment, validate_submission
 from .storage import ReceiverStorage
 
 
@@ -63,7 +63,7 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
 
         def do_POST(self) -> None:
             origin = self.allowed_origin()
-            if self.path not in ("/submit", "/api/data/"):
+            if self.path not in ("/submit", "/api/data/", "/archive"):
                 json_response(self, 404, {"ok": False, "error": "not_found", "message": "Route not found."}, origin)
                 return
             if not self.origin_is_allowed():
@@ -90,6 +90,28 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 payload = json.loads(body_bytes.decode("utf-8"))
             except json.JSONDecodeError:
                 json_response(self, 400, {"ok": False, "error": "invalid_json"}, origin)
+                return
+
+            if self.path == "/archive":
+                try:
+                    archive_payload = json.loads(body_bytes.decode("utf-8"))
+                    if archive_payload.get("schema") != "layouttask.receiver.archive.v1":
+                        raise ValidationError("invalid_schema", "schema must be layouttask.receiver.archive.v1")
+                    experiment_id = safe_path_segment(archive_payload.get("experiment_id"), "experiment_id")
+                    participant_id = safe_path_segment(archive_payload.get("participant_id"), "participant_id")
+                    session_id = safe_path_segment(archive_payload.get("session_id"), "session_id")
+                    result = storage.archive_session(experiment_id, participant_id, session_id)
+                except (json.JSONDecodeError, ValidationError) as error:
+                    if isinstance(error, ValidationError):
+                        json_response(self, 400, {"ok": False, "error": error.code, "message": error.message}, origin)
+                    else:
+                        json_response(self, 400, {"ok": False, "error": "invalid_json"}, origin)
+                    return
+                if not result.ok:
+                    json_response(self, 503, {"ok": False, "error": "archive_failed", "message": result.error}, origin)
+                    return
+                status = 200 if result.already_archived else 201
+                json_response(self, status, {"ok": True, "archive_status": result.archive_status, "archive_uri": result.archive_uri}, origin)
                 return
 
             if self.path == "/api/data/":
@@ -132,7 +154,7 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 )
                 return
 
-            json_response(self, 201, {"ok": True, "submission_id": stored.id, "file_count": stored.file_count}, origin)
+            json_response(self, 201, {"ok": True, "submission_id": stored.id, "file_count": stored.file_count, "archive_status": stored.archive_status}, origin)
 
         def rate_allowed(self) -> bool:
             now = time.time() * 1000
@@ -156,6 +178,7 @@ def main() -> None:
         config.data_dir,
         archive_backend=backend,
         delete_local_after_success=config.archive_delete_local_after_success,
+        archive_on_submit=False,
     )
     server = create_server(("", config.port), config, storage)
     print(f"receiver listening on :{config.port}")

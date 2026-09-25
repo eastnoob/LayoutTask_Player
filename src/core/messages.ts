@@ -5,7 +5,7 @@ export const DEFAULT_MESSAGES: LayoutTaskMessages = {
   confirm_lock_2: "Please confirm again: this will finalize the current layout.",
   confirm_no_edit: "You have not edited any object. Are you sure this unchanged layout is your final answer?",
   status_ready: "Ready",
-  status_copy_again_ok: "Encoded result copied again.",
+  status_copy_again_ok: "Encoded result copied.",
   status_copy_again_fail: "Copy failed. Please copy the encoded result manually.",
   instruction_edit_mode:
     "Click an object to enter edit mode. Choose a confidence rating, then select Save to finish editing this furniture group.",

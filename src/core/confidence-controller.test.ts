@@ -148,6 +148,26 @@ describe("ConfidenceController", () => {
     expect(controller.canSubmit()).toEqual({ ok: true });
   });
 
+  it("can require every variable group to be entered and saved before tutorial submit", () => {
+    const controller = new ConfidenceController({
+      config: configWithGroups(),
+      required: true,
+      scale: [1, 2, 3, 4, 5],
+      requireAllGroupsOnSubmit: true,
+    });
+
+    controller.enterObjectEdit("chair_seat");
+    controller.choose("position", 4);
+    controller.choose("rotation", 4);
+    controller.saveActiveGroup();
+
+    expect(controller.canSubmit()).toEqual({
+      ok: false,
+      reason: "missing_confidence",
+      groupId: "table_group",
+    });
+  });
+
   it("falls back to object id when group_id is absent", () => {
     const config = createRuntimeConfig();
     config.objects = [{ ...config.objects[0], id: "solo", role: "variable", group_id: undefined }];

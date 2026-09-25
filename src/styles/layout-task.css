@@ -43,6 +43,16 @@ body {
   font-weight: 700;
 }
 
+.layout-task-header h1.layout-task-trial-label {
+  font-size: 2.75rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.layout-task-header h1.layout-task-trial-label.is-tutorial {
+  font-size: 2.5rem;
+}
+
 .layout-task-eyebrow {
   margin: 0 0 8px;
   font-size: 0.875rem;
@@ -175,6 +185,53 @@ body {
   box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
 }
 
+.layout-task-stage-wrap.is-viewport-transformed {
+  overflow: hidden;
+}
+
+.layout-task-display-image-frame.is-persistent-reference {
+  position: relative;
+  z-index: 1;
+}
+
+.layout-task-stage-wrap.is-viewport-panning {
+  cursor: grabbing;
+}
+
+.layout-task-viewport-tools {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+}
+
+.layout-task-viewport-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.layout-task-viewport-button:hover,
+.layout-task-viewport-button:focus-visible {
+  background: #e0f2fe;
+  border-color: #0e7490;
+  outline: none;
+}
+
 .layout-task-stage {
   display: block;
   width: 100%;
@@ -244,6 +301,11 @@ body {
 
 .layout-task-controls-hotzone {
   fill: transparent;
+  pointer-events: none;
+}
+
+.layout-task-controls-ring {
+  display: none;
   pointer-events: none;
 }
 
@@ -443,9 +505,110 @@ body {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16), 0 10px 24px rgba(127, 29, 29, 0.12);
 }
 
+.layout-task-developer-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  border: 1px dashed #b45309;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.layout-task-developer-button:hover,
+.layout-task-developer-button:focus-visible {
+  background: #fef3c7;
+  outline: 2px solid rgba(180, 83, 9, 0.28);
+  outline-offset: 2px;
+}
+
+.layout-task-primary-button.is-submit-attention {
+  animation: layout-task-submit-attention 850ms ease-in-out;
+}
+
+.layout-task-status.is-submit-attention {
+  color: #b42318;
+  font-weight: 800;
+  animation: layout-task-submit-text-attention 850ms ease-in-out;
+}
+
+@keyframes layout-task-submit-attention {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  18% {
+    transform: translateX(-5px);
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.24);
+    border-color: #dc2626;
+  }
+
+  36% {
+    transform: translateX(5px);
+  }
+
+  54% {
+    transform: translateX(-3px);
+  }
+
+  72% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes layout-task-submit-text-attention {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  18% {
+    transform: translateX(-5px);
+  }
+
+  36% {
+    transform: translateX(5px);
+  }
+
+  54% {
+    transform: translateX(-3px);
+  }
+
+  72% {
+    transform: translateX(3px);
+  }
+}
+
 .layout-task-confidence-title {
   margin: 0 0 8px;
   font-weight: 700;
+}
+
+.layout-task-confidence-questions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.layout-task-confidence-question-label {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.layout-task-confidence-dimension {
+  color: #b42318;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .layout-task-confidence-questions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .layout-task-confidence-buttons {
@@ -541,10 +704,45 @@ body {
   display: none;
 }
 
+.layout-task-saving-bubble {
+  position: fixed;
+  z-index: 55;
+  top: 16px;
+  left: 50%;
+  width: min(420px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border: 1px solid #0e7490;
+  border-radius: 999px;
+  background: #ecfeff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  color: #155e75;
+  text-align: center;
+  font-weight: 700;
+}
+
+.layout-task-saving-bubble[hidden] {
+  display: none;
+}
+
+.layout-task-saving-message {
+  margin: 0;
+}
+
 .layout-task-tutorial-message {
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
+}
+
+.layout-task-tutorial-message strong {
+  font-weight: 800;
+}
+
+.layout-task-tutorial-yellow-emphasis {
+  color: #fffdbf;
+  -webkit-text-stroke: 0.45px #111827;
+  text-shadow: 0 1px 0 #111827;
 }
 
 .layout-task-tutorial-board-shell {
@@ -613,6 +811,42 @@ body {
   color: #155e75;
 }
 
+.layout-task-tutorial-intro-shell {
+  min-height: calc(100vh - 86px);
+  justify-content: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.layout-task-tutorial-intro-header,
+.layout-task-tutorial-intro-note {
+  max-width: 760px;
+}
+
+.layout-task-tutorial-intro-header h1 {
+  color: #155e75;
+}
+
+.layout-task-tutorial-intro-note {
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px 20px;
+  border: 1px solid #d9e1ee;
+  border-left: 4px solid #155e75;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
+  color: #334155;
+}
+
+.layout-task-tutorial-intro-note p {
+  margin: 0;
+}
+
+.layout-task-tutorial-intro-note p + p {
+  margin-top: 12px;
+}
+
 .layout-task-tutorial-complete-note {
   width: 100%;
   margin: 0 auto;
@@ -630,7 +864,8 @@ body {
 }
 
 .layout-task-reference-board-trial .jspsych-instructions-nav,
-.layout-task-tutorial-complete-trial .jspsych-instructions-nav {
+.layout-task-tutorial-complete-trial .jspsych-instructions-nav,
+.layout-task-tutorial-intro-trial .jspsych-instructions-nav {
   display: flex;
   justify-content: flex-end;
   padding: 10px 0 0;
@@ -644,8 +879,19 @@ body {
   visibility: visible;
 }
 
+.layout-task-tutorial-intro-trial .jspsych-instructions-nav {
+  width: min(760px, calc(100% - 48px));
+  margin: 0 auto;
+  visibility: visible;
+}
+
+.layout-task-tutorial-intro-trial #jspsych-instructions-back {
+  display: none;
+}
+
 .layout-task-reference-board-trial .jspsych-btn,
-.layout-task-tutorial-complete-trial .jspsych-btn {
+.layout-task-tutorial-complete-trial .jspsych-btn,
+.layout-task-tutorial-intro-trial .jspsych-btn {
   min-width: 128px;
   min-height: 42px;
   padding: 0 18px;

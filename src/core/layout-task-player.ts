@@ -18,6 +18,7 @@ import { StateStore } from "./state-store";
 import { createSessionId } from "../utils/time";
 import { TutorialController, type TutorialEvent } from "./tutorial-controller";
 import { UploadState } from "./upload-state";
+import type { LocalBackupStore } from "./local-backup-store";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -28,8 +29,10 @@ export interface LayoutTaskPlayerOptions {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  developerMode?: boolean;
   presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
+  localBackup?: LocalBackupStore;
 }
 
 export interface LayoutTaskPlayer {
@@ -48,7 +51,11 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   const store = new StateStore(options.config);
   const clipboard = new ClipboardService();
   const encoder = new LayoutTaskEncoder();
-  const dataSave = new DataSaveService({ config: options.config.dataSave, uploadState: new UploadState() });
+  const dataSave = new DataSaveService({
+    config: options.config.dataSave,
+    uploadState: new UploadState(),
+    localBackup: options.localBackup,
+  });
   const pageTiming = new PageTimingCollector();
 
   let recorder: Recorder | undefined;
@@ -76,12 +83,14 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     root: options.root,
     config: options.config,
     store,
+    tutorialMode: options.tutorialMode,
+    presentation: options.presentation,
     confidence: options.confidence
       ? {
           scale: options.confidence.scale,
           labels: options.confidence.labels,
-          onChoose: (value) => {
-            confidence?.choose(value);
+          onChoose: (dimension, value) => {
+            confidence?.choose(dimension, value);
             advanceTutorial("confidence_chosen");
           },
           onSave: () => interaction?.saveActiveConfidence(),
@@ -116,6 +125,31 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     },
     onConfirm: () => {
       void completion?.requestComplete();
+    },
+    developerMode: options.developerMode,
+    onDeveloperShortcut: () => {
+      if (!options.developerMode || !interaction || !confidence) {
+        return;
+      }
+
+      const defaultConfidence = options.confidence?.scale[Math.floor((options.confidence.scale.length - 1) / 2)] ?? 3;
+      const completedGroups = new Set<string>();
+      for (const object of options.config.objects) {
+        if (object.role !== "variable") {
+          continue;
+        }
+
+        const groupId = object.group_id ?? object.id;
+        if (completedGroups.has(groupId)) {
+          continue;
+        }
+
+        interaction.selectObject(object.id);
+        confidence.choose("position", defaultConfidence);
+        confidence.choose("rotation", defaultConfidence);
+        interaction.saveActiveConfidence();
+        completedGroups.add(groupId);
+      }
     },
     onCopyAgain: () => {
       void completion?.copyAgain();
@@ -163,7 +197,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
             config: options.config,
             required: options.confidence.required,
             scale: options.confidence.scale,
-            requireAllGroupsOnSubmit: !options.tutorialMode,
+            requireAllGroupsOnSubmit: true,
           })
         : undefined;
       interaction = new InteractionController({
@@ -187,6 +221,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         clipboard,
         dataSave,
         confidence,
+        // The tutorial has its own staged guidance and completion bubble. Avoid
+        // the formal experiment's native confirmation dialogs here because they
+        // interrupt the tutorial flow and can appear as an unresponsive button.
+        confirmImpl: options.tutorialMode ? () => true : undefined,
         onComplete: (payload) => {
           advanceTutorial("submitted");
           options.onComplete?.(payload);

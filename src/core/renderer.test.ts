@@ -8,16 +8,81 @@ import {
   getControlHotzoneBounds,
   getLimitFeedbackTransform,
   getObjectControlLayout,
+  getObjectControlRingLayout,
   getObjectVisualDisplayTransform,
   getPlayerIconUrl,
   getRotatedVisualBounds,
   getStageDisplayTransform,
   getStageFitStyle,
   getStageUiMetrics,
+  getViewportCameraTransform,
+  clampViewportZoom,
+  DEFAULT_VIEWPORT_ZOOM,
   isObjectInteractive,
+  getTrialHeaderContent,
 } from "./renderer";
 
+describe("LayoutTaskRenderer trial header", () => {
+  it("uses a large trial label before the scene identifier", () => {
+    expect(getTrialHeaderContent({
+      tutorialMode: false,
+      taskId: "scene_be84fc97a8d1",
+      qid: "Q_scene_be84fc97a8d1",
+      objectCount: 4,
+      presentation: { trialIndex: 2, trialTotal: 25 } as never,
+    })).toEqual({
+      title: "Trial 2 / 25",
+      meta: "scene_be84fc97a8d1 - QID: Q_scene_be84fc97a8d1 - Objects: 4",
+    });
+  });
+
+  it("labels tutorial trials as Tutorial instead of giving them a formal trial number", () => {
+    expect(getTrialHeaderContent({
+      tutorialMode: true,
+      taskId: "scene_edc634ac7856",
+      qid: "Q_scene_edc634ac7856",
+      objectCount: 4,
+    })).toEqual({
+      title: "Tutorial",
+      meta: "scene_edc634ac7856 - QID: Q_scene_edc634ac7856 - Objects: 4",
+    });
+  });
+});
+
+describe("persistent reference display", () => {
+  it("keeps the reference frame visible during reconstruction", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain("setDisplayImageVisible(referenceMode === \"persistent\")");
+    expect(source).toContain("is-persistent-reference");
+  });
+
+  it("directs missing-submission feedback to the status prompt, not confidence controls", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain("const targets = [this.refs.statusElement, this.refs.confirmButton]");
+    expect(source).toContain("target.classList.add(\"is-submit-attention\")");
+  });
+});
+
 describe("LayoutTaskRenderer stage fit", () => {
+  it("uses a 30 percent default zoom", () => {
+    expect(DEFAULT_VIEWPORT_ZOOM).toBe(1.3);
+  });
+
+  it("clamps viewport zoom to the supported range", () => {
+    expect(clampViewportZoom(0.1)).toBe(0.75);
+    expect(clampViewportZoom(1.5)).toBe(1.5);
+    expect(clampViewportZoom(4)).toBe(3);
+  });
+
+  it("builds a camera transform without changing the world viewBox", () => {
+    const config = createRuntimeConfig();
+    expect(getViewportCameraTransform(config, 2, { x: 100, y: -50 })).toBe(
+      "translate(100 -50) scale(2) translate(0 0)",
+    );
+  });
+
   it("sets stage aspect ratio and max height from world/stage config", () => {
     const config = createRuntimeConfig({
       world: {
@@ -123,7 +188,7 @@ describe("LayoutTaskRenderer stage fit", () => {
     expect(getStageDisplayTransform(config)).toBe("translate(0 35000) scale(1 -1)");
   });
 
-  it("does not flip object visuals a second time when the stage display is flipped", () => {
+  it("counter-flips object visuals when the stage display is flipped", () => {
     const config = createRuntimeConfig({
       stage: {
         ...createRuntimeConfig().stage,
@@ -131,7 +196,7 @@ describe("LayoutTaskRenderer stage fit", () => {
       },
     });
 
-    expect(getObjectVisualDisplayTransform(config)).toBeUndefined();
+    expect(getObjectVisualDisplayTransform(config)).toBe("scale(1 -1)");
   });
 
   it("does not transform object visuals when the stage display is not flipped", () => {
@@ -236,7 +301,42 @@ describe("LayoutTaskRenderer control layout", () => {
 
     expect(renderer).toContain('group.addEventListener("pointerenter", () => {');
     expect(renderer).toContain('group.addEventListener("pointerleave", () => {');
-    expect(renderer).not.toContain("updateActiveControlsVisibility");
+    expect(renderer).toContain("scheduleActiveControlsHide");
+    expect(renderer).toContain("Leaving the object never exits edit mode.");
+  });
+
+  it("adds viewport zoom controls and reserves right-drag for panning", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
+    expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
+    expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
+    expect(renderer).toContain("event.button !== 2");
+    expect(renderer).toContain("preventDefault()");
+  });
+
+  it("keeps control geometry tied to compiled asset dimensions", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain("Use the compiled asset dimensions as the stable control-frame geometry.");
+    expect(renderer).toContain("getConfiguredObjectLocalRect({");
+    expect(renderer).not.toContain("Prefer measured SVG bounds when available");
+  });
+
+  it("recalculates controls after the SVG is attached", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain("The SVG must be attached before measuring screen scale.");
+    expect(renderer).toContain("for (const objectConfig of this.options.config.objects) {");
+    expect(renderer).toContain("this.updateControlsLayout(objectConfig.id);");
+  });
+
+  it("resynchronizes controls after the preview image leaves the layout", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+
+    expect(renderer).toContain("this.scheduleControlsLayoutSync();");
+    expect(renderer).toContain("Hiding the reference image can change the workspace layout.");
+    expect(renderer).toContain("window.requestAnimationFrame(update)");
   });
 
   it("highlights required confidence until a rating is chosen", () => {
@@ -259,7 +359,7 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(messages).toContain("Choose a confidence rating, then select Save to finish editing this furniture group.");
   });
 
-  it("keeps controls closer to small objects than the legacy fixed gap", () => {
+  it("places every control button on one circle around the object center", () => {
     const config = createRuntimeConfig();
     const ui = getStageUiMetrics(config);
     const bounds = { minX: -10, maxX: 10, minY: -10, maxY: 10 };
@@ -268,23 +368,30 @@ describe("LayoutTaskRenderer control layout", () => {
       bounds,
       ui,
     });
+    const ring = getObjectControlRingLayout(bounds, ui);
 
-    expect(layout.move_right.x - bounds.maxX).toBeLessThan(ui.controlGap);
-    expect(layout.move_right.x - bounds.maxX).toBeGreaterThanOrEqual(20 * ui.scale);
+    for (const point of Object.values(layout)) {
+      expect(Math.hypot(point.x - ring.centerX, point.y - ring.centerY)).toBeCloseTo(ring.radius, 6);
+    }
   });
 
-  it("places rotation controls farther from the object than movement controls", () => {
+  it("keeps the control ring outside the object's visual bounds", () => {
     const config = createRuntimeConfig();
     const ui = getStageUiMetrics(config);
     const bounds = { minX: -50, maxX: 50, minY: -40, maxY: 40 };
 
-    const layout = getObjectControlLayout({
-      bounds,
-      ui,
-    });
+    const ring = getObjectControlRingLayout(bounds, ui);
+    expect(ring.radius).toBe(ui.controlRingRadius);
+    expect(ring.radius).toBeGreaterThan(0);
+  });
 
-    expect(bounds.minY - layout.rotate_ccw.y).toBeGreaterThan(bounds.minY - layout.move_up.y);
-    expect(layout.rotate_cw.x - bounds.maxX).toBeGreaterThan(layout.move_right.x - bounds.maxX);
+  it("uses one control-ring radius for differently sized objects", () => {
+    const config = createRuntimeConfig();
+    const ui = getStageUiMetrics(config);
+    const smallRing = getObjectControlRingLayout({ minX: -50, maxX: 50, minY: -40, maxY: 40 }, ui);
+    const largeRing = getObjectControlRingLayout({ minX: -500, maxX: 500, minY: -400, maxY: 400 }, ui);
+
+    expect(largeRing.radius).toBe(smallRing.radius);
   });
 
   it("rotates all controls around the object center by the initial local axis", () => {
