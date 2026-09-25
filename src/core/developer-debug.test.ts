@@ -7,6 +7,8 @@ function config(): ExperimentConfig {
     schema: "layouttask.experiment.v1",
     experimentId: "production",
     baseUrl: "/release/",
+    locale: "en-US",
+    completionCodeGate: { enabled: false, minDisplayMs: 15_000 },
     referenceMode: "persistent",
     order: "fixed",
     tutorial: { enabled: false },

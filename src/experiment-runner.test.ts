@@ -39,6 +39,8 @@ function experimentConfig(): ExperimentConfig {
     experimentId: "layout_task_v1",
     referenceMode: "preview_10s",
     baseUrl: "/layout-task-generated/",
+    locale: "en-US",
+    completionCodeGate: { enabled: false, minDisplayMs: 15_000 },
     order: "fixed",
     tutorial: { enabled: true, taskId: "tutorial_room", qid: "QTUTORIAL" },
     confidence: {

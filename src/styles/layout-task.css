@@ -811,6 +811,55 @@ body {
   color: #155e75;
 }
 
+.layout-task-completion-code-shell {
+  min-height: calc(100vh - 86px);
+  justify-content: center;
+  align-items: center;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.layout-task-completion-code-shell h1,
+.layout-task-completion-code-shell p,
+.layout-task-completion-code-shell label,
+.layout-task-completion-code-shell input,
+.layout-task-completion-code-shell button {
+  width: min(680px, 100%);
+}
+
+.layout-task-completion-code-shell h1 {
+  margin: 0;
+  color: #155e75;
+}
+
+.layout-task-completion-code-shell p {
+  margin: 0;
+}
+
+.layout-task-completion-code-shell label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.layout-task-completion-code-shell input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #b8c4d6;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.layout-task-completion-code-emphasis {
+  color: #c62828;
+  font-weight: 800;
+}
+
+.layout-task-completion-code-countdown {
+  color: #52627a;
+  font-weight: 600;
+}
+
 .layout-task-tutorial-intro-shell {
   min-height: calc(100vh - 86px);
   justify-content: center;
