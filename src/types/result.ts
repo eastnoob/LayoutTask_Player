@@ -27,7 +27,7 @@ export interface PageTimingInfo {
 }
 
 export type PauseMode = "formal" | "tutorial_practice";
-export type PauseEndReason = "manual_resume" | "auto_resume_15m";
+export type PauseEndReason = "manual_resume" | "auto_resume_10s" | "auto_resume_15m";
 
 export type PauseEvent =
   | { type: "pause_confirmed"; mode: PauseMode; at: number }

@@ -96,7 +96,7 @@ export const pauseEventSchema = z.discriminatedUnion("type", [
     type: z.literal("pause_resumed"),
     mode: z.enum(["formal", "tutorial_practice"]),
     at: z.number().finite(),
-    reason: z.enum(["manual_resume", "auto_resume_15m"]),
+    reason: z.enum(["manual_resume", "auto_resume_10s", "auto_resume_15m"]),
   }),
 ]);
 
@@ -106,7 +106,7 @@ export const pauseSummarySchema = z.object({
   pause_started_at: z.number().finite().optional(),
   pause_ended_at: z.number().finite().optional(),
   pause_duration_ms: z.number().finite().nonnegative(),
-  pause_end_reason: z.enum(["manual_resume", "auto_resume_15m"]).optional(),
+  pause_end_reason: z.enum(["manual_resume", "auto_resume_10s", "auto_resume_15m"]).optional(),
   pause_events: z.array(pauseEventSchema),
   tutorial_pause_practice: z.boolean().optional(),
 });
