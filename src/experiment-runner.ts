@@ -24,7 +24,7 @@ type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore } = {},
+  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
@@ -94,6 +94,7 @@ export function buildExperimentTimeline(
         writeHeaderToData: true,
         dataSave: taskDataSave,
         localBackup: options.localBackup,
+        pause: options.pause,
         data: { tutorial: true },
       });
       timeline.push({
@@ -154,6 +155,7 @@ export function buildExperimentTimeline(
       writeHeaderToData: true,
       dataSave: taskDataSave,
       localBackup: options.localBackup,
+      pause: options.pause,
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
@@ -569,6 +571,7 @@ export function createRunnableExperiment(
       developerMode: options.developerMode,
       participantId,
       localBackup,
+      pause,
     }),
   };
 }

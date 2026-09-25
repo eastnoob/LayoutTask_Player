@@ -34,12 +34,16 @@ export class CompletionController {
       };
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
+      pause?: { isPaused(): boolean };
     },
   ) {
     this.confirmImpl = options.confirmImpl ?? ((message: string) => window.confirm(message));
   }
 
   async requestComplete(): Promise<void> {
+    if (this.options.pause?.isPaused()) {
+      return;
+    }
     if (this.options.store.isLocked()) {
       return;
     }

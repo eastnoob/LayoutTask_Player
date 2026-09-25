@@ -111,6 +111,7 @@ export class LayoutTaskRenderer {
       onConfirm?: () => void;
       onDeveloperShortcut?: () => void;
       onCopyAgain?: () => void;
+      isPaused?: () => boolean;
       confidence?: {
         scale: number[];
         labels: Record<string, string>;
@@ -204,6 +205,9 @@ export class LayoutTaskRenderer {
     svg.style.aspectRatio = stageFitStyle.aspectRatio;
     svg.style.maxHeight = stageFitStyle.maxHeight;
     svg.addEventListener("click", (event) => {
+      if (this.options.isPaused?.()) {
+        return;
+      }
       if (event.target === svg || event.target === background) {
         this.options.onStageBackgroundClick?.();
       }
@@ -276,10 +280,16 @@ export class LayoutTaskRenderer {
         group.setAttribute("role", "button");
         group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
         group.addEventListener("click", (event) => {
+          if (this.options.isPaused?.()) {
+            return;
+          }
           event.stopPropagation();
           this.options.onObjectSelect?.(objectConfig.id);
         });
         group.addEventListener("keydown", (event) => {
+          if (this.options.isPaused?.()) {
+            return;
+          }
           if (event.key !== "Enter" && event.key !== " ") {
             return;
           }
@@ -387,7 +397,11 @@ export class LayoutTaskRenderer {
     confirmButton.type = "button";
     confirmButton.textContent = "Confirm";
     confirmButton.dataset.layoutTaskAnchor = "confirm";
-    confirmButton.addEventListener("click", () => this.options.onConfirm?.());
+    confirmButton.addEventListener("click", () => {
+      if (!this.options.isPaused?.()) {
+        this.options.onConfirm?.();
+      }
+    });
 
     const developerShortcut = this.options.developerMode ? document.createElement("button") : undefined;
     if (developerShortcut) {
@@ -413,7 +427,11 @@ export class LayoutTaskRenderer {
     copyAgainButton.type = "button";
     copyAgainButton.textContent = "Copy";
     copyAgainButton.hidden = true;
-    copyAgainButton.addEventListener("click", () => this.options.onCopyAgain?.());
+    copyAgainButton.addEventListener("click", () => {
+      if (!this.options.isPaused?.()) {
+        this.options.onCopyAgain?.();
+      }
+    });
 
     panel.append(
       panelTitle,
@@ -1042,6 +1060,9 @@ export class LayoutTaskRenderer {
   }
 
   private readonly handleViewportPointerDown = (event: PointerEvent): void => {
+    if (this.options.isPaused?.()) {
+      return;
+    }
     if (event.button !== 2 || !this.refs.svg) {
       return;
     }
@@ -1054,6 +1075,9 @@ export class LayoutTaskRenderer {
   };
 
   private readonly handleViewportPointerMove = (event: PointerEvent): void => {
+    if (this.options.isPaused?.()) {
+      return;
+    }
     if (event.pointerId !== this.viewportPanPointerId || !this.viewportPanLast || !this.refs.svg) {
       return;
     }
@@ -1069,6 +1093,9 @@ export class LayoutTaskRenderer {
   };
 
   private readonly handleViewportPointerUp = (event: PointerEvent): void => {
+    if (this.options.isPaused?.()) {
+      return;
+    }
     if (event.pointerId !== this.viewportPanPointerId) {
       return;
     }
@@ -1196,11 +1223,17 @@ export class LayoutTaskRenderer {
       const icon = createControlIcon(control.icon, ui.controlIconSize);
 
       button.addEventListener("click", (event) => {
+        if (this.options.isPaused?.()) {
+          return;
+        }
         event.stopPropagation();
         this.options.onAction?.(objectId, control.action, event);
       });
 
       button.addEventListener("keydown", (event) => {
+        if (this.options.isPaused?.()) {
+          return;
+        }
         if (event.key !== "Enter" && event.key !== " ") {
           return;
         }
@@ -1604,6 +1637,9 @@ export class LayoutTaskRenderer {
 
   private bindObjectPointerEvents(element: SVGElement, objectId: string): void {
     element.addEventListener("pointerdown", (event) => {
+      if (this.options.isPaused?.()) {
+        return;
+      }
       const pointer = this.eventToRendererPointer(event);
       this.options.onDragStart?.(objectId, pointer);
       if (element.classList.contains("is-dragging")) {
@@ -1612,6 +1648,9 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointermove", (event) => {
+      if (this.options.isPaused?.()) {
+        return;
+      }
       if (!element.hasPointerCapture(event.pointerId)) {
         return;
       }
@@ -1620,6 +1659,9 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointerup", (event) => {
+      if (this.options.isPaused?.()) {
+        return;
+      }
       if (!element.hasPointerCapture(event.pointerId)) {
         return;
       }
@@ -1629,6 +1671,9 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointercancel", (event) => {
+      if (this.options.isPaused?.()) {
+        return;
+      }
       if (!element.hasPointerCapture(event.pointerId)) {
         return;
       }

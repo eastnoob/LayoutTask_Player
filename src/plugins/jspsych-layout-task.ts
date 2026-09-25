@@ -8,6 +8,7 @@ import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { RuntimeDataSaveConfig } from "../types/runtime";
 import type { LocalBackupStore } from "../core/local-backup-store";
+import type { ExperimentPauseController } from "../core/experiment-pause";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -38,6 +39,7 @@ export interface LayoutTaskPluginParams {
   presentation?: ReferencePresentation;
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
+  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -113,6 +115,10 @@ const info = {
       type: ParameterType.OBJECT,
       default: null,
     },
+    pause: {
+      type: ParameterType.OBJECT,
+      default: null,
+    },
   },
 };
 
@@ -180,6 +186,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
             }
           },
           localBackup: trial.localBackup ?? undefined,
+          pause: trial.pause ?? undefined,
         });
 
         player.start();

@@ -154,6 +154,27 @@ describe("Recorder", () => {
     expect(result.confidence).toEqual({ chair_group: { position: 4, rotation: 3 } });
   });
 
+  it("keeps raw timestamps while subtracting pause time from active duration", async () => {
+    const recorder = new Recorder({
+      config: createRuntimeConfig(),
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      nowImpl: createNowSequence([1_000, 2_000, 10_000]),
+      pause: {
+        getActiveElapsedMs: (startAt, endAt = startAt) => endAt - startAt - (endAt >= 7_000 ? 5_000 : 0),
+      },
+    });
+
+    recorder.start();
+    const event = recorder.recordEvent({ object: "chair_01", action: "move_right", valid: true });
+    const result = await recorder.finish();
+
+    expect(event.t).toBe(1_000);
+    expect(result.start_time).toBe(1_000);
+    expect(result.end_time).toBe(10_000);
+    expect(result.duration_ms).toBe(4_000);
+  });
+
   it("includes reference assistance when supplied", async () => {
     const recorder = new Recorder({
       config: createRuntimeConfig(),

@@ -23,6 +23,10 @@ interface RecorderOptions {
   getPresentation?: () => ReferencePresentation | undefined;
   nowImpl?: () => number;
   getUserAgent?: () => string | undefined;
+  pause?: {
+    getActiveElapsedMs(startAt: number, endAt?: number): number;
+    snapshot?: () => LayoutTaskResult["pause"];
+  };
 }
 
 // Recorder collects trial-time facts but does not decide export shape.
@@ -46,10 +50,12 @@ export class Recorder {
   }
 
   recordEvent(event: Omit<LayoutTaskEvent, "i" | "t">): LayoutTaskEvent {
+    const eventTime = this.nowImpl();
     const recordedEvent: LayoutTaskEvent = {
       ...event,
       i: this.events.length,
-      t: elapsedMs(this.startTime, this.nowImpl()),
+      t: this.options.pause?.getActiveElapsedMs(this.startTime, eventTime)
+        ?? elapsedMs(this.startTime, eventTime),
     };
 
     this.events.push(recordedEvent);
@@ -79,8 +85,10 @@ export class Recorder {
       session: this.options.sessionId,
       start_time: this.startTime,
       end_time: this.endTime,
-      duration_ms: elapsedMs(this.startTime, this.endTime),
+      duration_ms: this.options.pause?.getActiveElapsedMs(this.startTime, this.endTime)
+        ?? elapsedMs(this.startTime, this.endTime),
       page_timing: pageTiming,
+      pause: this.options.pause?.snapshot?.(),
       display,
       reference_assistance: this.options.getReferenceAssistance?.(),
       flow: this.options.getFlowInfo?.() ?? { mode: this.options.config.flow.mode },

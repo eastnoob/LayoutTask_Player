@@ -20,8 +20,10 @@ export interface PageTimingInfo {
   page_open_time: number;
   submit_time: number;
   total_elapsed_ms: number;
+  active_total_elapsed_ms?: number;
   player_start_time?: number;
   player_elapsed_ms?: number;
+  active_player_elapsed_ms?: number;
 }
 
 export type PauseMode = "formal" | "tutorial_practice";

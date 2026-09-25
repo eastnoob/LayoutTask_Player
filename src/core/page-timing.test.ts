@@ -35,4 +35,21 @@ describe("PageTimingCollector", () => {
     expect(result.page_open_time).toBe(8_000);
     expect(result.total_elapsed_ms).toBe(1_250);
   });
+
+  it("reports active durations through the shared pause clock", () => {
+    const collector = new PageTimingCollector({
+      nowImpl: () => 10_000,
+      performanceRef: { timeOrigin: 1_000, timing: {} as PerformanceTiming },
+      pause: {
+        getActiveElapsedMs: (startAt, endAt = startAt) => endAt - startAt - 5_000,
+      },
+    });
+
+    expect(collector.collect(10_000, 1_000)).toMatchObject({
+      total_elapsed_ms: 9_000,
+      active_total_elapsed_ms: 4_000,
+      player_elapsed_ms: 9_000,
+      active_player_elapsed_ms: 4_000,
+    });
+  });
 });

@@ -80,8 +80,10 @@ export const pageTimingSchema = z.object({
   // performance.timeOrigin can yield fractional millisecond deltas, so result
   // validation stays permissive here instead of forcing integer-only exports.
   total_elapsed_ms: z.number().finite().nonnegative(),
+  active_total_elapsed_ms: z.number().finite().nonnegative().optional(),
   player_start_time: z.number().finite().optional(),
   player_elapsed_ms: z.number().finite().nonnegative().optional(),
+  active_player_elapsed_ms: z.number().finite().nonnegative().optional(),
 });
 
 export const pauseEventSchema = z.discriminatedUnion("type", [

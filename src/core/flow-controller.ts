@@ -21,6 +21,11 @@ export interface FlowControllerOptions {
   clearTimeoutImpl?: (handle: ReturnType<typeof globalThis.setTimeout>) => void;
   onPreviewAcknowledged?: () => void;
   onReconstructionStart: () => void;
+  pause?: {
+    isPaused(): boolean;
+    subscribe(listener: () => void): () => void;
+    getActiveElapsedMs(startAt: number, endAt?: number): number;
+  };
 }
 
 type SetTimeoutImpl = NonNullable<FlowControllerOptions["setTimeoutImpl"]>;
@@ -33,6 +38,8 @@ export class FlowController {
   private readonly flowInfo: ResultFlowInfo;
   private activeTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
   private destroyed = false;
+  private pauseUnsubscribe: (() => void) | undefined;
+  private previewStartedAt: number | undefined;
 
   constructor(private readonly options: FlowControllerOptions) {
     this.nowImpl = options.nowImpl ?? Date.now;
@@ -65,6 +72,8 @@ export class FlowController {
       this.clearTimeoutImpl(this.activeTimer);
       this.activeTimer = undefined;
     }
+    this.pauseUnsubscribe?.();
+    this.pauseUnsubscribe = undefined;
   }
 
   getFlowInfo(): ResultFlowInfo {
@@ -97,8 +106,14 @@ export class FlowController {
         // preview_started_at is set only after waitForDisplayImageReady()
         // resolves, which is the point the preview image is actually studyable.
         // It does not start at preview UI entry or acknowledgement close.
-        this.flowInfo.preview_started_at = this.nowImpl();
-        this.tickPreview(totalSeconds);
+        this.previewStartedAt = this.nowImpl();
+        this.flowInfo.preview_started_at = this.previewStartedAt;
+        if (this.options.pause) {
+          this.pauseUnsubscribe = this.options.pause.subscribe(() => this.schedulePausedPreviewTick(totalSeconds));
+          this.tickPreviewFromClock(totalSeconds);
+        } else {
+          this.tickPreview(totalSeconds);
+        }
       });
     };
 
@@ -147,6 +162,34 @@ export class FlowController {
     this.activeTimer = this.setTimeoutImpl(() => {
       this.tickPreview(secondsRemaining - 1);
     }, 1000);
+  }
+
+  private tickPreviewFromClock(totalSeconds: number): void {
+    if (this.destroyed || this.options.pause?.isPaused() || this.previewStartedAt === undefined) {
+      return;
+    }
+    const elapsed = this.options.pause?.getActiveElapsedMs(this.previewStartedAt, this.nowImpl())
+      ?? this.nowImpl() - this.previewStartedAt;
+    const secondsRemaining = Math.max(0, Math.ceil(totalSeconds - elapsed / 1_000));
+    this.options.renderer.updatePreviewCountdown(String(secondsRemaining));
+    if (secondsRemaining <= 0) {
+      const endedAt = this.nowImpl();
+      this.flowInfo.preview_ended_at = endedAt;
+      this.flowInfo.preview_duration_ms = this.options.pause?.getActiveElapsedMs(this.previewStartedAt, endedAt) ?? elapsed;
+      this.startReconstruction(this.options.flow.mode === "preview_then_reconstruct" ? this.options.flow.config.message_after : undefined);
+      return;
+    }
+    this.activeTimer = this.setTimeoutImpl(() => this.tickPreviewFromClock(totalSeconds), 1_000);
+  }
+
+  private schedulePausedPreviewTick(totalSeconds: number): void {
+    if (this.activeTimer !== undefined) {
+      this.clearTimeoutImpl(this.activeTimer);
+      this.activeTimer = undefined;
+    }
+    if (!this.options.pause?.isPaused()) {
+      this.tickPreviewFromClock(totalSeconds);
+    }
   }
 
   private startReconstruction(message?: string): void {

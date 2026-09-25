@@ -53,6 +53,7 @@ export class InteractionController {
         onObjectAction(objectId: string): void;
         onObjectDeselected(objectId: string): void;
       };
+      pause?: { isPaused(): boolean };
     },
   ) {}
 
@@ -68,7 +69,7 @@ export class InteractionController {
   }
 
   selectObject(objectId: string): void {
-    if (!this.bound || this.options.store.isLocked()) {
+    if (!this.bound || this.options.store.isLocked() || this.options.pause?.isPaused()) {
       return;
     }
 
@@ -104,7 +105,7 @@ export class InteractionController {
   }
 
   deselectObject(): void {
-    if (!this.bound || !this.activeObjectId || this.dragSession) {
+    if (!this.bound || !this.activeObjectId || this.dragSession || this.options.pause?.isPaused()) {
       return;
     }
 
@@ -122,7 +123,7 @@ export class InteractionController {
   }
 
   saveActiveConfidence(): void {
-    if (!this.bound || !this.activeObjectId || this.dragSession || !this.options.confidence) {
+    if (!this.bound || !this.activeObjectId || this.dragSession || !this.options.confidence || this.options.pause?.isPaused()) {
       return;
     }
 
@@ -144,6 +145,9 @@ export class InteractionController {
   requestAction(request: ActionRequest): { ok: boolean; reason?: string } {
     if (!this.bound) {
       return { ok: false, reason: "controller_not_bound" };
+    }
+    if (this.options.pause?.isPaused()) {
+      return { ok: false, reason: "paused" };
     }
 
     if (this.activeObjectId !== request.objectId) {
@@ -195,6 +199,9 @@ export class InteractionController {
     if (!this.bound) {
       return { ok: false, reason: "controller_not_bound" };
     }
+    if (this.options.pause?.isPaused()) {
+      return { ok: false, reason: "paused" };
+    }
 
     const canDrag = this.options.store.canDragObject(request.objectId);
     if (!canDrag.ok) {
@@ -233,6 +240,9 @@ export class InteractionController {
   }
 
   requestDragMove(request: DragRequest): { ok: boolean; reason?: string } {
+    if (this.options.pause?.isPaused()) {
+      return { ok: false, reason: "paused" };
+    }
     const session = this.dragSession;
     if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
       return { ok: false, reason: "drag_not_active" };
@@ -248,6 +258,9 @@ export class InteractionController {
   }
 
   requestDragEnd(request: DragRequest): { ok: boolean; reason?: string } {
+    if (this.options.pause?.isPaused()) {
+      return { ok: false, reason: "paused" };
+    }
     const session = this.dragSession;
     if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
       return { ok: false, reason: "drag_not_active" };

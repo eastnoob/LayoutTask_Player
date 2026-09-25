@@ -19,6 +19,7 @@ import { createSessionId } from "../utils/time";
 import { TutorialController, type TutorialEvent } from "./tutorial-controller";
 import { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
+import type { ExperimentPauseController } from "./experiment-pause";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -33,6 +34,7 @@ export interface LayoutTaskPlayerOptions {
   presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
+  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
 }
 
 export interface LayoutTaskPlayer {
@@ -56,7 +58,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     uploadState: new UploadState(),
     localBackup: options.localBackup,
   });
-  const pageTiming = new PageTimingCollector();
+  const pageTiming = new PageTimingCollector({ pause: options.pause });
 
   let recorder: Recorder | undefined;
   let interaction: InteractionController | undefined;
@@ -154,6 +156,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     onCopyAgain: () => {
       void completion?.copyAgain();
     },
+    isPaused: () => options.pause?.isPaused() ?? false,
   });
 
   return {
@@ -191,6 +194,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
         getPresentation: () => options.presentation,
+        pause: options.pause ? { getActiveElapsedMs: options.pause.getActiveElapsedMs } : undefined,
       });
       confidence = options.confidence
         ? new ConfidenceController({
@@ -211,6 +215,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           onObjectAction: (objectId) => advanceTutorial("object_moved_or_rotated", { objectId }),
           onObjectDeselected: (objectId) => advanceTutorial("object_deselected", { objectId }),
         },
+        pause: options.pause,
       });
       completion = new CompletionController({
         config: options.config,
@@ -225,6 +230,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         // the formal experiment's native confirmation dialogs here because they
         // interrupt the tutorial flow and can appear as an unresponsive button.
         confirmImpl: options.tutorialMode ? () => true : undefined,
+        pause: options.pause,
         onComplete: (payload) => {
           advanceTutorial("submitted");
           options.onComplete?.(payload);
@@ -243,6 +249,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           advanceTutorial("reconstruction_started");
           interaction?.bind();
         },
+        pause: options.pause,
       });
       flow.start();
     },

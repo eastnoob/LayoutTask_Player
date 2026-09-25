@@ -27,6 +27,32 @@ describe("InteractionController", () => {
     expect(renderer.setStatus).toHaveBeenCalledWith("Select an object before using its controls.");
   });
 
+  it("rejects actions and drags while the experiment is paused", () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createRendererStub();
+    const recorder = createRecorderStub();
+    const controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder,
+      pause: { isPaused: () => true },
+    });
+
+    controller.bind();
+    controller.selectObject("chair_01");
+    const action = controller.requestAction({ objectId: "chair_01", action: "move_right" });
+    const drag = controller.requestDragStart({
+      objectId: "chair_01",
+      pointer: { pointerId: 1, clientX: 0, clientY: 0, worldX: 0, worldY: 0 },
+    });
+
+    expect(action).toEqual({ ok: false, reason: "paused" });
+    expect(drag).toEqual({ ok: false, reason: "paused" });
+    expect(store.getObjectState("chair_01").x).toBe(0);
+  });
+
   it("applies actions only for the active object", () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);
