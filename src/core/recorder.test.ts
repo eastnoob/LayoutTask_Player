@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Recorder } from "./recorder";
 import { createRuntimeConfig } from "../test-support/runtime-config";
+import { createPauseSummary, ExperimentPauseController } from "./experiment-pause";
 
 describe("Recorder", () => {
   it("stamps event index/time and respects display/user-agent toggles", async () => {
@@ -173,6 +174,24 @@ describe("Recorder", () => {
     expect(result.start_time).toBe(1_000);
     expect(result.end_time).toBe(10_000);
     expect(result.duration_ms).toBe(4_000);
+  });
+
+  it("accepts a pause controller method passed through the player boundary", () => {
+    const pause = new ExperimentPauseController({ mode: "tutorial_practice", now: () => 1_000 });
+    const recorder = new Recorder({
+      config: createRuntimeConfig(),
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      pause: {
+        getActiveElapsedMs: (startAt, endAt) => pause.getActiveElapsedMs(startAt, endAt),
+        snapshot: () => createPauseSummary(pause.snapshot()),
+      },
+      nowImpl: () => 1_500,
+    });
+
+    recorder.start();
+
+    expect(() => recorder.recordEvent({ object: "chair_01", action: "move_right", valid: true })).not.toThrow();
   });
 
   it("includes reference assistance when supplied", async () => {

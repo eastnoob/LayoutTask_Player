@@ -60,7 +60,13 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     uploadState: new UploadState(),
     localBackup: options.localBackup,
   });
-  const pageTiming = new PageTimingCollector({ pause: options.pause });
+  const pageTiming = new PageTimingCollector({
+    pause: options.pause
+      ? {
+          getActiveElapsedMs: (startAt, endAt) => options.pause!.getActiveElapsedMs(startAt, endAt),
+        }
+      : undefined,
+  });
 
   let recorder: Recorder | undefined;
   let interaction: InteractionController | undefined;
@@ -207,7 +213,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
         getPresentation: () => options.presentation,
         pause: pauseController ? {
-          getActiveElapsedMs: pauseController.getActiveElapsedMs,
+          getActiveElapsedMs: (startAt, endAt) => pauseController.getActiveElapsedMs(startAt, endAt),
           snapshot: () => createPauseSummary(pauseController!.snapshot()),
         } : undefined,
       });
