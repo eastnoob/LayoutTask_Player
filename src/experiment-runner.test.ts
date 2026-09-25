@@ -89,6 +89,18 @@ describe("buildExperimentTimeline", () => {
     })).toBe(true);
   });
 
+  it("uses Chinese participant copy only for Chinese experiments", () => {
+    const chinese = { ...experimentConfig(), locale: "zh-CN" as const };
+    const chineseTimeline = buildExperimentTimeline(chinese);
+    const intro = String(chineseTimeline[0].pages[0]);
+    expect(intro).toContain("图片显示在页面顶部");
+    expect(chineseTimeline[0].button_label_next).toBe("开始教程");
+    expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
+
+    expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
+    expect(createSavingPageHtml()).toContain("Saving your data");
+  });
+
   it("recognizes tutorial pause pages from the started trial callback data", () => {
     expect(isTutorialPausePage({ data: { tutorial: true } })).toBe(true);
     expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(false);

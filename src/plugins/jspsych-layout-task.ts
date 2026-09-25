@@ -34,6 +34,7 @@ export interface LayoutTaskPluginParams {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  locale?: "en-US" | "zh-CN";
   developerMode?: boolean;
   referenceMode?: ReferenceMode;
   presentation?: ReferencePresentation;
@@ -95,6 +96,10 @@ const info = {
     tutorialMode: {
       type: ParameterType.BOOL,
       default: false,
+    },
+    locale: {
+      type: ParameterType.STRING,
+      default: "en-US",
     },
     developerMode: {
       type: ParameterType.BOOL,
@@ -173,6 +178,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           config: runtimeConfig,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
+          locale: trial.locale,
           developerMode: trial.developerMode,
           presentation: trial.presentation,
           onComplete: (payload) => {

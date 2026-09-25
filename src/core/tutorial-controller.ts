@@ -34,7 +34,7 @@ const steps: TutorialStep[] = [
     id: "intro",
     anchor: "flow-modal",
     message:
-      "**You will first study an image for 10 seconds.** Remember the furniture state at each marked point, including which furniture is there, its position, and its orientation. Then reconstruct the scene from memory.",
+      "**You will first study an image for 10 seconds.** Remember the furniture state at each marked point, including which furniture is there, its position, and its orientation. Then reconstruct the floor plan based on the picture you just studied.",
     expectedEvent: "preview_acknowledged",
   },
   {
@@ -117,8 +117,9 @@ export class TutorialController {
   private index = 0;
   private readonly steps: TutorialStep[];
 
-  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s") {
-    this.steps = referenceMode === "persistent" ? createPersistentSteps() : steps;
+  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s", locale: "en-US" | "zh-CN" = "en-US") {
+    const selectedSteps = referenceMode === "persistent" ? createPersistentSteps() : steps;
+    this.steps = locale === "zh-CN" ? createChineseSteps(selectedSteps) : selectedSteps;
   }
 
   getCurrentStep(): TutorialStep {
@@ -152,4 +153,28 @@ function createPersistentSteps(): TutorialStep[] {
           }
         : step,
     );
+}
+
+function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
+  const messages: Record<TutorialStep["id"], string> = {
+    intro:
+      "**你可以随时查看页面顶部的透视图。** 你的任务是根据刚才看到的图片还原场景平面图。请不要使用浏览器缩放、**Ctrl + 滚轮**或其他放大工具；这些行为可能会被记录。你可以使用平面图右下角的缩放按钮。",
+    preview: "**观察顶部的参考图片。** 倒计时结束后图片会消失。",
+    select_first:
+      "请根据刚才看到的图片还原场景平面图。然后点击每个家具组中的[[yellow]]黄色物体[[/yellow]]。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用**右下角的平面图缩放按钮**。",
+    move_or_rotate:
+      "**使用箭头按钮移动**，或**使用旋转按钮调整方向**。如果操作箭头挡住视线，请将鼠标移出物体以隐藏箭头；重新指向物体即可显示，**这不会退出编辑模式。**",
+    confidence_first:
+      "**你的任务是尽可能根据刚刚看到的图片还原场景平面图。**完成这个物体后，**请在下方选择置信度。**",
+    save_first: "点击下方的**Save**保存置信度并退出这个物体的编辑模式。",
+    select_second: "你已退出当前编辑模式。**现在可以点击另一个**[[yellow]]黄色物体[[/yellow]]**进入其编辑模式。**",
+    confidence_second: "完成这个物体后，**请在下方选择它的置信度。**",
+    save_second: "点击下方的**Save**退出这个物体的编辑模式。**提交教程前，请对每个黄色物体重复此操作。**",
+    pause_practice: "**练习暂停功能。**点击**Pause**，等待10秒练习倒计时，然后点击**Resume**。练习暂停不会消耗正式暂停机会。",
+    pause_practice_resume: "**保持暂停直到倒计时结束，然后点击Resume**继续教程。",
+    submit: "**提交教程结果。**",
+    complete: "**教程完成。**",
+  };
+
+  return source.map((step) => ({ ...step, message: messages[step.id] }));
 }

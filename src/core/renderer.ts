@@ -99,6 +99,7 @@ export class LayoutTaskRenderer {
       config: RuntimeTaskConfig;
       store: StateStore;
       tutorialMode?: boolean;
+      locale?: "en-US" | "zh-CN";
       developerMode?: boolean;
       presentation?: ReferencePresentation;
       onAction?: (objectId: string, action: LayoutAction, event: MouseEvent | KeyboardEvent) => void;
@@ -536,7 +537,8 @@ export class LayoutTaskRenderer {
 
     const title = document.createElement("p");
     title.className = "layout-task-confidence-title";
-    title.textContent = "Choose your confidence rating for this furniture group";
+    const chinese = this.options.locale === "zh-CN";
+    title.textContent = chinese ? "选择这个家具组的置信度" : "Choose your confidence rating for this furniture group";
 
     const questions = document.createElement("div");
     questions.className = "layout-task-confidence-questions";
@@ -545,6 +547,9 @@ export class LayoutTaskRenderer {
     saveButton.type = "button";
     saveButton.className = "layout-task-confidence-save layout-task-primary-button";
     saveButton.textContent = "Save";
+    if (chinese) {
+      saveButton.textContent = "保存";
+    }
     saveButton.disabled = true;
 
     const confidence = this.options.confidence;
@@ -554,11 +559,11 @@ export class LayoutTaskRenderer {
         question.className = "layout-task-confidence-question";
         const label = document.createElement("p");
         label.className = "layout-task-confidence-question-label";
-        label.append("How confident are you in the ");
+        label.append(chinese ? "你对这个" : "How confident are you in the ");
         const emphasis = document.createElement("strong");
         emphasis.className = "layout-task-confidence-dimension";
-        emphasis.textContent = dimension;
-        label.append(emphasis, "?");
+        emphasis.textContent = chinese ? (dimension === "position" ? "位置" : "旋转") : dimension;
+        label.append(emphasis, chinese ? "的置信度如何？" : "?");
         question.append(label);
         const buttons = document.createElement("div");
         buttons.className = "layout-task-confidence-buttons";
@@ -576,7 +581,11 @@ export class LayoutTaskRenderer {
             saveButton.disabled = questions.querySelectorAll(".is-selected").length !== 2;
             confidence.onChoose(dimension, value);
             this.refs.confidenceElement?.classList.remove("is-required");
-            this.setStatus(`Confidence for ${dimension} selected: ${button.textContent}`);
+            this.setStatus(
+              chinese
+                ? `已选择${dimension === "position" ? "位置" : "旋转"}置信度：${button.textContent}`
+                : `Confidence for ${dimension} selected: ${button.textContent}`,
+            );
           });
           buttons.append(button);
         }

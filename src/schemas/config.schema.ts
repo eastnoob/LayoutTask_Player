@@ -252,7 +252,7 @@ export const flowSchema = z.discriminatedUnion("mode", [
           .string()
           .min(1)
           .default(
-            "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+            "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the floor plan based on the picture you just studied.",
           ),
         intro_confirm_label: z.string().min(1).default("Start preview"),
         stage_during_preview: z.enum(["hidden", "locked"]).default("hidden"),
@@ -261,7 +261,7 @@ export const flowSchema = z.discriminatedUnion("mode", [
           .string()
           .min(1)
           .default("Next, you will have {seconds} seconds to study the image."),
-        message_after: z.string().min(1).default("Please reconstruct the scene from memory."),
+        message_after: z.string().min(1).default("Please reconstruct the floor plan based on the picture you just studied."),
       })
       .default({}),
   }),

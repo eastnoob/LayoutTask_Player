@@ -63,6 +63,13 @@ describe("persistent reference display", () => {
     expect(source).toContain("const targets = [this.refs.statusElement, this.refs.confirmButton]");
     expect(source).toContain("target.classList.add(\"is-submit-attention\")");
   });
+
+  it("provides Chinese confidence copy for the Chinese player", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('locale?: "en-US" | "zh-CN"');
+    expect(source).toContain("选择这个家具组的置信度");
+  });
 });
 
 describe("LayoutTaskRenderer stage fit", () => {

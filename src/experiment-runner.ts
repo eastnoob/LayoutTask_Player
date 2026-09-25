@@ -28,6 +28,7 @@ export function buildExperimentTimeline(
   options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
+  const chinese = config.locale === "zh-CN";
   const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
 
   if (config.tutorial.enabled) {
@@ -38,25 +39,25 @@ export function buildExperimentTimeline(
       pages: [
         `<section class="layout-task-shell layout-task-tutorial-intro-shell">
           <header class="layout-task-header layout-task-tutorial-intro-header">
-            <p class="layout-task-eyebrow">Tutorial</p>
-            <h1>Reconstruct the furniture layout</h1>
-            <p class="layout-task-meta">The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below.</p>
+            <p class="layout-task-eyebrow">${chinese ? "教程" : "Tutorial"}</p>
+            <h1>${chinese ? "恢复家具布局" : "Reconstruct the furniture layout"}</h1>
+            <p class="layout-task-meta">${chinese ? "图片显示在页面顶部。请观察图片，然后在下方平面图中恢复家具的摆放。" : "The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below."}</p>
           </header>
           <div class="layout-task-tutorial-intro-note">
-            <p><strong>Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible.</strong></p>
-            <p>You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it.</p>
+            <p><strong>${chinese ? "你的任务是观察页面顶部的每张图片，并尽可能在平面图中恢复家具布局。" : "Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible."}</strong></p>
+            <p>${chinese ? "你将练习正式实验中的相同流程：观察家具布局，打开每个黄色家具物体，必要时进行调整，选择位置和旋转的置信度，然后保存。" : "You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it."}</p>
           </div>
         </section>`,
       ],
       show_clickable_nav: true,
       allow_backward: false,
-      button_label_next: "Start tutorial",
+          button_label_next: chinese ? "开始教程" : "Start tutorial",
       data: { tutorial_intro: true },
     });
     if (config.tutorial.referenceBoard?.enabled) {
       const board = config.tutorial.referenceBoard;
-      const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board });
-      const continueLabel = board.continueLabel ?? "Continue";
+      const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board, locale: config.locale });
+      const continueLabel = chinese ? "继续" : board.continueLabel ?? "Continue";
       for (const [index, page] of pages.entries()) {
         const item = board.items[index];
         timeline.push({
@@ -86,6 +87,7 @@ export function buildExperimentTimeline(
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
+        locale: config.locale,
         developerMode: options.developerMode,
         referenceMode: config.referenceMode,
         confidence: config.confidence,
@@ -105,23 +107,23 @@ export function buildExperimentTimeline(
         pages: [
           `<section class="layout-task-shell layout-task-tutorial-complete-shell">
             <header class="layout-task-header layout-task-tutorial-complete-header">
-              <p class="layout-task-eyebrow">Tutorial</p>
-              <h1>Tutorial complete.</h1>
-              <p class="layout-task-meta">Study image -> Reconstruct scene -> Rate confidence -> Submit</p>
+              <p class="layout-task-eyebrow">${chinese ? "教程" : "Tutorial"}</p>
+              <h1>${chinese ? "教程完成。" : "Tutorial complete."}</h1>
+              <p class="layout-task-meta">${chinese ? "观察图片 -> 恢复场景 -> 选择置信度 -> 提交" : "Study image -> Reconstruct scene -> Rate confidence -> Submit"}</p>
             </header>
             <div class="layout-task-tutorial-complete-note">
               <ul class="layout-task-tutorial-complete-list">
-                <li><strong>This is an experiment, not a test.</strong> Mistakes and uncertainty are normal. If you are very unsure, report very low confidence.</li>
-                <li>You have one formal pause opportunity: a one-time 15-minute break.</li>
-                <li>You may stop if the experiment causes discomfort, without payment or penalty.</li>
-                <li>Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses.</li>
-                <li>The complete study takes about 15 minutes.</li>
+                <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
+                <li>${chinese ? "你有一次正式暂停机会，最长15分钟。" : "You have one formal pause opportunity: a one-time 15-minute break."}</li>
+                <li>${chinese ? "如果实验让你感到不适，可以停止，不会获得报酬，也不会受到惩罚。" : "You may stop if the experiment causes discomfort, without payment or penalty."}</li>
+                <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
+                <li>${chinese ? "整个研究大约需要15分钟。" : "The complete study takes about 15 minutes."}</li>
               </ul>
             </div>
           </section>`,
         ],
         show_clickable_nav: true,
-        button_label_next: "Start formal experiment",
+        button_label_next: chinese ? "开始正式实验" : "Start formal experiment",
         data: { tutorial_complete: true },
       });
     }
@@ -151,6 +153,7 @@ export function buildExperimentTimeline(
       presentation,
       trialIndex: presentation.trialIndex,
       trialTotal: presentation.trialTotal,
+      locale: config.locale,
       referenceMode: config.referenceMode,
       developerMode: options.developerMode,
       confidence: config.confidence,
@@ -594,7 +597,7 @@ export function createRunnableExperiment(
         pauseSummary: createPauseSummary(pause.snapshot()),
       });
       pauseUi.destroy();
-      renderSavingPage();
+      renderSavingPage(config.locale);
       const saveResult = await saveExperimentFiles({
         dataSave: config.dataSave,
         participantId,
@@ -607,7 +610,7 @@ export function createRunnableExperiment(
       if (saveResult.ok) {
         session.markCompleted();
       }
-      renderEndPage(files, saveResult);
+      renderEndPage(files, saveResult, config.locale);
     },
   });
 
@@ -648,8 +651,14 @@ function createNoopPauseUi() {
   };
 }
 
-export function createSavingPageHtml(): string {
-  return `
+export function createSavingPageHtml(locale: "en-US" | "zh-CN" = "en-US"): string {
+  return locale === "zh-CN" ? `
+    <section class="layout-task-shell">
+      <h1>正在保存数据...</h1>
+      <p>请不要关闭或刷新页面。</p>
+      <p>通常需要不到1分钟。</p>
+    </section>
+  ` : `
     <section class="layout-task-shell">
       <h1>Saving your data...</h1>
       <p>Do not close or refresh this page.</p>
@@ -658,8 +667,8 @@ export function createSavingPageHtml(): string {
   `;
 }
 
-export function renderSavingPage(): void {
-  document.body.innerHTML = createSavingPageHtml();
+export function renderSavingPage(locale: "en-US" | "zh-CN" = "en-US"): void {
+  document.body.innerHTML = createSavingPageHtml(locale);
 }
 
 export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
@@ -669,21 +678,31 @@ export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
 function renderEndPage(
   files: ExperimentCsvFile[],
   saveResult: { ok: boolean; error?: string; failedFilename?: string; recoveryZip?: Blob },
+  locale: "en-US" | "zh-CN" = "en-US",
 ): void {
   document.body.innerHTML = "";
   const section = document.createElement("section");
   section.className = "layout-task-shell";
   const title = document.createElement("h1");
-  title.textContent = saveResult.ok
-    ? "Experiment complete. Your data has been saved."
-    : "Experiment complete, but automatic saving failed.";
+  title.textContent = locale === "zh-CN"
+    ? saveResult.ok ? "实验完成，数据已保存。" : "实验完成，但自动保存失败。"
+    : saveResult.ok
+      ? "Experiment complete. Your data has been saved."
+      : "Experiment complete, but automatic saving failed.";
   const detail = document.createElement("p");
-  detail.textContent = saveResult.ok
-    ? "You may now close this page."
-    : `Please copy or download the data shown below, then contact the researcher. Error: ${[
-        saveResult.failedFilename,
-        saveResult.error,
-      ].filter(Boolean).join(" - ") || "Unknown error"}`;
+  detail.textContent = locale === "zh-CN"
+    ? saveResult.ok
+      ? "现在可以关闭页面。"
+      : `请复制或下载下方显示的数据，然后联系研究者。错误：${[
+          saveResult.failedFilename,
+          saveResult.error,
+        ].filter(Boolean).join(" - ") || "未知错误"}`
+    : saveResult.ok
+      ? "You may now close this page."
+      : `Please copy or download the data shown below, then contact the researcher. Error: ${[
+          saveResult.failedFilename,
+          saveResult.error,
+        ].filter(Boolean).join(" - ") || "Unknown error"}`;
   const closeButton = document.createElement("button");
   closeButton.textContent = "Close page";
   closeButton.addEventListener("click", () => {

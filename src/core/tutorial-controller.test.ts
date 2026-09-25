@@ -77,6 +77,15 @@ describe("TutorialController", () => {
     expect(controller.getCurrentStep().id).toBe("select_first");
   });
 
+  it("uses Chinese tutorial guidance when the experiment locale is zh-CN", () => {
+    const controller = new TutorialController("persistent", "zh-CN");
+
+    expect(controller.getCurrentStep().message).toContain("透视图");
+    controller.handle("reconstruction_started");
+    expect(controller.getCurrentStep().message).toContain("黄色");
+    expect(controller.getCurrentStep().message).toContain("根据刚才看到的图片还原场景平面图");
+  });
+
   it("keeps the operation instructions with the first confidence prompt", () => {
     const controller = new TutorialController();
 
