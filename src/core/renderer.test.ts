@@ -356,7 +356,8 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain('saveButton.textContent = "Save";');
     expect(renderer).toContain("saveButton.disabled = true;");
     expect(renderer).toContain("confidence.onSave();");
-    expect(messages).toContain("Choose a confidence rating, then select Save to finish editing this furniture group.");
+    expect(messages).toContain("picture is shown at the top of the page");
+    expect(messages).toContain("confidence ratings for both position and rotation");
   });
 
   it("places every control button on one circle around the object center", () => {

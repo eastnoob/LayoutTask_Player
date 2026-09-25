@@ -122,6 +122,8 @@ export function createRuntimeConfig(overrides: Partial<RuntimeTaskConfig> = {}):
       reconstruction_hint_button: "Use the arrow buttons to move selected objects.",
       reconstruction_hint_rotation: "Use the rotate buttons to adjust orientation.",
       reconstruction_hint_select: "Click an object to show its available controls.",
+      reconstruction_hint_no_information:
+        "If you truly cannot obtain any information, click the furniture without changing its position or rotation, then set both confidence ratings to Completely certain. Use this option sparingly: too many such responses may lead to rejection.",
     },
     requirements: {},
     stage: {

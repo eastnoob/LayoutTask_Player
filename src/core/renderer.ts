@@ -757,6 +757,11 @@ export class LayoutTaskRenderer {
       });
     }
 
+    items.push({
+      icon: "info.svg",
+      text: this.options.config.messages.reconstruction_hint_no_information,
+    });
+
     return items;
   }
 

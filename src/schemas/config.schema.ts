@@ -280,6 +280,7 @@ export const messagesSchema = z.object({
   reconstruction_hint_button: z.string().min(1).optional(),
   reconstruction_hint_rotation: z.string().min(1).optional(),
   reconstruction_hint_select: z.string().min(1).optional(),
+  reconstruction_hint_no_information: z.string().min(1).optional(),
 });
 
 export const minViewportSchema = z.object({

@@ -39,10 +39,10 @@ export function buildExperimentTimeline(
           <header class="layout-task-header layout-task-tutorial-intro-header">
             <p class="layout-task-eyebrow">Tutorial</p>
             <h1>Reconstruct the furniture layout</h1>
-            <p class="layout-task-meta">Study the image, then rebuild the furniture arrangement shown there.</p>
+            <p class="layout-task-meta">The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below.</p>
           </header>
           <div class="layout-task-tutorial-intro-note">
-            <p><strong>Your task is to study each reference image and reconstruct the furniture layout on the floor plan as closely as possible.</strong></p>
+            <p><strong>Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible.</strong></p>
             <p>You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it.</p>
           </div>
         </section>`,

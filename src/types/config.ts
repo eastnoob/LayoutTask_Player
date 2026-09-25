@@ -207,6 +207,7 @@ export interface LayoutTaskMessages {
   reconstruction_hint_button: string;
   reconstruction_hint_rotation: string;
   reconstruction_hint_select: string;
+  reconstruction_hint_no_information: string;
 }
 
 export type MessagesConfig = Partial<LayoutTaskMessages>;

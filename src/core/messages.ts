@@ -8,12 +8,14 @@ export const DEFAULT_MESSAGES: LayoutTaskMessages = {
   status_copy_again_ok: "Encoded result copied.",
   status_copy_again_fail: "Copy failed. Please copy the encoded result manually.",
   instruction_edit_mode:
-    "Click an object to enter edit mode. Choose a confidence rating, then select Save to finish editing this furniture group.",
+    "The picture is shown at the top of the page. Reconstruct the floor plan as closely as possible to the picture, then choose confidence ratings for both position and rotation.",
   reconstruction_hint_title: "Reconstruct the scene from memory.",
   reconstruction_hint_drag: "Drag movable objects to place them.",
   reconstruction_hint_button: "Use the arrow buttons to move selected objects.",
   reconstruction_hint_rotation: "Use the rotate buttons to adjust orientation.",
   reconstruction_hint_select: "Click an object to show its available controls.",
+  reconstruction_hint_no_information:
+    "If you truly cannot obtain any information, click the furniture without changing its position or rotation, then set both confidence ratings to Completely certain. Use this option sparingly: too many such responses may lead to rejection.",
 };
 
 // Messages stay shallow for now: enough to centralize user-visible text without a full i18n layer.
