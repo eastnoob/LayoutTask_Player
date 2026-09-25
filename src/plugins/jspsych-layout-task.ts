@@ -156,6 +156,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
     // jsPsych gives us one displayElement per trial; clear it before async loading begins.
     // 这样失败 UI 和正常播放器不会叠在上一个 trial 的 DOM 上。
     displayElement.replaceChildren();
+    renderPluginLoading(displayElement);
 
     try {
       // Reuse the same config loading rule as standalone mode:
@@ -264,6 +265,14 @@ export function buildTrialData(
   }
 
   return data;
+}
+
+export function renderPluginLoading(displayElement: HTMLElement): void {
+  displayElement.innerHTML = `
+    <section class="layout-task-shell" aria-live="polite">
+      <p class="layout-task-meta" role="status">Loading next trial...</p>
+    </section>
+  `;
 }
 
 function renderPluginError(displayElement: HTMLElement, message: string, title: string): void {

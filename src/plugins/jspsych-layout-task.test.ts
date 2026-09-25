@@ -7,7 +7,7 @@ import { createLayoutTaskPlayer } from "../core/layout-task-player";
 import type { LayoutTaskPlayer } from "../core/layout-task-player";
 import type { LayoutTaskResult } from "../types/result";
 import { createRuntimeConfig } from "../test-support/runtime-config";
-import LayoutTaskPlugin, { buildTrialData } from "./jspsych-layout-task";
+import LayoutTaskPlugin, { buildTrialData, renderPluginLoading } from "./jspsych-layout-task";
 
 // Mock jsPsych runtime export so node-side tests do not execute browser-only setup.
 // 经测试, 这里只需要 ParameterType；真正的 browser runtime 在 node 测试里反而会报错。
@@ -70,6 +70,15 @@ describe("LayoutTaskPlugin", () => {
         result: payload.result,
       }),
     );
+  });
+
+  it("renders an accessible loading state while the next trial is loading", () => {
+    const root = createDisplayElement();
+
+    renderPluginLoading(root);
+
+    expect(root.innerHTML).toContain('role="status"');
+    expect(root.innerHTML).toContain("Loading next trial...");
   });
 
   it("loads config from taskId/qid when config is not injected", async () => {
