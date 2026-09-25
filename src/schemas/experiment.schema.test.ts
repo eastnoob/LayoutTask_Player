@@ -42,6 +42,32 @@ describe("parseExperimentConfig", () => {
     expect(parseExperimentConfig({ ...baseExperiment(), reference_mode: "persistent" }).referenceMode).toBe("persistent");
   });
 
+  it("accepts the Chinese completion-code gate configuration", () => {
+    expect(parseExperimentConfig({
+      ...baseExperiment(),
+      locale: "zh-CN",
+      completion_code_gate: { enabled: true, min_display_ms: 15_000 },
+    })).toMatchObject({
+      locale: "zh-CN",
+      completionCodeGate: { enabled: true, minDisplayMs: 15_000 },
+    });
+  });
+
+  it("rejects unsupported locales and non-positive completion gate durations", () => {
+    expect(() => parseExperimentConfig({ ...baseExperiment(), locale: "de-DE" })).toThrow();
+    expect(() => parseExperimentConfig({
+      ...baseExperiment(),
+      completion_code_gate: { enabled: true, min_display_ms: 0 },
+    })).toThrow();
+  });
+
+  it("keeps the completion-code gate disabled when omitted", () => {
+    expect(parseExperimentConfig(baseExperiment())).toMatchObject({
+      locale: "en-US",
+      completionCodeGate: { enabled: false, minDisplayMs: 15_000 },
+    });
+  });
+
   it("rejects an unknown reference mode", () => {
     expect(() => parseExperimentConfig({ ...baseExperiment(), reference_mode: "always" })).toThrow();
   });

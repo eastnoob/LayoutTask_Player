@@ -93,10 +93,19 @@ const dataSaveSchema = z
   ])
   .default({ mode: "copy", filename_prefix: "layout-task" });
 
+const completionCodeGateSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    min_display_ms: z.number().int().positive().default(15_000),
+  })
+  .default({ enabled: false, min_display_ms: 15_000 });
+
 const experimentSchema = z.object({
   schema: z.literal("layouttask.experiment.v1"),
   experiment_id: z.string().min(1),
   baseUrl: z.string().min(1),
+  locale: z.enum(["en-US", "zh-CN"]).default("en-US"),
+  completion_code_gate: completionCodeGateSchema,
   reference_mode: referenceModeSchema,
   order: z.literal("fixed").default("fixed"),
   tutorial: tutorialSchema,
@@ -134,6 +143,11 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     schema: parsed.schema,
     experimentId: parsed.experiment_id,
     baseUrl: parsed.baseUrl,
+    locale: parsed.locale,
+    completionCodeGate: {
+      enabled: parsed.completion_code_gate.enabled,
+      minDisplayMs: parsed.completion_code_gate.min_display_ms,
+    },
     referenceMode: parsed.reference_mode,
     order: parsed.order,
     tutorial: parsed.tutorial,

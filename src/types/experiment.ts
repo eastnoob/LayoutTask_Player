@@ -61,10 +61,17 @@ export type ExperimentDataSaveConfig =
   | ExperimentDataPipeSaveConfig
   | ExperimentReceiverSaveConfig;
 
+export interface ExperimentCompletionCodeGateConfig {
+  enabled: boolean;
+  minDisplayMs: number;
+}
+
 export interface ExperimentConfig {
   schema: "layouttask.experiment.v1";
   experimentId: string;
   baseUrl: string;
+  locale: "en-US" | "zh-CN";
+  completionCodeGate: ExperimentCompletionCodeGateConfig;
   referenceMode: ReferenceMode;
   order: "fixed";
   tutorial: ExperimentTutorialConfig;
