@@ -75,7 +75,7 @@ function receiverExperimentConfig(): ExperimentConfig {
 describe("buildExperimentTimeline", () => {
   it("recognizes tutorial pause pages from the started trial callback data", () => {
     expect(isTutorialPausePage({ data: { tutorial: true } })).toBe(true);
-    expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(true);
+    expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(false);
     expect(isTutorialPausePage({ data: { tutorial: false } })).toBe(false);
   });
   it("passes the developer shortcut only when explicitly enabled", () => {

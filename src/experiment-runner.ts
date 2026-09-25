@@ -541,11 +541,12 @@ export function createRunnableExperiment(
   const jsPsych = initJsPsych({
     display_element: displayElement,
     on_trial_start: (startedTrial: unknown) => {
-      pauseUi.setPageActive(true);
       const currentTrial = (jsPsych as unknown as {
         getCurrentTrial?: () => { tutorialMode?: boolean; data?: Record<string, unknown> };
       }).getCurrentTrial?.();
       const trial = (startedTrial ?? currentTrial) as { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined;
+      const data = trial?.data;
+      pauseUi.setPageActive(!data?.tutorial_intro && !data?.tutorial_reference_board);
       pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
     },
     on_finish: async () => {
@@ -612,7 +613,7 @@ function createBrowserLocalBackup(
 
 export function isTutorialPausePage(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
   const data = trial?.data;
-  return Boolean(trial?.tutorialMode || data?.tutorial || data?.tutorial_intro || data?.tutorial_reference_board);
+  return Boolean(trial?.tutorialMode || data?.tutorial);
 }
 
 function createNoopPauseUi() {
