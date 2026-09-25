@@ -56,6 +56,7 @@ describe("DataSaveService", () => {
       encoded: "ENCODED",
     });
     expect(JSON.parse(body.data)).not.toHaveProperty("result");
+    expect(JSON.parse(body.data)).toHaveProperty("pause");
   });
 
   it("persists the exact trial file before a remote request", async () => {
@@ -259,6 +260,12 @@ function createPayload(): CompletionPayload {
       events: [],
       final_state: {},
       locked: true,
+      pause: {
+        pause_used: true,
+        pause_count: 1,
+        pause_duration_ms: 5_000,
+        pause_events: [],
+      },
     },
   };
 }

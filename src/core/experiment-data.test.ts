@@ -8,6 +8,7 @@ import {
 import type { ExperimentCsvInput } from "./experiment-data";
 import type { ReferencePresentation } from "../types/schedule";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
+import type { PauseSummary } from "../types/result";
 
 describe("participant/session ids", () => {
   it("reads participant id from URL params by priority", () => {
@@ -146,6 +147,18 @@ describe("experiment data export", () => {
       result: { ...result, task_id: "tutorial_room", qid: "Q_TUTORIAL" },
     },
     tutorialPackageVersion: "tutorial-edc634ac7856-v1",
+    pauseSummary: {
+      pause_used: true,
+      pause_count: 1,
+      pause_started_at: 2_000,
+      pause_ended_at: 7_000,
+      pause_duration_ms: 5_000,
+      pause_end_reason: "manual_resume",
+      pause_events: [
+        { type: "pause_confirmed", mode: "formal", at: 2_000 },
+        { type: "pause_resumed", mode: "formal", at: 7_000, reason: "manual_resume" },
+      ],
+    } satisfies PauseSummary,
   };
 
   it("builds session, results, and events CSV files", () => {
@@ -169,6 +182,8 @@ describe("experiment data export", () => {
     ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
+    expect(files[0].data).toContain("pause_used,pause_count,pause_started_at,pause_ended_at,pause_duration_ms");
+    expect(files[0].data).toContain(",true,1,2000,7000,5000,");
     expect(files[1].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid");
     expect(files[1].data).toContain("reference_mode");
     expect(files[0].data).toContain("reference_mode");
@@ -177,11 +192,13 @@ describe("experiment data export", () => {
     expect(files[1].data).not.toContain(",encoded,");
     expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,1,scene_001,Q001,group_a,4,3");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
+    expect(files[1].data).toContain("pause_used");
+    expect(files[1].data).toContain(",true,1,5000,800");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(15);
+    expect(rawResultRow).toHaveLength(21);
     expect(JSON.parse(rawResultRow[9])).toEqual(result);
-    expect(rawResultRow.slice(10)).toEqual(["presentation-1", "", "1", "", "25"]);
+    expect(rawResultRow.slice(10, 15)).toEqual(["presentation-1", "", "1", "", "25"]);
     expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
     expect(files[3].data).toContain("tutorial");
     expect(files[3].data).toContain("0,12,group_a,move_right,true");
@@ -190,7 +207,7 @@ describe("experiment data export", () => {
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
     expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["1"]);
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-5)).toEqual([
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-11, -6)).toEqual([
       "presentation-1",
       "",
       "1",
@@ -209,6 +226,7 @@ describe("experiment data export", () => {
       schema: "layouttask.tutorial-result.v1",
       trial_type: "tutorial",
       package_version: "tutorial-edc634ac7856-v1",
+      pause: expect.objectContaining({ pause_used: true }),
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
   });

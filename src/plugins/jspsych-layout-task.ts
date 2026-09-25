@@ -40,7 +40,7 @@ export interface LayoutTaskPluginParams {
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
-  practicePause?: Pick<ExperimentPauseController, "subscribe">;
+  practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.

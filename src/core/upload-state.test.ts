@@ -27,4 +27,11 @@ describe("UploadState", () => {
     state.markFinalUpload("recovery.zip");
     expect(state.getManifest().finalUpload).toMatchObject({ filename: "recovery.zip", uploadStatus: "success" });
   });
+
+  it("carries the pause summary into retry metadata", () => {
+    const state = new UploadState({ pauseSummary: { pause_used: true, pause_count: 1, pause_duration_ms: 5000, pause_events: [] } });
+    state.recordAttempt("results.csv", "failed", "network");
+
+    expect(state.getManifest().pause).toMatchObject({ pause_used: true, pause_count: 1 });
+  });
 });

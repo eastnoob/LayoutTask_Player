@@ -17,7 +17,7 @@ import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 import { bootstrapExperimentSession } from "./core/experiment-session";
-import { ExperimentPauseController } from "./core/experiment-pause";
+import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
 import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
@@ -291,6 +291,7 @@ export async function saveExperimentFiles(input: {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
+  pauseSummary?: import("./types/result").PauseSummary;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -307,6 +308,7 @@ export async function saveExperimentFiles(input: {
       sessionId: input.sessionId ?? "unknown",
       experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
       failedFilenames: input.files.map((file) => file.filename),
+      pauseSummary: input.pauseSummary,
     });
     return {
       ok: false,
@@ -373,6 +375,7 @@ export async function saveExperimentFiles(input: {
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
         failedFilenames: ["receiver batch"],
+        pauseSummary: input.pauseSummary,
       });
       return {
         ok: false,
@@ -416,6 +419,7 @@ export async function saveExperimentFiles(input: {
       sessionId: input.sessionId,
       experimentId: dataSave.experimentId,
       failedFilenames: ["receiver archive"],
+      pauseSummary: input.pauseSummary,
     });
     return {
       ok: false,
@@ -431,7 +435,7 @@ export async function saveExperimentFiles(input: {
     files: input.files,
   });
   const dataSave = input.dataSave;
-  const uploadState = new UploadState();
+  const uploadState = new UploadState({ pauseSummary: input.pauseSummary });
   const failedFilenames: string[] = [];
   const failureMessages: string[] = [];
 
@@ -475,6 +479,7 @@ export async function saveExperimentFiles(input: {
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
         failedFilenames,
+        pauseSummary: input.pauseSummary,
       });
       return {
         ok: false,
@@ -522,7 +527,10 @@ export function createRunnableExperiment(
   const pause = new ExperimentPauseController({
     mode: "formal",
     restore: session.pauseSnapshot,
-    onChange: (snapshot) => session.savePauseSnapshot(snapshot),
+    onChange: (snapshot) => {
+      session.savePauseSnapshot(snapshot);
+      void localBackup?.saveSessionMetadata?.({ session_id: sessionId, pause: snapshot });
+    },
   });
   const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
   const pauseUi = typeof document === "undefined"
@@ -561,6 +569,7 @@ export function createRunnableExperiment(
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
         referenceMode: config.referenceMode,
+        pauseSummary: createPauseSummary(pause.snapshot()),
       });
       pauseUi.setPageActive(false);
       pauseUi.destroy();
@@ -571,6 +580,7 @@ export function createRunnableExperiment(
         sessionId,
         files,
         localBackup,
+        pauseSummary: createPauseSummary(pause.snapshot()),
       });
       if (saveResult.ok) {
         session.markCompleted();

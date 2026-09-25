@@ -1,4 +1,5 @@
 export type UploadStatus = "success" | "failed" | "timeout";
+import type { PauseSummary } from "../types/result";
 
 export interface UploadAttempt {
   backupId: string;
@@ -12,13 +13,14 @@ export interface UploadAttempt {
 export interface UploadManifest {
   files: UploadAttempt[];
   finalUpload?: UploadAttempt;
+  pause?: PauseSummary;
 }
 
 export class UploadState {
   private readonly files = new Map<string, UploadAttempt>();
   private finalUpload: UploadAttempt | undefined;
 
-  constructor(private readonly options: { maxAttempts?: number } = {}) {}
+  constructor(private readonly options: { maxAttempts?: number; pauseSummary?: PauseSummary } = {}) {}
 
   recordAttempt(filename: string, uploadStatus: UploadStatus, error?: string): UploadAttempt {
     const previous = this.files.get(filename);
@@ -57,6 +59,7 @@ export class UploadState {
     return {
       files: [...this.files.values()].map((file) => ({ ...file })),
       finalUpload: this.finalUpload ? { ...this.finalUpload } : undefined,
+      pause: this.options.pauseSummary,
     };
   }
 }

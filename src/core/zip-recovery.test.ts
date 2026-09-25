@@ -11,7 +11,13 @@ describe("createCompleteRecoveryZip", () => {
         { filename: "raw_results.csv", contentType: "text/csv", data: "25 rows\n" },
         { filename: "tutorial_result.json", contentType: "application/json", data: "{}" },
       ],
-      { participantId: "P1", sessionId: "S1", experimentId: "E1", failedFilenames: ["results.csv"] },
+      {
+        participantId: "P1",
+        sessionId: "S1",
+        experimentId: "E1",
+        failedFilenames: ["results.csv"],
+        pauseSummary: { pause_used: true, pause_count: 1, pause_duration_ms: 5_000, pause_events: [] },
+      },
     );
 
     const files = unzipSync(new Uint8Array(await archive.arrayBuffer()));
@@ -25,6 +31,7 @@ describe("createCompleteRecoveryZip", () => {
     expect(JSON.parse(new TextDecoder().decode(files["manifest.json"]))).toMatchObject({
       participant_id: "P1",
       failed_filenames: ["results.csv"],
+      pause: { pause_used: true, pause_count: 1 },
     });
   });
 });

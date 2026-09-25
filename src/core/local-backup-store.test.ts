@@ -28,4 +28,16 @@ describe("LocalBackupStore", () => {
       { filename: "b.json", contentType: "application/json", data: "b" },
     ]);
   });
+  it("stores resumable pause metadata without listing it as a result file", async () => {
+    const store = createMemoryLocalBackupStore("session-metadata");
+    const metadata = { session_id: "S1", pause: { status: "paused" } };
+
+    await store.saveSessionMetadata?.(metadata);
+    await store.saveFile({ filename: "session.csv", contentType: "text/csv", data: "ok\n" });
+
+    expect(await store.getSessionMetadata?.()).toEqual(metadata);
+    expect((await store.listFiles()).map((file) => file.filename)).toEqual(["session.csv"]);
+    await store.clear();
+    expect(await store.getSessionMetadata?.()).toBeUndefined();
+  });
 });

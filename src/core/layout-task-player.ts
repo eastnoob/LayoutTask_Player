@@ -19,6 +19,7 @@ import { createSessionId } from "../utils/time";
 import { TutorialController, type TutorialEvent } from "./tutorial-controller";
 import { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
+import { createPauseSummary } from "./experiment-pause";
 import type { ExperimentPauseController } from "./experiment-pause";
 
 export interface LayoutTaskPlayerOptions {
@@ -35,7 +36,7 @@ export interface LayoutTaskPlayerOptions {
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
-  practicePause?: Pick<ExperimentPauseController, "subscribe">;
+  practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
 }
 
 export interface LayoutTaskPlayer {
@@ -194,6 +195,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       }
 
       const displayCollector = new DisplayInfoCollector(refs, options.config, displayChangeRecorder);
+      const pauseController = options.tutorialMode ? options.practicePause : options.pause;
       recorder = new Recorder({
         config: options.config,
         sessionId,
@@ -204,7 +206,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
         getPresentation: () => options.presentation,
-        pause: options.pause ? { getActiveElapsedMs: options.pause.getActiveElapsedMs } : undefined,
+        pause: pauseController ? {
+          getActiveElapsedMs: pauseController.getActiveElapsedMs,
+          snapshot: () => createPauseSummary(pauseController!.snapshot()),
+        } : undefined,
       });
       confidence = options.confidence
         ? new ConfidenceController({

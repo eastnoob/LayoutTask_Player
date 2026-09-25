@@ -189,6 +189,7 @@ function createDataPipeData(
     hash8: payload.encoded.hash8,
     encoding: payload.encoded.encoding,
     encoded: config.save_encoded ? payload.encoded.output : undefined,
+    pause: payload.result.pause,
     result: config.save_result ? payload.result : undefined,
   });
 }

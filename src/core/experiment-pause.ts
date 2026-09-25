@@ -1,4 +1,4 @@
-import type { PauseEndReason, PauseEvent, PauseMode } from "../types/result";
+import type { PauseEndReason, PauseEvent, PauseMode, PauseSummary } from "../types/result";
 
 export type PauseStatus =
   | "available"
@@ -131,7 +131,7 @@ export class ExperimentPauseController {
   }
 
   getActiveElapsedMs(startAt: number, endAt = this.now()): number {
-    const intervals = getPauseIntervals(this.current);
+  const intervals = getPauseIntervals(this.current, this.now());
     const pausedMs = intervals.reduce((total, interval) => {
       const overlapStart = Math.max(startAt, interval.start);
       const overlapEnd = Math.min(endAt, interval.end);
@@ -175,7 +175,7 @@ export class ExperimentPauseController {
   }
 }
 
-function getPauseIntervals(snapshot: ExperimentPauseSnapshot): Array<{ start: number; end: number }> {
+function getPauseIntervals(snapshot: ExperimentPauseSnapshot, currentTime: number): Array<{ start: number; end: number }> {
   const intervals: Array<{ start: number; end: number }> = [];
   let start: number | undefined;
   snapshot.events.forEach((event) => {
@@ -187,13 +187,26 @@ function getPauseIntervals(snapshot: ExperimentPauseSnapshot): Array<{ start: nu
     }
   });
   if (start !== undefined) {
-    intervals.push({ start, end: snapshot.pauseEndedAt ?? Date.now() });
+    intervals.push({ start, end: snapshot.pauseEndedAt ?? currentTime });
   }
   return intervals;
 }
 
 function cloneSnapshot(snapshot: ExperimentPauseSnapshot): ExperimentPauseSnapshot {
   return { ...snapshot, events: snapshot.events.map((event) => ({ ...event })) };
+}
+
+export function createPauseSummary(snapshot: ExperimentPauseSnapshot): PauseSummary {
+  return {
+    pause_used: snapshot.mode === "formal" ? snapshot.pauseUsed : false,
+    pause_count: snapshot.mode === "formal" && snapshot.pauseUsed ? 1 : 0,
+    pause_started_at: snapshot.pauseStartedAt,
+    pause_ended_at: snapshot.pauseEndedAt,
+    pause_duration_ms: snapshot.pauseDurationMs,
+    pause_end_reason: snapshot.pauseEndReason,
+    pause_events: snapshot.events.map((event) => ({ ...event })),
+    tutorial_pause_practice: snapshot.mode === "tutorial_practice",
+  };
 }
 
 export { FORMAL_PAUSE_LIMIT_MS, PRACTICE_PAUSE_LIMIT_MS };

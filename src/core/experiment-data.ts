@@ -7,6 +7,7 @@ import type {
 } from "../types/result";
 import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
+import type { PauseSummary } from "../types/result";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -34,6 +35,7 @@ export interface ExperimentCsvInput {
   trialResults: ExperimentTrialResultItem[];
   tutorialResult?: ExperimentTrialResultItem;
   tutorialPackageVersion?: string;
+  pauseSummary?: PauseSummary;
 }
 
 export interface ExperimentCsvFile {
@@ -108,6 +110,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         qid: tutorial.qid,
         encoded: tutorial.encoded,
         hash8: tutorial.hash8,
+        pause: isLayoutTaskResult(tutorial.result) ? tutorial.result.pause ?? input.pauseSummary : input.pauseSummary,
         result: tutorial.result,
       },
       null,
@@ -158,6 +161,14 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "screen_height",
       "tutorial_package_version",
       "reference_mode",
+      "pause_used",
+      "pause_count",
+      "pause_started_at",
+      "pause_ended_at",
+      "pause_duration_ms",
+      "pause_end_reason",
+      "pause_events_json",
+      "active_duration_ms",
     ],
     [
       [
@@ -178,6 +189,14 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         firstResult?.display?.screen.height,
         input.tutorialPackageVersion,
         input.referenceMode,
+        input.pauseSummary?.pause_used,
+        input.pauseSummary?.pause_count,
+        input.pauseSummary?.pause_started_at,
+        input.pauseSummary?.pause_ended_at,
+        input.pauseSummary?.pause_duration_ms,
+        input.pauseSummary?.pause_end_reason,
+        input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
+        Math.max(0, input.endTime - input.startTime - (input.pauseSummary?.pause_duration_ms ?? 0)),
       ],
     ],
   );
@@ -228,6 +247,12 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         presentationValue(trial, "repeatIndex"),
         presentationValue(trial, "repeatOfTaskId"),
         presentationValue(trial, "trialTotal"),
+        input.pauseSummary?.pause_used,
+        input.pauseSummary?.pause_count,
+        input.pauseSummary?.pause_duration_ms,
+        Math.max(0, trial.result.duration_ms),
+        input.pauseSummary?.pause_end_reason,
+        input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
       ]);
     }
   });
@@ -268,6 +293,12 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "repeat_index",
       "repeat_of_task_id",
       "trial_total",
+      "pause_used",
+      "pause_count",
+      "pause_duration_ms",
+      "active_duration_ms",
+      "pause_end_reason",
+      "pause_events_json",
     ],
     rows,
   );
@@ -296,6 +327,12 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       presentationValue(trial, "repeatIndex"),
       presentationValue(trial, "repeatOfTaskId"),
       presentationValue(trial, "trialTotal"),
+      input.pauseSummary?.pause_used,
+      input.pauseSummary?.pause_count,
+      input.pauseSummary?.pause_duration_ms,
+      Math.max(0, trial.result.duration_ms),
+      input.pauseSummary?.pause_end_reason,
+      input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
     ]);
   });
 
@@ -316,6 +353,12 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "repeat_index",
       "repeat_of_task_id",
       "trial_total",
+      "pause_used",
+      "pause_count",
+      "pause_duration_ms",
+      "active_duration_ms",
+      "pause_end_reason",
+      "pause_events_json",
     ],
     rows,
   );
@@ -362,6 +405,11 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         presentationValue(trial, "repeatIndex"),
         presentationValue(trial, "repeatOfTaskId"),
         presentationValue(trial, "trialTotal"),
+        input.pauseSummary?.pause_used,
+        input.pauseSummary?.pause_count,
+        input.pauseSummary?.pause_duration_ms,
+        input.pauseSummary?.pause_end_reason,
+        input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
       ]);
     }
   });
@@ -400,6 +448,11 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "repeat_index",
       "repeat_of_task_id",
       "trial_total",
+      "pause_used",
+      "pause_count",
+      "pause_duration_ms",
+      "pause_end_reason",
+      "pause_events_json",
     ],
     rows,
   );
@@ -416,6 +469,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       started_at: input.startTime,
       ended_at: input.endTime,
       duration_ms: input.endTime - input.startTime,
+      pause: input.pauseSummary,
       tutorial_completed: input.tutorialCompleted,
       tutorial_duration_ms: input.tutorialDurationMs,
       tutorial_present: Boolean(input.tutorialResult),
