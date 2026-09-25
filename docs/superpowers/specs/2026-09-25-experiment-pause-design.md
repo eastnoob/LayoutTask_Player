@@ -87,7 +87,7 @@ Persist a versioned pause/session record under an experiment-scoped key containi
 - `pause_end_reason` (`manual_resume` or `auto_resume_15m`);
 - `updated_at`.
 
-When restoring a formal paused record, calculate elapsed wall-clock pause time. If it is below 15 minutes, resume the countdown from the stored start time. If it is at or above 15 minutes, automatically close the pause as `auto_resume_15m`, mark the opportunity consumed, and continue the experiment.
+When restoring a formal paused record, calculate elapsed wall-clock pause time. If the existing runner can reattach to the active page, resume the countdown from the stored start time. If it is at or above 15 minutes, automatically close the pause as `auto_resume_15m`, mark the opportunity consumed, and continue the experiment. A refresh must never grant a second pause opportunity. This feature does not introduce a new full-timeline checkpoint/resume system; existing page/task recovery behavior remains the boundary for restoring the exact current trial.
 
 Persistence failures must not create a second opportunity. The in-memory state remains consumed after confirmation, and the failure is recorded in diagnostic metadata when possible.
 
