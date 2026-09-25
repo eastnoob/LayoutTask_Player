@@ -1049,6 +1049,91 @@ body {
   font-size: 0.75rem;
 }
 
+.layout-task-pause-root {
+  position: fixed;
+  z-index: 1000;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  font-family: inherit;
+}
+
+.layout-task-pause-root[hidden],
+.layout-task-pause-dialog[hidden],
+.layout-task-pause-overlay[hidden] {
+  display: none;
+}
+
+.layout-task-pause-button,
+.layout-task-pause-dialog button,
+.layout-task-pause-overlay button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #155e75;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #155e75;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.layout-task-pause-button:hover:not(:disabled),
+.layout-task-pause-dialog button:hover,
+.layout-task-pause-overlay button:hover {
+  background: #ecfeff;
+}
+
+.layout-task-pause-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.layout-task-pause-dialog,
+.layout-task-pause-overlay {
+  max-width: min(420px, calc(100vw - 36px));
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.22);
+}
+
+.layout-task-pause-dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.layout-task-pause-dialog p,
+.layout-task-pause-overlay p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.layout-task-pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: rgba(241, 245, 249, 0.97);
+  box-shadow: none;
+  text-align: center;
+}
+
+.layout-task-pause-overlay p {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
 @media (max-width: 900px) {
   .layout-task-workspace {
     grid-template-columns: 1fr;

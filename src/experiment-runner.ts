@@ -17,6 +17,8 @@ import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 import { bootstrapExperimentSession } from "./core/experiment-session";
+import { ExperimentPauseController } from "./core/experiment-pause";
+import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -510,9 +512,20 @@ export function createRunnableExperiment(
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
+  const pause = new ExperimentPauseController({
+    mode: "formal",
+    restore: session.pauseSnapshot,
+    onChange: (snapshot) => session.savePauseSnapshot(snapshot),
+  });
+  const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
+  const pauseUi = typeof document === "undefined"
+    ? createNoopPauseUi()
+    : createExperimentPauseUi({ controller: pause, practiceController: practicePause });
+  pauseUi.mount();
   const startTime = Date.now();
   const jsPsych = initJsPsych({
     display_element: displayElement,
+    on_trial_start: () => pauseUi.setPageActive(true),
     on_finish: async () => {
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
@@ -533,6 +546,8 @@ export function createRunnableExperiment(
         tutorialPackageVersion: config.tutorial.packageVersion,
         referenceMode: config.referenceMode,
       });
+      pauseUi.setPageActive(false);
+      pauseUi.destroy();
       renderSavingPage();
       const saveResult = await saveExperimentFiles({
         dataSave: config.dataSave,
@@ -567,6 +582,15 @@ function createBrowserLocalBackup(
     return undefined;
   }
   return createIndexedDbLocalBackupStore(`${experimentId}:${participantId}:${sessionId}`);
+}
+
+function createNoopPauseUi() {
+  return {
+    mount: () => undefined,
+    setPageActive: (_active: boolean) => undefined,
+    setTutorialPracticeEnabled: (_enabled: boolean) => undefined,
+    destroy: () => undefined,
+  };
 }
 
 export function createSavingPageHtml(): string {
