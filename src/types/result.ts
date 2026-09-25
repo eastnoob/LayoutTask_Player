@@ -24,6 +24,24 @@ export interface PageTimingInfo {
   player_elapsed_ms?: number;
 }
 
+export type PauseMode = "formal" | "tutorial_practice";
+export type PauseEndReason = "manual_resume" | "auto_resume_15m";
+
+export type PauseEvent =
+  | { type: "pause_confirmed"; mode: PauseMode; at: number }
+  | { type: "pause_resumed"; mode: PauseMode; at: number; reason: PauseEndReason };
+
+export interface PauseSummary {
+  pause_used: boolean;
+  pause_count: number;
+  pause_started_at?: number;
+  pause_ended_at?: number;
+  pause_duration_ms: number;
+  pause_end_reason?: PauseEndReason;
+  pause_events: PauseEvent[];
+  tutorial_pause_practice?: boolean;
+}
+
 export interface DisplayInfo {
   viewport: {
     width: number;
@@ -243,6 +261,7 @@ export interface LayoutTaskResult {
   end_time: number;
   duration_ms: number;
   page_timing?: PageTimingInfo;
+  pause?: PauseSummary;
   display?: DisplayInfo;
   reference_assistance?: ReferenceAssistanceInfo;
   flow?: ResultFlowInfo;

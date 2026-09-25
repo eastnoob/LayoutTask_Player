@@ -84,6 +84,31 @@ export const pageTimingSchema = z.object({
   player_elapsed_ms: z.number().finite().nonnegative().optional(),
 });
 
+export const pauseEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("pause_confirmed"),
+    mode: z.enum(["formal", "tutorial_practice"]),
+    at: z.number().finite(),
+  }),
+  z.object({
+    type: z.literal("pause_resumed"),
+    mode: z.enum(["formal", "tutorial_practice"]),
+    at: z.number().finite(),
+    reason: z.enum(["manual_resume", "auto_resume_15m"]),
+  }),
+]);
+
+export const pauseSummarySchema = z.object({
+  pause_used: z.boolean(),
+  pause_count: z.number().int().nonnegative(),
+  pause_started_at: z.number().finite().optional(),
+  pause_ended_at: z.number().finite().optional(),
+  pause_duration_ms: z.number().finite().nonnegative(),
+  pause_end_reason: z.enum(["manual_resume", "auto_resume_15m"]).optional(),
+  pause_events: z.array(pauseEventSchema),
+  tutorial_pause_practice: z.boolean().optional(),
+});
+
 export const displayInfoSchema = z.object({
   viewport: z.object({
     width: z.number().nonnegative(),
@@ -291,6 +316,7 @@ export const resultSchema = z.object({
   end_time: z.number().int().positive(),
   duration_ms: z.number().int().nonnegative(),
   page_timing: pageTimingSchema.optional(),
+  pause: pauseSummarySchema.optional(),
   display: displayInfoSchema.optional(),
   flow: resultFlowSchema.optional(),
   confidence: resultConfidenceSchema.optional(),
