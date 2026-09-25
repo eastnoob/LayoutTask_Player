@@ -7,7 +7,7 @@ import {
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
 } from "./core/experiment-data";
-import { createSessionId, getParticipantId } from "./core/participant-session";
+import { getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
@@ -16,6 +16,7 @@ import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
+import { bootstrapExperimentSession } from "./core/experiment-session";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -503,7 +504,11 @@ export function createRunnableExperiment(
   options: { participantId?: string; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
-  const sessionId = createSessionId();
+  const session = bootstrapExperimentSession({
+    experimentId: config.experimentId,
+    participantId,
+  });
+  const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
   const startTime = Date.now();
   const jsPsych = initJsPsych({
@@ -536,6 +541,9 @@ export function createRunnableExperiment(
         files,
         localBackup,
       });
+      if (saveResult.ok) {
+        session.markCompleted();
+      }
       renderEndPage(files, saveResult);
     },
   });
