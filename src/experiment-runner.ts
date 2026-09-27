@@ -15,6 +15,7 @@ import type { RuntimeDataSaveConfig } from "./types/runtime";
 import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
+import { selectSequence } from "./core/schedule-generator";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
@@ -23,9 +24,25 @@ import { CompletionCodeGate } from "./core/completion-code-gate";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
+export interface AssignmentRecord {
+  assignmentId: string;
+  participantNumber: number;
+  sequenceId: string;
+  scheduleVersion: string;
+}
+
+export interface AssignmentRequest {
+  endpoint: string;
+  submitToken?: string;
+  experimentId: string;
+  scheduleVersion: string;
+  sequenceIds: string[];
+  idempotencyToken: string;
+}
+
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
@@ -115,9 +132,9 @@ export function buildExperimentTimeline(
               <ul class="layout-task-tutorial-complete-list">
                 <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
                 <li>${chinese ? "你有一次正式暂停机会，最长15分钟。" : "You have one formal pause opportunity: a one-time 15-minute break."}</li>
-                <li>${chinese ? "如果实验让你感到不适，可以停止，不会获得报酬，也不会受到惩罚。" : "You may stop if the experiment causes discomfort, without payment or penalty."}</li>
+                <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 floorplanrestoration.deluxe999@passmail.com 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at floorplanrestoration.deluxe999@passmail.com for assistance."}</li>
                 <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
-                <li>${chinese ? "整个研究大约需要15分钟。" : "The complete study takes about 15 minutes."}</li>
+                <li>${chinese ? "整个研究大约需要15-20分钟。" : "The complete study takes approximately 15-20 minutes."}</li>
               </ul>
             </div>
           </section>`,
@@ -129,7 +146,13 @@ export function buildExperimentTimeline(
     }
   }
 
-  const formalPresentations: ReferencePresentation[] = config.schedule?.sequences[0]?.presentations
+  if (options.requireAssignment && config.schedule && !options.assignment) {
+    throw new Error("Formal assignment is required before starting the experiment");
+  }
+  const selectedSequence = config.schedule
+    ? selectSequence(config.schedule, options.assignment?.participantNumber ?? options.participantNumber ?? 1)
+    : undefined;
+  const formalPresentations: ReferencePresentation[] = selectedSequence?.presentations
     ?? config.trials.map((trial, index) => ({
       presentationId: `trial-${index + 1}`,
       taskId: trial.taskId,
@@ -253,6 +276,30 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
       result: row.result,
       presentation: row.presentation as ReferencePresentation | undefined,
     }));
+}
+
+export async function requestAssignment(input: AssignmentRequest): Promise<AssignmentRecord> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (input.submitToken) headers["X-Submit-Token"] = input.submitToken;
+  const response = await fetch(input.endpoint.replace(/\/submit\/?$/, "/assign"), {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      experiment_id: input.experimentId,
+      idempotency_token: input.idempotencyToken,
+      schedule_version: input.scheduleVersion,
+    }),
+  });
+  const payload = await response.json() as Record<string, unknown>;
+  if (!response.ok || typeof payload.assignment_id !== "string" || !Number.isInteger(payload.participant_number) || typeof payload.sequence_id !== "string") {
+    throw new Error(String(payload.message ?? payload.error ?? `Assignment request failed (${response.status})`));
+  }
+  return {
+    assignmentId: payload.assignment_id,
+    participantNumber: payload.participant_number as number,
+    sequenceId: payload.sequence_id,
+    scheduleVersion: String(payload.schedule_version ?? input.scheduleVersion),
+  };
 }
 
 export function shouldShowCompletionCodeGate(config: ExperimentConfig): boolean {
@@ -528,7 +575,7 @@ async function getRecoveryFiles(input: {
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
+  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const session = bootstrapExperimentSession({
@@ -619,6 +666,9 @@ export function createRunnableExperiment(
     timeline: buildExperimentTimeline(config, {
       developerMode: options.developerMode,
       participantId,
+      participantNumber: options.participantNumber,
+      assignment: options.assignment,
+      requireAssignment: options.requireAssignment,
       localBackup,
       pause,
       practicePause,

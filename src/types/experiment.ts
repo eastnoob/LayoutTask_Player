@@ -80,4 +80,5 @@ export interface ExperimentConfig {
   trials: ExperimentTrialRef[];
   schedule?: ExperimentSchedule;
   schedulePath?: string;
+  scheduleVersion?: string;
 }

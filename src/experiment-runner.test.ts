@@ -76,6 +76,26 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("uses the assigned participant number to select the configured sequence", () => {
+    const config = experimentConfig();
+    config.schedule = createPresentationSchedule(
+      generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)),
+    );
+    const timeline = buildExperimentTimeline(config, { assignment: {
+      assignmentId: "a1",
+      participantNumber: 2,
+      sequenceId: config.schedule.sequences[1].sequenceId,
+      scheduleVersion: "v1",
+    } });
+    const formal = timeline.filter((trial) => trial.type === LayoutTaskPlugin && trial.tutorialMode !== true);
+    expect(formal[0].presentation).toEqual(config.schedule.sequences[1].presentations[0]);
+  });
+
+  it("rejects a formal timeline when assignment is explicitly required but missing", () => {
+    const config = experimentConfig();
+    config.schedule = createPresentationSchedule(generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)));
+    expect(() => buildExperimentTimeline(config, { requireAssignment: true })).toThrow("Formal assignment is required");
+  });
   it("only enables the completion-code gate for explicit Chinese configuration", () => {
     const english = experimentConfig();
     expect(shouldShowCompletionCodeGate(english)).toBe(false);
@@ -96,9 +116,19 @@ describe("buildExperimentTimeline", () => {
     expect(intro).toContain("图片显示在页面顶部");
     expect(chineseTimeline[0].button_label_next).toBe("开始教程");
     expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
+    expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要15-20分钟");
+    expect(String(chineseTimeline[2].pages[0])).toContain("floorplanrestoration.deluxe999@passmail.com");
 
     expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
     expect(createSavingPageHtml()).toContain("Saving your data");
+  });
+
+  it("uses the cross-language withdrawal and contact wording", () => {
+    const english = buildExperimentTimeline(experimentConfig());
+    const complete = String(english[2].pages[0]);
+    expect(complete).toContain("approximately 15-20 minutes");
+    expect(complete).toContain("simply close the page to withdraw");
+    expect(complete).toContain("floorplanrestoration.deluxe999@passmail.com");
   });
 
   it("recognizes tutorial pause pages from the started trial callback data", () => {
@@ -123,8 +153,9 @@ describe("buildExperimentTimeline", () => {
     const tutorialTrial = layoutTaskTrials.find((trial) => trial.tutorialMode === true);
     const boardPages = timeline.filter((trial) => trial.data?.tutorial_reference_board);
 
-    expect(config.tutorial.baseUrl).toContain("layout-task-run12-core23-preview/tutorial");
-    expect(config.baseUrl).toContain("layout-task-run12-core23-preview");
+    expect(config.referenceMode).toBe("persistent");
+    expect(config.tutorial.baseUrl).toContain("layout-task-run12-core23-persistent/tutorial");
+    expect(config.baseUrl).toContain("layout-task-run12-core23-persistent");
     expect(config.trials).toHaveLength(23);
     expect(tutorialTrial).toMatchObject({
       baseUrl: config.tutorial.baseUrl,
@@ -135,7 +166,7 @@ describe("buildExperimentTimeline", () => {
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true)).toHaveLength(23);
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true).every((trial) => trial.baseUrl === config.baseUrl)).toBe(true);
     expect(boardPages).toHaveLength(4);
-    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-run12-core23-preview/tutorial"))).toBe(true);
+    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-run12-core23-persistent/tutorial"))).toBe(true);
   });
 
   it("passes persistent mode to the tutorial and every formal trial", () => {
@@ -211,7 +242,7 @@ describe("buildExperimentTimeline", () => {
     expect(String(timeline[2].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(String(timeline[2].pages[0])).toContain("This is an experiment, not a test");
     expect(String(timeline[2].pages[0])).toContain("one-time 15-minute break");
-    expect(String(timeline[2].pages[0])).toContain("without payment or penalty");
+    expect(String(timeline[2].pages[0])).toContain("simply close the page to withdraw");
     expect(String(timeline[2].pages[0])).toContain("truthfully");
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });

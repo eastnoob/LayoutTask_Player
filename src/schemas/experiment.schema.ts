@@ -114,6 +114,7 @@ const experimentSchema = z.object({
   trials: z.array(trialSchema).min(1),
   schedule: experimentScheduleSchema.optional(),
   schedule_path: z.string().min(1).optional(),
+  schedule_version: z.string().min(1).optional(),
 });
 
 export function parseExperimentConfig(input: unknown): ExperimentConfig {
@@ -156,5 +157,6 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     trials: parsed.trials,
     schedule: parsed.schedule,
     schedulePath: parsed.schedule_path,
+    scheduleVersion: parsed.schedule_version,
   };
 }
