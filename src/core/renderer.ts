@@ -90,6 +90,7 @@ export class LayoutTaskRenderer {
   private viewportPan = { x: 0, y: 0 };
   private viewportPanPointerId: number | undefined;
   private viewportPanLast: { x: number; y: number } | undefined;
+  private viewportPanCaptureElement: HTMLElement | undefined;
   private readonly debugShadowEnabled =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug_shadow") === "1";
 
@@ -146,6 +147,7 @@ export class LayoutTaskRenderer {
     this.viewportPan = { x: 0, y: 0 };
     this.viewportPanPointerId = undefined;
     this.viewportPanLast = undefined;
+    this.viewportPanCaptureElement = undefined;
 
     // The shell contains the SVG stage and a persistent side panel.
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
@@ -213,11 +215,6 @@ export class LayoutTaskRenderer {
         this.options.onStageBackgroundClick?.();
       }
     });
-    svg.addEventListener("contextmenu", (event) => event.preventDefault());
-    svg.addEventListener("pointerdown", this.handleViewportPointerDown);
-    svg.addEventListener("pointermove", this.handleViewportPointerMove);
-    svg.addEventListener("pointerup", this.handleViewportPointerUp);
-    svg.addEventListener("pointercancel", this.handleViewportPointerUp);
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     svg.append(defs);
 
@@ -406,10 +403,13 @@ export class LayoutTaskRenderer {
 
     const developerShortcut = this.options.developerMode ? document.createElement("button") : undefined;
     if (developerShortcut) {
+      const chinese = this.options.locale === "zh-CN";
       developerShortcut.type = "button";
       developerShortcut.className = "layout-task-developer-button";
-      developerShortcut.textContent = "Developer: fill default result";
-      developerShortcut.title = "Fill default poses and confidence through the normal interaction flow";
+      developerShortcut.textContent = chinese ? "开发者：填写默认结果" : "Developer: fill default result";
+      developerShortcut.title = chinese
+        ? "通过正常交互流程填写默认位置、旋转和置信度"
+        : "Fill default poses and confidence through the normal interaction flow";
       developerShortcut.addEventListener("click", () => this.options.onDeveloperShortcut?.());
     }
 
@@ -625,7 +625,20 @@ export class LayoutTaskRenderer {
     const zoomIn = this.createViewportButton("+", "Zoom in", () => this.adjustViewportZoom(1.25));
     const zoomOut = this.createViewportButton("−", "Zoom out", () => this.adjustViewportZoom(0.8));
     const reset = this.createViewportButton("↺", "Reset view", () => this.resetViewport());
-    tools.append(zoomIn, zoomOut, reset);
+    const pan = this.createViewportButton("", "Pan view", () => undefined);
+    const panIcon = document.createElement("img");
+    panIcon.className = "layout-task-viewport-pan-icon";
+    panIcon.src = getPlayerIconUrl("move.svg");
+    panIcon.alt = "";
+    panIcon.setAttribute("aria-hidden", "true");
+    pan.append(panIcon);
+    pan.classList.add("layout-task-viewport-pan-button");
+    pan.setAttribute("aria-pressed", "false");
+    pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);
+    pan.addEventListener("pointermove", this.handleViewportPointerMove);
+    pan.addEventListener("pointerup", this.handleViewportPointerUp);
+    pan.addEventListener("pointercancel", this.handleViewportPointerUp);
+    tools.append(zoomIn, zoomOut, reset, pan);
     return tools;
   }
 
@@ -1073,18 +1086,21 @@ export class LayoutTaskRenderer {
     this.updateViewportTransform();
   }
 
-  private readonly handleViewportPointerDown = (event: PointerEvent): void => {
+  private readonly handleViewportPanPointerDown = (event: PointerEvent): void => {
     if (this.options.isPaused?.()) {
       return;
     }
-    if (event.button !== 2 || !this.refs.svg) {
+    if (!this.refs.svg || !(event.currentTarget instanceof HTMLElement)) {
       return;
     }
 
     event.preventDefault();
     this.viewportPanPointerId = event.pointerId;
     this.viewportPanLast = { x: event.clientX, y: event.clientY };
-    this.refs.svg.setPointerCapture(event.pointerId);
+    this.viewportPanCaptureElement = event.currentTarget;
+    this.viewportPanCaptureElement.setPointerCapture(event.pointerId);
+    this.viewportPanCaptureElement.setAttribute("aria-pressed", "true");
+    this.viewportPanCaptureElement.classList.add("is-active");
     this.refs.stageWrapElement?.classList.add("is-viewport-panning");
   };
 
@@ -1107,19 +1123,19 @@ export class LayoutTaskRenderer {
   };
 
   private readonly handleViewportPointerUp = (event: PointerEvent): void => {
-    if (this.options.isPaused?.()) {
-      return;
-    }
     if (event.pointerId !== this.viewportPanPointerId) {
       return;
     }
 
     event.preventDefault();
-    if (this.refs.svg?.hasPointerCapture(event.pointerId)) {
-      this.refs.svg.releasePointerCapture(event.pointerId);
+    if (this.viewportPanCaptureElement?.hasPointerCapture(event.pointerId)) {
+      this.viewportPanCaptureElement.releasePointerCapture(event.pointerId);
     }
+    this.viewportPanCaptureElement?.setAttribute("aria-pressed", "false");
+    this.viewportPanCaptureElement?.classList.remove("is-active");
     this.viewportPanPointerId = undefined;
     this.viewportPanLast = undefined;
+    this.viewportPanCaptureElement = undefined;
     this.refs.stageWrapElement?.classList.remove("is-viewport-panning");
   };
 
@@ -1140,10 +1156,6 @@ export class LayoutTaskRenderer {
   }
 
   destroy(): void {
-    this.refs.svg?.removeEventListener("pointerdown", this.handleViewportPointerDown);
-    this.refs.svg?.removeEventListener("pointermove", this.handleViewportPointerMove);
-    this.refs.svg?.removeEventListener("pointerup", this.handleViewportPointerUp);
-    this.refs.svg?.removeEventListener("pointercancel", this.handleViewportPointerUp);
     this.clearHideTimer();
     this.clearLimitFeedback();
     this.unbindViewportWarning();

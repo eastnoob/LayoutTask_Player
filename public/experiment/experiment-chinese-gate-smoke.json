@@ -1,0 +1,33 @@
+{
+  "schema": "layouttask.experiment.v1",
+  "experiment_id": "completion-code-gate-smoke",
+  "baseUrl": "../layout-task-run12-core23-persistent/",
+  "reference_mode": "persistent",
+  "order": "fixed",
+  "locale": "zh-CN",
+  "completion_code_gate": { "enabled": true, "min_display_ms": 15000 },
+  "tutorial": {
+    "enabled": true,
+    "baseUrl": "../layout-task-run12-core23-persistent/tutorial/",
+    "taskId": "scene_edc634ac7856",
+    "qid": "Q_scene_edc634ac7856",
+    "packageVersion": "tutorial-edc634ac7856-v1",
+    "referenceBoard": {
+      "enabled": true,
+      "continueLabel": "Continue",
+      "items": [
+        { "id": "m01", "name": "Armchairs and Coffee Table", "allSvg": "assets/tutorial-reference/tutorial/whole/svg/armchairAndTeatable.svg", "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/armchairAndTeatable.svg", "allAnimation": "assets/tutorial-reference/tutorial/whole/armchairAndTeatable.gif", "variableAnimation": "assets/tutorial-reference/tutorial/variable/armchairAndTeatable.gif" },
+        { "id": "m03", "name": "Dining Table and Chairs", "allSvg": "assets/tutorial-reference/tutorial/whole/svg/diningTable.svg", "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/dining tablle_VARIABLE.svg", "allAnimation": "assets/tutorial-reference/tutorial/whole/diningTable.gif", "variableAnimation": "assets/tutorial-reference/tutorial/variable/dining tablle_VARIABLE.gif" },
+        { "id": "m04", "name": "Bookcase", "allSvg": "assets/tutorial-reference/tutorial/whole/svg/shortBookShelf.svg", "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/shortBookShelf.svg", "allAnimation": "assets/tutorial-reference/tutorial/whole/shortBookShelf.gif", "variableAnimation": "assets/tutorial-reference/tutorial/variable/shortBookShelf.gif" },
+        { "id": "m05", "name": "Sofa and Coffee Table", "allSvg": "assets/tutorial-reference/tutorial/whole/svg/sofaAndTeatable_FIXED.svg", "variableSvg": "assets/tutorial-reference/tutorial/variable/svg/sofaAndTeatable_VARIABLE.svg", "allAnimation": "assets/tutorial-reference/tutorial/whole/sofaAndTeatable_FIXED.gif", "variableAnimation": "assets/tutorial-reference/tutorial/variable/sofaAndTeatable_VARIABLE.gif" }
+      ]
+    }
+  },
+  "confidence": {
+    "required": true,
+    "scale": [1, 2, 3, 4, 5],
+    "labels": { "1": "完全不确定", "2": "不确定", "3": "一般", "4": "确定", "5": "完全确定" }
+  },
+  "data_save": { "mode": "copy", "filename_prefix": "completion-code-gate-smoke" },
+  "trials": [{ "taskId": "scene_be84fc97a8d1", "qid": "Q_scene_be84fc97a8d1" }]
+}

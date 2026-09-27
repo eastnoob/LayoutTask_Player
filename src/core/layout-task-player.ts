@@ -287,6 +287,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         // interrupt the tutorial flow and can appear as an unresponsive button.
         confirmImpl: options.tutorialMode ? () => true : undefined,
         pause: options.pause,
+        locale: options.locale,
         onComplete: (payload) => {
           advanceTutorial("submitted");
           options.onComplete?.(payload);

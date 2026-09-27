@@ -1,4 +1,5 @@
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { compileBatch } from "../../src/core/batch-compiler";
@@ -26,6 +27,7 @@ interface CompileToDirectoryOptions {
   input: string;
   out: string;
   tutorialSourceRoot?: string;
+  assetSourceRoot?: string;
   referenceMode?: ReferenceMode | string;
 }
 
@@ -155,6 +157,7 @@ export async function compileBatchToDirectory(options: CompileToDirectoryOptions
   await copyRuntimeAssets({
     batch,
     sourceRoot: path.dirname(path.resolve(options.input)),
+    assetSourceRoot: options.assetSourceRoot ?? path.resolve("assets"),
     outDir: options.out,
   });
 
@@ -211,7 +214,7 @@ function resolveWithin(root: string, relativeFile: string, operation: "read" | "
   return target;
 }
 
-async function copyRuntimeAssets(input: { batch: BatchConfig; sourceRoot: string; outDir: string }): Promise<void> {
+async function copyRuntimeAssets(input: { batch: BatchConfig; sourceRoot: string; assetSourceRoot?: string; outDir: string }): Promise<void> {
   const objectLibrary = await readPackageJson(input.sourceRoot, input.batch.shared.asset_library);
   const backgroundLibrary = await readPackageJson(input.sourceRoot, input.batch.shared.background_library);
   const referencedFiles = new Set<string>();
@@ -238,7 +241,7 @@ async function copyRuntimeAssets(input: { batch: BatchConfig; sourceRoot: string
   }
 
   for (const relativeFile of referencedFiles) {
-    await copyPackageFile(input.sourceRoot, input.outDir, relativeFile);
+    await copyPackageFile(input.sourceRoot, input.outDir, relativeFile, input.assetSourceRoot);
   }
 }
 
@@ -247,20 +250,27 @@ async function readPackageJson(sourceRoot: string, relativeFile: string): Promis
   return JSON.parse(await readFile(source, "utf8"));
 }
 
-async function copyPackageFile(sourceRoot: string, outDir: string, relativeFile: string): Promise<void> {
-  const source = resolveSourceFile(sourceRoot, relativeFile);
+async function copyPackageFile(sourceRoot: string, outDir: string, relativeFile: string, assetSourceRoot?: string): Promise<void> {
+  const source = resolveSourceFile(sourceRoot, relativeFile, assetSourceRoot);
   const target = resolveOutputPath(outDir, relativeFile);
 
   await mkdir(path.dirname(target), { recursive: true });
   await copyFile(source, target);
 }
 
-function resolveSourceFile(sourceRoot: string, relativeFile: string): string {
+function resolveSourceFile(sourceRoot: string, relativeFile: string, assetSourceRoot?: string): string {
   if (!isCopyableRelativePath(relativeFile)) {
     throw new Error(`Refusing to copy non-local package asset: ${relativeFile}`);
   }
 
   const root = path.resolve(sourceRoot);
+  if (assetSourceRoot && relativeFile.startsWith("assets/")) {
+    const assetRoot = path.resolve(assetSourceRoot);
+    const assetSource = path.resolve(assetRoot, relativeFile.slice("assets/".length));
+    if (isInside(assetRoot, assetSource) && existsSync(assetSource)) {
+      return assetSource;
+    }
+  }
   const source = path.resolve(root, relativeFile);
   if (!isInside(root, source)) {
     throw new Error(`Refusing to read outside input package directory: ${relativeFile}`);

@@ -232,6 +232,23 @@ body {
   outline: none;
 }
 
+.layout-task-viewport-pan-button.is-active {
+  background: #cffafe;
+  border-color: #0e7490;
+  cursor: grabbing;
+}
+
+.layout-task-viewport-pan-button {
+  display: inline-grid;
+  place-items: center;
+}
+
+.layout-task-viewport-pan-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 .layout-task-stage {
   display: block;
   width: 100%;

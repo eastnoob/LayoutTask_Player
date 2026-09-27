@@ -202,6 +202,30 @@ describe("CompletionController", () => {
     expect(recorder.finish).not.toHaveBeenCalled();
   });
 
+  it("uses Chinese missing-confidence guidance in Chinese mode", async () => {
+    const config = { ...createRuntimeConfig(), locale: "zh-CN" as const };
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn() };
+    const controller = new CompletionController({
+      config,
+      store,
+      recorder: recorder as never,
+      renderer,
+      encoder: { encode: vi.fn() } as never,
+      clipboard: { copy: vi.fn() } as never,
+      confidence: {
+        canSubmit: () => ({ ok: false, reason: "missing_confidence", groupId: "table_group" }),
+      },
+      locale: "zh-CN",
+      confirmImpl: () => true,
+    });
+
+    await controller.requestComplete();
+
+    expect(renderer.setStatus).toHaveBeenCalledWith("请点击每一个黄色家具物体一次，选择位置和旋转置信度，并点击保存后再提交。");
+  });
+
   it("asks the participant to save a chosen confidence before submitting", async () => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);

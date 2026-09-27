@@ -327,7 +327,8 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
     expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
     expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
-    expect(renderer).toContain('this.createViewportButton("Pan", "Pan view"');
+    expect(renderer).toContain('this.createViewportButton("", "Pan view"');
+    expect(renderer).toContain('getPlayerIconUrl("move.svg")');
     expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
     expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
     expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
