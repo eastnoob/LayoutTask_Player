@@ -13,7 +13,7 @@ ALLOWED_ORIGINS=https://your-github-pages-site.example
 SUBMIT_TOKEN=public-study-token
 ASSIGNMENT_EXPERIMENT_ID=layout-task-run12-core23
 ASSIGNMENT_SCHEDULE_VERSION=run12-williams-v1
-ASSIGNMENT_SEQUENCE_IDS=sequence-01,sequence-02
+ASSIGNMENT_SEQUENCE_IDS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46
 ARCHIVE_MODE=local
 ARCHIVE_DELETE_LOCAL_AFTER_SUCCESS=true
 METADATA_ARCHIVE_LOCAL_KEEP=3
@@ -50,6 +50,10 @@ data/spool/<submission_id>/        # pending or failed archive only
 data/metadata_archives/<timestamp>/ # recent local archived indexes, pruned automatically
 archive/<experiment>/...           # local development archive only
 ```
+
+For the approved R12 deployment, replace the example sequence list with the
+complete ordered sequence IDs from the published schedule. Do not let the
+static frontend generate participant numbers; `/assign` is the authority.
 
 Raw CSV and debug JSON files are canonical in the external archive after successful upload. Incoming experiment, participant, and session IDs are validated as safe path segments before archive keys are built. The VPS keeps only short-term spool files for pending/failed archives and an active lightweight SQLite/JSONL index. Retired indexes should be snapshot, optionally uploaded externally, pruned locally, and removed from the active tables.
 
