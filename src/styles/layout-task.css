@@ -718,6 +718,11 @@ body {
   color: #0f172a;
 }
 
+.layout-task-tutorial-bubble[data-anchor="viewport-tools"] {
+  left: 16px;
+  transform: none;
+}
+
 .layout-task-tutorial-bubble[hidden] {
   display: none;
 }

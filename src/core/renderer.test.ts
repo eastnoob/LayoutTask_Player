@@ -332,6 +332,8 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain('getPlayerIconUrl("move.svg")');
     expect(renderer).toContain('tools.dataset.layoutTaskAnchor = "viewport-tools";');
     expect(css).toContain(".layout-task-viewport-tools {\n  position: absolute;\n  right: 16px;\n  top: 16px;\n  bottom: auto;");
+    expect(css).toContain('.layout-task-tutorial-bubble[data-anchor="viewport-tools"]');
+    expect(css).toContain('left: 16px;');
     expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
     expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
     expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
