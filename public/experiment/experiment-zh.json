@@ -1,11 +1,13 @@
 {
   "schema": "layouttask.experiment.v1",
-  "experiment_id": "run_12_core_23_debug",
+  "experiment_id": "run_12_core_23_persistent",
   "baseUrl": "../layout-task-run12-core23-persistent/",
   "schedule_path": "../layout-task-run12-core23-persistent/schedule.json",
   "schedule_version": "run12-williams-v1",
   "reference_mode": "persistent",
   "order": "fixed",
+  "locale": "zh-CN",
+  "completion_code_gate": { "enabled": true, "min_display_ms": 15000 },
   "tutorial": {
     "enabled": true,
     "baseUrl": "../layout-task-run12-core23-persistent/tutorial/",
@@ -61,18 +63,18 @@
       5
     ],
     "labels": {
-      "1": "Very unsure",
-      "2": "Unsure",
-      "3": "Neutral",
-      "4": "Sure",
-      "5": "Very sure"
+      "1": "完全不确定",
+      "2": "不确定",
+      "3": "一般",
+      "4": "确定",
+      "5": "完全确定"
     }
   },
   "data_save": {
     "mode": "receiver",
-    "experiment_id": "run_12_core_23_debug",
+    "experiment_id": "run_12_core_23_persistent",
     "endpoint": "https://datapipe.eastnoob.top/submit",
-    "filename_prefix": "run-12-core-23-debug"
+    "filename_prefix": "run-12-core-23-persistent"
   },
   "trials": [
     {

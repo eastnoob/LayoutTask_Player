@@ -348,6 +348,7 @@ export async function saveExperimentFiles(input: {
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
   pauseSummary?: import("./types/result").PauseSummary;
+  assignment?: AssignmentRecord;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -411,6 +412,7 @@ export async function saveExperimentFiles(input: {
                 participantId: input.participantId!,
                 sessionId: input.sessionId!,
                 files: input.files,
+                assignment: input.assignment,
               }),
             ),
           }),
@@ -450,6 +452,10 @@ export async function saveExperimentFiles(input: {
       experiment_id: dataSave.experimentId,
       participant_id: input.participantId,
       session_id: input.sessionId,
+      assignment_id: input.assignment?.assignmentId,
+      participant_number: input.assignment?.participantNumber,
+      sequence_id: input.assignment?.sequenceId,
+      schedule_version: input.assignment?.scheduleVersion,
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -492,6 +498,12 @@ export async function saveExperimentFiles(input: {
   const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
     files: input.files,
+    assignment: input.assignment ? {
+      assignment_id: input.assignment.assignmentId,
+      participant_number: input.assignment.participantNumber,
+      sequence_id: input.assignment.sequenceId,
+      schedule_version: input.assignment.scheduleVersion,
+    } : undefined,
   });
   const dataSave = input.dataSave;
   const uploadState = new UploadState({ pauseSummary: input.pauseSummary });
@@ -581,6 +593,12 @@ export function createRunnableExperiment(
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
+    assignment: options.assignment ? {
+      assignment_id: options.assignment.assignmentId,
+      participant_number: options.assignment.participantNumber,
+      sequence_id: options.assignment.sequenceId,
+      schedule_version: options.assignment.scheduleVersion,
+    } : undefined,
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
@@ -642,6 +660,12 @@ export function createRunnableExperiment(
         completionCode,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        assignment: options.assignment ? {
+          assignment_id: options.assignment.assignmentId,
+          participant_number: options.assignment.participantNumber,
+          sequence_id: options.assignment.sequenceId,
+          schedule_version: options.assignment.scheduleVersion,
+        } : undefined,
       });
       pauseUi.destroy();
       renderSavingPage(config.locale);
@@ -653,6 +677,7 @@ export function createRunnableExperiment(
         localBackup,
         completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        assignment: options.assignment,
       });
       if (saveResult.ok) {
         session.markCompleted();
@@ -785,12 +810,17 @@ function createReceiverSubmission(input: {
   participantId: string;
   sessionId: string;
   files: ExperimentCsvFile[];
+  assignment?: AssignmentRecord;
 }) {
   return {
     schema: "layouttask.receiver.submission.v1" as const,
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,
+    assignment_id: input.assignment?.assignmentId,
+    participant_number: input.assignment?.participantNumber,
+    sequence_id: input.assignment?.sequenceId,
+    schedule_version: input.assignment?.scheduleVersion,
     files: input.files.map((file) => ({
       filename: file.filename,
       content_type: file.contentType,

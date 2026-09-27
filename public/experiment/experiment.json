@@ -1,11 +1,14 @@
 {
   "schema": "layouttask.experiment.v1",
-  "experiment_id": "run_12_core_23_preview",
-  "baseUrl": "../layout-task-run12-core23-preview/",
+  "experiment_id": "run_12_core_23_persistent",
+  "baseUrl": "../layout-task-run12-core23-persistent/",
+  "schedule_path": "../layout-task-run12-core23-persistent/schedule.json",
+  "schedule_version": "run12-williams-v1",
+  "reference_mode": "persistent",
   "order": "fixed",
   "tutorial": {
     "enabled": true,
-    "baseUrl": "../layout-task-run12-core23-preview/tutorial/",
+    "baseUrl": "../layout-task-run12-core23-persistent/tutorial/",
     "taskId": "scene_edc634ac7856",
     "qid": "Q_scene_edc634ac7856",
     "packageVersion": "tutorial-edc634ac7856-v1",
@@ -67,9 +70,9 @@
   },
   "data_save": {
     "mode": "receiver",
-    "experiment_id": "run_12_core_23_preview",
+    "experiment_id": "run_12_core_23_persistent",
     "endpoint": "https://datapipe.eastnoob.top/submit",
-    "filename_prefix": "run-12-core-23"
+    "filename_prefix": "run-12-core-23-persistent"
   },
   "trials": [
     {

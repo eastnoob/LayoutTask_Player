@@ -37,6 +37,12 @@ export interface ExperimentCsvInput {
   tutorialPackageVersion?: string;
   completionCode?: string;
   pauseSummary?: PauseSummary;
+  assignment?: {
+    assignment_id: string;
+    participant_number: number;
+    sequence_id: string;
+    schedule_version: string;
+  };
 }
 
 export interface ExperimentCsvFile {
@@ -48,6 +54,12 @@ export interface ExperimentCsvFile {
 export interface ExperimentDataPipePayloadsInput {
   experimentId: string;
   files: ExperimentCsvFile[];
+  assignment?: {
+    assignment_id: string;
+    participant_number: number;
+    sequence_id: string;
+    schedule_version: string;
+  };
 }
 
 export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentCsvFile[] {
@@ -107,6 +119,10 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         package_version: input.tutorialPackageVersion,
         participant_id: input.participantId,
         session_id: input.sessionId,
+        assignment_id: input.assignment?.assignment_id,
+        participant_number: input.assignment?.participant_number,
+        sequence_id: input.assignment?.sequence_id,
+        schedule_version: input.assignment?.schedule_version,
         task_id: tutorial.taskId,
         qid: tutorial.qid,
         encoded: tutorial.encoded,
@@ -139,6 +155,10 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
     experimentID: input.experimentId,
     filename: file.filename,
     data: file.data,
+    assignment_id: input.assignment?.assignment_id,
+    participant_number: input.assignment?.participant_number,
+    sequence_id: input.assignment?.sequence_id,
+    schedule_version: input.assignment?.schedule_version,
   }));
 }
 
@@ -149,6 +169,10 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
+      "assignment_id",
+      "participant_number",
+      "sequence_id",
+      "schedule_version",
       "started_at",
       "ended_at",
       "duration_ms",
@@ -178,6 +202,10 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
+        input.assignment?.assignment_id,
+        input.assignment?.participant_number,
+        input.assignment?.sequence_id,
+        input.assignment?.schedule_version,
         input.startTime,
         input.endTime,
         input.endTime - input.startTime,
@@ -222,6 +250,10 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
+        input.assignment?.assignment_id,
+        input.assignment?.participant_number,
+        input.assignment?.sequence_id,
+        input.assignment?.schedule_version,
         trialIndex,
         trial.result.task_id,
         trial.result.qid,
@@ -269,6 +301,10 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
+      "assignment_id",
+      "participant_number",
+      "sequence_id",
+      "schedule_version",
       "trial_index",
       "task_id",
       "qid",
@@ -323,6 +359,10 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       input.participantId,
       input.sessionId,
       input.experimentId,
+      input.assignment?.assignment_id,
+      input.assignment?.participant_number,
+      input.assignment?.sequence_id,
+      input.assignment?.schedule_version,
       trialIndex,
       trial.result.task_id,
       trial.result.qid,
@@ -350,6 +390,10 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
+      "assignment_id",
+      "participant_number",
+      "sequence_id",
+      "schedule_version",
       "trial_index",
       "task_id",
       "qid",
@@ -386,6 +430,10 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
+        input.assignment?.assignment_id,
+        input.assignment?.participant_number,
+        input.assignment?.sequence_id,
+        input.assignment?.schedule_version,
         trialIndex,
         trial.result.task_id,
         trial.result.qid,
@@ -430,6 +478,10 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
+      "assignment_id",
+      "participant_number",
+      "sequence_id",
+      "schedule_version",
       "trial_index",
       "task_id",
       "qid",
@@ -475,6 +527,10 @@ function createDebugJson(input: ExperimentCsvInput): string {
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
+      assignment_id: input.assignment?.assignment_id,
+      participant_number: input.assignment?.participant_number,
+      sequence_id: input.assignment?.sequence_id,
+      schedule_version: input.assignment?.schedule_version,
       completion_code: input.completionCode ?? "",
       reference_mode: input.referenceMode,
       started_at: input.startTime,
