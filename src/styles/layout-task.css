@@ -201,7 +201,8 @@ body {
 .layout-task-viewport-tools {
   position: absolute;
   right: 16px;
-  bottom: 16px;
+  top: 16px;
+  bottom: auto;
   z-index: 4;
   display: flex;
   gap: 6px;

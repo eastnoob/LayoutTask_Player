@@ -323,12 +323,15 @@ describe("LayoutTaskRenderer control layout", () => {
 
   it("adds viewport zoom controls and uses an explicit hold-to-pan button", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const css = readFileSync("src/styles/layout-task.css", "utf8").replace(/\r\n/g, "\n");
 
     expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
     expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
     expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
     expect(renderer).toContain('this.createViewportButton("", "Pan view"');
     expect(renderer).toContain('getPlayerIconUrl("move.svg")');
+    expect(renderer).toContain('tools.dataset.layoutTaskAnchor = "viewport-tools";');
+    expect(css).toContain(".layout-task-viewport-tools {\n  position: absolute;\n  right: 16px;\n  top: 16px;\n  bottom: auto;");
     expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
     expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
     expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');

@@ -621,6 +621,7 @@ export class LayoutTaskRenderer {
   private createViewportTools(): HTMLElement {
     const tools = document.createElement("div");
     tools.className = "layout-task-viewport-tools";
+    tools.dataset.layoutTaskAnchor = "viewport-tools";
 
     const zoomIn = this.createViewportButton("+", "Zoom in", () => this.adjustViewportZoom(1.25));
     const zoomOut = this.createViewportButton("−", "Zoom out", () => this.adjustViewportZoom(0.8));
