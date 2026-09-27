@@ -83,7 +83,9 @@ describe("TutorialController", () => {
     expect(controller.getCurrentStep().message).toContain("透视图");
     controller.handle("reconstruction_started");
     expect(controller.getCurrentStep().message).toContain("黄色");
-    expect(controller.getCurrentStep().message).toContain("根据刚才看到的图片还原场景平面图");
+    expect(controller.getCurrentStep().message).toContain("页面上方的图片");
+    expect(controller.getCurrentStep().message).toContain("移动平面图中的");
+    expect(controller.getCurrentStep().message).toContain("与上方透视图中的家具一致");
   });
 
   it("keeps the operation instructions with the first confidence prompt", () => {
@@ -124,8 +126,11 @@ describe("TutorialController", () => {
     const selectController = new TutorialController();
     selectController.handle("preview_acknowledged");
     selectController.handle("reconstruction_started");
-    expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow object[[/yellow]]");
+    expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow objects[[/yellow]]");
     expect(selectController.getCurrentStep().message).toContain("**Only yellow objects can be moved.**");
+    expect(selectController.getCurrentStep().message).toContain("picture at the top of the page");
+    expect(selectController.getCurrentStep().message).toContain("floor plan below");
+    expect(selectController.getCurrentStep().message).toContain("match the furniture in the perspective image above");
     expect(selectController.getCurrentStep().message).toContain("zoom controls in the lower-right corner");
   });
 });

@@ -47,7 +47,7 @@ const steps: TutorialStep[] = [
     id: "select_first",
     anchor: "stage",
     message:
-      "Click the [[yellow]]yellow object[[/yellow]] in each furniture group. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom controls in the lower-right corner** to inspect the scene.",
+      "Use the picture at the top of the page to reconstruct the floor plan below. Move the [[yellow]]yellow objects[[/yellow]] in the floor plan so that their positions and orientations match the furniture in the perspective image above. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom controls in the lower-right corner** to inspect the scene.",
     expectedEvent: "object_selected",
   },
   {
@@ -161,7 +161,7 @@ function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
       "**你可以随时查看页面顶部的透视图。** 你的任务是根据刚才看到的图片还原场景平面图。请不要使用浏览器缩放、**Ctrl + 滚轮**或其他放大工具；这些行为可能会被记录。你可以使用平面图右下角的缩放按钮。",
     preview: "**观察顶部的参考图片。** 倒计时结束后图片会消失。",
     select_first:
-      "请根据刚才看到的图片还原场景平面图。然后点击每个家具组中的[[yellow]]黄色物体[[/yellow]]。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用**右下角的平面图缩放按钮**。",
+      "请根据页面上方的图片，还原下方的场景平面图。具体来说，请移动平面图中的[[yellow]]黄色物体[[/yellow]]，使它们的位置和方向与上方透视图中的家具一致。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用**右下角的平面图缩放按钮**。",
     move_or_rotate:
       "**使用箭头按钮移动**，或**使用旋转按钮调整方向**。如果操作箭头挡住视线，请将鼠标移出物体以隐藏箭头；重新指向物体即可显示，**这不会退出编辑模式。**",
     confidence_first:
