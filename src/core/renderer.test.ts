@@ -70,6 +70,15 @@ describe("persistent reference display", () => {
     expect(source).toContain('locale?: "en-US" | "zh-CN"');
     expect(source).toContain("选择这个家具组的置信度");
   });
+
+  it("provides a Chinese developer shortcut label for the Chinese player", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('chinese ? "开发者：填写默认结果"');
+    expect(source).toContain('"Developer: fill default result"');
+    expect(source).toContain('"通过正常交互流程填写默认位置、旋转和置信度"');
+    expect(source).toContain('"Fill default poses and confidence through the normal interaction flow"');
+  });
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
@@ -312,13 +321,21 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain("Leaving the object never exits edit mode.");
   });
 
-  it("adds viewport zoom controls and reserves right-drag for panning", () => {
+  it("adds viewport zoom controls and uses an explicit hold-to-pan button", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
 
     expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
     expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
     expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
-    expect(renderer).toContain("event.button !== 2");
+    expect(renderer).toContain('this.createViewportButton("Pan", "Pan view"');
+    expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
+    expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
+    expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
+    expect(renderer).toContain("setPointerCapture(event.pointerId)");
+    expect(renderer).toContain("releasePointerCapture(event.pointerId)");
+    expect(renderer).toContain("if (this.options.isPaused?.())");
+    expect(renderer).not.toContain("event.button !== 2");
+    expect(renderer).not.toContain('svg.addEventListener("contextmenu"');
     expect(renderer).toContain("preventDefault()");
   });
 
