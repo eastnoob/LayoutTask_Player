@@ -82,6 +82,45 @@ class ServerTests(unittest.TestCase):
             self.assertTrue(body["ok"])
             self.assertEqual(headers["Access-Control-Allow-Origin"], "https://pages.example")
 
+    def test_assigns_and_repeats_assignment(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = ReceiverConfig(
+                data_dir=Path(temp_dir),
+                allowed_origins=["https://pages.example"],
+                submit_token="token",
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a", "sequence-b"],
+            )
+            server = self.start_server(config)
+            payload = {"experiment_id": "layout_task_v1", "idempotency_token": "browser-1", "schedule_version": "schedule-v1"}
+            first = self.post_json(server, "/assign", payload, {"X-Submit-Token": "token"})
+            repeated = self.post_json(server, "/assign", payload, {"X-Submit-Token": "token"})
+            self.assertEqual(first[0], 201)
+            self.assertEqual(first[2]["participant_number"], 1)
+            self.assertEqual(first[2]["sequence_id"], "sequence-a")
+            self.assertEqual(first[2], repeated[2])
+
+    def test_rejects_assignment_with_unknown_schedule(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = ReceiverConfig(
+                data_dir=Path(temp_dir),
+                allowed_origins=["https://pages.example"],
+                submit_token=None,
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a"],
+            )
+            server = self.start_server(config)
+            status, _headers, body = self.post_json(
+                server,
+                "/assign",
+                {"experiment_id": "layout_task_v1", "idempotency_token": "browser-1", "schedule_version": "wrong"},
+            )
+            self.assertGreaterEqual(status, 400)
+            self.assertLess(status, 500)
+            self.assertNotIn("participant_number", body)
+
     def test_submit_defers_archive_until_session_archive(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             config = ReceiverConfig(

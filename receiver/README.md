@@ -11,6 +11,9 @@ This service receives completed Layout Task experiment files from a static front
 ```text
 ALLOWED_ORIGINS=https://your-github-pages-site.example
 SUBMIT_TOKEN=public-study-token
+ASSIGNMENT_EXPERIMENT_ID=layout-task-run12-core23
+ASSIGNMENT_SCHEDULE_VERSION=run12-williams-v1
+ASSIGNMENT_SEQUENCE_IDS=sequence-01,sequence-02
 ARCHIVE_MODE=local
 ARCHIVE_DELETE_LOCAL_AFTER_SUCCESS=true
 METADATA_ARCHIVE_LOCAL_KEEP=3
@@ -31,6 +34,10 @@ METADATA_ARCHIVE_LOCAL_KEEP=0
 ```bash
 docker compose up -d --build
 ```
+
+`/assign` reads the configured comma-separated sequence IDs and stores assignments in
+`data/submissions.sqlite`. Keep the `./data` volume mounted so assignments survive
+receiver restarts. The sequence list must match the published schedule in order.
 
 ## Data
 

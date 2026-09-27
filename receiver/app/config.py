@@ -19,6 +19,9 @@ class ReceiverConfig:
     max_files_per_submission: int = 8
     rate_limit_window_ms: int = 60_000
     rate_limit_max: int = 60
+    assignment_experiment_id: str | None = None
+    assignment_schedule_version: str | None = None
+    assignment_sequence_ids: list[str] | None = None
 
 
 def load_config_from_env() -> ReceiverConfig:
@@ -37,4 +40,7 @@ def load_config_from_env() -> ReceiverConfig:
         max_files_per_submission=int(os.environ.get("MAX_FILES_PER_SUBMISSION", "8")),
         rate_limit_window_ms=int(os.environ.get("RATE_LIMIT_WINDOW_MS", "60000")),
         rate_limit_max=int(os.environ.get("RATE_LIMIT_MAX", "60")),
+        assignment_experiment_id=os.environ.get("ASSIGNMENT_EXPERIMENT_ID") or None,
+        assignment_schedule_version=os.environ.get("ASSIGNMENT_SCHEDULE_VERSION") or None,
+        assignment_sequence_ids=[item for item in os.environ.get("ASSIGNMENT_SEQUENCE_IDS", "").split(",") if item],
     )

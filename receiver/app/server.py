@@ -63,9 +63,18 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
 
         def do_POST(self) -> None:
             origin = self.allowed_origin()
-            if self.path not in ("/submit", "/api/data/", "/archive"):
+            if self.path not in ("/assign", "/submit", "/api/data/", "/archive"):
                 json_response(self, 404, {"ok": False, "error": "not_found", "message": "Route not found."}, origin)
                 return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                json_response(self, 400, {"ok": False, "error": "invalid_length"}, origin)
+                return
+            if length > config.max_body_bytes:
+                json_response(self, 413, {"ok": False, "error": "body_too_large"}, origin)
+                return
+            body_bytes = self.rfile.read(length)
             if not self.origin_is_allowed():
                 json_response(self, 403, {"ok": False, "error": "origin_not_allowed"}, None)
                 return
@@ -77,19 +86,45 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 return
 
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                json_response(self, 400, {"ok": False, "error": "invalid_length"}, origin)
-                return
-            if length > config.max_body_bytes:
-                json_response(self, 413, {"ok": False, "error": "body_too_large"}, origin)
-                return
-
-            body_bytes = self.rfile.read(length)
-            try:
                 payload = json.loads(body_bytes.decode("utf-8"))
             except json.JSONDecodeError:
                 json_response(self, 400, {"ok": False, "error": "invalid_json"}, origin)
+                return
+
+            if self.path == "/assign":
+                if not config.assignment_experiment_id or not config.assignment_schedule_version or not config.assignment_sequence_ids:
+                    json_response(self, 503, {"ok": False, "error": "assignment_not_configured"}, origin)
+                    return
+                if (
+                    payload.get("experiment_id") != config.assignment_experiment_id
+                    or payload.get("schedule_version") != config.assignment_schedule_version
+                    or not isinstance(payload.get("idempotency_token"), str)
+                    or not payload["idempotency_token"]
+                ):
+                    json_response(self, 400, {"ok": False, "error": "invalid_assignment"}, origin)
+                    return
+                try:
+                    assignment = storage.allocate_assignment(
+                        config.assignment_experiment_id,
+                        payload["idempotency_token"],
+                        config.assignment_schedule_version,
+                        config.assignment_sequence_ids,
+                    )
+                except Exception as error:
+                    print(f"assignment_storage_error: {error}", file=sys.stderr)
+                    json_response(self, 500, {"ok": False, "error": "assignment_storage_error"}, origin)
+                    return
+                json_response(
+                    self,
+                    201,
+                    {
+                        "assignment_id": assignment.assignment_id,
+                        "participant_number": assignment.participant_number,
+                        "sequence_id": assignment.sequence_id,
+                        "schedule_version": assignment.schedule_version,
+                    },
+                    origin,
+                )
                 return
 
             if self.path == "/archive":
