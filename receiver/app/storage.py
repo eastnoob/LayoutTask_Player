@@ -23,6 +23,17 @@ class StoredSubmission:
 
 
 @dataclass(frozen=True)
+class AssignmentRecord:
+    assignment_id: str
+    experiment_id: str
+    idempotency_token: str
+    participant_number: int
+    sequence_id: str
+    schedule_version: str
+    assigned_at: str
+
+
+@dataclass(frozen=True)
 class SessionArchiveResult:
     ok: bool
     archive_status: str
@@ -59,6 +70,44 @@ class ReceiverStorage:
         self.sqlite_path = self.data_dir / "submissions.sqlite"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._init_schema()
+
+    def allocate_assignment(
+        self,
+        experiment_id: str,
+        idempotency_token: str,
+        schedule_version: str,
+        sequence_ids: list[str],
+    ) -> AssignmentRecord:
+        if not experiment_id or not idempotency_token or not schedule_version or not sequence_ids:
+            raise ValueError("assignment requires experiment, token, schedule, and sequences")
+        with closing(sqlite3.connect(self.sqlite_path, timeout=30)) as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assigned_at FROM assignments WHERE experiment_id = ? AND idempotency_token = ?",
+                (experiment_id, idempotency_token),
+            ).fetchone()
+            if existing:
+                db.commit()
+                return AssignmentRecord(*existing)
+            participant_number = db.execute(
+                "SELECT COALESCE(MAX(participant_number), 0) + 1 FROM assignments WHERE experiment_id = ?",
+                (experiment_id,),
+            ).fetchone()[0]
+            record = AssignmentRecord(
+                uuid.uuid4().hex,
+                experiment_id,
+                idempotency_token,
+                participant_number,
+                sequence_ids[(participant_number - 1) % len(sequence_ids)],
+                schedule_version,
+                _utc_now(),
+            )
+            db.execute(
+                "INSERT INTO assignments(assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assigned_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                tuple(record.__dict__.values()),
+            )
+            db.commit()
+            return record
 
     def save_submission(
         self,
@@ -375,6 +424,21 @@ class ReceiverStorage:
                   detail_json TEXT,
                   created_at TEXT NOT NULL,
                   FOREIGN KEY(submission_id) REFERENCES submissions(id)
+                )
+                """,
+            )
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS assignments(
+                  assignment_id TEXT PRIMARY KEY,
+                  experiment_id TEXT NOT NULL,
+                  idempotency_token TEXT NOT NULL,
+                  participant_number INTEGER NOT NULL,
+                  sequence_id TEXT NOT NULL,
+                  schedule_version TEXT NOT NULL,
+                  assigned_at TEXT NOT NULL,
+                  UNIQUE(experiment_id, idempotency_token),
+                  UNIQUE(experiment_id, participant_number)
                 )
                 """,
             )

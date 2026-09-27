@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import tempfile
+import threading
 import unittest
 from contextlib import closing
 from pathlib import Path
@@ -59,6 +60,42 @@ def valid_submission():
 
 
 class StorageTests(unittest.TestCase):
+    def test_allocate_assignment_is_idempotent_and_cycles_configured_sequences(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            first = storage.allocate_assignment("exp", "token-1", "schedule-v1", ["sequence-a", "sequence-b"])
+            repeated = storage.allocate_assignment("exp", "token-1", "schedule-v1", ["sequence-a", "sequence-b"])
+            second = storage.allocate_assignment("exp", "token-2", "schedule-v1", ["sequence-a", "sequence-b"])
+            third = storage.allocate_assignment("exp", "token-3", "schedule-v1", ["sequence-a", "sequence-b"])
+
+            self.assertEqual(first, repeated)
+            self.assertEqual(first.participant_number, 1)
+            self.assertEqual(first.sequence_id, "sequence-a")
+            self.assertEqual(second.participant_number, 2)
+            self.assertEqual(second.sequence_id, "sequence-b")
+            self.assertEqual(third.participant_number, 3)
+            self.assertEqual(third.sequence_id, "sequence-a")
+
+    def test_allocate_assignment_is_unique_under_concurrent_requests(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            results = []
+            errors = []
+
+            def allocate(index):
+                try:
+                    results.append(storage.allocate_assignment("exp", f"token-{index}", "schedule-v1", ["sequence-a", "sequence-b"]))
+                except Exception as error:  # pragma: no cover - assertion reports unexpected SQLite failures
+                    errors.append(error)
+
+            threads = [threading.Thread(target=allocate, args=(index,)) for index in range(20)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            self.assertEqual(errors, [])
+            self.assertEqual(sorted(item.participant_number for item in results), list(range(1, 21)))
     def test_deferred_submit_keeps_spool_until_session_archive(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir)
