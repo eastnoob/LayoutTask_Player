@@ -150,6 +150,10 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
   experimentID: string;
   filename: string;
   data: string;
+  assignment_id?: string;
+  participant_number?: number;
+  sequence_id?: string;
+  schedule_version?: string;
 }> {
   return input.files.map((file) => ({
     experimentID: input.experimentId,

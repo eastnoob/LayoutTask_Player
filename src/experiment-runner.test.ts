@@ -84,7 +84,7 @@ describe("buildExperimentTimeline", () => {
     const timeline = buildExperimentTimeline(config, { assignment: {
       assignmentId: "a1",
       participantNumber: 2,
-      sequenceId: config.schedule.sequences[1].sequenceId,
+      sequenceId: String(config.schedule.sequences[1].sequenceId),
       scheduleVersion: "v1",
     } });
     const formal = timeline.filter((trial) => trial.type === LayoutTaskPlugin && trial.tutorialMode !== true);
