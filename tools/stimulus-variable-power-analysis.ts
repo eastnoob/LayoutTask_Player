@@ -14,6 +14,16 @@ export type Observation = RawResultRow & Record<string, unknown> & {
   object_id: string;
   point_id?: string;
 };
+export const CORE_PREDICTORS = [
+  "targetFurnitureSilhouetteVisibility",
+  "furnitureGroupSilhouetteVisibility",
+  "asymmetricCueVisibilityAngleWeighted",
+  "featureCueVisibility",
+  "relationVisibilityTotal",
+  "PerspectiveRank",
+  "volumeAxisRetention",
+  "volumeAngularSeparation",
+] as const;
 
 export function matchTasksToDesign(designRows: DesignRow[], taskIds: string[]): TaskMatch[] {
   const design = new Map(designRows.map((row) => [row.combination_id, row]));
@@ -62,4 +72,18 @@ export function scoreRotation(actualSteps: number, targetSteps: number) {
   const raw = Math.abs(actualSteps - targetSteps) % 8;
   const rotation_error_steps = Math.min(raw, 8 - raw);
   return { rotation_error_steps, rotation_exact: rotation_error_steps === 0 };
+}
+
+export function auditPredictors(rows: Record<string, unknown>[]) {
+  const variables = [...new Set(rows.flatMap((row) => Object.keys(row)))].filter((key) => !["model_id", "object_id", "point_id"].includes(key));
+  return variables.map((variable) => {
+    const values = rows.map((row) => row[variable]).filter((value): value is string | number => value !== undefined && value !== null);
+    const unique = new Set(values.map(String)).size;
+    const category = variable.startsWith("audit.")
+      ? "excluded_namespace"
+      : unique < 2 ? "excluded_constant"
+        : (CORE_PREDICTORS as readonly string[]).includes(variable) ? "core"
+          : ["asymmetricCueVisibility", "relationPerspectiveTotal"].includes(variable) ? "exploratory" : "other";
+    return { variable, n: values.length, unique, category };
+  });
 }
