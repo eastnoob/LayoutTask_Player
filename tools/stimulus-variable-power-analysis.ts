@@ -51,3 +51,15 @@ export function buildObservationTable(rawRows: RawResultRow[], designRows: Desig
   }
   return observations;
 }
+
+export function scorePosition(actual: { dx_steps: number; dy_steps: number }, target: { dx_steps: number; dy_steps: number }) {
+  const x_error = Math.abs(actual.dx_steps - target.dx_steps);
+  const y_error = Math.abs(actual.dy_steps - target.dy_steps);
+  return { x_error, y_error, position_error: x_error + y_error, position_exact: x_error === 0 && y_error === 0 };
+}
+
+export function scoreRotation(actualSteps: number, targetSteps: number) {
+  const raw = Math.abs(actualSteps - targetSteps) % 8;
+  const rotation_error_steps = Math.min(raw, 8 - raw);
+  return { rotation_error_steps, rotation_exact: rotation_error_steps === 0 };
+}

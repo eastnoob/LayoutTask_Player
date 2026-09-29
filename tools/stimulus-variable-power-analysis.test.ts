@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildObservationTable, matchTasksToDesign } from "./stimulus-variable-power-analysis";
+import { buildObservationTable, matchTasksToDesign, scorePosition, scoreRotation } from "./stimulus-variable-power-analysis";
 
 describe("stimulus task mapping", () => {
   it("matches every task to exactly one design combination", () => {
@@ -22,5 +22,11 @@ describe("stimulus task mapping", () => {
     expect(rows.map((row) => row.trial_index)).toEqual(["1", "2"]);
     expect(rows[0].point_id).toBe("P01");
     expect(rows[0].featureCueVisibility).toBe(0.5);
+  });
+
+  it("scores position axes separately and rotation circularly", () => {
+    expect(scorePosition({ dx_steps: 2, dy_steps: -1 }, { dx_steps: 0, dy_steps: 1 })).toEqual({ x_error: 2, y_error: 2, position_error: 4, position_exact: false });
+    expect(scoreRotation(0, 7)).toEqual({ rotation_error_steps: 1, rotation_exact: false });
+    expect(scoreRotation(3, 3)).toEqual({ rotation_error_steps: 0, rotation_exact: true });
   });
 });
