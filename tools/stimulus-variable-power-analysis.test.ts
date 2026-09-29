@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditPredictors, buildObservationTable, matchTasksToDesign, scorePosition, scoreRotation } from "./stimulus-variable-power-analysis";
+import { auditPredictors, buildObservationTable, matchTasksToDesign, scorePosition, scoreRotation, summarizeOutcomes } from "./stimulus-variable-power-analysis";
 
 describe("stimulus task mapping", () => {
   it("matches every task to exactly one design combination", () => {
@@ -39,5 +39,12 @@ describe("stimulus task mapping", () => {
     expect(audit.find((item) => item.variable === "volumeAxisRetention")?.category).toBe("excluded_constant");
     expect(audit.find((item) => item.variable === "asymmetricCueVisibility")?.category).toBe("exploratory");
     expect(audit.find((item) => item.variable === "audit.bad")?.category).toBe("excluded_namespace");
+  });
+
+  it("summarizes position and rotation outcomes separately", () => {
+    expect(summarizeOutcomes([
+      { model_id: "M01", position_error: 0, rotation_error_steps: 1, position_exact: true, rotation_exact: false },
+      { model_id: "M01", position_error: 2, rotation_error_steps: 0, position_exact: false, rotation_exact: true },
+    ])).toEqual([{ model_id: "M01", n: 2, mean_position_error: 1, mean_rotation_error_steps: 0.5, position_exact_rate: 0.5, rotation_exact_rate: 0.5 }]);
   });
 });

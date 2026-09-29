@@ -87,3 +87,16 @@ export function auditPredictors(rows: Record<string, unknown>[]) {
     return { variable, n: values.length, unique, category };
   });
 }
+
+export function summarizeOutcomes(rows: Array<{ model_id: string; position_error: number; rotation_error_steps: number; position_exact: boolean; rotation_exact: boolean }>) {
+  const groups = new Map<string, typeof rows>();
+  for (const row of rows) groups.set(row.model_id, [...(groups.get(row.model_id) ?? []), row]);
+  return [...groups.entries()].map(([model_id, group]) => ({
+    model_id,
+    n: group.length,
+    mean_position_error: group.reduce((sum, row) => sum + row.position_error, 0) / group.length,
+    mean_rotation_error_steps: group.reduce((sum, row) => sum + row.rotation_error_steps, 0) / group.length,
+    position_exact_rate: group.filter((row) => row.position_exact).length / group.length,
+    rotation_exact_rate: group.filter((row) => row.rotation_exact).length / group.length,
+  }));
+}
