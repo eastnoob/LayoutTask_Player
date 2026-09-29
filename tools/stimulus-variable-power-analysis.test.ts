@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditPredictors, buildObservationTable, matchTasksToDesign, scorePosition, scoreRotation, summarizeOutcomes } from "./stimulus-variable-power-analysis";
+import { auditPredictors, buildObservationTable, matchTasksToDesign, scoreObservation, scorePosition, scoreRotation, simulatePower, summarizeOutcomes } from "./stimulus-variable-power-analysis";
 
 describe("stimulus task mapping", () => {
   it("matches every task to exactly one design combination", () => {
@@ -46,5 +46,31 @@ describe("stimulus task mapping", () => {
       { model_id: "M01", position_error: 0, rotation_error_steps: 1, position_exact: true, rotation_exact: false },
       { model_id: "M01", position_error: 2, rotation_error_steps: 0, position_exact: false, rotation_exact: true },
     ])).toEqual([{ model_id: "M01", n: 2, mean_position_error: 1, mean_rotation_error_steps: 0.5, position_exact_rate: 0.5, rotation_exact_rate: 0.5 }]);
+  });
+
+  it("scores a final state against the scoring reference without mixing position and rotation", () => {
+    expect(scoreObservation(
+      { offsets: { xSteps: 1, ySteps: 0, rotationSteps: 7 } },
+      { dx_steps: 1, dy_steps: 0, rotation_steps: -1 },
+    )).toEqual({
+      x_error: 0,
+      y_error: 0,
+      position_error: 0,
+      position_exact: true,
+      rotation_error_steps: 0,
+      rotation_exact: true,
+    });
+  });
+
+  it("runs deterministic power simulation with separate thresholds", () => {
+    const options = { seed: 17, candidates: [4, 8], repetitions: 20, sceneCount: 23, modelCount: 4 };
+    const first = simulatePower(options);
+    expect(simulatePower(options)).toEqual(first);
+    expect(first).toHaveLength(2);
+    expect(first[0]).toEqual(expect.objectContaining({ n: 4, position_power: expect.any(Number), rotation_power: expect.any(Number), position_exact_power: expect.any(Number), rotation_exact_power: expect.any(Number) }));
+  });
+
+  it("rejects an empty simulation", () => {
+    expect(() => simulatePower({ seed: 1, candidates: [4], repetitions: 0, sceneCount: 23, modelCount: 4 })).toThrow(/repetitions/);
   });
 });
