@@ -21,6 +21,58 @@ export interface ExperimentTrialResultItem {
   presentation?: ReferencePresentation;
 }
 
+export interface ExperimentAssignmentMetadata {
+  assignment_id: string;
+  participant_number: number;
+  sequence_id: string;
+  schedule_version: string;
+  assignment_mode: "automatic" | "replacement";
+  requested_sequence_id: string | null;
+  replacement_attempt: number;
+  rotation_index: number | null;
+}
+
+export interface ExperimentAssignmentInput {
+  assignment_id: string;
+  participant_number: number;
+  sequence_id: string;
+  schedule_version: string;
+  assignment_mode?: "automatic" | "replacement";
+  requested_sequence_id?: string | null;
+  replacement_attempt?: number;
+  rotation_index?: number | null;
+}
+
+export function toAssignmentMetadata(assignment?: ExperimentAssignmentInput): ExperimentAssignmentMetadata | undefined {
+  if (!assignment) return undefined;
+  return {
+    assignment_id: assignment.assignment_id,
+    participant_number: assignment.participant_number,
+    sequence_id: assignment.sequence_id,
+    schedule_version: assignment.schedule_version,
+    assignment_mode: assignment.assignment_mode ?? "automatic",
+    requested_sequence_id: assignment.requested_sequence_id ?? null,
+    replacement_attempt: assignment.replacement_attempt ?? 0,
+    rotation_index: assignment.rotation_index ?? null,
+  };
+}
+
+const ASSIGNMENT_HEADERS = [
+  "assignment_id",
+  "participant_number",
+  "sequence_id",
+  "schedule_version",
+  "assignment_mode",
+  "requested_sequence_id",
+  "replacement_attempt",
+  "rotation_index",
+] as const;
+
+function assignmentValues(assignment?: ExperimentAssignmentInput): CsvValue[] {
+  const metadata = toAssignmentMetadata(assignment);
+  return metadata ? ASSIGNMENT_HEADERS.map((header) => metadata[header]) : ASSIGNMENT_HEADERS.map(() => undefined);
+}
+
 export interface ExperimentCsvInput {
   participantId: string;
   sessionId: string;
@@ -37,12 +89,7 @@ export interface ExperimentCsvInput {
   tutorialPackageVersion?: string;
   completionCode?: string;
   pauseSummary?: PauseSummary;
-  assignment?: {
-    assignment_id: string;
-    participant_number: number;
-    sequence_id: string;
-    schedule_version: string;
-  };
+  assignment?: ExperimentAssignmentInput;
 }
 
 export interface ExperimentCsvFile {
@@ -54,12 +101,7 @@ export interface ExperimentCsvFile {
 export interface ExperimentDataPipePayloadsInput {
   experimentId: string;
   files: ExperimentCsvFile[];
-  assignment?: {
-    assignment_id: string;
-    participant_number: number;
-    sequence_id: string;
-    schedule_version: string;
-  };
+  assignment?: ExperimentAssignmentInput;
 }
 
 export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentCsvFile[] {
@@ -119,10 +161,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         package_version: input.tutorialPackageVersion,
         participant_id: input.participantId,
         session_id: input.sessionId,
-        assignment_id: input.assignment?.assignment_id,
-        participant_number: input.assignment?.participant_number,
-        sequence_id: input.assignment?.sequence_id,
-        schedule_version: input.assignment?.schedule_version,
+        ...toAssignmentMetadata(input.assignment),
         task_id: tutorial.taskId,
         qid: tutorial.qid,
         encoded: tutorial.encoded,
@@ -154,15 +193,16 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
   participant_number?: number;
   sequence_id?: string;
   schedule_version?: string;
+  assignment_mode?: "automatic" | "replacement";
+  requested_sequence_id?: string | null;
+  replacement_attempt?: number;
+  rotation_index?: number | null;
 }> {
   return input.files.map((file) => ({
     experimentID: input.experimentId,
     filename: file.filename,
     data: file.data,
-    assignment_id: input.assignment?.assignment_id,
-    participant_number: input.assignment?.participant_number,
-    sequence_id: input.assignment?.sequence_id,
-    schedule_version: input.assignment?.schedule_version,
+    ...toAssignmentMetadata(input.assignment),
   }));
 }
 
@@ -173,10 +213,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
-      "assignment_id",
-      "participant_number",
-      "sequence_id",
-      "schedule_version",
+      ...ASSIGNMENT_HEADERS,
       "started_at",
       "ended_at",
       "duration_ms",
@@ -206,10 +243,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
-        input.assignment?.assignment_id,
-        input.assignment?.participant_number,
-        input.assignment?.sequence_id,
-        input.assignment?.schedule_version,
+        ...assignmentValues(input.assignment),
         input.startTime,
         input.endTime,
         input.endTime - input.startTime,
@@ -254,10 +288,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
-        input.assignment?.assignment_id,
-        input.assignment?.participant_number,
-        input.assignment?.sequence_id,
-        input.assignment?.schedule_version,
+        ...assignmentValues(input.assignment),
         trialIndex,
         trial.result.task_id,
         trial.result.qid,
@@ -305,10 +336,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
-      "assignment_id",
-      "participant_number",
-      "sequence_id",
-      "schedule_version",
+      ...ASSIGNMENT_HEADERS,
       "trial_index",
       "task_id",
       "qid",
@@ -363,10 +391,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       input.participantId,
       input.sessionId,
       input.experimentId,
-      input.assignment?.assignment_id,
-      input.assignment?.participant_number,
-      input.assignment?.sequence_id,
-      input.assignment?.schedule_version,
+      ...assignmentValues(input.assignment),
       trialIndex,
       trial.result.task_id,
       trial.result.qid,
@@ -394,10 +419,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
-      "assignment_id",
-      "participant_number",
-      "sequence_id",
-      "schedule_version",
+      ...ASSIGNMENT_HEADERS,
       "trial_index",
       "task_id",
       "qid",
@@ -434,10 +456,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         input.participantId,
         input.sessionId,
         input.experimentId,
-        input.assignment?.assignment_id,
-        input.assignment?.participant_number,
-        input.assignment?.sequence_id,
-        input.assignment?.schedule_version,
+        ...assignmentValues(input.assignment),
         trialIndex,
         trial.result.task_id,
         trial.result.qid,
@@ -482,10 +501,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "participant_id",
       "session_id",
       "experiment_id",
-      "assignment_id",
-      "participant_number",
-      "sequence_id",
-      "schedule_version",
+      ...ASSIGNMENT_HEADERS,
       "trial_index",
       "task_id",
       "qid",
@@ -531,10 +547,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
-      assignment_id: input.assignment?.assignment_id,
-      participant_number: input.assignment?.participant_number,
-      sequence_id: input.assignment?.sequence_id,
-      schedule_version: input.assignment?.schedule_version,
+      ...toAssignmentMetadata(input.assignment),
       completion_code: input.completionCode ?? "",
       reference_mode: input.referenceMode,
       started_at: input.startTime,
@@ -569,7 +582,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
   )}\n`;
 }
 
-type CsvValue = string | number | boolean | undefined;
+type CsvValue = string | number | boolean | null | undefined;
 
 function csv(headers: string[], rows: CsvValue[][]): string {
   return `${headers.join(",")}\n${rows.map((row) => row.map((value) => formatCsvCell(value ?? "")).join(",")).join("\n")}\n`;

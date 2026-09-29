@@ -30,6 +30,10 @@ class AssignmentRecord:
     participant_number: int
     sequence_id: str
     schedule_version: str
+    assignment_mode: str
+    requested_sequence_id: str | None
+    replacement_attempt: int
+    rotation_index: int | None
     assigned_at: str
 
 
@@ -77,33 +81,55 @@ class ReceiverStorage:
         idempotency_token: str,
         schedule_version: str,
         sequence_ids: list[str],
+        requested_sequence_id: str | None = None,
     ) -> AssignmentRecord:
         if not experiment_id or not idempotency_token or not schedule_version or not sequence_ids:
             raise ValueError("assignment requires experiment, token, schedule, and sequences")
         with closing(sqlite3.connect(self.sqlite_path, timeout=30)) as db:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
-                "SELECT assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assigned_at FROM assignments WHERE experiment_id = ? AND idempotency_token = ?",
+                "SELECT assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assignment_mode, requested_sequence_id, replacement_attempt, rotation_index, assigned_at FROM assignments WHERE experiment_id = ? AND idempotency_token = ?",
                 (experiment_id, idempotency_token),
             ).fetchone()
             if existing:
                 db.commit()
                 return AssignmentRecord(*existing)
+            if requested_sequence_id is not None and requested_sequence_id not in sequence_ids:
+                raise ValueError("requested sequence is not configured")
             participant_number = db.execute(
                 "SELECT COALESCE(MAX(participant_number), 0) + 1 FROM assignments WHERE experiment_id = ?",
                 (experiment_id,),
             ).fetchone()[0]
+            replacement = requested_sequence_id is not None
+            if replacement:
+                replacement_attempt = db.execute(
+                    "SELECT COUNT(*) + 1 FROM assignments WHERE experiment_id = ? AND schedule_version = ? AND assignment_mode = 'replacement' AND sequence_id = ?",
+                    (experiment_id, schedule_version, requested_sequence_id),
+                ).fetchone()[0]
+                rotation_index = None
+                sequence_id = requested_sequence_id
+            else:
+                rotation_index = db.execute(
+                    "SELECT COALESCE(MAX(rotation_index), -1) + 1 FROM assignments WHERE experiment_id = ? AND schedule_version = ? AND assignment_mode = 'automatic'",
+                    (experiment_id, schedule_version),
+                ).fetchone()[0]
+                replacement_attempt = 0
+                sequence_id = sequence_ids[rotation_index % len(sequence_ids)]
             record = AssignmentRecord(
                 uuid.uuid4().hex,
                 experiment_id,
                 idempotency_token,
                 participant_number,
-                sequence_ids[(participant_number - 1) % len(sequence_ids)],
+                sequence_id,
                 schedule_version,
+                "replacement" if replacement else "automatic",
+                requested_sequence_id,
+                replacement_attempt,
+                rotation_index,
                 _utc_now(),
             )
             db.execute(
-                "INSERT INTO assignments(assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assigned_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO assignments(assignment_id, experiment_id, idempotency_token, participant_number, sequence_id, schedule_version, assignment_mode, requested_sequence_id, replacement_attempt, rotation_index, assigned_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 tuple(record.__dict__.values()),
             )
             db.commit()
@@ -442,6 +468,24 @@ class ReceiverStorage:
                 )
                 """,
             )
+            assignment_columns = {row[1] for row in db.execute("PRAGMA table_info(assignments)")}
+            for column, statement in {
+                "assignment_mode": "ALTER TABLE assignments ADD COLUMN assignment_mode TEXT",
+                "requested_sequence_id": "ALTER TABLE assignments ADD COLUMN requested_sequence_id TEXT",
+                "replacement_attempt": "ALTER TABLE assignments ADD COLUMN replacement_attempt INTEGER",
+                "rotation_index": "ALTER TABLE assignments ADD COLUMN rotation_index INTEGER",
+            }.items():
+                if column not in assignment_columns:
+                    db.execute(statement)
+            db.execute("UPDATE assignments SET assignment_mode = 'automatic' WHERE assignment_mode IS NULL")
+            db.execute("UPDATE assignments SET replacement_attempt = 0 WHERE replacement_attempt IS NULL")
+            for (experiment_id,) in db.execute("SELECT DISTINCT experiment_id FROM assignments WHERE rotation_index IS NULL AND assignment_mode = 'automatic'"):
+                rows = db.execute(
+                    "SELECT assignment_id FROM assignments WHERE experiment_id = ? AND assignment_mode = 'automatic' ORDER BY participant_number",
+                    (experiment_id,),
+                ).fetchall()
+                for index, (assignment_id,) in enumerate(rows):
+                    db.execute("UPDATE assignments SET rotation_index = ? WHERE assignment_id = ? AND rotation_index IS NULL", (index, assignment_id))
             db.commit()
         if not self.jsonl_path.exists():
             self.jsonl_path.write_text("", encoding="utf-8")

@@ -14,6 +14,9 @@ describe("formal schedule generator", () => {
     expect(schedule.baseSequenceCount).toBe(46);
     expect(schedule.sequences).toHaveLength(46);
     expect(schedule.uniqueSceneCount).toBe(23);
+    expect(schedule.sequences.map((sequence) => sequence.sequenceId)).toEqual(
+      Array.from({ length: 46 }, (_, index) => index + 1),
+    );
   });
 
   it("inserts two repeat presentations with complete metadata and seven intervening trials", () => {

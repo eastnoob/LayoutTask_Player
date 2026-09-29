@@ -3,6 +3,7 @@ import { initJsPsych } from "jspsych";
 import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
+  toAssignmentMetadata,
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
@@ -15,7 +16,7 @@ import type { RuntimeDataSaveConfig } from "./types/runtime";
 import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
-import { selectSequence } from "./core/schedule-generator";
+import { selectSequence, selectSequenceById } from "./core/schedule-generator";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
@@ -29,6 +30,10 @@ export interface AssignmentRecord {
   participantNumber: number;
   sequenceId: string;
   scheduleVersion: string;
+  assignmentMode?: "automatic" | "replacement";
+  requestedSequenceId?: string | null;
+  replacementAttempt?: number;
+  rotationIndex?: number | null;
 }
 
 export interface AssignmentRequest {
@@ -38,6 +43,20 @@ export interface AssignmentRequest {
   scheduleVersion: string;
   sequenceIds: string[];
   idempotencyToken: string;
+  requestedSequenceId?: string;
+}
+
+function assignmentMetadata(assignment?: AssignmentRecord) {
+  return toAssignmentMetadata(assignment && {
+    assignment_id: assignment.assignmentId,
+    participant_number: assignment.participantNumber,
+    sequence_id: assignment.sequenceId,
+    schedule_version: assignment.scheduleVersion,
+    assignment_mode: assignment.assignmentMode,
+    requested_sequence_id: assignment.requestedSequenceId,
+    replacement_attempt: assignment.replacementAttempt,
+    rotation_index: assignment.rotationIndex,
+  });
 }
 
 export function buildExperimentTimeline(
@@ -150,7 +169,9 @@ export function buildExperimentTimeline(
     throw new Error("Formal assignment is required before starting the experiment");
   }
   const selectedSequence = config.schedule
-    ? selectSequence(config.schedule, options.assignment?.participantNumber ?? options.participantNumber ?? 1)
+    ? options.assignment
+      ? selectSequenceById(config.schedule, options.assignment.sequenceId)
+      : selectSequence(config.schedule, options.participantNumber ?? 1)
     : undefined;
   const formalPresentations: ReferencePresentation[] = selectedSequence?.presentations
     ?? config.trials.map((trial, index) => ({
@@ -288,6 +309,7 @@ export async function requestAssignment(input: AssignmentRequest): Promise<Assig
       experiment_id: input.experimentId,
       idempotency_token: input.idempotencyToken,
       schedule_version: input.scheduleVersion,
+      ...(input.requestedSequenceId ? { requested_sequence_id: input.requestedSequenceId } : {}),
     }),
   });
   const payload = await response.json() as Record<string, unknown>;
@@ -299,6 +321,10 @@ export async function requestAssignment(input: AssignmentRequest): Promise<Assig
     participantNumber: payload.participant_number as number,
     sequenceId: payload.sequence_id,
     scheduleVersion: String(payload.schedule_version ?? input.scheduleVersion),
+    assignmentMode: payload.assignment_mode as AssignmentRecord["assignmentMode"],
+    requestedSequenceId: (payload.requested_sequence_id as string | null | undefined) ?? null,
+    replacementAttempt: typeof payload.replacement_attempt === "number" ? payload.replacement_attempt : undefined,
+    rotationIndex: typeof payload.rotation_index === "number" ? payload.rotation_index : null,
   };
 }
 
@@ -367,6 +393,7 @@ export async function saveExperimentFiles(input: {
       completionCode: input.completionCode,
       failedFilenames: input.files.map((file) => file.filename),
       pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
     });
     return {
       ok: false,
@@ -434,8 +461,9 @@ export async function saveExperimentFiles(input: {
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
         completionCode: input.completionCode,
-        failedFilenames: ["receiver batch"],
-        pauseSummary: input.pauseSummary,
+      failedFilenames: ["receiver batch"],
+      pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
       });
       return {
         ok: false,
@@ -452,10 +480,7 @@ export async function saveExperimentFiles(input: {
       experiment_id: dataSave.experimentId,
       participant_id: input.participantId,
       session_id: input.sessionId,
-      assignment_id: input.assignment?.assignmentId,
-      participant_number: input.assignment?.participantNumber,
-      sequence_id: input.assignment?.sequenceId,
-      schedule_version: input.assignment?.scheduleVersion,
+      ...assignmentMetadata(input.assignment),
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -485,6 +510,7 @@ export async function saveExperimentFiles(input: {
       completionCode: input.completionCode,
       failedFilenames: ["receiver archive"],
       pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
     });
     return {
       ok: false,
@@ -498,12 +524,7 @@ export async function saveExperimentFiles(input: {
   const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
     files: input.files,
-    assignment: input.assignment ? {
-      assignment_id: input.assignment.assignmentId,
-      participant_number: input.assignment.participantNumber,
-      sequence_id: input.assignment.sequenceId,
-      schedule_version: input.assignment.scheduleVersion,
-    } : undefined,
+    assignment: assignmentMetadata(input.assignment),
   });
   const dataSave = input.dataSave;
   const uploadState = new UploadState({ pauseSummary: input.pauseSummary });
@@ -552,6 +573,7 @@ export async function saveExperimentFiles(input: {
         completionCode: input.completionCode,
         failedFilenames,
         pauseSummary: input.pauseSummary,
+        assignment: assignmentMetadata(input.assignment),
       });
       return {
         ok: false,
@@ -593,21 +615,25 @@ export function createRunnableExperiment(
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
-    assignment: options.assignment ? {
-      assignment_id: options.assignment.assignmentId,
-      participant_number: options.assignment.participantNumber,
-      sequence_id: options.assignment.sequenceId,
-      schedule_version: options.assignment.scheduleVersion,
-    } : undefined,
+    assignment: assignmentMetadata(options.assignment),
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
+  void localBackup?.saveSessionMetadata?.({
+    session_id: sessionId,
+    assignment: assignmentMetadata(options.assignment),
+    pause: session.pauseSnapshot,
+  });
   const pause = new ExperimentPauseController({
     mode: "formal",
     restore: session.pauseSnapshot,
     onChange: (snapshot) => {
       session.savePauseSnapshot(snapshot);
-      void localBackup?.saveSessionMetadata?.({ session_id: sessionId, pause: snapshot });
+      void localBackup?.saveSessionMetadata?.({
+        session_id: sessionId,
+        assignment: assignmentMetadata(options.assignment),
+        pause: snapshot,
+      });
     },
   });
   const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
@@ -660,12 +686,7 @@ export function createRunnableExperiment(
         completionCode,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
-        assignment: options.assignment ? {
-          assignment_id: options.assignment.assignmentId,
-          participant_number: options.assignment.participantNumber,
-          sequence_id: options.assignment.sequenceId,
-          schedule_version: options.assignment.scheduleVersion,
-        } : undefined,
+        assignment: assignmentMetadata(options.assignment),
       });
       pauseUi.destroy();
       renderSavingPage(config.locale);
@@ -817,10 +838,7 @@ function createReceiverSubmission(input: {
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,
-    assignment_id: input.assignment?.assignmentId,
-    participant_number: input.assignment?.participantNumber,
-    sequence_id: input.assignment?.sequenceId,
-    schedule_version: input.assignment?.scheduleVersion,
+    ...assignmentMetadata(input.assignment),
     files: input.files.map((file) => ({
       filename: file.filename,
       content_type: file.contentType,

@@ -17,6 +17,16 @@ describe("createCompleteRecoveryZip", () => {
         experimentId: "E1",
         completionCode: "  CODE-17  ",
         failedFilenames: ["results.csv"],
+        assignment: {
+          assignment_id: "assign-1",
+          participant_number: 2,
+          sequence_id: "sequence-02",
+          schedule_version: "run12-williams-v1",
+          assignment_mode: "replacement",
+          requested_sequence_id: "sequence-02",
+          replacement_attempt: 1,
+          rotation_index: null,
+        },
         pauseSummary: { pause_used: true, pause_count: 1, pause_duration_ms: 5_000, pause_events: [] },
       },
     );
@@ -31,6 +41,14 @@ describe("createCompleteRecoveryZip", () => {
     ]);
     expect(JSON.parse(new TextDecoder().decode(files["manifest.json"]))).toMatchObject({
       participant_id: "P1",
+      assignment_id: "assign-1",
+      participant_number: 2,
+      sequence_id: "sequence-02",
+      schedule_version: "run12-williams-v1",
+      assignment_mode: "replacement",
+      requested_sequence_id: "sequence-02",
+      replacement_attempt: 1,
+      rotation_index: null,
       failed_filenames: ["results.csv"],
       pause: { pause_used: true, pause_count: 1 },
       completion_code: "  CODE-17  ",

@@ -35,8 +35,9 @@ async function bootstrap(): Promise<void> {
   }
 
   if (isExperimentPath(window.location.pathname)) {
+    const params = parseLayoutTaskUrlParams(window.location.search);
     const experimentParams = new URLSearchParams(window.location.search);
-    const configPath = getDefaultExperimentConfigPath(experimentParams.get("config") ?? undefined, import.meta.env.DEV);
+    const configPath = getDefaultExperimentConfigPath(params.config, import.meta.env.DEV);
     const loader = new ExperimentLoader({
       baseUrl: new URL("./", window.location.href).toString(),
       configPath,
@@ -65,6 +66,7 @@ async function bootstrap(): Promise<void> {
           scheduleVersion: config.scheduleVersion,
           sequenceIds: config.schedule.sequences.map((sequence) => String(sequence.sequenceId)),
           idempotencyToken,
+          requestedSequenceId: params.requestedSequenceId,
         });
       } catch (error) {
         root.innerHTML = `<section class="layout-task-shell"><h1>Unable to start experiment</h1><p>${error instanceof Error ? error.message : "Assignment failed"}</p></section>`;

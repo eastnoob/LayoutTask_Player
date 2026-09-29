@@ -1,13 +1,9 @@
 import { createSessionId } from "./participant-session";
 import { FORMAL_PAUSE_LIMIT_MS } from "./experiment-pause";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
+import type { ExperimentAssignmentMetadata } from "./experiment-data";
 
-export interface ExperimentAssignmentMetadata {
-  assignment_id: string;
-  participant_number: number;
-  sequence_id: string;
-  schedule_version: string;
-}
+export type { ExperimentAssignmentMetadata } from "./experiment-data";
 
 export interface ExperimentSessionStorage {
   getItem(key: string): string | null;

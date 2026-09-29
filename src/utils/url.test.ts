@@ -33,6 +33,14 @@ describe("parseLayoutTaskUrlParams", () => {
       base: undefined,
     });
   });
+
+  it("parses a positive replacement sequence id", () => {
+    expect(parseLayoutTaskUrlParams("?sequence=6").requestedSequenceId).toBe("6");
+  });
+
+  it.each(["0", "-1", "1.5", "", "abc"])("rejects malformed sequence %s", (sequence) => {
+    expect(() => parseLayoutTaskUrlParams(`?sequence=${sequence}`)).toThrow("sequence");
+  });
 });
 
 describe("isTutorialBaseUrl", () => {

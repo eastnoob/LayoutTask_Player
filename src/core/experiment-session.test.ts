@@ -23,6 +23,10 @@ describe("experiment session persistence", () => {
       participant_number: 2,
       sequence_id: "sequence-02",
       schedule_version: "run12-williams-v1",
+      assignment_mode: "replacement" as const,
+      requested_sequence_id: "sequence-02",
+      replacement_attempt: 1,
+      rotation_index: null,
     };
     bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, assignment, createSessionId: () => "S1" });
     const reloaded = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S2" });

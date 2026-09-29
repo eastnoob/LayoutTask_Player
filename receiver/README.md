@@ -57,6 +57,16 @@ static frontend generate participant numbers; `/assign` is the authority.
 
 Raw CSV and debug JSON files are canonical in the external archive after successful upload. Incoming experiment, participant, and session IDs are validated as safe path segments before archive keys are built. The VPS keeps only short-term spool files for pending/failed archives and an active lightweight SQLite/JSONL index. Retired indexes should be snapshot, optionally uploaded externally, pruned locally, and removed from the active tables.
 
+## Replacement Participants
+
+To request a replacement participant for sequence 6, append the sequence ID to the published static URL:
+
+```text
+https://your-static-host.example/experiment/?sequence=6
+```
+
+The URL parameter is a sequence ID request, not a participant number or authorization token. The client still calls `/assign`; the receiver allocates a fresh participant number and returns the authoritative sequence. Replacement assignments record their request and attempt number and do not advance the ordinary automatic rotation.
+
 ## Retry Failed Archives
 
 ```bash

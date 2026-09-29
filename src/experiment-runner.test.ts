@@ -14,6 +14,7 @@ import {
   saveExperimentFiles,
   createRecoveryOutput,
   shouldShowCompletionCodeGate,
+  requestAssignment,
 } from "./experiment-runner";
 import type { ExperimentConfig } from "./types/experiment";
 import { parseExperimentConfig } from "./schemas/experiment.schema";
@@ -76,6 +77,28 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("uses the receiver sequence id instead of deriving sequence from participant number", () => {
+    const config = experimentConfig();
+    config.trials = Array.from({ length: 23 }, (_, index) => ({
+      taskId: `scene_${String(index + 1).padStart(3, "0")}`,
+      qid: `Q${String(index + 1).padStart(3, "0")}`,
+    }));
+    config.schedule = createPresentationSchedule(generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)));
+    const sequenceSix = config.schedule.sequences.find((sequence) => sequence.sequenceId === 6)!;
+    const timeline = buildExperimentTimeline(config, {
+      assignment: {
+        assignmentId: "a6",
+        participantNumber: 47,
+        sequenceId: "6",
+        scheduleVersion: "v1",
+      },
+      requireAssignment: true,
+    });
+    const formal = timeline.filter((trial) => trial.type === LayoutTaskPlugin && trial.tutorialMode !== true);
+    expect(formal[0].presentation).toEqual(sequenceSix.presentations[0]);
+    expect(formal.at(-1)!.presentation).toEqual(sequenceSix.presentations.at(-1));
+  });
+
   it("uses the assigned participant number to select the configured sequence", () => {
     const config = experimentConfig();
     config.schedule = createPresentationSchedule(
@@ -95,6 +118,15 @@ describe("buildExperimentTimeline", () => {
     const config = experimentConfig();
     config.schedule = createPresentationSchedule(generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)));
     expect(() => buildExperimentTimeline(config, { requireAssignment: true })).toThrow("Formal assignment is required");
+  });
+
+  it("rejects a formal assignment whose returned sequence is absent", () => {
+    const config = experimentConfig();
+    config.schedule = createPresentationSchedule(generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)));
+    expect(() => buildExperimentTimeline(config, {
+      assignment: { assignmentId: "bad", participantNumber: 1, sequenceId: "999", scheduleVersion: "v1" },
+      requireAssignment: true,
+    })).toThrow("missing from the configured schedule");
   });
   it("only enables the completion-code gate for explicit Chinese configuration", () => {
     const english = experimentConfig();
@@ -362,6 +394,30 @@ describe("buildExperimentTimeline", () => {
   });
 });
 
+describe("requestAssignment", () => {
+  it("sends the requested sequence to the receiver", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      assignment_id: "a1",
+      participant_number: 1,
+      sequence_id: "6",
+      schedule_version: "v1",
+    }), { status: 201, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await requestAssignment({
+      endpoint: "https://data.example.com/submit",
+      experimentId: "exp",
+      scheduleVersion: "v1",
+      sequenceIds: ["1", "6"],
+      idempotencyToken: "token-1",
+      requestedSequenceId: "6",
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ requested_sequence_id: "6" });
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("createRunnableExperiment", () => {
   it("uses the provided display element for jsPsych content", () => {
     const root = {} as HTMLElement;
@@ -512,11 +568,22 @@ describe("saveExperimentFiles", () => {
 
   it("posts one batch submission to the self-hosted receiver", async () => {
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const assignment = {
+      assignmentId: "assign-1",
+      participantNumber: 2,
+      sequenceId: "6",
+      scheduleVersion: "v1",
+      assignmentMode: "replacement" as const,
+      requestedSequenceId: "6",
+      replacementAttempt: 1,
+      rotationIndex: null,
+    };
 
     const result = await saveExperimentFiles({
       dataSave: receiverExperimentConfig().dataSave,
       participantId: "P001",
       sessionId: "S001",
+      assignment,
       files: [
         { filename: "layout-task_session_P001_S001.csv", contentType: "text/csv", data: "a\n1\n" },
         { filename: "layout-task_results_P001_S001.csv", contentType: "text/csv", data: "b\n2\n" },
@@ -546,6 +613,14 @@ describe("saveExperimentFiles", () => {
       experiment_id: "layout_task_v1",
       participant_id: "P001",
       session_id: "S001",
+      assignment_id: "assign-1",
+      participant_number: 2,
+      sequence_id: "6",
+      schedule_version: "v1",
+      assignment_mode: "replacement",
+      requested_sequence_id: "6",
+      replacement_attempt: 1,
+      rotation_index: null,
       files: [
         { filename: "layout-task_session_P001_S001.csv", content_type: "text/csv", data: "a\n1\n" },
         { filename: "layout-task_results_P001_S001.csv", content_type: "text/csv", data: "b\n2\n" },
@@ -557,6 +632,12 @@ describe("saveExperimentFiles", () => {
     expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body)).schema).toBe(
       "layouttask.receiver.archive.v1",
     );
+    expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body))).toMatchObject({
+      assignment_id: "assign-1",
+      assignment_mode: "replacement",
+      replacement_attempt: 1,
+      rotation_index: null,
+    });
   });
 
   it("reports receiver JSON error details", async () => {
@@ -598,6 +679,16 @@ describe("saveExperimentFiles", () => {
         { filename: "layout_events_P001_S001.csv", contentType: "text/csv", data: "c\n3\n" },
         { filename: "layout_tutorial_result_P001_S001.json", contentType: "application/json", data: '{"tutorial":true}' },
       ],
+      assignment: {
+        assignmentId: "assign-1",
+        participantNumber: 2,
+        sequenceId: "6",
+        scheduleVersion: "v1",
+        assignmentMode: "replacement",
+        requestedSequenceId: "6",
+        replacementAttempt: 1,
+        rotationIndex: null,
+      },
       fetchImpl,
     });
 
@@ -608,6 +699,14 @@ describe("saveExperimentFiles", () => {
       experimentID: "layout_task_v1",
       filename: "layout_results_P001_S001.csv",
       data: "b\n2\n",
+      assignment_id: "assign-1",
+      participant_number: 2,
+      sequence_id: "6",
+      schedule_version: "v1",
+      assignment_mode: "replacement",
+      requested_sequence_id: "6",
+      replacement_attempt: 1,
+      rotation_index: null,
     });
     expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[3][1].body))).toMatchObject({
       filename: "layout_tutorial_result_P001_S001.json",

@@ -103,13 +103,25 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 ):
                     json_response(self, 400, {"ok": False, "error": "invalid_assignment"}, origin)
                     return
+                requested_sequence_id = payload.get("requested_sequence_id")
+                if requested_sequence_id is not None and (
+                    not isinstance(requested_sequence_id, str)
+                    or not requested_sequence_id
+                    or requested_sequence_id not in config.assignment_sequence_ids
+                ):
+                    json_response(self, 400, {"ok": False, "error": "invalid_requested_sequence"}, origin)
+                    return
                 try:
                     assignment = storage.allocate_assignment(
                         config.assignment_experiment_id,
                         payload["idempotency_token"],
                         config.assignment_schedule_version,
                         config.assignment_sequence_ids,
+                        requested_sequence_id,
                     )
+                except ValueError as error:
+                    json_response(self, 400, {"ok": False, "error": "invalid_assignment", "message": str(error)}, origin)
+                    return
                 except Exception as error:
                     print(f"assignment_storage_error: {error}", file=sys.stderr)
                     json_response(self, 500, {"ok": False, "error": "assignment_storage_error"}, origin)
@@ -122,6 +134,10 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                         "participant_number": assignment.participant_number,
                         "sequence_id": assignment.sequence_id,
                         "schedule_version": assignment.schedule_version,
+                        "assignment_mode": assignment.assignment_mode,
+                        "requested_sequence_id": assignment.requested_sequence_id,
+                        "replacement_attempt": assignment.replacement_attempt,
+                        "rotation_index": assignment.rotation_index,
                     },
                     origin,
                 )
