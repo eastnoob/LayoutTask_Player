@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auditPredictors, buildObservationTable, matchTasksToDesign, scoreObservation, scorePosition, scoreRotation, simulatePower, summarizeOutcomes } from "./stimulus-variable-power-analysis";
+import { auditPredictors, buildAnalysisBundle, buildObservationTable, matchTasksToDesign, renderAnalysisReport, scoreObservation, scorePosition, scoreRotation, simulatePower, summarizeOutcomes } from "./stimulus-variable-power-analysis";
 
 describe("stimulus task mapping", () => {
   it("matches every task to exactly one design combination", () => {
@@ -72,5 +72,19 @@ describe("stimulus task mapping", () => {
 
   it("rejects an empty simulation", () => {
     expect(() => simulatePower({ seed: 1, candidates: [4], repetitions: 0, sceneCount: 23, modelCount: 4 })).toThrow(/repetitions/);
+  });
+
+  it("refuses to build a report without formal raw results", () => {
+    expect(() => buildAnalysisBundle({ rawRows: [], designRows: [{ combination_id: "abc" }], scoringReference: { tasks: {} } })).toThrow(/formal raw results/);
+  });
+
+  it("renders a report from scored formal observations", () => {
+    const bundle = buildAnalysisBundle({
+      rawRows: [{ trial_type: "formal", participant_id: "P1", session_id: "S1", trial_index: "1", task_id: "scene_abc", result_json: JSON.stringify({ final_state: { scene_abc_m01_variable: { offsets: { xSteps: 0, ySteps: 0, rotationSteps: 0 } } } }) }],
+      designRows: [{ combination_id: "abc", "M01.point_id": "P01", "M01.featureCueVisibility": "0.5" }],
+      scoringReference: { tasks: { scene_abc: { objects: { scene_abc_m01_variable: { target: { relative: { dx_steps: 0, dy_steps: 0, rotation_steps: 0 } } } } } } },
+    });
+    expect(renderAnalysisReport(bundle)).toContain("任务对位：1/23");
+    expect(bundle.observations[0].position_exact).toBe(true);
   });
 });

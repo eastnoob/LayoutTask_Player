@@ -1,3 +1,7 @@
+import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { parse as parseCsv } from "csv-parse/sync";
+import { stringify as stringifyCsv } from "csv-stringify/sync";
+
 export type DesignRow = { combination_id: string } & Record<string, string>;
 export type TaskMatch = { combination_id: string; task_id: string };
 export type RawResultRow = {
@@ -107,11 +111,15 @@ export type PowerSimulationOptions = {
   };
 };
 
-export type PowerSimulationResult = PowerSimulationOptions["targets"] & {
+export type PowerSimulationResult = {
   n: number;
   repetitions: number;
   scene_count: number;
   model_count: number;
+  position_error_half_width: number;
+  rotation_error_half_width: number;
+  position_exact_half_width: number;
+  rotation_exact_half_width: number;
   position_power: number;
   rotation_power: number;
   position_exact_power: number;
@@ -213,3 +221,133 @@ export function summarizeOutcomes(rows: Array<{ model_id: string; position_error
     rotation_exact_rate: group.filter((row) => row.rotation_exact).length / group.length,
   }));
 }
+
+export type ScoringReference = {
+  tasks: Record<string, { objects?: Record<string, { target?: { relative?: { dx_steps: number; dy_steps: number; rotation_steps: number } } }> }>;
+};
+
+export type ScoredObservation = Observation & ReturnType<typeof scoreObservation>;
+
+export function scoreObservations(rawRows: RawResultRow[], designRows: DesignRow[], scoringReference: ScoringReference): ScoredObservation[] {
+  return buildObservationTable(rawRows, designRows).map((observation) => {
+    const task = scoringReference.tasks[observation.task_id];
+    const target = task?.objects?.[observation.object_id]?.target?.relative;
+    if (!target) throw new Error(`missing target for ${observation.task_id}/${observation.object_id}`);
+    const result = typeof observation.result_json === "string" ? JSON.parse(observation.result_json) : observation.result_json;
+    return { ...observation, ...scoreObservation(result.final_state?.[observation.object_id] ?? {}, target) };
+  });
+}
+
+function participantSummaries(rows: ScoredObservation[]) {
+  const groups = new Map<string, ScoredObservation[]>();
+  for (const row of rows) {
+    const participant = row.participant_id ?? "unknown";
+    groups.set(participant, [...(groups.get(participant) ?? []), row]);
+  }
+  return [...groups.values()].map((group) => ({
+    position_error: mean(group.map((row) => row.position_error)),
+    rotation_error_steps: mean(group.map((row) => row.rotation_error_steps)),
+    position_exact_rate: group.filter((row) => row.position_exact).length / group.length,
+    rotation_exact_rate: group.filter((row) => row.rotation_exact).length / group.length,
+  }));
+}
+
+export type AnalysisBundle = {
+  matches: TaskMatch[];
+  observations: ScoredObservation[];
+  predictorAudit: ReturnType<typeof auditPredictors>;
+  predictorAssociations: ReturnType<typeof summarizePredictorAssociations>;
+  outcomeSummary: ReturnType<typeof summarizeOutcomes>;
+  power: PowerSimulationResult[];
+};
+
+function correlation(values: number[], outcomes: number[]) {
+  const xMean = mean(values);
+  const yMean = mean(outcomes);
+  const numerator = values.reduce((sum, value, index) => sum + (value - xMean) * (outcomes[index] - yMean), 0);
+  const xDenominator = Math.sqrt(values.reduce((sum, value) => sum + (value - xMean) ** 2, 0));
+  const yDenominator = Math.sqrt(outcomes.reduce((sum, value) => sum + (value - yMean) ** 2, 0));
+  return xDenominator && yDenominator ? numerator / (xDenominator * yDenominator) : null;
+}
+
+export function summarizePredictorAssociations(rows: ScoredObservation[]) {
+  const variables = [...CORE_PREDICTORS, "asymmetricCueVisibility", "relationPerspectiveTotal"];
+  return variables.map((variable) => {
+    const paired = rows.map((row) => ({ x: Number(row[variable]), row })).filter((item) => Number.isFinite(item.x));
+    const position = correlation(paired.map((item) => item.x), paired.map((item) => item.row.position_error));
+    const rotation = correlation(paired.map((item) => item.x), paired.map((item) => item.row.rotation_error_steps));
+    const positionExact = correlation(paired.map((item) => item.x), paired.map((item) => item.row.position_exact ? 1 : 0));
+    const rotationExact = correlation(paired.map((item) => item.x), paired.map((item) => item.row.rotation_exact ? 1 : 0));
+    return { variable, n: paired.length, position_error_r: position, rotation_error_r: rotation, position_exact_r: positionExact, rotation_exact_r: rotationExact };
+  });
+}
+
+export function buildAnalysisBundle(input: {
+  rawRows: RawResultRow[];
+  designRows: DesignRow[];
+  scoringReference: ScoringReference;
+}): AnalysisBundle {
+  const formalRows = input.rawRows.filter((row) => row.trial_type === "formal");
+  if (!formalRows.length) throw new Error("formal raw results are required");
+  const taskIds = [...new Set(formalRows.map((row) => row.task_id))];
+  const matches = matchTasksToDesign(input.designRows, taskIds);
+  const observations = scoreObservations(formalRows, input.designRows, input.scoringReference);
+  if (!observations.length) throw new Error("formal raw results contain no variable-object observations");
+  const predictorRows = observations.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) =>
+    (CORE_PREDICTORS as readonly string[]).includes(key) || ["asymmetricCueVisibility", "relationPerspectiveTotal"].includes(key) || key.startsWith("audit."))));
+  return {
+    matches,
+    observations,
+    predictorAudit: auditPredictors(predictorRows),
+    predictorAssociations: summarizePredictorAssociations(observations),
+    outcomeSummary: summarizeOutcomes(observations),
+    power: simulatePower({
+      seed: 20260929,
+      candidates: [4, 6, 8, 12, 16, 20, 24, 30, 40],
+      repetitions: 1000,
+      sceneCount: taskIds.length,
+      modelCount: new Set(observations.map((row) => row.model_id)).size,
+      participantSummaries: participantSummaries(observations),
+    }),
+  };
+}
+
+export function renderAnalysisReport(bundle: AnalysisBundle) {
+  const participantCount = new Set(bundle.observations.map((row) => row.participant_id)).size;
+  const formalPresentations = new Set(bundle.observations.map((row) => `${row.participant_id}/${row.session_id}/${row.trial_index}`)).size;
+  const repeatedScenes = bundle.observations.reduce((counts, row) => counts.set(row.task_id, (counts.get(row.task_id) ?? 0) + 1), new Map<string, number>());
+  const repeats = [...repeatedScenes.values()].filter((count) => count > 1).length;
+  const powerRows = bundle.power.map((row) => `| ${row.n} | ${(row.position_power * 100).toFixed(1)}% | ${(row.rotation_power * 100).toFixed(1)}% | ${(row.position_exact_power * 100).toFixed(1)}% | ${(row.rotation_exact_power * 100).toFixed(1)}% |`).join("\n");
+  const outcomeRows = bundle.outcomeSummary.map((row) => `| ${row.model_id} | ${row.n} | ${row.mean_position_error.toFixed(2)} | ${row.mean_rotation_error_steps.toFixed(2)} | ${(row.position_exact_rate * 100).toFixed(1)}% | ${(row.rotation_exact_rate * 100).toFixed(1)}% |`).join("\n");
+  const auditRows = bundle.predictorAudit.map((row) => `| ${row.variable} | ${row.n} | ${row.unique} | ${row.category} |`).join("\n");
+  const associationRows = bundle.predictorAssociations.map((row) => `| ${row.variable} | ${row.n} | ${row.position_error_r === null ? "NA" : row.position_error_r.toFixed(3)} | ${row.rotation_error_r === null ? "NA" : row.rotation_error_r.toFixed(3)} | ${row.position_exact_r === null ? "NA" : row.position_exact_r.toFixed(3)} | ${row.rotation_exact_r === null ? "NA" : row.rotation_exact_r.toFixed(3)} |`).join("\n");
+  return `# 刺激变量与恢复正确性分析\n\n## 数据完整性\n\n- 独立 participant cluster：${participantCount}。\n- 任务对位：${bundle.matches.length}/23 个正式场景。\n- 逐家具观测：${bundle.observations.length} 行（只含 formal，不含 tutorial）。\n- 正式 presentation：${formalPresentations}；重复场景 presentation：${repeats} 个场景。\n- 位置和旋转误差分开计算；旋转使用 8 步圆周距离。\n\n## 逐模型描述性结果\n\n| 模型 | 观测数 | 平均位置误差（步） | 平均旋转误差（步） | 位置完全正确 | 旋转完全正确 |\n|---|---:|---:|---:|---:|---:|\n${outcomeRows}\n\n## 变量审计\n\n| 变量 | 非空数 | 唯一值数 | 分类 |\n|---|---:|---:|---|\n${auditRows}\n\n## 变量关联筛查\n\n下面是逐家具观测的 Pearson 相关系数，仅用于筛查，不是控制 participant/scene 聚类后的正式效应估计，也不代表因果关系。\n\n| 变量 | n | 位置误差 r | 旋转误差 r | 位置完全正确 r | 旋转完全正确 r |\n|---|---:|---:|---:|---:|---:|\n${associationRows}\n\n## 被试数量模拟\n\n这是**精度稳定性模拟**，不是自动排除规则：以被试为聚类单位进行 bootstrap，保留每个被试的 23 场景 × 4 家具模型结构。表中 power 表示 95% 置信区间半宽达到预设阈值的比例：位置/旋转误差阈值均为 0.25 步，完全正确率阈值均为 0.08。\n\n| 被试数 | 位置误差稳定 | 旋转误差稳定 | 位置完全正确率稳定 | 旋转完全正确率稳定 |\n|---:|---:|---:|---:|---:|\n${powerRows}\n\n当前 bootstrap 显示最小候选 ${bundle.power[0]?.n ?? "NA"} 已达到这些精度阈值，但 pilot 只有 ${participantCount} 个独立 participant cluster，因此不能把这个数当作最终招募承诺；应继续收集 pilot 或预注册正式模型后复核。\n`;
+}
+
+function csvRows(text: string) {
+  return parseCsv(text, { columns: true, skip_empty_lines: true, bom: true }) as Record<string, string>[];
+}
+
+async function runCli() {
+  const args = new Map<string, string>();
+  for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i], process.argv[i + 1]);
+  const rawPath = args.get("--raw");
+  const designPath = args.get("--design");
+  const scoringPath = args.get("--scoring");
+  const outputDir = args.get("--out") ?? "analysis/output";
+  if (!rawPath || !designPath || !scoringPath) throw new Error("usage: --raw raw_results.csv --design selected_23.csv --scoring scoring-reference.json --out output-dir");
+  const rawRows = csvRows(await readFile(rawPath, "utf8")) as RawResultRow[];
+  const designRows = csvRows(await readFile(designPath, "utf8")) as DesignRow[];
+  const scoringReference = JSON.parse(await readFile(scoringPath, "utf8")) as ScoringReference;
+  const bundle = buildAnalysisBundle({ rawRows, designRows, scoringReference });
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(`${outputDir}/stimulus-observations.csv`, stringifyCsv(bundle.observations.map((row) => ({ participant_id: row.participant_id, session_id: row.session_id, trial_index: row.trial_index, task_id: row.task_id, combination_id: row.combination_id, model_id: row.model_id, point_id: row.point_id, position_error: row.position_error, rotation_error_steps: row.rotation_error_steps, position_exact: row.position_exact, rotation_exact: row.rotation_exact, ...Object.fromEntries((CORE_PREDICTORS as readonly string[]).map((key) => [key, row[key]])) })), { header: true }));
+  await writeFile(`${outputDir}/predictor-audit.csv`, stringifyCsv(bundle.predictorAudit, { header: true }));
+  await writeFile(`${outputDir}/outcome-summary.csv`, stringifyCsv(bundle.outcomeSummary, { header: true }));
+  await writeFile(`${outputDir}/predictor-associations.csv`, stringifyCsv(bundle.predictorAssociations, { header: true }));
+  await writeFile(`${outputDir}/power-simulation.csv`, stringifyCsv(bundle.power, { header: true }));
+  await writeFile(`${outputDir}/stimulus-variable-power-analysis.md`, renderAnalysisReport(bundle));
+  console.log(`wrote ${outputDir}; matches=${bundle.matches.length}; observations=${bundle.observations.length}`);
+}
+
+if (process.argv[1]?.endsWith("stimulus-variable-power-analysis.ts")) void runCli();
