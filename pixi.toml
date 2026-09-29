@@ -23,3 +23,6 @@ serve-local = { depends-on = ["build"], cmd = "npm run preview -- --host 127.0.0
 
 [dependencies]
 nodejs = ">=22,<23"
+r-base = ">=4.5.3,<4.6"
+r-lme4 = ">=2.0_6,<3"
+r-lmertest = ">=3.2_1,<4"

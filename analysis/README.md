@@ -11,3 +11,12 @@ npm exec --yes tsx -- tools/stimulus-variable-power-analysis.ts `
 ```
 
 输出包含逐家具观测表、变量审计、模型摘要、被试数量模拟和 Markdown 报告。模拟是以被试为聚类单位的 bootstrap 精度稳定性检查，不是自动排除被试的规则，也不替代预注册的正式模型。
+
+预注册 mixed-model 分析需要 pixi 中的 R 环境：
+
+```powershell
+pixi run Rscript analysis/fit-preregistered-models.R `
+  --data analysis\reports\stimulus-variable-power-analysis\stimulus-observations.csv `
+  --out analysis\reports\preregistered-models `
+  --reps 1000
+```

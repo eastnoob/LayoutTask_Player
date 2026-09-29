@@ -1,5 +1,7 @@
 # 刺激变量与恢复正确性分析
 
+> 注意：本文件中的早期 bootstrap 是描述性的精度稳定性检查，不是确认性 power analysis。正式样本量判断请使用同目录外的 `../2026-09-29-preregistered-models/preregistered-model-report.md`。
+
 ## 数据完整性
 
 - 独立 participant cluster：5。

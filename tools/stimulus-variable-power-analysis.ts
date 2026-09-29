@@ -28,6 +28,12 @@ export const CORE_PREDICTORS = [
   "volumeAxisRetention",
   "volumeAngularSeparation",
 ] as const;
+export const PREREGISTERED_PREDICTORS = [
+  "relationVisibilityTotal",
+  "relationPerspectiveTotal",
+  "featureCueVisibility",
+  "asymmetricCueVisibilityAngleWeighted",
+] as const;
 
 export function matchTasksToDesign(designRows: DesignRow[], taskIds: string[]): TaskMatch[] {
   const design = new Map(designRows.map((row) => [row.combination_id, row]));
@@ -341,7 +347,7 @@ async function runCli() {
   const scoringReference = JSON.parse(await readFile(scoringPath, "utf8")) as ScoringReference;
   const bundle = buildAnalysisBundle({ rawRows, designRows, scoringReference });
   await mkdir(outputDir, { recursive: true });
-  await writeFile(`${outputDir}/stimulus-observations.csv`, stringifyCsv(bundle.observations.map((row) => ({ participant_id: row.participant_id, session_id: row.session_id, trial_index: row.trial_index, task_id: row.task_id, combination_id: row.combination_id, model_id: row.model_id, point_id: row.point_id, position_error: row.position_error, rotation_error_steps: row.rotation_error_steps, position_exact: row.position_exact, rotation_exact: row.rotation_exact, ...Object.fromEntries((CORE_PREDICTORS as readonly string[]).map((key) => [key, row[key]])) })), { header: true }));
+  await writeFile(`${outputDir}/stimulus-observations.csv`, stringifyCsv(bundle.observations.map((row) => ({ participant_id: row.participant_id, session_id: row.session_id, trial_index: row.trial_index, task_id: row.task_id, combination_id: row.combination_id, model_id: row.model_id, point_id: row.point_id, position_error: row.position_error, rotation_error_steps: row.rotation_error_steps, position_exact: row.position_exact, rotation_exact: row.rotation_exact, ...Object.fromEntries([...CORE_PREDICTORS, ...PREREGISTERED_PREDICTORS].map((key) => [key, row[key]])) })), { header: true }));
   await writeFile(`${outputDir}/predictor-audit.csv`, stringifyCsv(bundle.predictorAudit, { header: true }));
   await writeFile(`${outputDir}/outcome-summary.csv`, stringifyCsv(bundle.outcomeSummary, { header: true }));
   await writeFile(`${outputDir}/predictor-associations.csv`, stringifyCsv(bundle.predictorAssociations, { header: true }));
