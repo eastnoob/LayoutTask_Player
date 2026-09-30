@@ -4,6 +4,7 @@
   "baseUrl": "../layout-task-run12-core23-persistent/",
   "schedule_path": "../layout-task-run12-core23-persistent/schedule.json",
   "schedule_version": "run12-williams-v1",
+  "reward": { "enabled": true, "base_reward_cents": 200, "movement_reward_cents": 6, "rotation_reward_cents": 6, "reference_path": "../layout-task-run12-core23-persistent/scoring/scoring-reference.json", "reference_version": "run12-core23-scoring-v1" },
   "reference_mode": "persistent",
   "order": "fixed",
   "locale": "zh-CN",

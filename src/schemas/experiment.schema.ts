@@ -100,6 +100,17 @@ const completionCodeGateSchema = z
   })
   .default({ enabled: false, min_display_ms: 15_000 });
 
+const rewardSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    base_reward_cents: z.number().int().nonnegative().default(200),
+    movement_reward_cents: z.number().int().nonnegative().default(6),
+    rotation_reward_cents: z.number().int().nonnegative().default(6),
+    reference_path: z.string().min(1).optional(),
+    reference_version: z.string().min(1).optional(),
+  })
+  .default({ enabled: true, base_reward_cents: 200, movement_reward_cents: 6, rotation_reward_cents: 6 });
+
 const experimentSchema = z.object({
   schema: z.literal("layouttask.experiment.v1"),
   experiment_id: z.string().min(1),
@@ -115,6 +126,7 @@ const experimentSchema = z.object({
   schedule: experimentScheduleSchema.optional(),
   schedule_path: z.string().min(1).optional(),
   schedule_version: z.string().min(1).optional(),
+  reward: rewardSchema,
 });
 
 export function parseExperimentConfig(input: unknown): ExperimentConfig {
@@ -158,5 +170,13 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     schedule: parsed.schedule,
     schedulePath: parsed.schedule_path,
     scheduleVersion: parsed.schedule_version,
+    reward: {
+      enabled: parsed.reward.enabled,
+      baseRewardCents: parsed.reward.base_reward_cents,
+      movementRewardCents: parsed.reward.movement_reward_cents,
+      rotationRewardCents: parsed.reward.rotation_reward_cents,
+      referencePath: parsed.reward.reference_path,
+      referenceVersion: parsed.reward.reference_version,
+    },
   };
 }

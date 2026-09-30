@@ -22,6 +22,8 @@ import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
 import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 import { CompletionCodeGate } from "./core/completion-code-gate";
+import { summarizeExperimentRewards } from "./core/reward-calculator";
+import type { ExperimentRewardSummary } from "./types/reward";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -209,6 +211,8 @@ export function buildExperimentTimeline(
       localBackup: options.localBackup,
       pause: options.pause,
       practicePause: options.practicePause,
+      reward: config.reward,
+      rewardReference: config.rewardReference?.[trial.taskId],
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
@@ -669,6 +673,11 @@ export function createRunnableExperiment(
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
       const tutorialResult = collectTutorialTrialResult(rows);
+      const rewardSummary = summarizeExperimentRewards(
+        trialResults
+          .map((trial) => trial.result)
+          .filter((result): result is import("./types/result").LayoutTaskResult => Boolean(result && typeof result === "object" && (result as { schema?: unknown }).schema === "layouttask.result.v1")),
+      );
       const tutorialRow = rows.find((row) => row.tutorial);
       const files = createExperimentCsvFiles({
         participantId,
@@ -703,7 +712,7 @@ export function createRunnableExperiment(
       if (saveResult.ok) {
         session.markCompleted();
       }
-      renderEndPage(files, saveResult, config.locale);
+      renderEndPage(files, saveResult, config.locale, rewardSummary);
     },
   });
 
@@ -775,6 +784,7 @@ function renderEndPage(
   files: ExperimentCsvFile[],
   saveResult: { ok: boolean; error?: string; failedFilename?: string; recoveryZip?: Blob },
   locale: "en-US" | "zh-CN" = "en-US",
+  rewardSummary?: ExperimentRewardSummary,
 ): void {
   document.body.innerHTML = "";
   const section = document.createElement("section");
@@ -808,6 +818,14 @@ function renderEndPage(
     }, 250);
   });
   section.append(title, detail, closeButton);
+  if (rewardSummary?.enabled) {
+    const reward = document.createElement("p");
+    reward.className = "layout-task-reward-summary";
+    reward.textContent = locale === "zh-CN"
+      ? `基础报酬 €${(rewardSummary.baseRewardCents / 100).toFixed(2)}；完成奖励 €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总计 €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`
+      : `Base payment €${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned rewards €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`;
+    section.append(reward);
+  }
   if (!saveResult.ok) {
     if (saveResult.recoveryZip) {
       const recoveryLink = document.createElement("a");

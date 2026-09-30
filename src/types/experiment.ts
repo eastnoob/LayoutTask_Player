@@ -1,5 +1,6 @@
 import type { ReferenceMode } from "./config";
 import type { ExperimentSchedule } from "./schedule";
+import type { RewardConfig, RewardReferenceTask } from "./reward";
 
 export interface ExperimentTrialRef {
   taskId: string;
@@ -81,4 +82,6 @@ export interface ExperimentConfig {
   schedule?: ExperimentSchedule;
   schedulePath?: string;
   scheduleVersion?: string;
+  reward?: RewardConfig;
+  rewardReference?: Record<string, RewardReferenceTask>;
 }

@@ -258,6 +258,27 @@ export const resultRestoreSchema = z.object({
   restored_at: z.number().finite().optional(),
 });
 
+const rewardGroupSchema = z.object({
+  groupId: z.string().min(1),
+  scorable: z.boolean(),
+  positionCorrect: z.boolean().nullable(),
+  rotationCorrect: z.boolean().nullable(),
+  movementRewardCents: z.number().int().nonnegative(),
+  rotationRewardCents: z.number().int().nonnegative(),
+  rewardCents: z.number().int().nonnegative(),
+  cumulativeRewardCents: z.number().int().nonnegative(),
+});
+
+export const resultRewardSchema = z.object({
+  enabled: z.boolean(),
+  baseRewardCents: z.number().int().nonnegative(),
+  rewardCents: z.number().int().nonnegative(),
+  cumulativeRewardCents: z.number().int().nonnegative(),
+  referenceVersion: z.string().optional(),
+  groups: z.array(rewardGroupSchema),
+  skippedGroupIds: z.array(z.string()),
+});
+
 export const layoutTaskEventSchema = z.object({
   i: z.number().int().nonnegative(),
   t: z.number().int().nonnegative(),
@@ -334,4 +355,5 @@ export const resultSchema = z.object({
   locked: z.literal(true),
   copy_timestamp: z.number().int().positive().optional(),
   user_agent: z.string().optional(),
+  reward: resultRewardSchema.optional(),
 });

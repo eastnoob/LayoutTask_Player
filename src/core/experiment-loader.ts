@@ -2,6 +2,7 @@ import { parseExperimentConfig } from "../schemas/experiment.schema";
 import type { ExperimentConfig } from "../types/experiment";
 import type { ReferenceMode } from "../types/config";
 import { parseExperimentSchedule } from "../schemas/schedule.schema";
+import type { RewardReferenceTask } from "../types/reward";
 
 export interface ExperimentLoaderOptions {
   baseUrl: string;
@@ -32,6 +33,15 @@ export class ExperimentLoader {
     const schedule = config.schedulePath
       ? await this.loadSchedule(config.schedulePath)
       : config.schedule;
+    const reward = config.reward ?? {
+      enabled: true,
+      baseRewardCents: 200,
+      movementRewardCents: 6,
+      rotationRewardCents: 6,
+    };
+    const rewardReference = reward.referencePath
+      ? await this.loadRewardReference(reward.referencePath)
+      : undefined;
     return {
       ...config,
       referenceMode: this.referenceMode ?? config.referenceMode,
@@ -43,6 +53,8 @@ export class ExperimentLoader {
           : undefined,
       },
       schedule,
+      reward,
+      rewardReference: rewardReference?.tasks,
     };
   }
 
@@ -52,6 +64,18 @@ export class ExperimentLoader {
       throw new Error(`Failed to load ${schedulePath}: ${response.status} ${response.statusText}`);
     }
     return parseExperimentSchedule(await response.json());
+  }
+
+  private async loadRewardReference(referencePath: string): Promise<{ tasks: Record<string, RewardReferenceTask> }> {
+    const response = await this.fetchImpl(new URL(referencePath, this.baseUrl).toString());
+    if (!response.ok) {
+      throw new Error(`Failed to load ${referencePath}: ${response.status} ${response.statusText}`);
+    }
+    const value = await response.json() as { schema?: string; tasks?: Record<string, RewardReferenceTask> };
+    if (value.schema !== "layouttask.scoring-reference.v1" || !value.tasks) {
+      throw new Error(`Invalid scoring reference: ${referencePath}`);
+    }
+    return { tasks: value.tasks };
   }
 }
 

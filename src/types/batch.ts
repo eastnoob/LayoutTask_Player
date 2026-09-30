@@ -138,6 +138,7 @@ export interface AbsoluteTargetState {
 
 export interface ObjectScoringConfig {
   enabled?: boolean;
+  scorable?: boolean;
   target?: ObjectTargetState;
   tolerance?: ScoringTolerance;
   labels?: Record<string, string>;
@@ -169,6 +170,7 @@ export interface ScoringReferenceConfig {
 
 export interface ScoringReferenceTask {
   qid: string;
+  reward_version?: string;
   metadata?: BatchMetadata;
   objects: Record<string, ScoringReferenceObject>;
 }
@@ -176,6 +178,7 @@ export interface ScoringReferenceTask {
 export interface ScoringReferenceObject {
   role?: ObjectRole;
   group_id?: string;
+  scorable?: boolean;
   target?: ObjectTargetState;
   tolerance?: ScoringTolerance;
   labels?: Record<string, string>;

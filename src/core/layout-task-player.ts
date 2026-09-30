@@ -22,6 +22,7 @@ import type { LocalBackupStore } from "./local-backup-store";
 import { createPauseSummary } from "./experiment-pause";
 import type { ExperimentPauseController } from "./experiment-pause";
 import { resolveMessages } from "./messages";
+import type { RewardConfig, RewardReferenceTask } from "../types/reward";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -39,6 +40,8 @@ export interface LayoutTaskPlayerOptions {
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  reward?: RewardConfig;
+  rewardReference?: RewardReferenceTask;
 }
 
 export interface LayoutTaskPlayer {
@@ -247,6 +250,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
         getPresentation: () => options.presentation,
+        reward: options.reward,
+        rewardReference: options.rewardReference,
         pause: pauseController ? {
           getActiveElapsedMs: (startAt, endAt) => pauseController.getActiveElapsedMs(startAt, endAt),
           snapshot: () => createPauseSummary(pauseController!.snapshot()),

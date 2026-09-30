@@ -9,6 +9,8 @@ import type {
   ResultFlowInfo,
 } from "../types/result";
 import type { ReferencePresentation } from "../types/schedule";
+import type { RewardConfig, RewardReferenceTask } from "../types/reward";
+import { calculateTaskReward } from "./reward-calculator";
 import { elapsedMs, now } from "../utils/time";
 
 interface RecorderOptions {
@@ -27,6 +29,8 @@ interface RecorderOptions {
     getActiveElapsedMs(startAt: number, endAt?: number): number;
     snapshot?: () => LayoutTaskResult["pause"];
   };
+  reward?: RewardConfig;
+  rewardReference?: RewardReferenceTask;
 }
 
 // Recorder collects trial-time facts but does not decide export shape.
@@ -102,6 +106,16 @@ export class Recorder {
       copy_timestamp: copyTimestamp,
       user_agent: this.options.config.recording.record_user_agent ? this.getUserAgent() : undefined,
     };
+
+    if (this.options.reward) {
+      result.reward = calculateTaskReward({
+        config: this.options.reward,
+        objects: this.options.config.objects,
+        reference: this.options.rewardReference,
+        finalState: result.final_state,
+        cumulativeRewardCents: 0,
+      });
+    }
 
     if (confidence && Object.keys(confidence).length > 0) {
       result.confidence = confidence;

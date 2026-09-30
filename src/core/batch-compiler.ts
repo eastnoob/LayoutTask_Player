@@ -44,6 +44,7 @@ export function compileBatch(batch: BatchConfig, options: { referenceMode?: Refe
         trial.task_id,
         {
           qid: trial.qid,
+          ...(typeof trial.metadata?.reward_version === "string" ? { reward_version: trial.metadata.reward_version } : {}),
           ...(trial.metadata !== undefined ? { metadata: trial.metadata } : {}),
           objects: compileScoringObjects(trial),
         },
@@ -147,6 +148,7 @@ function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringR
       object.role !== undefined ||
       object.group_id !== undefined ||
       target !== undefined ||
+      scoring?.scorable !== undefined ||
       scoring?.tolerance !== undefined ||
       scoring?.labels !== undefined;
 
@@ -164,6 +166,10 @@ function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringR
     const reference: ScoringReferenceObject = {};
     assignIfDefined(reference, "role", object.role);
     assignIfDefined(reference, "group_id", object.group_id);
+    if (object.scoring?.enabled === false) {
+      reference.scorable = false;
+    }
+    assignIfDefined(reference, "scorable", scoring?.scorable);
     assignIfDefined(reference, "target", target);
     assignIfDefined(reference, "tolerance", scoring?.tolerance ?? trial.scoring?.default_tolerance);
     assignIfDefined(reference, "labels", scoring?.labels);

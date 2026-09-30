@@ -8,6 +8,7 @@ import type {
 import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { PauseSummary } from "../types/result";
+import { summarizeExperimentRewards } from "./reward-calculator";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -106,6 +107,9 @@ export interface ExperimentDataPipePayloadsInput {
 
 export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentCsvFile[] {
   const prefix = input.filenamePrefix ?? "layout";
+  const rewardSummary = summarizeExperimentRewards(
+    input.trialResults.map((trial) => trial.result).filter(isLayoutTaskResult),
+  );
   const files: ExperimentCsvFile[] = [
     {
       filename: createExperimentFilename(`${prefix}_session`, input.participantId, input.sessionId),
@@ -130,9 +134,16 @@ export function createExperimentCsvFiles(input: ExperimentCsvInput): ExperimentC
     {
       filename: createExperimentFilename(`${prefix}_debug`, input.participantId, input.sessionId, "json"),
       contentType: "application/json",
-      data: createDebugJson(input),
+      data: createDebugJson(input, rewardSummary),
     },
   ];
+  if (rewardSummary.enabled) {
+    files.push({
+      filename: createExperimentFilename(`${prefix}_rewards`, input.participantId, input.sessionId),
+      contentType: "text/csv",
+      data: createRewardsCsv(input),
+    });
+  }
   if (input.tutorialResult) {
     files.push(createTutorialResultFile(input));
   }
@@ -207,6 +218,7 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
 }
 
 function createSessionCsv(input: ExperimentCsvInput): string {
+  const reward = summarizeExperimentRewards(input.trialResults.map((trial) => trial.result).filter(isLayoutTaskResult));
   const firstResult = input.trialResults.map((trial) => trial.result).find(isLayoutTaskResult);
   return csv(
     [
@@ -237,6 +249,10 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "pause_events_json",
       "active_duration_ms",
       "completion_code",
+      "reward_enabled",
+      "base_reward_cents",
+      "earned_reward_cents",
+      "total_reward_cents",
     ],
     [
       [
@@ -267,6 +283,10 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         Math.max(0, input.endTime - input.startTime - (input.pauseSummary?.pause_duration_ms ?? 0)),
         input.completionCode ?? "",
+        reward.enabled,
+        reward.baseRewardCents,
+        reward.earnedRewardCents,
+        reward.totalRewardCents,
       ],
     ],
   );
@@ -540,7 +560,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
   );
 }
 
-function createDebugJson(input: ExperimentCsvInput): string {
+function createDebugJson(input: ExperimentCsvInput, rewardSummary = summarizeExperimentRewards(input.trialResults.map((trial) => trial.result).filter(isLayoutTaskResult))): string {
   return `${JSON.stringify(
     {
       schema: "layouttask.debug.v1",
@@ -560,6 +580,7 @@ function createDebugJson(input: ExperimentCsvInput): string {
       tutorial_package_version: input.tutorialPackageVersion,
       trial_count: input.trialResults.length,
       trial_order: input.trialOrder,
+      reward: rewardSummary,
       trials: input.trialResults.map((trial, trialIndex) => ({
         trial_index: trialIndex,
         trial_type: trial.trialType,
@@ -580,6 +601,41 @@ function createDebugJson(input: ExperimentCsvInput): string {
     null,
     2,
   )}\n`;
+}
+
+function createRewardsCsv(input: ExperimentCsvInput): string {
+  const rows: CsvValue[][] = [];
+  input.trialResults.forEach((trial, trialIndex) => {
+    if (!isLayoutTaskResult(trial.result) || !trial.result.reward) return;
+    for (const group of trial.result.reward.groups) {
+      rows.push([
+        input.participantId,
+        input.sessionId,
+        input.experimentId,
+        trialIndex,
+        trial.result.task_id,
+        trial.result.qid,
+        presentationValue(trial, "presentationId"),
+        presentationValue(trial, "repeatGroupId"),
+        presentationValue(trial, "repeatIndex"),
+        group.groupId,
+        group.scorable,
+        group.positionCorrect,
+        group.rotationCorrect,
+        group.movementRewardCents,
+        group.rotationRewardCents,
+        group.rewardCents,
+        group.cumulativeRewardCents,
+        trial.result.reward.referenceVersion,
+      ]);
+    }
+  });
+  return csv([
+    "participant_id", "session_id", "experiment_id", "trial_index", "task_id", "qid",
+    "presentation_id", "repeat_group_id", "repeat_index", "group_id", "scorable",
+    "position_correct", "rotation_correct", "movement_reward_cents", "rotation_reward_cents",
+    "reward_cents", "cumulative_reward_cents", "reference_version",
+  ], rows);
 }
 
 type CsvValue = string | number | boolean | null | undefined;

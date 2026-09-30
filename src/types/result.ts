@@ -1,6 +1,7 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
 import type { ViewBox, WorldUnit } from "./config";
 import type { ReferencePresentation } from "./schedule";
+import type { TaskRewardSummary } from "./reward";
 
 // Result types are the serialized protocol surface shared by runtime, encoder,
 // decoder, and downstream analysis scripts. 这一层是实验结果交换格式，不只是前端内部状态。
@@ -277,6 +278,7 @@ export interface LayoutTaskResult {
   locked: true;
   copy_timestamp?: number;
   user_agent?: string;
+  reward?: TaskRewardSummary;
 }
 
 export type ConfidenceDimension = "position" | "rotation";
