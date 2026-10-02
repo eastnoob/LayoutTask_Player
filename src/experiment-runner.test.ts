@@ -77,16 +77,16 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
-  it("uses the English release configs as the default experiment entries", () => {
+  it("uses the Chinese release configs as the default experiment entries", () => {
     const productionRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment.json"), "utf8"));
     const debugRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-debug.json"), "utf8"));
     const production = parseExperimentConfig(productionRaw);
     const debug = parseExperimentConfig(debugRaw);
 
-    expect(productionRaw.locale).toBe("en-US");
-    expect(debugRaw.locale).toBe("en-US");
-    expect(production.locale).toBe("en-US");
-    expect(debug.locale).toBe("en-US");
+    expect(productionRaw.locale).toBe("zh-CN");
+    expect(debugRaw.locale).toBe("zh-CN");
+    expect(production.locale).toBe("zh-CN");
+    expect(debug.locale).toBe("zh-CN");
     expect(production.completionCodeGate.enabled).toBe(false);
     expect(debug.completionCodeGate.enabled).toBe(false);
   });
