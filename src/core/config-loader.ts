@@ -115,12 +115,12 @@ const DEFAULT_PREVIEW_FLOW_CONFIG = {
   preview_duration_sec: 10,
   require_preview_ack: true,
   intro_message:
-    "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+    "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the floor plan based on the picture you just studied.",
   intro_confirm_label: "Start preview",
   stage_during_preview: "hidden" as const,
   show_countdown: true,
   message_before: "Next, you will have {seconds} seconds to study the image.",
-  message_after: "Please reconstruct the scene from memory.",
+  message_after: "Please reconstruct the floor plan based on the picture you just studied.",
 };
 
 export class ConfigLoader {

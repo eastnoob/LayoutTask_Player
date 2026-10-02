@@ -2,8 +2,9 @@ import "./styles/layout-task.css";
 import { ConfigLoader } from "./core/config-loader";
 import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
-import { createRunnableExperiment } from "./experiment-runner";
+import { createRunnableExperiment, requestAssignment } from "./experiment-runner";
 import { createDeveloperDebugConfig } from "./core/developer-debug";
+import { waitForExperimentConsent } from "./core/experiment-consent";
 import {
   getDefaultExperimentConfigPath,
   isDeveloperDebugExperiment,
@@ -34,19 +35,50 @@ async function bootstrap(): Promise<void> {
   }
 
   if (isExperimentPath(window.location.pathname)) {
+    const params = parseLayoutTaskUrlParams(window.location.search);
     const experimentParams = new URLSearchParams(window.location.search);
-    const configPath = getDefaultExperimentConfigPath(experimentParams.get("config") ?? undefined, import.meta.env.DEV);
+    const configPath = getDefaultExperimentConfigPath(params.config, import.meta.env.DEV);
     const loader = new ExperimentLoader({
       baseUrl: new URL("./", window.location.href).toString(),
       configPath,
     });
     const loadedConfig = await loader.load();
-    const developerDebug = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
+    let developerDebug = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
+    if (!developerDebug) {
+      const consent = await waitForExperimentConsent({ root, locale: loadedConfig.locale });
+      developerDebug = consent === "developer";
+    }
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
+    let assignment;
+    if (!developerDebug && config.schedule) {
+      try {
+        if (config.dataSave.mode !== "receiver" || !config.scheduleVersion) {
+          throw new Error("Formal assignment is not configured");
+        }
+        const storage = globalThis.localStorage;
+        const assignmentKey = `layoutTaskAssignmentToken:${config.experimentId}`;
+        const idempotencyToken = storage.getItem(assignmentKey) ?? globalThis.crypto.randomUUID();
+        storage.setItem(assignmentKey, idempotencyToken);
+        assignment = await requestAssignment({
+          endpoint: config.dataSave.endpoint,
+          submitToken: config.dataSave.submitToken,
+          experimentId: config.experimentId,
+          scheduleVersion: config.scheduleVersion,
+          sequenceIds: config.schedule.sequences.map((sequence) => String(sequence.sequenceId)),
+          idempotencyToken,
+          requestedSequenceId: params.requestedSequenceId,
+        });
+      } catch (error) {
+        root.innerHTML = `<section class="layout-task-shell"><h1>Unable to start experiment</h1><p>${error instanceof Error ? error.message : "Assignment failed"}</p></section>`;
+        return;
+      }
+    }
     const { jsPsych, timeline } = createRunnableExperiment(
       config,
       root,
-      developerDebug ? { participantId: "9999", developerMode: true } : undefined,
+      developerDebug
+        ? { participantId: "9999", participantNumber: 9999, developerMode: true }
+        : { assignment, requireAssignment: Boolean(config.schedule) },
     );
     await jsPsych.run(timeline);
     return;

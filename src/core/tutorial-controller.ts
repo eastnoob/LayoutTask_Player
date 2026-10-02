@@ -1,6 +1,7 @@
 export type TutorialEvent =
   | "preview_acknowledged"
   | "reconstruction_started"
+  | "view_direction_acknowledged"
   | "object_selected"
   | "object_moved_or_rotated"
   | "confidence_chosen"
@@ -12,7 +13,8 @@ export type TutorialEvent =
 export interface TutorialStep {
   id:
     | "intro"
-    | "preview"
+  | "preview"
+    | "view_direction"
     | "select_first"
     | "move_or_rotate"
     | "confidence_first"
@@ -34,7 +36,7 @@ const steps: TutorialStep[] = [
     id: "intro",
     anchor: "flow-modal",
     message:
-      "**You will first study an image for 10 seconds.** Remember the furniture state at each marked point, including which furniture is there, its position, and its orientation. Then reconstruct the scene from memory.",
+      "**You will first study an image for 10 seconds.** Remember the furniture state at each marked point, including which furniture is there, its position, and its orientation. Then reconstruct the floor plan based on the picture you just studied.",
     expectedEvent: "preview_acknowledged",
   },
   {
@@ -44,10 +46,16 @@ const steps: TutorialStep[] = [
     expectedEvent: "reconstruction_started",
   },
   {
+    id: "view_direction",
+    anchor: "viewport-tools",
+    message: "You are standing at the bottom of the floor plan, where the observer's eyes are. **Look toward the top of the plan.**",
+    expectedEvent: "view_direction_acknowledged",
+  },
+  {
     id: "select_first",
-    anchor: "stage",
+    anchor: "viewport-tools",
     message:
-      "Click the [[yellow]]yellow object[[/yellow]] in each furniture group. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom controls in the lower-right corner** to inspect the scene.",
+      "[[block]]Your task is to use the picture at the top of the page to reconstruct the floor plan below. Move the [[yellow]]yellow objects[[/yellow]] in the floor plan so that their positions and orientations match the furniture in the perspective image above. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom in**, **zoom out**, and **reset** controls in the **upper-right corner** of the floor plan.[[/block]] [[block]]To inspect the scene, hold **Pan** and drag; release **Pan** to stop panning. These controls change only the view, not furniture positions or orientations. Right-click is not used for panning.[[/block]]",
     expectedEvent: "object_selected",
   },
   {
@@ -117,8 +125,9 @@ export class TutorialController {
   private index = 0;
   private readonly steps: TutorialStep[];
 
-  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s") {
-    this.steps = referenceMode === "persistent" ? createPersistentSteps() : steps;
+  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s", locale: "en-US" | "zh-CN" = "en-US") {
+    const selectedSteps = referenceMode === "persistent" ? createPersistentSteps() : steps;
+    this.steps = locale === "zh-CN" ? createChineseSteps(selectedSteps) : selectedSteps;
   }
 
   getCurrentStep(): TutorialStep {
@@ -152,4 +161,30 @@ function createPersistentSteps(): TutorialStep[] {
           }
         : step,
     );
+}
+
+function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
+  const messages: Record<TutorialStep["id"], string> = {
+    intro:
+      "**你可以随时查看页面顶部的透视图。** 你的任务是根据刚才看到的图片还原场景平面图。请不要使用浏览器缩放、**Ctrl + 滚轮**或其他放大工具；这些行为可能会被记录。你可以使用平面图右下角的缩放按钮。",
+    preview: "**观察顶部的参考图片。** 倒计时结束后图片会消失。",
+    view_direction:
+      "你当前站在平面图的最下方，也就是观察者眼睛的位置，**请向上方看**。",
+    select_first:
+      "[[block]]你的任务是使用页面上方的图片还原下方的场景平面图。请移动平面图中的[[yellow]]黄色物体[[/yellow]]，使它们的位置和方向与上方透视图中的家具一致。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用平面图**右上角的放大、缩小和重置按钮**。[[/block]] [[block]]如需查看场景细节，请按住**Pan**并拖动；松开**Pan**后停止平移。这些操作只改变视图，不改变家具位置或方向。请勿使用右键平移。[[/block]]",
+    move_or_rotate:
+      "**使用箭头按钮移动**，或**使用旋转按钮调整方向**。如果操作箭头挡住视线，请将鼠标移出物体以隐藏箭头；重新指向物体即可显示，**这不会退出编辑模式。**",
+    confidence_first:
+      "**你的任务是尽可能根据刚刚看到的图片还原场景平面图。**完成这个物体后，**请在下方选择置信度。**",
+    save_first: "点击下方的**Save**保存置信度并退出这个物体的编辑模式。",
+    select_second: "你已退出当前编辑模式。**现在可以点击另一个**[[yellow]]黄色物体[[/yellow]]**进入其编辑模式。**",
+    confidence_second: "完成这个物体后，**请在下方选择它的置信度。**",
+    save_second: "点击下方的**Save**退出这个物体的编辑模式。**提交教程前，请对每个黄色物体重复此操作。**",
+    pause_practice: "**练习暂停功能。**点击**Pause**，等待10秒练习倒计时，然后点击**Resume**。练习暂停不会消耗正式暂停机会。",
+    pause_practice_resume: "**保持暂停直到倒计时结束，然后点击Resume**继续教程。",
+    submit: "**提交教程结果。**",
+    complete: "**教程完成。**",
+  };
+
+  return source.map((step) => ({ ...step, message: messages[step.id] }));
 }

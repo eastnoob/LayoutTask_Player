@@ -7,6 +7,8 @@ function config(): ExperimentConfig {
     schema: "layouttask.experiment.v1",
     experimentId: "production",
     baseUrl: "/release/",
+    locale: "en-US",
+    completionCodeGate: { enabled: false, minDisplayMs: 15_000 },
     referenceMode: "persistent",
     order: "fixed",
     tutorial: { enabled: false },
@@ -21,6 +23,10 @@ function config(): ExperimentConfig {
   };
 }
 
+function copyConfig(): ExperimentConfig {
+  return { ...config(), dataSave: { mode: "copy", filenamePrefix: "production" } };
+}
+
 describe("createDeveloperDebugConfig", () => {
   it("keeps DataPipe enabled while isolating developer data", () => {
     const debug = createDeveloperDebugConfig(config());
@@ -32,5 +38,12 @@ describe("createDeveloperDebugConfig", () => {
       endpoint: "https://data.example.test/submit",
       filenamePrefix: "run-12-core-23-debug",
     });
+  });
+
+  it("allows a local copy-mode developer page without an upload endpoint", () => {
+    const debug = createDeveloperDebugConfig(copyConfig());
+
+    expect(debug.experimentId).toBe("run_12_core_23_debug");
+    expect(debug.dataSave).toEqual({ mode: "copy", filenamePrefix: "run-12-core-23-debug" });
   });
 });

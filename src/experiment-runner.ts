@@ -3,6 +3,7 @@ import { initJsPsych } from "jspsych";
 import {
   createExperimentCsvFiles,
   createExperimentDataPipePayloads,
+  toAssignmentMetadata,
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
@@ -15,18 +16,57 @@ import type { RuntimeDataSaveConfig } from "./types/runtime";
 import { UploadState } from "./core/upload-state";
 import { createCompleteRecoveryZip } from "./core/zip-recovery";
 import type { ReferencePresentation } from "./types/schedule";
+import { selectSequence, selectSequenceById } from "./core/schedule-generator";
 import { createIndexedDbLocalBackupStore, type LocalBackupStore } from "./core/local-backup-store";
 import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
 import { createExperimentPauseUi } from "./core/experiment-pause-ui";
+import { CompletionCodeGate } from "./core/completion-code-gate";
+import { summarizeExperimentRewards } from "./core/reward-calculator";
+import type { ExperimentRewardSummary } from "./types/reward";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
+export interface AssignmentRecord {
+  assignmentId: string;
+  participantNumber: number;
+  sequenceId: string;
+  scheduleVersion: string;
+  assignmentMode?: "automatic" | "replacement";
+  requestedSequenceId?: string | null;
+  replacementAttempt?: number;
+  rotationIndex?: number | null;
+}
+
+export interface AssignmentRequest {
+  endpoint: string;
+  submitToken?: string;
+  experimentId: string;
+  scheduleVersion: string;
+  sequenceIds: string[];
+  idempotencyToken: string;
+  requestedSequenceId?: string;
+}
+
+function assignmentMetadata(assignment?: AssignmentRecord) {
+  return toAssignmentMetadata(assignment && {
+    assignment_id: assignment.assignmentId,
+    participant_number: assignment.participantNumber,
+    sequence_id: assignment.sequenceId,
+    schedule_version: assignment.scheduleVersion,
+    assignment_mode: assignment.assignmentMode,
+    requested_sequence_id: assignment.requestedSequenceId,
+    replacement_attempt: assignment.replacementAttempt,
+    rotation_index: assignment.rotationIndex,
+  });
+}
+
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
+  const chinese = config.locale === "zh-CN";
   const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
 
   if (config.tutorial.enabled) {
@@ -37,25 +77,25 @@ export function buildExperimentTimeline(
       pages: [
         `<section class="layout-task-shell layout-task-tutorial-intro-shell">
           <header class="layout-task-header layout-task-tutorial-intro-header">
-            <p class="layout-task-eyebrow">Tutorial</p>
-            <h1>Reconstruct the furniture layout</h1>
-            <p class="layout-task-meta">The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below.</p>
+            <p class="layout-task-eyebrow">${chinese ? "教程" : "Tutorial"}</p>
+            <h1>${chinese ? "恢复家具布局" : "Reconstruct the furniture layout"}</h1>
+            <p class="layout-task-meta">${chinese ? "图片显示在页面顶部。请观察图片，然后在下方平面图中恢复家具的摆放。" : "The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below."}</p>
           </header>
           <div class="layout-task-tutorial-intro-note">
-            <p><strong>Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible.</strong></p>
-            <p>You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it.</p>
+            <p><strong>${chinese ? "你的任务是观察页面顶部的每张图片，并尽可能在平面图中恢复家具布局。" : "Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible."}</strong></p>
+            <p>${chinese ? "你将练习正式实验中的相同流程：观察家具布局，打开每个黄色家具物体，必要时进行调整，选择位置和旋转的置信度，然后保存。" : "You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it."}</p>
           </div>
         </section>`,
       ],
       show_clickable_nav: true,
       allow_backward: false,
-      button_label_next: "Start tutorial",
+          button_label_next: chinese ? "开始教程" : "Start tutorial",
       data: { tutorial_intro: true },
     });
     if (config.tutorial.referenceBoard?.enabled) {
       const board = config.tutorial.referenceBoard;
-      const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board });
-      const continueLabel = board.continueLabel ?? "Continue";
+      const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board, locale: config.locale });
+      const continueLabel = chinese ? "继续" : board.continueLabel ?? "Continue";
       for (const [index, page] of pages.entries()) {
         const item = board.items[index];
         timeline.push({
@@ -85,6 +125,7 @@ export function buildExperimentTimeline(
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
+        locale: config.locale,
         developerMode: options.developerMode,
         referenceMode: config.referenceMode,
         confidence: config.confidence,
@@ -104,29 +145,37 @@ export function buildExperimentTimeline(
         pages: [
           `<section class="layout-task-shell layout-task-tutorial-complete-shell">
             <header class="layout-task-header layout-task-tutorial-complete-header">
-              <p class="layout-task-eyebrow">Tutorial</p>
-              <h1>Tutorial complete.</h1>
-              <p class="layout-task-meta">Study image -> Reconstruct scene -> Rate confidence -> Submit</p>
+              <p class="layout-task-eyebrow">${chinese ? "教程" : "Tutorial"}</p>
+              <h1>${chinese ? "教程完成。" : "Tutorial complete."}</h1>
+              <p class="layout-task-meta">${chinese ? "观察图片 -> 恢复场景 -> 选择置信度 -> 提交" : "Study image -> Reconstruct scene -> Rate confidence -> Submit"}</p>
             </header>
             <div class="layout-task-tutorial-complete-note">
               <ul class="layout-task-tutorial-complete-list">
-                <li><strong>This is an experiment, not a test.</strong> Mistakes and uncertainty are normal. If you are very unsure, report very low confidence.</li>
-                <li>You have one formal pause opportunity: a one-time 15-minute break.</li>
-                <li>You may stop if the experiment causes discomfort, without payment or penalty.</li>
-                <li>Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses.</li>
-                <li>The complete study takes about 15 minutes.</li>
+                <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
+                <li>${chinese ? "你有一次正式暂停机会，最长15分钟。" : "You have one formal pause opportunity: a one-time 15-minute break."}</li>
+                <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 floorplanrestoration.deluxe999@passmail.com 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at floorplanrestoration.deluxe999@passmail.com for assistance."}</li>
+                <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
+                <li>${chinese ? "整个研究大约需要15-20分钟。" : "The complete study takes approximately 15-20 minutes."}</li>
               </ul>
             </div>
           </section>`,
         ],
         show_clickable_nav: true,
-        button_label_next: "Start formal experiment",
+        button_label_next: chinese ? "开始正式实验" : "Start formal experiment",
         data: { tutorial_complete: true },
       });
     }
   }
 
-  const formalPresentations: ReferencePresentation[] = config.schedule?.sequences[0]?.presentations
+  if (options.requireAssignment && config.schedule && !options.assignment) {
+    throw new Error("Formal assignment is required before starting the experiment");
+  }
+  const selectedSequence = config.schedule
+    ? options.assignment
+      ? selectSequenceById(config.schedule, options.assignment.sequenceId)
+      : selectSequence(config.schedule, options.participantNumber ?? 1)
+    : undefined;
+  const formalPresentations: ReferencePresentation[] = selectedSequence?.presentations
     ?? config.trials.map((trial, index) => ({
       presentationId: `trial-${index + 1}`,
       taskId: trial.taskId,
@@ -150,6 +199,7 @@ export function buildExperimentTimeline(
       presentation,
       trialIndex: presentation.trialIndex,
       trialTotal: presentation.trialTotal,
+      locale: config.locale,
       referenceMode: config.referenceMode,
       developerMode: options.developerMode,
       confidence: config.confidence,
@@ -161,6 +211,8 @@ export function buildExperimentTimeline(
       localBackup: options.localBackup,
       pause: options.pause,
       practicePause: options.practicePause,
+      reward: config.reward,
+      rewardReference: config.rewardReference?.[trial.taskId],
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
     });
   }
@@ -251,6 +303,39 @@ export function collectFormalTrialResults(rows: Array<Record<string, unknown>>):
     }));
 }
 
+export async function requestAssignment(input: AssignmentRequest): Promise<AssignmentRecord> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (input.submitToken) headers["X-Submit-Token"] = input.submitToken;
+  const response = await fetch(input.endpoint.replace(/\/submit\/?$/, "/assign"), {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      experiment_id: input.experimentId,
+      idempotency_token: input.idempotencyToken,
+      schedule_version: input.scheduleVersion,
+      ...(input.requestedSequenceId ? { requested_sequence_id: input.requestedSequenceId } : {}),
+    }),
+  });
+  const payload = await response.json() as Record<string, unknown>;
+  if (!response.ok || typeof payload.assignment_id !== "string" || !Number.isInteger(payload.participant_number) || typeof payload.sequence_id !== "string") {
+    throw new Error(String(payload.message ?? payload.error ?? `Assignment request failed (${response.status})`));
+  }
+  return {
+    assignmentId: payload.assignment_id,
+    participantNumber: payload.participant_number as number,
+    sequenceId: payload.sequence_id,
+    scheduleVersion: String(payload.schedule_version ?? input.scheduleVersion),
+    assignmentMode: payload.assignment_mode as AssignmentRecord["assignmentMode"],
+    requestedSequenceId: (payload.requested_sequence_id as string | null | undefined) ?? null,
+    replacementAttempt: typeof payload.replacement_attempt === "number" ? payload.replacement_attempt : undefined,
+    rotationIndex: typeof payload.rotation_index === "number" ? payload.rotation_index : null,
+  };
+}
+
+export function shouldShowCompletionCodeGate(config: ExperimentConfig): boolean {
+  return config.locale === "zh-CN" && config.completionCodeGate.enabled;
+}
+
 export function collectTutorialTrialResult(
   rows: Array<Record<string, unknown>>,
 ): ExperimentTrialResultItem | undefined {
@@ -288,10 +373,12 @@ export async function saveExperimentFiles(input: {
   files: ExperimentCsvFile[];
   participantId?: string;
   sessionId?: string;
+  completionCode?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
   pauseSummary?: import("./types/result").PauseSummary;
+  assignment?: AssignmentRecord;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -307,8 +394,10 @@ export async function saveExperimentFiles(input: {
       participantId: input.participantId ?? "unknown",
       sessionId: input.sessionId ?? "unknown",
       experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
+      completionCode: input.completionCode,
       failedFilenames: input.files.map((file) => file.filename),
       pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
     });
     return {
       ok: false,
@@ -354,6 +443,7 @@ export async function saveExperimentFiles(input: {
                 participantId: input.participantId!,
                 sessionId: input.sessionId!,
                 files: input.files,
+                assignment: input.assignment,
               }),
             ),
           }),
@@ -374,8 +464,10 @@ export async function saveExperimentFiles(input: {
         participantId: input.participantId,
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
-        failedFilenames: ["receiver batch"],
-        pauseSummary: input.pauseSummary,
+        completionCode: input.completionCode,
+      failedFilenames: ["receiver batch"],
+      pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
       });
       return {
         ok: false,
@@ -392,6 +484,7 @@ export async function saveExperimentFiles(input: {
       experiment_id: dataSave.experimentId,
       participant_id: input.participantId,
       session_id: input.sessionId,
+      ...assignmentMetadata(input.assignment),
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -418,8 +511,10 @@ export async function saveExperimentFiles(input: {
       participantId: input.participantId,
       sessionId: input.sessionId,
       experimentId: dataSave.experimentId,
+      completionCode: input.completionCode,
       failedFilenames: ["receiver archive"],
       pauseSummary: input.pauseSummary,
+      assignment: assignmentMetadata(input.assignment),
     });
     return {
       ok: false,
@@ -433,6 +528,7 @@ export async function saveExperimentFiles(input: {
   const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
     files: input.files,
+    assignment: assignmentMetadata(input.assignment),
   });
   const dataSave = input.dataSave;
   const uploadState = new UploadState({ pauseSummary: input.pauseSummary });
@@ -478,8 +574,10 @@ export async function saveExperimentFiles(input: {
         participantId: input.participantId ?? "unknown",
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
+        completionCode: input.completionCode,
         failedFilenames,
         pauseSummary: input.pauseSummary,
+        assignment: assignmentMetadata(input.assignment),
       });
       return {
         ok: false,
@@ -515,21 +613,31 @@ async function getRecoveryFiles(input: {
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
+  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
+    assignment: assignmentMetadata(options.assignment),
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
+  void localBackup?.saveSessionMetadata?.({
+    session_id: sessionId,
+    assignment: assignmentMetadata(options.assignment),
+    pause: session.pauseSnapshot,
+  });
   const pause = new ExperimentPauseController({
     mode: "formal",
     restore: session.pauseSnapshot,
     onChange: (snapshot) => {
       session.savePauseSnapshot(snapshot);
-      void localBackup?.saveSessionMetadata?.({ session_id: sessionId, pause: snapshot });
+      void localBackup?.saveSessionMetadata?.({
+        session_id: sessionId,
+        assignment: assignmentMetadata(options.assignment),
+        pause: snapshot,
+      });
     },
   });
   const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
@@ -550,9 +658,26 @@ export function createRunnableExperiment(
       pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
     },
     on_finish: async () => {
+      pauseUi.setPageActive(false);
+      let completionCode = "";
+      if (shouldShowCompletionCodeGate(config)) {
+        const gateRoot = displayElement ?? document.body;
+        gateRoot.replaceChildren();
+        const gate = new CompletionCodeGate({
+          minDisplayMs: config.completionCodeGate.minDisplayMs,
+        });
+        gate.mount(gateRoot);
+        completionCode = await gate.waitForCompletion();
+        gate.destroy();
+      }
       const rows = jsPsych.data.get().values() as Array<Record<string, unknown>>;
       const trialResults = collectFormalTrialResults(rows);
       const tutorialResult = collectTutorialTrialResult(rows);
+      const rewardSummary = summarizeExperimentRewards(
+        trialResults
+          .map((trial) => trial.result)
+          .filter((result): result is import("./types/result").LayoutTaskResult => Boolean(result && typeof result === "object" && (result as { schema?: unknown }).schema === "layouttask.result.v1")),
+      );
       const tutorialRow = rows.find((row) => row.tutorial);
       const files = createExperimentCsvFiles({
         participantId,
@@ -567,24 +692,27 @@ export function createRunnableExperiment(
         trialResults,
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
+        completionCode,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        assignment: assignmentMetadata(options.assignment),
       });
-      pauseUi.setPageActive(false);
       pauseUi.destroy();
-      renderSavingPage();
+      renderSavingPage(config.locale);
       const saveResult = await saveExperimentFiles({
         dataSave: config.dataSave,
         participantId,
         sessionId,
         files,
         localBackup,
+        completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        assignment: options.assignment,
       });
       if (saveResult.ok) {
         session.markCompleted();
       }
-      renderEndPage(files, saveResult);
+      renderEndPage(files, saveResult, config.locale, rewardSummary);
     },
   });
 
@@ -593,6 +721,9 @@ export function createRunnableExperiment(
     timeline: buildExperimentTimeline(config, {
       developerMode: options.developerMode,
       participantId,
+      participantNumber: options.participantNumber,
+      assignment: options.assignment,
+      requireAssignment: options.requireAssignment,
       localBackup,
       pause,
       practicePause,
@@ -625,8 +756,14 @@ function createNoopPauseUi() {
   };
 }
 
-export function createSavingPageHtml(): string {
-  return `
+export function createSavingPageHtml(locale: "en-US" | "zh-CN" = "en-US"): string {
+  return locale === "zh-CN" ? `
+    <section class="layout-task-shell">
+      <h1>正在保存数据...</h1>
+      <p>请不要关闭或刷新页面。</p>
+      <p>通常需要不到1分钟。</p>
+    </section>
+  ` : `
     <section class="layout-task-shell">
       <h1>Saving your data...</h1>
       <p>Do not close or refresh this page.</p>
@@ -635,8 +772,8 @@ export function createSavingPageHtml(): string {
   `;
 }
 
-export function renderSavingPage(): void {
-  document.body.innerHTML = createSavingPageHtml();
+export function renderSavingPage(locale: "en-US" | "zh-CN" = "en-US"): void {
+  document.body.innerHTML = createSavingPageHtml(locale);
 }
 
 export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
@@ -646,21 +783,32 @@ export function createRecoveryOutput(files: ExperimentCsvFile[]): string {
 function renderEndPage(
   files: ExperimentCsvFile[],
   saveResult: { ok: boolean; error?: string; failedFilename?: string; recoveryZip?: Blob },
+  locale: "en-US" | "zh-CN" = "en-US",
+  rewardSummary?: ExperimentRewardSummary,
 ): void {
   document.body.innerHTML = "";
   const section = document.createElement("section");
   section.className = "layout-task-shell";
   const title = document.createElement("h1");
-  title.textContent = saveResult.ok
-    ? "Experiment complete. Your data has been saved."
-    : "Experiment complete, but automatic saving failed.";
+  title.textContent = locale === "zh-CN"
+    ? saveResult.ok ? "实验完成，数据已保存。" : "实验完成，但自动保存失败。"
+    : saveResult.ok
+      ? "Experiment complete. Your data has been saved."
+      : "Experiment complete, but automatic saving failed.";
   const detail = document.createElement("p");
-  detail.textContent = saveResult.ok
-    ? "You may now close this page."
-    : `Please copy or download the data shown below, then contact the researcher. Error: ${[
-        saveResult.failedFilename,
-        saveResult.error,
-      ].filter(Boolean).join(" - ") || "Unknown error"}`;
+  detail.textContent = locale === "zh-CN"
+    ? saveResult.ok
+      ? "现在可以关闭页面。"
+      : `请复制或下载下方显示的数据，然后联系研究者。错误：${[
+          saveResult.failedFilename,
+          saveResult.error,
+        ].filter(Boolean).join(" - ") || "未知错误"}`
+    : saveResult.ok
+      ? "You may now close this page."
+      : `Please copy or download the data shown below, then contact the researcher. Error: ${[
+          saveResult.failedFilename,
+          saveResult.error,
+        ].filter(Boolean).join(" - ") || "Unknown error"}`;
   const closeButton = document.createElement("button");
   closeButton.textContent = "Close page";
   closeButton.addEventListener("click", () => {
@@ -670,6 +818,14 @@ function renderEndPage(
     }, 250);
   });
   section.append(title, detail, closeButton);
+  if (rewardSummary?.enabled) {
+    const reward = document.createElement("p");
+    reward.className = "layout-task-reward-summary";
+    reward.textContent = locale === "zh-CN"
+      ? `基础报酬 €${(rewardSummary.baseRewardCents / 100).toFixed(2)}；完成奖励 €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总计 €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`
+      : `Base payment €${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned rewards €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`;
+    section.append(reward);
+  }
   if (!saveResult.ok) {
     if (saveResult.recoveryZip) {
       const recoveryLink = document.createElement("a");
@@ -693,12 +849,14 @@ function createReceiverSubmission(input: {
   participantId: string;
   sessionId: string;
   files: ExperimentCsvFile[];
+  assignment?: AssignmentRecord;
 }) {
   return {
     schema: "layouttask.receiver.submission.v1" as const,
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,
+    ...assignmentMetadata(input.assignment),
     files: input.files.map((file) => ({
       filename: file.filename,
       content_type: file.contentType,

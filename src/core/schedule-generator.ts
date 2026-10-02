@@ -37,10 +37,10 @@ export function generateWilliamsBaseSequences(
     baseSequenceCount: baseSequences.length,
     minimumInterveningTrials: 7,
     repeatGroups: [],
-    sequences: baseSequences.map((sequence) => ({
-      sequenceId: sequence.sequenceId,
+    sequences: baseSequences.map((sequence, sequenceIndex) => ({
+      sequenceId: sequenceIndex + 1,
       presentations: sequence.taskIds.map((taskId, index) => ({
-        presentationId: `sequence-${sequence.sequenceId}-presentation-${index + 1}`,
+        presentationId: `sequence-${sequenceIndex + 1}-presentation-${index + 1}`,
         taskId,
         repeatGroupId: null,
         repeatIndex: 0,
@@ -118,13 +118,20 @@ export function selectSequence(schedule: ExperimentSchedule, participantNumber: 
   if (!Number.isInteger(participantNumber) || participantNumber < 1) {
     throw new Error("participantNumber must be a positive integer");
   }
-  const index = (participantNumber - 1) % schedule.sequences.length;
-  const sequence = schedule.sequences[index];
+  const sequence = schedule.sequences[(participantNumber - 1) % schedule.sequences.length];
   return {
     sequenceId: sequence.sequenceId,
     participantNumber,
     presentations: sequence.presentations,
   };
+}
+
+export function selectSequenceById(schedule: ExperimentSchedule, sequenceId: string): SelectedSequence {
+  const sequence = schedule.sequences.find((candidate) => String(candidate.sequenceId) === sequenceId);
+  if (!sequence) {
+    throw new Error(`Assigned sequence ${sequenceId} is missing from the configured schedule`);
+  }
+  return { sequenceId: sequence.sequenceId, participantNumber: 0, presentations: sequence.presentations };
 }
 
 function createWilliamsOrder(taskIds: string[]): string[] {

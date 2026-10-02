@@ -93,10 +93,30 @@ const dataSaveSchema = z
   ])
   .default({ mode: "copy", filename_prefix: "layout-task" });
 
+const completionCodeGateSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    min_display_ms: z.number().int().positive().default(15_000),
+  })
+  .default({ enabled: false, min_display_ms: 15_000 });
+
+const rewardSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    base_reward_cents: z.number().int().nonnegative().default(200),
+    movement_reward_cents: z.number().int().nonnegative().default(6),
+    rotation_reward_cents: z.number().int().nonnegative().default(6),
+    reference_path: z.string().min(1).optional(),
+    reference_version: z.string().min(1).optional(),
+  })
+  .default({ enabled: true, base_reward_cents: 200, movement_reward_cents: 6, rotation_reward_cents: 6 });
+
 const experimentSchema = z.object({
   schema: z.literal("layouttask.experiment.v1"),
   experiment_id: z.string().min(1),
   baseUrl: z.string().min(1),
+  locale: z.enum(["en-US", "zh-CN"]).default("en-US"),
+  completion_code_gate: completionCodeGateSchema,
   reference_mode: referenceModeSchema,
   order: z.literal("fixed").default("fixed"),
   tutorial: tutorialSchema,
@@ -105,6 +125,8 @@ const experimentSchema = z.object({
   trials: z.array(trialSchema).min(1),
   schedule: experimentScheduleSchema.optional(),
   schedule_path: z.string().min(1).optional(),
+  schedule_version: z.string().min(1).optional(),
+  reward: rewardSchema,
 });
 
 export function parseExperimentConfig(input: unknown): ExperimentConfig {
@@ -134,6 +156,11 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     schema: parsed.schema,
     experimentId: parsed.experiment_id,
     baseUrl: parsed.baseUrl,
+    locale: parsed.locale,
+    completionCodeGate: {
+      enabled: parsed.completion_code_gate.enabled,
+      minDisplayMs: parsed.completion_code_gate.min_display_ms,
+    },
     referenceMode: parsed.reference_mode,
     order: parsed.order,
     tutorial: parsed.tutorial,
@@ -142,5 +169,14 @@ export function parseExperimentConfig(input: unknown): ExperimentConfig {
     trials: parsed.trials,
     schedule: parsed.schedule,
     schedulePath: parsed.schedule_path,
+    scheduleVersion: parsed.schedule_version,
+    reward: {
+      enabled: parsed.reward.enabled,
+      baseRewardCents: parsed.reward.base_reward_cents,
+      movementRewardCents: parsed.reward.movement_reward_cents,
+      rotationRewardCents: parsed.reward.rotation_reward_cents,
+      referencePath: parsed.reward.reference_path,
+      referenceVersion: parsed.reward.reference_version,
+    },
   };
 }

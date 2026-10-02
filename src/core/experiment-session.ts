@@ -1,6 +1,9 @@
 import { createSessionId } from "./participant-session";
 import { FORMAL_PAUSE_LIMIT_MS } from "./experiment-pause";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
+import type { ExperimentAssignmentMetadata } from "./experiment-data";
+
+export type { ExperimentAssignmentMetadata } from "./experiment-data";
 
 export interface ExperimentSessionStorage {
   getItem(key: string): string | null;
@@ -21,6 +24,7 @@ interface StoredSessionRecord {
   pause_end_reason?: ExperimentPauseSnapshot["pauseEndReason"];
   updated_at: number;
   pause_snapshot?: ExperimentPauseSnapshot;
+  assignment?: ExperimentAssignmentMetadata;
 }
 
 export interface ExperimentSession {
@@ -28,6 +32,7 @@ export interface ExperimentSession {
   participantId: string;
   sessionId: string;
   pauseSnapshot?: ExperimentPauseSnapshot;
+  assignment?: ExperimentAssignmentMetadata;
   savePauseSnapshot(snapshot: ExperimentPauseSnapshot, updatedAt?: number): void;
   markCompleted(updatedAt?: number): void;
 }
@@ -38,6 +43,7 @@ export interface BootstrapExperimentSessionOptions {
   storage?: ExperimentSessionStorage;
   now?: () => number;
   createSessionId?: () => string;
+  assignment?: ExperimentAssignmentMetadata;
 }
 
 const SESSION_PREFIX = "layouttask:session:";
@@ -64,6 +70,7 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
     experimentId: options.experimentId,
     participantId: options.participantId,
     sessionId: record.session_id,
+    assignment: record.assignment,
     pauseSnapshot,
     savePauseSnapshot(snapshot, updatedAt = now()) {
       pauseSnapshot = cloneSnapshot(snapshot);
@@ -128,6 +135,7 @@ function createRecord(options: BootstrapExperimentSessionOptions, updatedAt: num
     pause_used: false,
     pause_duration_ms: 0,
     updated_at: updatedAt,
+    assignment: options.assignment,
   };
 }
 

@@ -16,6 +16,23 @@ function memoryStorage(): ExperimentSessionStorage {
 }
 
 describe("experiment session persistence", () => {
+  it("persists assignment metadata with the active session", () => {
+    const storage = memoryStorage();
+    const assignment = {
+      assignment_id: "assign-1",
+      participant_number: 2,
+      sequence_id: "sequence-02",
+      schedule_version: "run12-williams-v1",
+      assignment_mode: "replacement" as const,
+      requested_sequence_id: "sequence-02",
+      replacement_attempt: 1,
+      rotation_index: null,
+    };
+    bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, assignment, createSessionId: () => "S1" });
+    const reloaded = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S2" });
+    expect(reloaded.assignment).toEqual(assignment);
+  });
+
   it("reuses an active session in the same tab and creates a new one after completion", () => {
     const storage = memoryStorage();
     const first = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S1" });

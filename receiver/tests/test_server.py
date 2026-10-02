@@ -22,6 +22,7 @@ class ServerTests(unittest.TestCase):
         server = create_server(("127.0.0.1", 0), config, storage)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
+        server._test_thread = thread
 
         def cleanup():
             server.shutdown()
@@ -81,6 +82,92 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(status, 201)
             self.assertTrue(body["ok"])
             self.assertEqual(headers["Access-Control-Allow-Origin"], "https://pages.example")
+
+    def test_assigns_and_repeats_assignment(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = ReceiverConfig(
+                data_dir=Path(temp_dir),
+                allowed_origins=["https://pages.example"],
+                submit_token="token",
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a", "sequence-b"],
+            )
+            server = self.start_server(config)
+            payload = {"experiment_id": "layout_task_v1", "idempotency_token": "browser-1", "schedule_version": "schedule-v1"}
+            first = self.post_json(server, "/assign", payload, {"X-Submit-Token": "token"})
+            repeated = self.post_json(server, "/assign", payload, {"X-Submit-Token": "token"})
+            self.assertEqual(first[0], 201)
+            self.assertEqual(first[2]["participant_number"], 1)
+            self.assertEqual(first[2]["sequence_id"], "sequence-a")
+            self.assertEqual(first[2]["assignment_mode"], "automatic")
+            self.assertIsNone(first[2]["requested_sequence_id"])
+            self.assertEqual(first[2]["replacement_attempt"], 0)
+            self.assertEqual(first[2]["rotation_index"], 0)
+            self.assertEqual(first[2], repeated[2])
+
+    def test_assigns_requested_sequence_and_increments_replacement_attempt(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = ReceiverConfig(
+                data_dir=Path(temp_dir),
+                allowed_origins=["https://pages.example"],
+                submit_token=None,
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a", "sequence-b", "sequence-6"],
+            )
+            server = self.start_server(config)
+            base = {"experiment_id": "layout_task_v1", "schedule_version": "schedule-v1"}
+            first = self.post_json(server, "/assign", {**base, "idempotency_token": "replacement-1", "requested_sequence_id": "sequence-6"})
+            second = self.post_json(server, "/assign", {**base, "idempotency_token": "replacement-2", "requested_sequence_id": "sequence-6"})
+            self.assertEqual(first[0], 201)
+            self.assertEqual(first[2]["sequence_id"], "sequence-6")
+            self.assertEqual(first[2]["assignment_mode"], "replacement")
+            self.assertEqual(first[2]["requested_sequence_id"], "sequence-6")
+            self.assertEqual(first[2]["replacement_attempt"], 1)
+            self.assertIsNone(first[2]["rotation_index"])
+            self.assertEqual(second[2]["replacement_attempt"], 2)
+
+    def test_rejects_malformed_or_unknown_requested_sequence_without_creating_assignment(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            config = ReceiverConfig(
+                data_dir=data_dir,
+                allowed_origins=["https://pages.example"],
+                submit_token=None,
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a", "sequence-6"],
+            )
+            server = self.start_server(config)
+            base = {"experiment_id": "layout_task_v1", "schedule_version": "schedule-v1"}
+            malformed = self.post_json(server, "/assign", {**base, "idempotency_token": "bad-1", "requested_sequence_id": 6})
+            unknown = self.post_json(server, "/assign", {**base, "idempotency_token": "bad-2", "requested_sequence_id": "sequence-9"})
+            self.assertEqual(malformed[0], 400)
+            self.assertEqual(unknown[0], 400)
+            valid = self.post_json(server, "/assign", {**base, "idempotency_token": "valid-1"})
+            self.assertEqual(valid[0], 201)
+            self.assertEqual(valid[2]["participant_number"], 1)
+
+    def test_rejects_assignment_with_unknown_schedule(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = ReceiverConfig(
+                data_dir=Path(temp_dir),
+                allowed_origins=["https://pages.example"],
+                submit_token=None,
+                assignment_experiment_id="layout_task_v1",
+                assignment_schedule_version="schedule-v1",
+                assignment_sequence_ids=["sequence-a"],
+            )
+            server = self.start_server(config)
+            status, _headers, body = self.post_json(
+                server,
+                "/assign",
+                {"experiment_id": "layout_task_v1", "idempotency_token": "browser-1", "schedule_version": "wrong"},
+            )
+            self.assertGreaterEqual(status, 400)
+            self.assertLess(status, 500)
+            self.assertNotIn("participant_number", body)
 
     def test_submit_defers_archive_until_session_archive(self):
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,6 +1,7 @@
 import type { LayoutTaskEvent, ObjectOffsets, ObjectPose, OperationCounts } from "./events";
 import type { ViewBox, WorldUnit } from "./config";
 import type { ReferencePresentation } from "./schedule";
+import type { TaskRewardSummary } from "./reward";
 
 // Result types are the serialized protocol surface shared by runtime, encoder,
 // decoder, and downstream analysis scripts. 这一层是实验结果交换格式，不只是前端内部状态。
@@ -27,7 +28,7 @@ export interface PageTimingInfo {
 }
 
 export type PauseMode = "formal" | "tutorial_practice";
-export type PauseEndReason = "manual_resume" | "auto_resume_15m";
+export type PauseEndReason = "manual_resume" | "auto_resume_10s" | "auto_resume_15m";
 
 export type PauseEvent =
   | { type: "pause_confirmed"; mode: PauseMode; at: number }
@@ -277,6 +278,7 @@ export interface LayoutTaskResult {
   locked: true;
   copy_timestamp?: number;
   user_agent?: string;
+  reward?: TaskRewardSummary;
 }
 
 export type ConfidenceDimension = "position" | "rotation";

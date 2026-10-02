@@ -14,6 +14,7 @@ import {
   getRotatedVisualBounds,
   getStageDisplayTransform,
   getStageFitStyle,
+  getTutorialViewingDirectionGeometry,
   getStageUiMetrics,
   getViewportCameraTransform,
   clampViewportZoom,
@@ -63,9 +64,45 @@ describe("persistent reference display", () => {
     expect(source).toContain("const targets = [this.refs.statusElement, this.refs.confirmButton]");
     expect(source).toContain("target.classList.add(\"is-submit-attention\")");
   });
+
+  it("provides Chinese confidence copy for the Chinese player", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('locale?: "en-US" | "zh-CN"');
+    expect(source).toContain("选择这个家具组的置信度");
+  });
+
+  it("provides a Chinese developer shortcut label for the Chinese player", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('chinese ? "开发者：填写默认结果"');
+    expect(source).toContain('"Developer: fill default result"');
+    expect(source).toContain('"通过正常交互流程填写默认位置、旋转和置信度"');
+    expect(source).toContain('"Fill default poses and confidence through the normal interaction flow"');
+  });
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
+  it("points the tutorial viewing arrow upward from the bottom center of the stage", () => {
+    const config = createRuntimeConfig({
+      world: {
+        viewBox: { x: -100, y: 20, width: 800, height: 600 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 10, visible: false, snap: true },
+      },
+    });
+
+    expect(getTutorialViewingDirectionGeometry(config)).toEqual({
+      originX: 300,
+      originY: 566,
+      tipX: 300,
+      tipY: 440,
+      wingLeftX: 276,
+      wingY: 470,
+      wingRightX: 324,
+    });
+  });
+
   it("uses a 30 percent default zoom", () => {
     expect(DEFAULT_VIEWPORT_ZOOM).toBe(1.3);
   });
@@ -305,13 +342,27 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain("Leaving the object never exits edit mode.");
   });
 
-  it("adds viewport zoom controls and reserves right-drag for panning", () => {
+  it("adds viewport zoom controls and uses an explicit hold-to-pan button", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const css = readFileSync("src/styles/layout-task.css", "utf8").replace(/\r\n/g, "\n");
 
     expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
     expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
     expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
-    expect(renderer).toContain("event.button !== 2");
+    expect(renderer).toContain('this.createViewportButton("", "Pan view"');
+    expect(renderer).toContain('getPlayerIconUrl("move.svg")');
+    expect(renderer).toContain('tools.dataset.layoutTaskAnchor = "viewport-tools";');
+    expect(css).toContain(".layout-task-viewport-tools {\n  position: absolute;\n  right: 16px;\n  top: 16px;\n  bottom: auto;");
+    expect(css).toContain('.layout-task-tutorial-bubble[data-anchor="viewport-tools"]');
+    expect(css).toContain('left: 16px;');
+    expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
+    expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
+    expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
+    expect(renderer).toContain("setPointerCapture(event.pointerId)");
+    expect(renderer).toContain("releasePointerCapture(event.pointerId)");
+    expect(renderer).toContain("if (this.options.isPaused?.())");
+    expect(renderer).not.toContain("event.button !== 2");
+    expect(renderer).not.toContain('svg.addEventListener("contextmenu"');
     expect(renderer).toContain("preventDefault()");
   });
 

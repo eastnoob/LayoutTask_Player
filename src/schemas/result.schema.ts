@@ -96,7 +96,7 @@ export const pauseEventSchema = z.discriminatedUnion("type", [
     type: z.literal("pause_resumed"),
     mode: z.enum(["formal", "tutorial_practice"]),
     at: z.number().finite(),
-    reason: z.enum(["manual_resume", "auto_resume_15m"]),
+    reason: z.enum(["manual_resume", "auto_resume_10s", "auto_resume_15m"]),
   }),
 ]);
 
@@ -106,7 +106,7 @@ export const pauseSummarySchema = z.object({
   pause_started_at: z.number().finite().optional(),
   pause_ended_at: z.number().finite().optional(),
   pause_duration_ms: z.number().finite().nonnegative(),
-  pause_end_reason: z.enum(["manual_resume", "auto_resume_15m"]).optional(),
+  pause_end_reason: z.enum(["manual_resume", "auto_resume_10s", "auto_resume_15m"]).optional(),
   pause_events: z.array(pauseEventSchema),
   tutorial_pause_practice: z.boolean().optional(),
 });
@@ -258,6 +258,27 @@ export const resultRestoreSchema = z.object({
   restored_at: z.number().finite().optional(),
 });
 
+const rewardGroupSchema = z.object({
+  groupId: z.string().min(1),
+  scorable: z.boolean(),
+  positionCorrect: z.boolean().nullable(),
+  rotationCorrect: z.boolean().nullable(),
+  movementRewardCents: z.number().int().nonnegative(),
+  rotationRewardCents: z.number().int().nonnegative(),
+  rewardCents: z.number().int().nonnegative(),
+  cumulativeRewardCents: z.number().int().nonnegative(),
+});
+
+export const resultRewardSchema = z.object({
+  enabled: z.boolean(),
+  baseRewardCents: z.number().int().nonnegative(),
+  rewardCents: z.number().int().nonnegative(),
+  cumulativeRewardCents: z.number().int().nonnegative(),
+  referenceVersion: z.string().optional(),
+  groups: z.array(rewardGroupSchema),
+  skippedGroupIds: z.array(z.string()),
+});
+
 export const layoutTaskEventSchema = z.object({
   i: z.number().int().nonnegative(),
   t: z.number().int().nonnegative(),
@@ -334,4 +355,5 @@ export const resultSchema = z.object({
   locked: z.literal(true),
   copy_timestamp: z.number().int().positive().optional(),
   user_agent: z.string().optional(),
+  reward: resultRewardSchema.optional(),
 });

@@ -66,6 +66,19 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(pages[3]).toContain(">Sofa and Coffee Table<");
   });
 
+  it("localizes the reference board and yellow-object requirement", () => {
+    const html = buildTutorialReferenceBoardPage({
+      baseUrl: "/tutorial/",
+      locale: "zh-CN",
+      board: board(),
+    });
+
+    expect(html).toContain("参考板");
+    expect(html).toContain("请仔细观察这些家具的默认摆放");
+    expect(html).toContain("必须点击每一个黄色物体一次");
+    expect(html).not.toContain("Study these default furniture arrangements carefully");
+  });
+
   it("resolves the shipped reference assets from the formal package to the experiment asset directory", () => {
     const expectedBase = new URL(experimentConfig.baseUrl, "http://127.0.0.1:5174/experiment/").toString();
     const html = buildTutorialReferenceBoardPage({

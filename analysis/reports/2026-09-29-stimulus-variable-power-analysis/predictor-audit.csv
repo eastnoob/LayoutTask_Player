@@ -1,0 +1,11 @@
+variable,n,unique,category
+asymmetricCueVisibilityAngleWeighted,600,56,core
+targetFurnitureSilhouetteVisibility,600,38,core
+furnitureGroupSilhouetteVisibility,600,51,core
+featureCueVisibility,600,79,core
+relationVisibilityTotal,600,89,core
+relationPerspectiveTotal,600,91,exploratory
+volumeAxisRetention,600,91,core
+volumeAngularSeparation,600,91,core
+asymmetricCueVisibility,600,22,exploratory
+PerspectiveRank,600,91,core

@@ -333,12 +333,12 @@ describe("resolveRuntimeConfig flow", () => {
         preview_duration_sec: 7,
         require_preview_ack: true,
         intro_message:
-          "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+          "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the floor plan based on the picture you just studied.",
         intro_confirm_label: "Begin",
         stage_during_preview: "locked",
         show_countdown: true,
         message_before: "Study for {seconds}s.",
-        message_after: "Please reconstruct the scene from memory.",
+        message_after: "Please reconstruct the floor plan based on the picture you just studied.",
       },
     });
   });

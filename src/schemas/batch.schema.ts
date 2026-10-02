@@ -68,7 +68,8 @@ export const scoringToleranceSchema = z.object({
 
 export const objectScoringSchema = z.object({
   enabled: z.boolean().optional(),
-  target: objectTargetSchema.optional(),
+  scorable: z.boolean().optional(),
+      target: objectTargetSchema.optional(),
   tolerance: scoringToleranceSchema.optional(),
   labels: labelsSchema.optional(),
 });
@@ -204,12 +205,14 @@ export const scoringReferenceSchema = z.object({
     z.string().min(1),
     z.object({
       qid: z.string().min(1),
+      reward_version: z.string().min(1).optional(),
       metadata: metadataSchema.optional(),
       objects: z.record(
         z.string().min(1),
         z.object({
           role: objectRoleSchema.optional(),
           group_id: z.string().min(1).optional(),
+          scorable: z.boolean().optional(),
           target: objectTargetSchema.optional(),
           tolerance: scoringToleranceSchema.optional(),
           labels: labelsSchema.optional(),

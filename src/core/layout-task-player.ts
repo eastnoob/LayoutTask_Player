@@ -21,6 +21,8 @@ import { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
 import { createPauseSummary } from "./experiment-pause";
 import type { ExperimentPauseController } from "./experiment-pause";
+import { resolveMessages } from "./messages";
+import type { RewardConfig, RewardReferenceTask } from "../types/reward";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -31,12 +33,15 @@ export interface LayoutTaskPlayerOptions {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  locale?: "en-US" | "zh-CN";
   developerMode?: boolean;
   presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  reward?: RewardConfig;
+  rewardReference?: RewardReferenceTask;
 }
 
 export interface LayoutTaskPlayer {
@@ -51,6 +56,24 @@ export interface LayoutTaskPlayer {
 // that point on, this factory owns the mounted player lifecycle so standalone
 // bootstraps and protocol adapters can stay thin around one shared flow.
 export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): LayoutTaskPlayer {
+  const localizedConfig = options.locale === "zh-CN"
+    ? {
+        ...options.config,
+        messages: resolveMessages(options.config.messages, "zh-CN"),
+        flow: options.config.flow.mode === "preview_then_reconstruct"
+          ? {
+              ...options.config.flow,
+              config: {
+                ...options.config.flow.config,
+                intro_message: "接下来，请观察图片。",
+                intro_confirm_label: "开始观察",
+                message_before: "请观察顶部图片。",
+                message_after: "请根据刚才看到的图片还原场景平面图。",
+              },
+            }
+          : options.config.flow,
+      }
+    : options.config;
   const sessionId = createSessionId();
   const store = new StateStore(options.config);
   const clipboard = new ClipboardService();
@@ -67,6 +90,18 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         }
       : undefined,
   });
+  const localizedConfidence = options.confidence && options.locale === "zh-CN"
+    ? {
+        ...options.confidence,
+        labels: {
+          "1": "完全不确定",
+          "2": "不确定",
+          "3": "一般",
+          "4": "确定",
+          "5": "完全确定",
+        },
+      }
+    : options.confidence;
 
   let recorder: Recorder | undefined;
   let interaction: InteractionController | undefined;
@@ -92,14 +127,15 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
 
   const renderer = new LayoutTaskRenderer({
     root: options.root,
-    config: options.config,
+    config: localizedConfig,
     store,
     tutorialMode: options.tutorialMode,
+    locale: options.locale,
     presentation: options.presentation,
-    confidence: options.confidence
+    confidence: localizedConfidence
       ? {
-          scale: options.confidence.scale,
-          labels: options.confidence.labels,
+          scale: localizedConfidence.scale,
+          labels: localizedConfidence.labels,
           onChoose: (dimension, value) => {
             confidence?.choose(dimension, value);
             advanceTutorial("confidence_chosen");
@@ -143,7 +179,9 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         return;
       }
 
-      const defaultConfidence = options.confidence?.scale[Math.floor((options.confidence.scale.length - 1) / 2)] ?? 3;
+      const defaultConfidence = localizedConfidence
+        ? localizedConfidence.scale[Math.floor((localizedConfidence.scale.length - 1) / 2)] ?? 3
+        : 3;
       const completedGroups = new Set<string>();
       for (const object of options.config.objects) {
         if (object.role !== "variable") {
@@ -165,6 +203,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     onCopyAgain: () => {
       void completion?.copyAgain();
     },
+    onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
     isPaused: () => options.pause?.isPaused() ?? false,
   });
 
@@ -174,7 +213,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
       if (options.tutorialMode) {
-        tutorial = new TutorialController(options.config.referenceMode);
+        tutorial = new TutorialController(options.config.referenceMode, options.locale);
         showTutorial();
         practicePauseUnsubscribe = options.practicePause?.subscribe((snapshot) => {
           const lastEvent = snapshot.events.at(-1);
@@ -203,7 +242,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       const displayCollector = new DisplayInfoCollector(refs, options.config, displayChangeRecorder);
       const pauseController = options.tutorialMode ? options.practicePause : options.pause;
       recorder = new Recorder({
-        config: options.config,
+    config: localizedConfig,
         sessionId,
         getDisplayInfo: () => displayCollector.collect(),
         getFinalState: () => store.getFinalState(),
@@ -212,16 +251,18 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),
         getPresentation: () => options.presentation,
+        reward: options.reward,
+        rewardReference: options.rewardReference,
         pause: pauseController ? {
           getActiveElapsedMs: (startAt, endAt) => pauseController.getActiveElapsedMs(startAt, endAt),
           snapshot: () => createPauseSummary(pauseController!.snapshot()),
         } : undefined,
       });
-      confidence = options.confidence
+      confidence = localizedConfidence
         ? new ConfidenceController({
             config: options.config,
-            required: options.confidence.required,
-            scale: options.confidence.scale,
+            required: localizedConfidence.required,
+            scale: localizedConfidence.scale,
             requireAllGroupsOnSubmit: true,
           })
         : undefined;
@@ -239,7 +280,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         pause: options.pause,
       });
       completion = new CompletionController({
-        config: options.config,
+        config: localizedConfig,
         store,
         recorder,
         renderer,
@@ -252,6 +293,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         // interrupt the tutorial flow and can appear as an unresponsive button.
         confirmImpl: options.tutorialMode ? () => true : undefined,
         pause: options.pause,
+        locale: options.locale,
         onComplete: (payload) => {
           advanceTutorial("submitted");
           options.onComplete?.(payload);
@@ -262,8 +304,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // its own phase timestamps on top of that shared session record.
       recorder.start();
       flow = new FlowController({
-        flow: options.config.flow,
-        referenceMode: options.config.referenceMode,
+        flow: localizedConfig.flow,
+        referenceMode: localizedConfig.referenceMode,
         renderer,
         onPreviewAcknowledged: () => advanceTutorial("preview_acknowledged"),
         onReconstructionStart: () => {

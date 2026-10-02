@@ -51,6 +51,8 @@ export interface RendererRefs {
   confidenceElement?: HTMLElement;
   tutorialBubbleElement?: HTMLElement;
   tutorialBubbleMessageElement?: HTMLElement;
+  tutorialBubbleButtonElement?: HTMLButtonElement;
+  tutorialViewingDirectionElement?: SVGGElement;
   savingBubbleElement?: HTMLElement;
   savingBubbleMessageElement?: HTMLElement;
 }
@@ -90,6 +92,7 @@ export class LayoutTaskRenderer {
   private viewportPan = { x: 0, y: 0 };
   private viewportPanPointerId: number | undefined;
   private viewportPanLast: { x: number; y: number } | undefined;
+  private viewportPanCaptureElement: HTMLElement | undefined;
   private readonly debugShadowEnabled =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug_shadow") === "1";
 
@@ -99,6 +102,7 @@ export class LayoutTaskRenderer {
       config: RuntimeTaskConfig;
       store: StateStore;
       tutorialMode?: boolean;
+      locale?: "en-US" | "zh-CN";
       developerMode?: boolean;
       presentation?: ReferencePresentation;
       onAction?: (objectId: string, action: LayoutAction, event: MouseEvent | KeyboardEvent) => void;
@@ -111,6 +115,7 @@ export class LayoutTaskRenderer {
       onConfirm?: () => void;
       onDeveloperShortcut?: () => void;
       onCopyAgain?: () => void;
+      onTutorialAcknowledge?: () => void;
       isPaused?: () => boolean;
       confidence?: {
         scale: number[];
@@ -145,6 +150,7 @@ export class LayoutTaskRenderer {
     this.viewportPan = { x: 0, y: 0 };
     this.viewportPanPointerId = undefined;
     this.viewportPanLast = undefined;
+    this.viewportPanCaptureElement = undefined;
 
     // The shell contains the SVG stage and a persistent side panel.
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
@@ -212,11 +218,6 @@ export class LayoutTaskRenderer {
         this.options.onStageBackgroundClick?.();
       }
     });
-    svg.addEventListener("contextmenu", (event) => event.preventDefault());
-    svg.addEventListener("pointerdown", this.handleViewportPointerDown);
-    svg.addEventListener("pointermove", this.handleViewportPointerMove);
-    svg.addEventListener("pointerup", this.handleViewportPointerUp);
-    svg.addEventListener("pointercancel", this.handleViewportPointerUp);
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     svg.append(defs);
 
@@ -340,6 +341,11 @@ export class LayoutTaskRenderer {
     }
 
     displayLayer.append(controlsLayer);
+    if (this.options.tutorialMode) {
+      const viewingDirection = this.createTutorialViewingDirection();
+      cameraLayer.append(viewingDirection);
+      this.refs.tutorialViewingDirectionElement = viewingDirection;
+    }
     const viewportTools = this.createViewportTools();
     stageWrap.append(svg, feedbackOverlay, viewportTools);
 
@@ -405,10 +411,13 @@ export class LayoutTaskRenderer {
 
     const developerShortcut = this.options.developerMode ? document.createElement("button") : undefined;
     if (developerShortcut) {
+      const chinese = this.options.locale === "zh-CN";
       developerShortcut.type = "button";
       developerShortcut.className = "layout-task-developer-button";
-      developerShortcut.textContent = "Developer: fill default result";
-      developerShortcut.title = "Fill default poses and confidence through the normal interaction flow";
+      developerShortcut.textContent = chinese ? "开发者：填写默认结果" : "Developer: fill default result";
+      developerShortcut.title = chinese
+        ? "通过正常交互流程填写默认位置、旋转和置信度"
+        : "Fill default poses and confidence through the normal interaction flow";
       developerShortcut.addEventListener("click", () => this.options.onDeveloperShortcut?.());
     }
 
@@ -457,7 +466,13 @@ export class LayoutTaskRenderer {
     tutorialBubble.hidden = true;
     const tutorialMessage = document.createElement("p");
     tutorialMessage.className = "layout-task-tutorial-message";
-    tutorialBubble.append(tutorialMessage);
+    const tutorialButton = document.createElement("button");
+    tutorialButton.className = "layout-task-tutorial-button layout-task-primary-button";
+    tutorialButton.type = "button";
+    tutorialButton.textContent = this.options.locale === "zh-CN" ? "确定" : "OK";
+    tutorialButton.hidden = true;
+    tutorialButton.addEventListener("click", () => this.options.onTutorialAcknowledge?.());
+    tutorialBubble.append(tutorialMessage, tutorialButton);
     shell.append(tutorialBubble);
 
     const savingBubble = document.createElement("div");
@@ -492,6 +507,7 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement = confidenceControl;
     this.refs.tutorialBubbleElement = tutorialBubble;
     this.refs.tutorialBubbleMessageElement = tutorialMessage;
+    this.refs.tutorialBubbleButtonElement = tutorialButton;
     this.refs.savingBubbleElement = savingBubble;
     this.refs.savingBubbleMessageElement = savingMessage;
     this.refs.resultOutput = output;
@@ -536,7 +552,8 @@ export class LayoutTaskRenderer {
 
     const title = document.createElement("p");
     title.className = "layout-task-confidence-title";
-    title.textContent = "Choose your confidence rating for this furniture group";
+    const chinese = this.options.locale === "zh-CN";
+    title.textContent = chinese ? "选择这个家具组的置信度" : "Choose your confidence rating for this furniture group";
 
     const questions = document.createElement("div");
     questions.className = "layout-task-confidence-questions";
@@ -545,6 +562,9 @@ export class LayoutTaskRenderer {
     saveButton.type = "button";
     saveButton.className = "layout-task-confidence-save layout-task-primary-button";
     saveButton.textContent = "Save";
+    if (chinese) {
+      saveButton.textContent = "保存";
+    }
     saveButton.disabled = true;
 
     const confidence = this.options.confidence;
@@ -554,11 +574,11 @@ export class LayoutTaskRenderer {
         question.className = "layout-task-confidence-question";
         const label = document.createElement("p");
         label.className = "layout-task-confidence-question-label";
-        label.append("How confident are you in the ");
+        label.append(chinese ? "你对这个" : "How confident are you in the ");
         const emphasis = document.createElement("strong");
         emphasis.className = "layout-task-confidence-dimension";
-        emphasis.textContent = dimension;
-        label.append(emphasis, "?");
+        emphasis.textContent = chinese ? (dimension === "position" ? "位置" : "旋转") : dimension;
+        label.append(emphasis, chinese ? "的置信度如何？" : "?");
         question.append(label);
         const buttons = document.createElement("div");
         buttons.className = "layout-task-confidence-buttons";
@@ -576,7 +596,11 @@ export class LayoutTaskRenderer {
             saveButton.disabled = questions.querySelectorAll(".is-selected").length !== 2;
             confidence.onChoose(dimension, value);
             this.refs.confidenceElement?.classList.remove("is-required");
-            this.setStatus(`Confidence for ${dimension} selected: ${button.textContent}`);
+            this.setStatus(
+              chinese
+                ? `已选择${dimension === "position" ? "位置" : "旋转"}置信度：${button.textContent}`
+                : `Confidence for ${dimension} selected: ${button.textContent}`,
+            );
           });
           buttons.append(button);
         }
@@ -612,11 +636,25 @@ export class LayoutTaskRenderer {
   private createViewportTools(): HTMLElement {
     const tools = document.createElement("div");
     tools.className = "layout-task-viewport-tools";
+    tools.dataset.layoutTaskAnchor = "viewport-tools";
 
     const zoomIn = this.createViewportButton("+", "Zoom in", () => this.adjustViewportZoom(1.25));
     const zoomOut = this.createViewportButton("−", "Zoom out", () => this.adjustViewportZoom(0.8));
     const reset = this.createViewportButton("↺", "Reset view", () => this.resetViewport());
-    tools.append(zoomIn, zoomOut, reset);
+    const pan = this.createViewportButton("", "Pan view", () => undefined);
+    const panIcon = document.createElement("img");
+    panIcon.className = "layout-task-viewport-pan-icon";
+    panIcon.src = getPlayerIconUrl("move.svg");
+    panIcon.alt = "";
+    panIcon.setAttribute("aria-hidden", "true");
+    pan.append(panIcon);
+    pan.classList.add("layout-task-viewport-pan-button");
+    pan.setAttribute("aria-pressed", "false");
+    pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);
+    pan.addEventListener("pointermove", this.handleViewportPointerMove);
+    pan.addEventListener("pointerup", this.handleViewportPointerUp);
+    pan.addEventListener("pointercancel", this.handleViewportPointerUp);
+    tools.append(zoomIn, zoomOut, reset, pan);
     return tools;
   }
 
@@ -661,7 +699,7 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement.classList.remove("is-required");
   }
 
-  showTutorialStep(step: { anchor: string; message: string }): void {
+  showTutorialStep(step: { id: string; anchor: string; message: string }): void {
     const bubble = this.refs.tutorialBubbleElement;
     const message = this.refs.tutorialBubbleMessageElement;
     if (!bubble || !message) {
@@ -671,6 +709,8 @@ export class LayoutTaskRenderer {
     renderTutorialMessage(message, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
+    this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
+    this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
   }
 
@@ -678,7 +718,30 @@ export class LayoutTaskRenderer {
     if (this.refs.tutorialBubbleElement) {
       this.refs.tutorialBubbleElement.hidden = true;
     }
+    this.refs.tutorialViewingDirectionElement?.classList.remove("is-visible");
     this.setTutorialAttention();
+  }
+
+  private createTutorialViewingDirection(): SVGGElement {
+    const geometry = getTutorialViewingDirectionGeometry(this.options.config);
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.classList.add("layout-task-tutorial-viewing-direction");
+    group.setAttribute("aria-hidden", "true");
+
+    const pathData = `M ${geometry.originX} ${geometry.originY} L ${geometry.tipX} ${geometry.tipY} M ${geometry.wingLeftX} ${geometry.wingY} L ${geometry.tipX} ${geometry.tipY} L ${geometry.wingRightX} ${geometry.wingY}`;
+    const outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    outline.classList.add("layout-task-tutorial-viewing-direction-outline");
+    outline.setAttribute("d", pathData);
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arrow.classList.add("layout-task-tutorial-viewing-direction-arrow");
+    arrow.setAttribute("d", pathData);
+    const eye = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    eye.classList.add("layout-task-tutorial-viewing-direction-eye");
+    eye.setAttribute("cx", String(geometry.originX));
+    eye.setAttribute("cy", String(geometry.originY));
+    eye.setAttribute("r", String(Math.min(this.options.config.world.viewBox.width, this.options.config.world.viewBox.height) * 0.025));
+    group.append(outline, arrow, eye);
+    return group;
   }
 
   private setTutorialAttention(anchor?: string): void {
@@ -1064,18 +1127,21 @@ export class LayoutTaskRenderer {
     this.updateViewportTransform();
   }
 
-  private readonly handleViewportPointerDown = (event: PointerEvent): void => {
+  private readonly handleViewportPanPointerDown = (event: PointerEvent): void => {
     if (this.options.isPaused?.()) {
       return;
     }
-    if (event.button !== 2 || !this.refs.svg) {
+    if (!this.refs.svg || !(event.currentTarget instanceof HTMLElement)) {
       return;
     }
 
     event.preventDefault();
     this.viewportPanPointerId = event.pointerId;
     this.viewportPanLast = { x: event.clientX, y: event.clientY };
-    this.refs.svg.setPointerCapture(event.pointerId);
+    this.viewportPanCaptureElement = event.currentTarget;
+    this.viewportPanCaptureElement.setPointerCapture(event.pointerId);
+    this.viewportPanCaptureElement.setAttribute("aria-pressed", "true");
+    this.viewportPanCaptureElement.classList.add("is-active");
     this.refs.stageWrapElement?.classList.add("is-viewport-panning");
   };
 
@@ -1098,19 +1164,19 @@ export class LayoutTaskRenderer {
   };
 
   private readonly handleViewportPointerUp = (event: PointerEvent): void => {
-    if (this.options.isPaused?.()) {
-      return;
-    }
     if (event.pointerId !== this.viewportPanPointerId) {
       return;
     }
 
     event.preventDefault();
-    if (this.refs.svg?.hasPointerCapture(event.pointerId)) {
-      this.refs.svg.releasePointerCapture(event.pointerId);
+    if (this.viewportPanCaptureElement?.hasPointerCapture(event.pointerId)) {
+      this.viewportPanCaptureElement.releasePointerCapture(event.pointerId);
     }
+    this.viewportPanCaptureElement?.setAttribute("aria-pressed", "false");
+    this.viewportPanCaptureElement?.classList.remove("is-active");
     this.viewportPanPointerId = undefined;
     this.viewportPanLast = undefined;
+    this.viewportPanCaptureElement = undefined;
     this.refs.stageWrapElement?.classList.remove("is-viewport-panning");
   };
 
@@ -1131,10 +1197,6 @@ export class LayoutTaskRenderer {
   }
 
   destroy(): void {
-    this.refs.svg?.removeEventListener("pointerdown", this.handleViewportPointerDown);
-    this.refs.svg?.removeEventListener("pointermove", this.handleViewportPointerMove);
-    this.refs.svg?.removeEventListener("pointerup", this.handleViewportPointerUp);
-    this.refs.svg?.removeEventListener("pointercancel", this.handleViewportPointerUp);
     this.clearHideTimer();
     this.clearLimitFeedback();
     this.unbindViewportWarning();
@@ -1917,6 +1979,29 @@ export function clampViewportZoom(zoom: number): number {
   return Math.min(Math.max(zoom, 0.75), 3);
 }
 
+export function getTutorialViewingDirectionGeometry(config: RuntimeTaskConfig): {
+  originX: number;
+  originY: number;
+  tipX: number;
+  tipY: number;
+  wingLeftX: number;
+  wingY: number;
+  wingRightX: number;
+} {
+  const { x, y, width, height } = config.world.viewBox;
+  const centerX = x + width / 2;
+  const tipY = y + height * 0.7;
+  return {
+    originX: centerX,
+    originY: y + height * 0.91,
+    tipX: centerX,
+    tipY,
+    wingLeftX: centerX - width * 0.03,
+    wingY: tipY + height * 0.05,
+    wingRightX: centerX + width * 0.03,
+  };
+}
+
 export const DEFAULT_VIEWPORT_ZOOM = 1.3;
 
 export function getViewportCameraTransform(
@@ -1965,7 +2050,7 @@ export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): stri
 
 function renderTutorialMessage(container: HTMLElement, source: string): void {
   container.replaceChildren();
-  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\])/g;
+  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\])/g;
   let cursor = 0;
 
   for (const match of source.matchAll(tokenPattern)) {
@@ -1975,6 +2060,15 @@ function renderTutorialMessage(container: HTMLElement, source: string): void {
     }
 
     const token = match[0];
+    if (token.startsWith("[[block]]")) {
+      const block = document.createElement("span");
+      block.className = "layout-task-tutorial-block";
+      renderTutorialMessage(block, token.slice("[[block]]".length, -"[[/block]]".length));
+      container.append(block);
+      cursor = start + token.length;
+      continue;
+    }
+
     const strong = document.createElement("strong");
     if (token.startsWith("[[yellow]]")) {
       strong.className = "layout-task-tutorial-yellow-emphasis";

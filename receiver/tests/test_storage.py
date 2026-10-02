@@ -1,6 +1,7 @@
 import json
 import sqlite3
 import tempfile
+import threading
 import unittest
 from contextlib import closing
 from pathlib import Path
@@ -59,6 +60,97 @@ def valid_submission():
 
 
 class StorageTests(unittest.TestCase):
+    def test_allocate_assignment_is_idempotent_and_cycles_configured_sequences(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            first = storage.allocate_assignment("exp", "token-1", "schedule-v1", ["sequence-a", "sequence-b"])
+            repeated = storage.allocate_assignment("exp", "token-1", "schedule-v1", ["sequence-a", "sequence-b"])
+            second = storage.allocate_assignment("exp", "token-2", "schedule-v1", ["sequence-a", "sequence-b"])
+            third = storage.allocate_assignment("exp", "token-3", "schedule-v1", ["sequence-a", "sequence-b"])
+
+            self.assertEqual(first, repeated)
+            self.assertEqual(first.participant_number, 1)
+            self.assertEqual(first.sequence_id, "sequence-a")
+            self.assertEqual(second.participant_number, 2)
+            self.assertEqual(second.sequence_id, "sequence-b")
+            self.assertEqual(third.participant_number, 3)
+            self.assertEqual(third.sequence_id, "sequence-a")
+
+    def test_allocate_assignment_is_unique_under_concurrent_requests(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            results = []
+            errors = []
+
+            def allocate(index):
+                try:
+                    results.append(storage.allocate_assignment("exp", f"token-{index}", "schedule-v1", ["sequence-a", "sequence-b"]))
+                except Exception as error:  # pragma: no cover - assertion reports unexpected SQLite failures
+                    errors.append(error)
+
+            threads = [threading.Thread(target=allocate, args=(index,)) for index in range(20)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            self.assertEqual(errors, [])
+            self.assertEqual(sorted(item.participant_number for item in results), list(range(1, 21)))
+            self.assertEqual(sorted(item.rotation_index for item in results), list(range(20)))
+
+    def test_assignment_metadata_keeps_replacements_out_of_rotation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            automatic = storage.allocate_assignment("exp", "auto-1", "schedule-v1", ["sequence-a", "sequence-b"])
+            replacement = storage.allocate_assignment("exp", "replacement-1", "schedule-v1", ["sequence-a", "sequence-b"], "sequence-b")
+            next_automatic = storage.allocate_assignment("exp", "auto-2", "schedule-v1", ["sequence-a", "sequence-b"])
+
+            self.assertEqual((automatic.assignment_mode, automatic.rotation_index, automatic.replacement_attempt, automatic.requested_sequence_id), ("automatic", 0, 0, None))
+            self.assertEqual((replacement.participant_number, replacement.sequence_id, replacement.assignment_mode, replacement.requested_sequence_id, replacement.replacement_attempt, replacement.rotation_index), (2, "sequence-b", "replacement", "sequence-b", 1, None))
+            self.assertEqual((next_automatic.participant_number, next_automatic.sequence_id, next_automatic.rotation_index), (3, "sequence-b", 1))
+
+    def test_replacement_attempts_and_idempotency_are_stable(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir))
+            first = storage.allocate_assignment("exp", "replacement-1", "schedule-v1", ["sequence-a", "sequence-b"], "sequence-b")
+            repeated = storage.allocate_assignment("exp", "replacement-1", "schedule-v1", ["sequence-a", "sequence-b"], "sequence-b")
+            second = storage.allocate_assignment("exp", "replacement-2", "schedule-v1", ["sequence-a", "sequence-b"], "sequence-b")
+
+            self.assertEqual(first, repeated)
+            self.assertEqual(first.replacement_attempt, 1)
+            self.assertEqual(second.replacement_attempt, 2)
+            self.assertEqual(second.participant_number, 2)
+
+    def test_legacy_assignment_rows_receive_stable_rotation_metadata(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            data_dir.mkdir(exist_ok=True)
+            db_path = data_dir / "submissions.sqlite"
+            with closing(sqlite3.connect(db_path)) as db:
+                db.execute("""
+                    CREATE TABLE assignments(
+                      assignment_id TEXT PRIMARY KEY,
+                      experiment_id TEXT NOT NULL,
+                      idempotency_token TEXT NOT NULL,
+                      participant_number INTEGER NOT NULL,
+                      sequence_id TEXT NOT NULL,
+                      schedule_version TEXT NOT NULL,
+                      assigned_at TEXT NOT NULL,
+                      UNIQUE(experiment_id, idempotency_token),
+                      UNIQUE(experiment_id, participant_number)
+                    )
+                """)
+                db.execute("INSERT INTO assignments VALUES (?, ?, ?, ?, ?, ?, ?)", ("a1", "exp", "token-1", 1, "sequence-a", "schedule-v1", "2026-01-01T00:00:00+00:00"))
+                db.commit()
+
+            storage = ReceiverStorage(data_dir)
+            with closing(sqlite3.connect(db_path)) as db:
+                columns = {row[1] for row in db.execute("PRAGMA table_info(assignments)")}
+                row = db.execute("SELECT assignment_mode, requested_sequence_id, replacement_attempt, rotation_index FROM assignments WHERE assignment_id = 'a1'").fetchone()
+            self.assertTrue({"assignment_mode", "requested_sequence_id", "replacement_attempt", "rotation_index"} <= columns)
+            self.assertEqual(row, ("automatic", None, 0, 0))
+            next_assignment = storage.allocate_assignment("exp", "token-2", "schedule-v1", ["sequence-a", "sequence-b"])
+            self.assertEqual(next_assignment.rotation_index, 1)
     def test_deferred_submit_keeps_spool_until_session_archive(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir)

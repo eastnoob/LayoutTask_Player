@@ -1,13 +1,16 @@
 import { zipSync } from "fflate";
 import type { ExperimentCsvFile } from "./experiment-data";
+import type { ExperimentAssignmentMetadata } from "./experiment-data";
 import type { PauseSummary } from "../types/result";
 
 export interface RecoveryManifestInput {
   participantId: string;
   sessionId: string;
   experimentId: string;
+  completionCode?: string;
   failedFilenames?: string[];
   sequenceId?: number;
+  assignment?: ExperimentAssignmentMetadata;
   pauseSummary?: PauseSummary;
 }
 
@@ -20,7 +23,9 @@ export async function createCompleteRecoveryZip(
     participant_id: input.participantId,
     session_id: input.sessionId,
     experiment_id: input.experimentId,
+    completion_code: input.completionCode ?? "",
     sequence_id: input.sequenceId,
+    ...input.assignment,
     failed_filenames: input.failedFilenames ?? [],
     pause: input.pauseSummary,
     files: files.map((file) => ({ filename: file.filename, content_type: file.contentType })),

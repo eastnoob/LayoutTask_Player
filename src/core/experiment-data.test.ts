@@ -159,6 +159,16 @@ describe("experiment data export", () => {
         { type: "pause_resumed", mode: "formal", at: 7_000, reason: "manual_resume" },
       ],
     } satisfies PauseSummary,
+    assignment: {
+      assignment_id: "assign-1",
+      participant_number: 2,
+      sequence_id: "sequence-02",
+      schedule_version: "run12-williams-v1",
+      assignment_mode: "replacement",
+      requested_sequence_id: "sequence-02",
+      replacement_attempt: 1,
+      rotation_index: null,
+    },
   };
 
   it("builds session, results, and events CSV files", () => {
@@ -180,34 +190,36 @@ describe("experiment data export", () => {
       "application/json",
       "application/json",
     ]);
-    expect(files[0].data).toContain("participant_id,session_id,experiment_id,started_at,ended_at,duration_ms");
-    expect(files[0].data).toContain("P001,S001,layout_task_v1,1000,3000,2000");
+    expect(files[0].data).toContain("participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,started_at,ended_at,duration_ms");
+    expect(files[0].data).toContain("assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index");
+    expect(files[0].data).toContain("P001,S001,layout_task_v1,assign-1,2,sequence-02,run12-williams-v1,replacement,sequence-02,1,,1000,3000,2000");
     expect(files[0].data).toContain("pause_used,pause_count,pause_started_at,pause_ended_at,pause_duration_ms");
     expect(files[0].data).toContain(",true,1,2000,7000,5000,");
-    expect(files[1].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid");
+    expect(files[1].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid");
     expect(files[1].data).toContain("reference_mode");
     expect(files[0].data).toContain("reference_mode");
     expect(files[1].data).toContain("tutorial");
     expect(files[1].data).toContain("formal");
     expect(files[1].data).not.toContain(",encoded,");
-    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,1,scene_001,Q001,group_a,4,3");
+    expect(files[1].data).toContain("formal,persistent,P001,S001,layout_task_v1,assign-1,2,sequence-02,run12-williams-v1,replacement,sequence-02,1,,1,scene_001,Q001,group_a,4,3");
+    expect(files[1].data).toContain("assign-1,2,sequence-02,run12-williams-v1");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
     expect(files[1].data).toContain("pause_used");
     expect(files[1].data).toContain(",true,1,5000,800");
-    expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,hash8,result_json");
-    const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[6] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(21);
-    expect(JSON.parse(rawResultRow[9])).toEqual(result);
-    expect(rawResultRow.slice(10, 15)).toEqual(["presentation-1", "", "1", "", "25"]);
-    expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
+    expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid,hash8,result_json");
+    const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[14] === "scene_001")!;
+    expect(rawResultRow).toHaveLength(30);
+    expect(JSON.parse(rawResultRow[17])).toEqual(result);
+    expect(rawResultRow.slice(18, 23)).toEqual(["presentation-1", "", "1", "", "25"]);
+    expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
     expect(files[3].data).toContain("tutorial");
     expect(files[3].data).toContain("0,12,group_a,move_right,true");
     for (const index of [1, 2, 3]) {
       const records = parseCsvRecords(files[index].data);
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[5])).toEqual(["1"]);
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-11, -6)).toEqual([
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[13])).toEqual(["1"]);
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-12, -7)).toEqual([
       "presentation-1",
       "",
       "1",
@@ -221,14 +233,27 @@ describe("experiment data export", () => {
       experiment_id: "layout_task_v1",
       trial_count: 1,
       reference_mode: "persistent",
+      assignment_id: "assign-1",
     });
     expect(JSON.parse(files[5].data)).toMatchObject({
       schema: "layouttask.tutorial-result.v1",
       trial_type: "tutorial",
       package_version: "tutorial-edc634ac7856-v1",
       pause: expect.objectContaining({ pause_used: true }),
+      assignment_id: "assign-1",
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
+  });
+
+  it("persists the exact completion code in every final output", () => {
+    const files = createExperimentCsvFiles({ ...rowInput, completionCode: "  CODE-17  " });
+
+    for (const file of files) {
+      expect(file.data).toContain("completion_code");
+      expect(file.data).toContain("  CODE-17  ");
+    }
+    expect(JSON.parse(files[4].data).completion_code).toBe("  CODE-17  ");
+    expect(JSON.parse(files[5].data).completion_code).toBe("  CODE-17  ");
   });
 
   it("uses a configured filename prefix", () => {
@@ -250,6 +275,7 @@ describe("experiment data export", () => {
     const payloads = createExperimentDataPipePayloads({
       experimentId: "mshCnq690sD5",
       files: createExperimentCsvFiles(rowInput),
+      assignment: rowInput.assignment,
     });
 
     expect(payloads.map((payload) => payload.filename)).toEqual([
@@ -261,6 +287,8 @@ describe("experiment data export", () => {
       "layout_tutorial_result_P001_S001.json",
     ]);
     expect(payloads.every((payload) => payload.experimentID === "mshCnq690sD5")).toBe(true);
+    expect(payloads.every((payload) => payload.assignment_id === "assign-1" && payload.participant_number === 2)).toBe(true);
+    expect(payloads.every((payload) => payload.assignment_mode === "replacement" && payload.requested_sequence_id === "sequence-02" && payload.replacement_attempt === 1 && payload.rotation_index === null)).toBe(true);
   });
 });
 

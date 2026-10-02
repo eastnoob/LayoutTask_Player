@@ -35,6 +35,7 @@ export class CompletionController {
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
       pause?: { isPaused(): boolean };
+      locale?: "en-US" | "zh-CN";
     },
   ) {
     this.confirmImpl = options.confirmImpl ?? ((message: string) => window.confirm(message));
@@ -54,7 +55,9 @@ export class CompletionController {
         confidenceGate.reason === "confidence_save_required"
           ? "Select Save to store the confidence rating before submitting."
           : confidenceGate.reason === "missing_confidence"
-            ? "Open every yellow furniture object once, choose both confidence ratings, and select Save before submitting."
+            ? this.options.locale === "zh-CN"
+              ? "请点击每一个黄色家具物体一次，选择位置和旋转置信度，并点击保存后再提交。"
+              : "Open every yellow furniture object once, choose both confidence ratings, and select Save before submitting."
             : "Choose a confidence rating for this furniture group before submitting.",
       );
       if (confidenceGate.reason === "missing_confidence") {

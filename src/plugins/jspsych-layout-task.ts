@@ -9,6 +9,7 @@ import type { ReferencePresentation } from "../types/schedule";
 import type { RuntimeDataSaveConfig } from "../types/runtime";
 import type { LocalBackupStore } from "../core/local-backup-store";
 import type { ExperimentPauseController } from "../core/experiment-pause";
+import type { RewardConfig, RewardReferenceTask } from "../types/reward";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -34,6 +35,7 @@ export interface LayoutTaskPluginParams {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  locale?: "en-US" | "zh-CN";
   developerMode?: boolean;
   referenceMode?: ReferenceMode;
   presentation?: ReferencePresentation;
@@ -41,6 +43,8 @@ export interface LayoutTaskPluginParams {
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  reward?: RewardConfig;
+  rewardReference?: RewardReferenceTask;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -95,6 +99,10 @@ const info = {
     tutorialMode: {
       type: ParameterType.BOOL,
       default: false,
+    },
+    locale: {
+      type: ParameterType.STRING,
+      default: "en-US",
     },
     developerMode: {
       type: ParameterType.BOOL,
@@ -173,6 +181,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           config: runtimeConfig,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
+          locale: trial.locale,
           developerMode: trial.developerMode,
           presentation: trial.presentation,
           onComplete: (payload) => {
@@ -194,6 +203,8 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           localBackup: trial.localBackup ?? undefined,
           pause: trial.pause ?? undefined,
           practicePause: trial.practicePause ?? undefined,
+          reward: trial.reward ?? undefined,
+          rewardReference: trial.rewardReference ?? undefined,
         });
 
         player.start();

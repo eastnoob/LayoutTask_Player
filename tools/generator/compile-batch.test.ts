@@ -196,4 +196,15 @@ describe("compileBatchToDirectory", () => {
     expect(JSON.parse(await readFile(join(out, "tasks", "scene_be84fc97a8d1.json"), "utf8")).display_image.src)
       .toContain("be84fc97a8d1_perspective_stimulus_1920x1080.png");
   });
+
+  it("prefers the unified project assets for referenced runtime files", async () => {
+    const root = mkdtempSync(join(tmpdir(), "layout-task-assets-source-"));
+    const out = join(root, "persistent");
+    const input = join(process.cwd(), "assets", "generated-experiments", "run_12_core_23", "source", "batch.json");
+    const expected = await readFile(join(process.cwd(), "assets", "objects", "m01_group.svg"), "utf8");
+
+    await compileBatchToDirectory({ input, out, referenceMode: "persistent" });
+
+    expect(await readFile(join(out, "assets", "objects", "m01_group.svg"), "utf8")).toBe(expected);
+  });
 });

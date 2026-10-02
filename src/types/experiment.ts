@@ -1,5 +1,6 @@
 import type { ReferenceMode } from "./config";
 import type { ExperimentSchedule } from "./schedule";
+import type { RewardConfig, RewardReferenceTask } from "./reward";
 
 export interface ExperimentTrialRef {
   taskId: string;
@@ -61,10 +62,17 @@ export type ExperimentDataSaveConfig =
   | ExperimentDataPipeSaveConfig
   | ExperimentReceiverSaveConfig;
 
+export interface ExperimentCompletionCodeGateConfig {
+  enabled: boolean;
+  minDisplayMs: number;
+}
+
 export interface ExperimentConfig {
   schema: "layouttask.experiment.v1";
   experimentId: string;
   baseUrl: string;
+  locale: "en-US" | "zh-CN";
+  completionCodeGate: ExperimentCompletionCodeGateConfig;
   referenceMode: ReferenceMode;
   order: "fixed";
   tutorial: ExperimentTutorialConfig;
@@ -73,4 +81,7 @@ export interface ExperimentConfig {
   trials: ExperimentTrialRef[];
   schedule?: ExperimentSchedule;
   schedulePath?: string;
+  scheduleVersion?: string;
+  reward?: RewardConfig;
+  rewardReference?: Record<string, RewardReferenceTask>;
 }
