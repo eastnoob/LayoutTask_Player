@@ -77,6 +77,21 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("provides equivalent English production and debug configurations", () => {
+    const production = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8")));
+    const debug = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8")));
+
+    expect(production.locale).toBe("en-US");
+    expect(debug.locale).toBe("en-US");
+    expect(production.baseUrl).toBe(debug.baseUrl);
+    expect(production.schedulePath).toBe(debug.schedulePath);
+    expect(production.scheduleVersion).toBe(debug.scheduleVersion);
+    expect(production.trials).toHaveLength(23);
+    expect(debug.trials).toHaveLength(23);
+    expect(production.dataSave.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+    expect(debug.dataSave.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+  });
+
   it("uses the receiver sequence id instead of deriving sequence from participant number", () => {
     const config = experimentConfig();
     config.trials = Array.from({ length: 23 }, (_, index) => ({
