@@ -88,8 +88,7 @@ describe("buildExperimentTimeline", () => {
     expect(production.scheduleVersion).toBe(debug.scheduleVersion);
     expect(production.trials).toHaveLength(23);
     expect(debug.trials).toHaveLength(23);
-    expect(production.dataSave.endpoint).toBe("https://datapipe.eastnoob.top/submit");
-    expect(debug.dataSave.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+    expect(JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8")).data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");`r`n    expect(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8")).data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
   });
 
   it("uses the receiver sequence id instead of deriving sequence from participant number", () => {
