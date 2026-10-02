@@ -14,6 +14,7 @@ import {
   getRotatedVisualBounds,
   getStageDisplayTransform,
   getStageFitStyle,
+  getTutorialViewingDirectionGeometry,
   getStageUiMetrics,
   getViewportCameraTransform,
   clampViewportZoom,
@@ -82,6 +83,26 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
+  it("points the tutorial viewing arrow upward from the bottom center of the stage", () => {
+    const config = createRuntimeConfig({
+      world: {
+        viewBox: { x: -100, y: 20, width: 800, height: 600 },
+        origin: { x: 0, y: 0 },
+        grid: { size: 10, visible: false, snap: true },
+      },
+    });
+
+    expect(getTutorialViewingDirectionGeometry(config)).toEqual({
+      originX: 300,
+      originY: 566,
+      tipX: 300,
+      tipY: 440,
+      wingLeftX: 276,
+      wingY: 470,
+      wingRightX: 324,
+    });
+  });
+
   it("uses a 30 percent default zoom", () => {
     expect(DEFAULT_VIEWPORT_ZOOM).toBe(1.3);
   });

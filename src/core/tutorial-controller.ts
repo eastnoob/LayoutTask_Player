@@ -1,6 +1,7 @@
 export type TutorialEvent =
   | "preview_acknowledged"
   | "reconstruction_started"
+  | "view_direction_acknowledged"
   | "object_selected"
   | "object_moved_or_rotated"
   | "confidence_chosen"
@@ -12,7 +13,8 @@ export type TutorialEvent =
 export interface TutorialStep {
   id:
     | "intro"
-    | "preview"
+  | "preview"
+    | "view_direction"
     | "select_first"
     | "move_or_rotate"
     | "confidence_first"
@@ -44,10 +46,16 @@ const steps: TutorialStep[] = [
     expectedEvent: "reconstruction_started",
   },
   {
+    id: "view_direction",
+    anchor: "viewport-tools",
+    message: "You are standing at the bottom of the floor plan, where the observer's eyes are. **Look toward the top of the plan.**",
+    expectedEvent: "view_direction_acknowledged",
+  },
+  {
     id: "select_first",
     anchor: "viewport-tools",
     message:
-      "Use the picture at the top of the page to reconstruct the floor plan below. Move the [[yellow]]yellow objects[[/yellow]] in the floor plan so that their positions and orientations match the furniture in the perspective image above. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom in**, **zoom out**, and **reset** controls in the **upper-right corner** of the floor plan. To inspect the scene, hold **Pan** and drag; release **Pan** to stop panning. These controls change only the view, not furniture positions or orientations. Right-click is not used for panning.",
+      "[[block]]Your task is to use the picture at the top of the page to reconstruct the floor plan below. Move the [[yellow]]yellow objects[[/yellow]] in the floor plan so that their positions and orientations match the furniture in the perspective image above. **You must open every yellow object once, even when its initial state already matches the image.** **Only yellow objects can be moved.** If needed, use the **zoom in**, **zoom out**, and **reset** controls in the **upper-right corner** of the floor plan.[[/block]] [[block]]To inspect the scene, hold **Pan** and drag; release **Pan** to stop panning. These controls change only the view, not furniture positions or orientations. Right-click is not used for panning.[[/block]]",
     expectedEvent: "object_selected",
   },
   {
@@ -160,8 +168,10 @@ function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
     intro:
       "**你可以随时查看页面顶部的透视图。** 你的任务是根据刚才看到的图片还原场景平面图。请不要使用浏览器缩放、**Ctrl + 滚轮**或其他放大工具；这些行为可能会被记录。你可以使用平面图右下角的缩放按钮。",
     preview: "**观察顶部的参考图片。** 倒计时结束后图片会消失。",
+    view_direction:
+      "你当前站在平面图的最下方，也就是观察者眼睛的位置，**请向上方看**。",
     select_first:
-      "请根据页面上方的图片，还原下方的场景平面图。具体来说，请移动平面图中的[[yellow]]黄色物体[[/yellow]]，使它们的位置和方向与上方透视图中的家具一致。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用平面图**右上角的放大、缩小和重置按钮**。按住**Pan**并拖动即可移动视图，松开**Pan**后停止平移；这些操作只改变视图，不改变家具位置或方向。请勿使用右键平移。",
+      "[[block]]你的任务是使用页面上方的图片还原下方的场景平面图。请移动平面图中的[[yellow]]黄色物体[[/yellow]]，使它们的位置和方向与上方透视图中的家具一致。即使初始状态已经正确，**也必须打开每个黄色物体一次。****只有黄色物体可以移动。**如需查看细节，可使用平面图**右上角的放大、缩小和重置按钮**。[[/block]] [[block]]如需查看场景细节，请按住**Pan**并拖动；松开**Pan**后停止平移。这些操作只改变视图，不改变家具位置或方向。请勿使用右键平移。[[/block]]",
     move_or_rotate:
       "**使用箭头按钮移动**，或**使用旋转按钮调整方向**。如果操作箭头挡住视线，请将鼠标移出物体以隐藏箭头；重新指向物体即可显示，**这不会退出编辑模式。**",
     confidence_first:

@@ -203,6 +203,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     onCopyAgain: () => {
       void completion?.copyAgain();
     },
+    onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
     isPaused: () => options.pause?.isPaused() ?? false,
   });
 

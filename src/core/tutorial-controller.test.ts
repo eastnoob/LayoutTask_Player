@@ -26,6 +26,8 @@ describe("TutorialController", () => {
 
     expect(controller.handle("preview_acknowledged")).toBe(true);
     expect(controller.handle("reconstruction_started")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("view_direction");
+    expect(controller.handle("view_direction_acknowledged")).toBe(true);
     expect(controller.handle("object_selected", { objectId: "chair_01" })).toBe(true);
     expect(controller.handle("object_moved_or_rotated")).toBe(true);
     expect(controller.handle("confidence_chosen")).toBe(true);
@@ -48,6 +50,7 @@ describe("TutorialController", () => {
     const controller = new TutorialController();
     controller.handle("preview_acknowledged");
     controller.handle("reconstruction_started");
+    controller.handle("view_direction_acknowledged");
     controller.handle("object_selected", { objectId: "chair_01" });
     controller.handle("object_moved_or_rotated");
     controller.handle("confidence_chosen");
@@ -74,6 +77,7 @@ describe("TutorialController", () => {
     expect(controller.getCurrentStep().message).toContain("perspective image at any time");
     expect(controller.getCurrentStep().message).toContain("Ctrl + scroll");
     expect(controller.handle("reconstruction_started")).toBe(true);
+    expect(controller.handle("view_direction_acknowledged")).toBe(true);
     expect(controller.getCurrentStep().id).toBe("select_first");
   });
 
@@ -82,6 +86,7 @@ describe("TutorialController", () => {
 
     expect(controller.getCurrentStep().message).toContain("透视图");
     controller.handle("reconstruction_started");
+    controller.handle("view_direction_acknowledged");
     expect(controller.getCurrentStep().message).toContain("黄色");
     expect(controller.getCurrentStep().message).toContain("页面上方的图片");
     expect(controller.getCurrentStep().message).toContain("移动平面图中的");
@@ -93,6 +98,8 @@ describe("TutorialController", () => {
 
     controller.handle("preview_acknowledged");
     controller.handle("reconstruction_started");
+    controller.handle("view_direction_acknowledged");
+    controller.handle("view_direction_acknowledged");
     controller.handle("object_selected", { objectId: "chair_01" });
     controller.handle("object_moved_or_rotated");
 
@@ -117,6 +124,7 @@ describe("TutorialController", () => {
 
     controller.handle("preview_acknowledged");
     controller.handle("reconstruction_started");
+    controller.handle("view_direction_acknowledged");
     controller.handle("object_selected", { objectId: "chair_01" });
 
     expect(controller.getCurrentStep().message).toContain("**Use the arrow buttons to move**");
@@ -127,6 +135,11 @@ describe("TutorialController", () => {
     selectController.handle("preview_acknowledged");
     selectController.handle("reconstruction_started");
     expect(selectController.getCurrentStep().anchor).toBe("viewport-tools");
+    expect(selectController.getCurrentStep().id).toBe("view_direction");
+    expect(selectController.getCurrentStep().message).toContain("at the bottom of the floor plan");
+    expect(selectController.getCurrentStep().message).toContain("Look toward the top");
+    expect(selectController.handle("view_direction_acknowledged")).toBe(true);
+    expect(selectController.getCurrentStep().id).toBe("select_first");
     expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow objects[[/yellow]]");
     expect(selectController.getCurrentStep().message).toContain("**Only yellow objects can be moved.**");
     expect(selectController.getCurrentStep().message).toContain("picture at the top of the page");
@@ -140,10 +153,16 @@ describe("TutorialController", () => {
     expect(selectController.getCurrentStep().message).toContain("release **Pan**");
     expect(selectController.getCurrentStep().message).toContain("not furniture positions");
     expect(selectController.getCurrentStep().message).toContain("Right-click");
+    expect(selectController.getCurrentStep().message.match(/\[\[block\]\]/g)).toHaveLength(2);
+    expect(selectController.getCurrentStep().message.match(/\[\[\/block\]\]/g)).toHaveLength(2);
 
     const chineseController = new TutorialController("persistent", "zh-CN");
     chineseController.handle("reconstruction_started");
     expect(chineseController.getCurrentStep()).toMatchObject({ anchor: "viewport-tools" });
+    expect(chineseController.getCurrentStep().id).toBe("view_direction");
+    expect(chineseController.getCurrentStep().message).toContain("平面图的最下方");
+    expect(chineseController.getCurrentStep().message).toContain("向上方看");
+    chineseController.handle("view_direction_acknowledged");
     expect(chineseController.getCurrentStep().message).toContain("右上角");
     expect(chineseController.getCurrentStep().message).toContain("放大");
     expect(chineseController.getCurrentStep().message).toContain("缩小");

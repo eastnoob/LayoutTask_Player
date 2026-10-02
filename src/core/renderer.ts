@@ -51,6 +51,8 @@ export interface RendererRefs {
   confidenceElement?: HTMLElement;
   tutorialBubbleElement?: HTMLElement;
   tutorialBubbleMessageElement?: HTMLElement;
+  tutorialBubbleButtonElement?: HTMLButtonElement;
+  tutorialViewingDirectionElement?: SVGGElement;
   savingBubbleElement?: HTMLElement;
   savingBubbleMessageElement?: HTMLElement;
 }
@@ -113,6 +115,7 @@ export class LayoutTaskRenderer {
       onConfirm?: () => void;
       onDeveloperShortcut?: () => void;
       onCopyAgain?: () => void;
+      onTutorialAcknowledge?: () => void;
       isPaused?: () => boolean;
       confidence?: {
         scale: number[];
@@ -338,6 +341,11 @@ export class LayoutTaskRenderer {
     }
 
     displayLayer.append(controlsLayer);
+    if (this.options.tutorialMode) {
+      const viewingDirection = this.createTutorialViewingDirection();
+      cameraLayer.append(viewingDirection);
+      this.refs.tutorialViewingDirectionElement = viewingDirection;
+    }
     const viewportTools = this.createViewportTools();
     stageWrap.append(svg, feedbackOverlay, viewportTools);
 
@@ -458,7 +466,13 @@ export class LayoutTaskRenderer {
     tutorialBubble.hidden = true;
     const tutorialMessage = document.createElement("p");
     tutorialMessage.className = "layout-task-tutorial-message";
-    tutorialBubble.append(tutorialMessage);
+    const tutorialButton = document.createElement("button");
+    tutorialButton.className = "layout-task-tutorial-button layout-task-primary-button";
+    tutorialButton.type = "button";
+    tutorialButton.textContent = this.options.locale === "zh-CN" ? "确定" : "OK";
+    tutorialButton.hidden = true;
+    tutorialButton.addEventListener("click", () => this.options.onTutorialAcknowledge?.());
+    tutorialBubble.append(tutorialMessage, tutorialButton);
     shell.append(tutorialBubble);
 
     const savingBubble = document.createElement("div");
@@ -493,6 +507,7 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement = confidenceControl;
     this.refs.tutorialBubbleElement = tutorialBubble;
     this.refs.tutorialBubbleMessageElement = tutorialMessage;
+    this.refs.tutorialBubbleButtonElement = tutorialButton;
     this.refs.savingBubbleElement = savingBubble;
     this.refs.savingBubbleMessageElement = savingMessage;
     this.refs.resultOutput = output;
@@ -684,7 +699,7 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement.classList.remove("is-required");
   }
 
-  showTutorialStep(step: { anchor: string; message: string }): void {
+  showTutorialStep(step: { id: string; anchor: string; message: string }): void {
     const bubble = this.refs.tutorialBubbleElement;
     const message = this.refs.tutorialBubbleMessageElement;
     if (!bubble || !message) {
@@ -694,6 +709,8 @@ export class LayoutTaskRenderer {
     renderTutorialMessage(message, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
+    this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
+    this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
   }
 
@@ -701,7 +718,30 @@ export class LayoutTaskRenderer {
     if (this.refs.tutorialBubbleElement) {
       this.refs.tutorialBubbleElement.hidden = true;
     }
+    this.refs.tutorialViewingDirectionElement?.classList.remove("is-visible");
     this.setTutorialAttention();
+  }
+
+  private createTutorialViewingDirection(): SVGGElement {
+    const geometry = getTutorialViewingDirectionGeometry(this.options.config);
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.classList.add("layout-task-tutorial-viewing-direction");
+    group.setAttribute("aria-hidden", "true");
+
+    const pathData = `M ${geometry.originX} ${geometry.originY} L ${geometry.tipX} ${geometry.tipY} M ${geometry.wingLeftX} ${geometry.wingY} L ${geometry.tipX} ${geometry.tipY} L ${geometry.wingRightX} ${geometry.wingY}`;
+    const outline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    outline.classList.add("layout-task-tutorial-viewing-direction-outline");
+    outline.setAttribute("d", pathData);
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arrow.classList.add("layout-task-tutorial-viewing-direction-arrow");
+    arrow.setAttribute("d", pathData);
+    const eye = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    eye.classList.add("layout-task-tutorial-viewing-direction-eye");
+    eye.setAttribute("cx", String(geometry.originX));
+    eye.setAttribute("cy", String(geometry.originY));
+    eye.setAttribute("r", String(Math.min(this.options.config.world.viewBox.width, this.options.config.world.viewBox.height) * 0.025));
+    group.append(outline, arrow, eye);
+    return group;
   }
 
   private setTutorialAttention(anchor?: string): void {
@@ -1939,6 +1979,29 @@ export function clampViewportZoom(zoom: number): number {
   return Math.min(Math.max(zoom, 0.75), 3);
 }
 
+export function getTutorialViewingDirectionGeometry(config: RuntimeTaskConfig): {
+  originX: number;
+  originY: number;
+  tipX: number;
+  tipY: number;
+  wingLeftX: number;
+  wingY: number;
+  wingRightX: number;
+} {
+  const { x, y, width, height } = config.world.viewBox;
+  const centerX = x + width / 2;
+  const tipY = y + height * 0.7;
+  return {
+    originX: centerX,
+    originY: y + height * 0.91,
+    tipX: centerX,
+    tipY,
+    wingLeftX: centerX - width * 0.03,
+    wingY: tipY + height * 0.05,
+    wingRightX: centerX + width * 0.03,
+  };
+}
+
 export const DEFAULT_VIEWPORT_ZOOM = 1.3;
 
 export function getViewportCameraTransform(
@@ -1987,7 +2050,7 @@ export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): stri
 
 function renderTutorialMessage(container: HTMLElement, source: string): void {
   container.replaceChildren();
-  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\])/g;
+  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\])/g;
   let cursor = 0;
 
   for (const match of source.matchAll(tokenPattern)) {
@@ -1997,6 +2060,15 @@ function renderTutorialMessage(container: HTMLElement, source: string): void {
     }
 
     const token = match[0];
+    if (token.startsWith("[[block]]")) {
+      const block = document.createElement("span");
+      block.className = "layout-task-tutorial-block";
+      renderTutorialMessage(block, token.slice("[[block]]".length, -"[[/block]]".length));
+      container.append(block);
+      cursor = start + token.length;
+      continue;
+    }
+
     const strong = document.createElement("strong");
     if (token.startsWith("[[yellow]]")) {
       strong.className = "layout-task-tutorial-yellow-emphasis";

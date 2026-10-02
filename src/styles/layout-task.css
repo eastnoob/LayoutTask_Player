@@ -259,6 +259,42 @@ body {
   border-radius: 6px;
 }
 
+.layout-task-tutorial-viewing-direction {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.layout-task-tutorial-viewing-direction.is-visible {
+  opacity: 1;
+}
+
+.layout-task-tutorial-viewing-direction-outline,
+.layout-task-tutorial-viewing-direction-arrow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.layout-task-tutorial-viewing-direction-outline {
+  stroke: #172026;
+  stroke-width: 9;
+  vector-effect: non-scaling-stroke;
+}
+
+.layout-task-tutorial-viewing-direction-arrow {
+  stroke: #fffdbf;
+  stroke-width: 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.layout-task-tutorial-viewing-direction-eye {
+  fill: #fffdbf;
+  stroke: #172026;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
 .layout-task-object-wrapper {
   pointer-events: bounding-box;
 }
@@ -725,6 +761,21 @@ body {
 
 .layout-task-tutorial-bubble[hidden] {
   display: none;
+}
+
+.layout-task-tutorial-block {
+  display: block;
+}
+
+.layout-task-tutorial-block + .layout-task-tutorial-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #d9e1ee;
+}
+
+.layout-task-tutorial-button {
+  margin-top: 12px;
+  min-width: 88px;
 }
 
 .layout-task-saving-bubble {
