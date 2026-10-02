@@ -77,9 +77,25 @@ function receiverExperimentConfig(): ExperimentConfig {
 }
 
 describe("buildExperimentTimeline", () => {
+  it("uses the English release configs as the default experiment entries", () => {
+    const productionRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment.json"), "utf8"));
+    const debugRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-debug.json"), "utf8"));
+    const production = parseExperimentConfig(productionRaw);
+    const debug = parseExperimentConfig(debugRaw);
+
+    expect(productionRaw.locale).toBe("en-US");
+    expect(debugRaw.locale).toBe("en-US");
+    expect(production.locale).toBe("en-US");
+    expect(debug.locale).toBe("en-US");
+    expect(production.completionCodeGate.enabled).toBe(false);
+    expect(debug.completionCodeGate.enabled).toBe(false);
+  });
+
   it("provides equivalent English production and debug configurations", () => {
-    const production = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8")));
-    const debug = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8")));
+    const productionRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8"));
+    const debugRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8"));
+    const production = parseExperimentConfig(productionRaw);
+    const debug = parseExperimentConfig(debugRaw);
 
     expect(production.locale).toBe("en-US");
     expect(debug.locale).toBe("en-US");
@@ -88,7 +104,8 @@ describe("buildExperimentTimeline", () => {
     expect(production.scheduleVersion).toBe(debug.scheduleVersion);
     expect(production.trials).toHaveLength(23);
     expect(debug.trials).toHaveLength(23);
-    expect(JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8")).data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");`r`n    expect(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8")).data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+    expect(productionRaw.data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+    expect(debugRaw.data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
   });
 
   it("uses the receiver sequence id instead of deriving sequence from participant number", () => {

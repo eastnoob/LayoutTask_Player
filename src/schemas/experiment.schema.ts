@@ -103,13 +103,13 @@ const completionCodeGateSchema = z
 const rewardSchema = z
   .object({
     enabled: z.boolean().default(true),
-    base_reward_cents: z.number().int().nonnegative().default(200),
-    movement_reward_cents: z.number().int().nonnegative().default(6),
-    rotation_reward_cents: z.number().int().nonnegative().default(6),
+    base_reward_cents: z.number().int().nonnegative().default(400),
+    movement_reward_cents: z.number().int().nonnegative().default(4),
+    rotation_reward_cents: z.number().int().nonnegative().default(4),
     reference_path: z.string().min(1).optional(),
     reference_version: z.string().min(1).optional(),
   })
-  .default({ enabled: true, base_reward_cents: 200, movement_reward_cents: 6, rotation_reward_cents: 6 });
+  .default({ enabled: true, base_reward_cents: 400, movement_reward_cents: 4, rotation_reward_cents: 4 });
 
 const experimentSchema = z.object({
   schema: z.literal("layouttask.experiment.v1"),
