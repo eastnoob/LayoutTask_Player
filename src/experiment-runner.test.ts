@@ -92,8 +92,10 @@ describe("buildExperimentTimeline", () => {
   });
 
   it("provides equivalent English production and debug configurations", () => {
-    const production = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8")));
-    const debug = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8")));
+    const productionRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-en.json"), "utf8"));
+    const debugRaw = JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-en.json"), "utf8"));
+    const production = parseExperimentConfig(productionRaw);
+    const debug = parseExperimentConfig(debugRaw);
 
     expect(production.locale).toBe("en-US");
     expect(debug.locale).toBe("en-US");
