@@ -13,6 +13,6 @@ nested `dist/` directory. Keep the source repository branches
 `release/zh-CN` and `release/en-US` synchronized with the corresponding web
 package branches.
 
-Keep the root `layout-task/` package in both web branches: the root entry
-defaults to standalone mode and loads `layout-task/manifest.json`. The
-`/experiment/` entry additionally requires the R12 persistent package.
+The root entry in both web branches must redirect to the current `/experiment/`
+entry. Do not publish the legacy standalone `layout-task/` package as the root
+application. The experiment entry requires the R12 persistent package.
