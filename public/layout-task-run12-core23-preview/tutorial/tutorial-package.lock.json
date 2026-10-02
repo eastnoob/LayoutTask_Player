@@ -59,11 +59,11 @@
     },
     {
       "path": "assets/objects/m01_group.svg",
-      "sha256": "873b8deec1749c234cc51b96aed7ab294fa68240170904ec43e33dd8570d99cb"
+      "sha256": "b9e5bbdd324a00ee328ffbb8378bc41acec1b43c14a13361cfc6ca2fcc176fe5"
     },
     {
       "path": "assets/objects/m01_variable.svg",
-      "sha256": "e82e9276460d5d7372ef630df20bd9e53652c828eff569d01f4df6ddae5fe9fd"
+      "sha256": "97eef0d051cde0602819777bd01c2ff0cecc0286ccee58c1281768721c95a6a9"
     },
     {
       "path": "assets/objects/m02_group.svg",
@@ -115,7 +115,7 @@
     },
     {
       "path": "assets/tutorial-reference/tutorial/variable/svg/armchairAndTeatable.svg",
-      "sha256": "2853fa3618153487d4ab91cc033f03e1a81efb0b3571b09b68688140aafde594"
+      "sha256": "2775af46e25c0b52c6a8ab9c1efae966dded635f66564a311b9acc2750ed313d"
     },
     {
       "path": "assets/tutorial-reference/tutorial/variable/svg/dining tablle_VARIABLE.svg",
@@ -147,7 +147,7 @@
     },
     {
       "path": "assets/tutorial-reference/tutorial/whole/svg/armchairAndTeatable.svg",
-      "sha256": "15e392a69a8836c8d259e479df7cb2520a157056bd2c108b3eb0b2cab3207ac6"
+      "sha256": "1a20254c813f10e3af8b7a847e129f4f762b69e73e7e2b6fe44103f51767817b"
     },
     {
       "path": "assets/tutorial-reference/tutorial/whole/svg/diningTable.svg",
