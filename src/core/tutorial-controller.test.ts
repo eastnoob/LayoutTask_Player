@@ -137,7 +137,8 @@ describe("TutorialController", () => {
     expect(selectController.getCurrentStep().anchor).toBe("viewport-tools");
     expect(selectController.getCurrentStep().id).toBe("view_direction");
     expect(selectController.getCurrentStep().message).toContain("at the bottom of the floor plan");
-    expect(selectController.getCurrentStep().message).toContain("Look toward the top");
+    expect(selectController.getCurrentStep().message).toContain("The arrow shows the direction you are looking");
+    expect(selectController.getCurrentStep().message).toContain("viewing angle will remain unchanged");
     expect(selectController.handle("view_direction_acknowledged")).toBe(true);
     expect(selectController.getCurrentStep().id).toBe("select_first");
     expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow objects[[/yellow]]");
@@ -161,7 +162,8 @@ describe("TutorialController", () => {
     expect(chineseController.getCurrentStep()).toMatchObject({ anchor: "viewport-tools" });
     expect(chineseController.getCurrentStep().id).toBe("view_direction");
     expect(chineseController.getCurrentStep().message).toContain("平面图的最下方");
-    expect(chineseController.getCurrentStep().message).toContain("向上方看");
+    expect(chineseController.getCurrentStep().message).toContain("您正在注视的方向如箭头所示");
+    expect(chineseController.getCurrentStep().message).toContain("这个观察视角都不会改变");
     chineseController.handle("view_direction_acknowledged");
     expect(chineseController.getCurrentStep().message).toContain("右上角");
     expect(chineseController.getCurrentStep().message).toContain("放大");
