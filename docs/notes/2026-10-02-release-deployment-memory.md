@@ -12,3 +12,7 @@ contain the built `dist/` contents directly, not the source repository or a
 nested `dist/` directory. Keep the source repository branches
 `release/zh-CN` and `release/en-US` synchronized with the corresponding web
 package branches.
+
+Keep the root `layout-task/` package in both web branches: the root entry
+defaults to standalone mode and loads `layout-task/manifest.json`. The
+`/experiment/` entry additionally requires the R12 persistent package.
