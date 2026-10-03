@@ -785,6 +785,16 @@ export function createSavingPageHtml(locale: "en-US" | "zh-CN" = "en-US"): strin
   `;
 }
 
+export function formatRewardSummary(
+  rewardSummary: ExperimentRewardSummary,
+  locale: "en-US" | "zh-CN" = "en-US",
+): string {
+  if (locale === "zh-CN") {
+    return `基础奖金 £${(rewardSummary.baseRewardCents / 100).toFixed(2)}；额外奖金 £${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总奖金 £${(rewardSummary.totalRewardCents / 100).toFixed(2)}。位置正确 ${rewardSummary.correctPositionCount}；旋转正确 ${rewardSummary.correctRotationCount}；位置和旋转均正确 ${rewardSummary.fullyCorrectCount}；位置和旋转均错误 ${rewardSummary.fullyFailedCount}；可评分家具组 ${rewardSummary.scorableGroupCount}。`;
+  }
+  return `Base payment £${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned reward £${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total reward £${(rewardSummary.totalRewardCents / 100).toFixed(2)}. Position correct ${rewardSummary.correctPositionCount}; rotation correct ${rewardSummary.correctRotationCount}; both correct ${rewardSummary.fullyCorrectCount}; both wrong ${rewardSummary.fullyFailedCount}; scorable furniture groups ${rewardSummary.scorableGroupCount}.`;
+}
+
 export function renderSavingPage(locale: "en-US" | "zh-CN" = "en-US"): void {
   document.body.innerHTML = createSavingPageHtml(locale);
 }
@@ -834,9 +844,7 @@ function renderEndPage(
   if (rewardSummary?.enabled) {
     const reward = document.createElement("p");
     reward.className = "layout-task-reward-summary";
-    reward.textContent = locale === "zh-CN"
-      ? `基础报酬 €${(rewardSummary.baseRewardCents / 100).toFixed(2)}；完成奖励 €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总计 €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`
-      : `Base payment €${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned rewards €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`;
+    reward.textContent = formatRewardSummary(rewardSummary, locale);
     section.append(reward);
   }
   if (!saveResult.ok) {

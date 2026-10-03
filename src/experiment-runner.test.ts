@@ -13,6 +13,7 @@ import {
   startReferenceBoardContinueCountdown,
   saveExperimentFiles,
   createRecoveryOutput,
+  formatRewardSummary,
   shouldShowCompletionCodeGate,
   requestAssignment,
 } from "./experiment-runner";
@@ -481,6 +482,32 @@ describe("createSavingPageHtml", () => {
     expect(html).toContain("Saving your data");
     expect(html).toContain("Do not close or refresh this page");
     expect(html).toContain("usually takes less than 1 minute");
+  });
+});
+
+describe("formatRewardSummary", () => {
+  it("renders pound-denominated payment and correctness totals", () => {
+    const text = formatRewardSummary({
+      enabled: true,
+      baseRewardCents: 400,
+      earnedRewardCents: 28,
+      totalRewardCents: 428,
+      formalTrialCount: 25,
+      rewardedGroupCount: 100,
+      correctPositionCount: 12,
+      correctRotationCount: 10,
+      fullyCorrectCount: 8,
+      fullyFailedCount: 4,
+      scorableGroupCount: 20,
+    }, "en-US");
+
+    expect(text).toContain("£4.00");
+    expect(text).toContain("£0.28");
+    expect(text).toContain("£4.28");
+    expect(text).toContain("12");
+    expect(text).toContain("10");
+    expect(text).toContain("8");
+    expect(text).toContain("4");
   });
 });
 

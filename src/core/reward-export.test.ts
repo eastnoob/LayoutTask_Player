@@ -63,10 +63,18 @@ describe("reward export", () => {
 
     const rewards = files.find((file) => file.filename.includes("_rewards_"));
     expect(rewards?.data).toContain("group-1");
+    expect(rewards?.data).toContain("both_correct,both_wrong");
     expect(rewards?.data.split("\n")).toHaveLength(3);
+    const session = files.find((file) => file.filename.includes("_session_"))!;
+    expect(session.data).toContain("correct_position_count,correct_rotation_count,fully_correct_count,fully_failed_count,scorable_group_count");
     expect(JSON.parse(files.find((file) => file.filename.includes("_debug_"))!.data).reward).toMatchObject({
       earnedRewardCents: 12,
       totalRewardCents: 212,
+      correctPositionCount: 1,
+      correctRotationCount: 1,
+      fullyCorrectCount: 1,
+      fullyFailedCount: 0,
+      scorableGroupCount: 1,
     });
   });
 });
