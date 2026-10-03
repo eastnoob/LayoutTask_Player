@@ -136,7 +136,10 @@ mode bypass the real question and use `DEBUG_9999`.
 ## Task 6: Build and publish current self-contained web packages
 
 **Files:**
-- Modify: `tools/generator/validate-experiment-package.test.ts`
+- Modify: `index.html`
+- Modify: `package.json`
+- Create: `tools/generator/validate-web-release-package.ts`
+- Create: `tools/generator/validate-web-release-package.test.ts`
 - Build output: `dist/` (generated and not committed to the source branch)
 
 1. Add a failing package validation test or extend the existing validator to
@@ -153,8 +156,8 @@ mode bypass the real question and use `DEBUG_9999`.
 5. Grill-me check: compare source asset hashes against both built packages and
    verify `public/layout-task-tutorial/` and `assets/collision/` are unchanged.
    Fix any release mismatch before committing.
-6. Commit the validator test if it changed:
-   `git add tools/generator/validate-experiment-package.test.ts && git commit -m "test: validate current bilingual release package"`
+6. Commit the release entry and validator:
+   `git add index.html package.json tools/generator/validate-web-release-package.ts tools/generator/validate-web-release-package.test.ts docs/superpowers/plans/2026-10-03-prolific-reward-accounting-and-bilingual-release.md && git commit -m "build: validate current bilingual web packages"`
 
 ## Task 7: Full verification and final report
 
