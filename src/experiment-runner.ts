@@ -613,7 +613,7 @@ async function getRecoveryFiles(input: {
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
+  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore; prolificId?: string } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const session = bootstrapExperimentSession({

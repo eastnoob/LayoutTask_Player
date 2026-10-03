@@ -13,6 +13,45 @@ export const KONAMI_CODE = [
 
 export type ExperimentConsentResult = "agreed" | "developer";
 
+export function parseProlificIdInput(value: string): string | undefined {
+  return value.trim() ? value : undefined;
+}
+
+export function waitForProlificId(options: {
+  root: HTMLElement;
+  locale?: "en-US" | "zh-CN";
+  documentRef?: Document;
+}): Promise<string> {
+  const documentRef = options.documentRef ?? document;
+  const chinese = options.locale === "zh-CN";
+  return new Promise((resolve) => {
+    const section = documentRef.createElement("section");
+    section.className = "layout-task-shell layout-task-prolific-id-shell";
+    section.innerHTML = chinese
+      ? `<header class="layout-task-header"><p class="layout-task-eyebrow">被试信息</p><h1>请输入您的 Prolific ID</h1></header><p>请从 Prolific 复制您的唯一 ID，并粘贴到下方。允许复制和粘贴。</p><label for="layout-task-prolific-id">Prolific ID</label><input id="layout-task-prolific-id" type="text" autocomplete="off" spellcheck="false" required /><p class="layout-task-form-error" role="alert" hidden>请输入 Prolific ID 后继续。</p><button type="button" class="layout-task-primary-button">继续</button>`
+      : `<header class="layout-task-header"><p class="layout-task-eyebrow">Participant information</p><h1>Enter your Prolific ID</h1></header><p>Copy your unique ID from Prolific and paste it below. Copy and paste are allowed.</p><label for="layout-task-prolific-id">Prolific ID</label><input id="layout-task-prolific-id" type="text" autocomplete="off" spellcheck="false" required /><p class="layout-task-form-error" role="alert" hidden>Please enter your Prolific ID before continuing.</p><button type="button" class="layout-task-primary-button">Continue</button>`;
+    options.root.replaceChildren(section);
+    const input = section.querySelector<HTMLInputElement>("#layout-task-prolific-id")!;
+    const error = section.querySelector<HTMLElement>(".layout-task-form-error")!;
+    const button = section.querySelector<HTMLButtonElement>("button")!;
+    const submit = () => {
+      const value = parseProlificIdInput(input.value);
+      if (value === undefined) {
+        error.hidden = false;
+        input.focus();
+        return;
+      }
+      section.remove();
+      resolve(value);
+    };
+    button.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submit();
+    });
+    input.focus();
+  });
+}
+
 export function getKonamiProgress(progress: string[], key: string): string[] {
   const normalizedKey = key.length === 1 ? key.toLowerCase() : key;
   const next = [...progress, normalizedKey];

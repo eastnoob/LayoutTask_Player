@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { KONAMI_CODE, getKonamiProgress } from "./experiment-consent";
+import { KONAMI_CODE, getKonamiProgress, parseProlificIdInput } from "./experiment-consent";
 
 describe("experiment consent", () => {
   it("recognizes the Konami sequence without treating partial input as developer mode", () => {
@@ -20,5 +20,10 @@ describe("experiment consent", () => {
     expect(source).toContain("进入开发者模式");
     expect(source).toContain("继续开发者模式");
     expect(source).toContain("取消");
+  });
+
+  it("rejects blank Prolific IDs while preserving the entered non-empty string", () => {
+    expect(parseProlificIdInput("   ")).toBeUndefined();
+    expect(parseProlificIdInput(" 5f2a-original ")).toBe(" 5f2a-original ");
   });
 });

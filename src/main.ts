@@ -4,7 +4,7 @@ import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
 import { createRunnableExperiment, requestAssignment } from "./experiment-runner";
 import { createDeveloperDebugConfig } from "./core/developer-debug";
-import { waitForExperimentConsent } from "./core/experiment-consent";
+import { waitForExperimentConsent, waitForProlificId } from "./core/experiment-consent";
 import {
   getDefaultExperimentConfigPath,
   isDeveloperDebugExperiment,
@@ -48,6 +48,9 @@ async function bootstrap(): Promise<void> {
       const consent = await waitForExperimentConsent({ root, locale: loadedConfig.locale });
       developerDebug = consent === "developer";
     }
+    const prolificId = developerDebug
+      ? "DEBUG_9999"
+      : await waitForProlificId({ root, locale: loadedConfig.locale });
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
     let assignment;
     if (!developerDebug && config.schedule) {
@@ -77,8 +80,8 @@ async function bootstrap(): Promise<void> {
       config,
       root,
       developerDebug
-        ? { participantId: "9999", participantNumber: 9999, developerMode: true }
-        : { assignment, requireAssignment: Boolean(config.schedule) },
+        ? { participantId: "9999", participantNumber: 9999, developerMode: true, prolificId }
+        : { assignment, requireAssignment: Boolean(config.schedule), prolificId },
     );
     await jsPsych.run(timeline);
     return;
