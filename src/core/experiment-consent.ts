@@ -11,7 +11,42 @@ export const KONAMI_CODE = [
   "a",
 ] as const;
 
-export type ExperimentConsentResult = "agreed" | "developer";
+export interface ConsentRecord {
+  consent_version: "informed-consent-2026-10-03-v1";
+  notice_version: "data-protection-2026-10-03-v1";
+  locale: "en-US" | "zh-CN";
+  consented_at: string;
+  signature_method: "checkbox_confirmation";
+  voluntary_participation_confirmed: true;
+  questions_answered_confirmed: true;
+  prestudy_document_confirmed: true;
+  withdrawal_right_understood_confirmed: true;
+  developer_mode: boolean;
+}
+
+export type ExperimentConsentResult = {
+  mode: "agreed" | "developer";
+  consent: ConsentRecord;
+};
+
+export function createConsentRecord(options: {
+  locale: "en-US" | "zh-CN";
+  mode: "agreed" | "developer";
+  consentedAt?: string;
+}): ConsentRecord {
+  return {
+    consent_version: "informed-consent-2026-10-03-v1",
+    notice_version: "data-protection-2026-10-03-v1",
+    locale: options.locale,
+    consented_at: options.consentedAt ?? new Date().toISOString(),
+    signature_method: "checkbox_confirmation",
+    voluntary_participation_confirmed: true,
+    questions_answered_confirmed: true,
+    prestudy_document_confirmed: true,
+    withdrawal_right_understood_confirmed: true,
+    developer_mode: options.mode === "developer",
+  };
+}
 
 export function parseProlificIdInput(value: string): string | undefined {
   return value.trim() ? value : undefined;
