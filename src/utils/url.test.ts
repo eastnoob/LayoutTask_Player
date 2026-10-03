@@ -12,6 +12,8 @@ describe("getDefaultExperimentConfigPath", () => {
 describe("isDeveloperDebugExperiment", () => {
   it("recognizes an implicit dev default and the explicit debug flag", () => {
     expect(isDeveloperDebugExperiment("experiment-debug.json", null)).toBe(true);
+    expect(isDeveloperDebugExperiment("experiment-debug-zh.json", null)).toBe(true);
+    expect(isDeveloperDebugExperiment("experiment-debug-en.json", null)).toBe(true);
     expect(isDeveloperDebugExperiment("experiment.json", "1")).toBe(true);
     expect(isDeveloperDebugExperiment("experiment.json", null)).toBe(false);
   });
