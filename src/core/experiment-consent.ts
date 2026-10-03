@@ -48,6 +48,55 @@ export function createConsentRecord(options: {
   };
 }
 
+export interface ConsentPageCopy {
+  eyebrow: string;
+  title: string;
+  introduction: string;
+  studyDetails: string;
+  dataDetails: string;
+  signatureNotice: string;
+  confirmations: [string, string, string, string];
+  buttonLabel: string;
+}
+
+export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
+  return locale === "zh-CN"
+    ? {
+      eyebrow: "知情同意",
+      title: "开始实验前请阅读并确认",
+      introduction: "本研究请您根据室内照片，还原平面图中的家具位置和朝向。",
+      studyDetails: "整个研究大约需要 20–40 分钟。报酬为 £4 基础奖金，另加根据任务表现计算的任务奖金。",
+      dataDetails: "我们会收集您的 Prolific ID、参与者和会话信息、位置与旋转答案、置信度、反应时间以及任务操作记录。数据将通过大学提供的研究存储和研究数据管道保存。",
+      signatureNotice: "勾选以下确认项并点击“我同意”即表示您作出电子确认，可视为本研究中的电子签字；这不代表生成手写签名。",
+      confirmations: [
+        "我确认自己是自愿参加本研究的。",
+        "我确认自己有机会提问，并已获得相应答复。",
+        "我确认自己在研究开始前已看到本知情说明。",
+        "我确认自己理解可以随时退出本研究。",
+      ],
+      buttonLabel: "我同意并开始",
+    }
+    : {
+      eyebrow: "Informed consent",
+      title: "Read and confirm before you begin",
+      introduction: "This study asks you to reconstruct furniture positions and orientations on a floor plan from indoor photographs.",
+      studyDetails: "The study takes approximately 20–40 minutes. Compensation is a £4 base payment plus task-performance bonuses.",
+      dataDetails: "We collect your Prolific ID, participant and session information, position and rotation responses, confidence ratings, reaction times, and task-operation records. Data are stored using university-provided research storage and the university research data pipeline.",
+      signatureNotice: "Checking the confirmations below and selecting “I agree” is your electronic confirmation and may be treated as your electronic signature for this study; it does not create a handwritten signature.",
+      confirmations: [
+        "I confirm that I volunteered to participate in this study.",
+        "I confirm that I was allowed to ask questions and that I was provided with responses.",
+        "I confirm that I was presented with this document prior to the beginning of the study.",
+        "I confirm that I understood my right to quit the study at any time.",
+      ],
+      buttonLabel: "I agree and begin",
+    };
+}
+
+export function isConsentComplete(values: boolean[]): boolean {
+  return values.length === 4 && values.every(Boolean);
+}
+
 export function parseProlificIdInput(value: string): string | undefined {
   return value.trim() ? value : undefined;
 }
@@ -105,18 +154,52 @@ export function waitForExperimentConsent(options: {
   return new Promise((resolve) => {
     let section: HTMLElement;
     let progress: string[] = [];
+    let mode: "agreed" | "developer" = "agreed";
 
     const renderConsent = () => {
+      const copy = getConsentPageCopy(options.locale ?? "en-US");
       section = documentRef.createElement("section");
       section.className = "layout-task-shell layout-task-consent-shell";
-      section.innerHTML = chinese
-        ? `<header class="layout-task-header"><p class="layout-task-eyebrow">实验说明</p><h1>开始实验前请阅读</h1></header><p>请根据图片还原平面图中的家具布局，并认真完成每一道题。实验大约需要 15 分钟。</p><p>点击“我同意”后，系统才会生成被试编号并开始实验。</p><button type="button" class="layout-task-primary-button">我同意</button>`
-        : `<header class="layout-task-header"><p class="layout-task-eyebrow">Experiment information</p><h1>Before you begin</h1></header><p>Study each picture and reconstruct the furniture layout on the floor plan. Please complete every trial carefully. The experiment takes about 15 minutes.</p><p>Your participant ID will be created only after you click “I agree” and begin.</p><button type="button" class="layout-task-primary-button">I agree</button>`;
+      const developerNotice = mode === "developer"
+        ? chinese
+          ? `<p class="layout-task-consent-developer-notice">开发者模式：本次测试将使用被试编号 9999，并在数据中标记为开发者测试。</p>`
+          : `<p class="layout-task-consent-developer-notice">Developer mode: this test will use participant ID 9999 and will be marked as developer data.</p>`
+        : "";
+      section.innerHTML = `
+        <header class="layout-task-header">
+          <p class="layout-task-eyebrow">${copy.eyebrow}</p>
+          <h1>${copy.title}</h1>
+        </header>
+        <div class="layout-task-consent-copy">
+          <p>${copy.introduction}</p>
+          <p>${copy.studyDetails}</p>
+          <p>${copy.dataDetails}</p>
+          ${developerNotice}
+          <p class="layout-task-consent-signature-notice">${copy.signatureNotice}</p>
+        </div>
+        <fieldset class="layout-task-consent-checklist">
+          <legend>${chinese ? "请逐项确认" : "Please confirm each statement"}</legend>
+          ${copy.confirmations.map((confirmation, index) => `
+            <label class="layout-task-consent-checkbox">
+              <input type="checkbox" data-consent-index="${index}" />
+              <span>${confirmation}</span>
+            </label>
+          `).join("")}
+        </fieldset>
+        <button type="button" class="layout-task-primary-button" disabled>${copy.buttonLabel}</button>
+      `;
       options.root.replaceChildren(section);
-      section.querySelector("button")!.addEventListener("click", () => {
+      const checkboxes = Array.from(section.querySelectorAll<HTMLInputElement>("[data-consent-index]"));
+      const button = section.querySelector<HTMLButtonElement>("button")!;
+      const updateButton = () => {
+        button.disabled = !isConsentComplete(checkboxes.map((checkbox) => checkbox.checked));
+      };
+      checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateButton));
+      button.addEventListener("click", () => {
+        if (button.disabled) return;
         documentRef.removeEventListener("keydown", onKeyDown);
         section.remove();
-        resolve("agreed");
+        resolve({ mode, consent: createConsentRecord({ locale: options.locale ?? "en-US", mode }) });
       }, { once: true });
     };
 
@@ -125,8 +208,8 @@ export function waitForExperimentConsent(options: {
         ? `<header class="layout-task-header"><p class="layout-task-eyebrow">开发者模式</p><h1>进入开发者模式？</h1></header><p>这将使用被试编号 9999，并标记为开发者测试数据。</p><button type="button" class="layout-task-primary-button">继续开发者模式</button><button type="button" class="layout-task-secondary-button">取消</button>`
         : `<header class="layout-task-header"><p class="layout-task-eyebrow">Developer mode</p><h1>Enter developer mode?</h1></header><p>This will use participant ID 9999 and mark the data as a developer test.</p><button type="button" class="layout-task-primary-button">Continue developer mode</button><button type="button" class="layout-task-secondary-button">Cancel</button>`;
       section.querySelector(".layout-task-primary-button")!.addEventListener("click", () => {
-        section.remove();
-        resolve("developer");
+        mode = "developer";
+        renderConsent();
       }, { once: true });
       section.querySelector(".layout-task-secondary-button")!.addEventListener("click", () => {
         progress = [];

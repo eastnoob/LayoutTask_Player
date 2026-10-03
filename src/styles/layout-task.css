@@ -53,6 +53,59 @@ body {
   font-size: 2.5rem;
 }
 
+.layout-task-consent-copy,
+.layout-task-consent-checklist {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.layout-task-consent-copy {
+  color: #334155;
+}
+
+.layout-task-consent-signature-notice,
+.layout-task-consent-developer-notice {
+  padding: 12px 14px;
+  border-left: 4px solid #155e75;
+  background: #ecfeff;
+}
+
+.layout-task-consent-developer-notice {
+  border-left-color: #b45309;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.layout-task-consent-checklist {
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.layout-task-consent-checklist legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.layout-task-consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.layout-task-consent-checkbox input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #155e75;
+}
+
 .layout-task-eyebrow {
   margin: 0 0 8px;
   font-size: 0.875rem;

@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import {
   KONAMI_CODE,
   createConsentRecord,
+  getConsentPageCopy,
   getKonamiProgress,
+  isConsentComplete,
   parseProlificIdInput,
 } from "./experiment-consent";
 
@@ -57,5 +59,28 @@ describe("experiment consent", () => {
       mode: "developer",
       consentedAt: "2026-10-03T12:00:00.000Z",
     }).developer_mode).toBe(true);
+  });
+
+  it("requires all four informed-consent confirmations", () => {
+    expect(isConsentComplete([true, true, true, false])).toBe(false);
+    expect(isConsentComplete([true, true, true, true])).toBe(true);
+  });
+
+  it("keeps the four consent statements equivalent in English and Chinese", () => {
+    const english = getConsentPageCopy("en-US");
+    const chinese = getConsentPageCopy("zh-CN");
+
+    expect(english.confirmations).toHaveLength(4);
+    expect(chinese.confirmations).toHaveLength(4);
+    expect(english.confirmations.join(" ")).toContain("volunteered to participate");
+    expect(english.confirmations.join(" ")).toContain("allowed to ask questions");
+    expect(english.confirmations.join(" ")).toContain("presented with this document");
+    expect(english.confirmations.join(" ")).toContain("right to quit");
+    expect(chinese.confirmations.join(" ")).toContain("自愿参加");
+    expect(chinese.confirmations.join(" ")).toContain("提问");
+    expect(chinese.confirmations.join(" ")).toContain("研究开始前");
+    expect(chinese.confirmations.join(" ")).toContain("随时退出");
+    expect(english.signatureNotice).toContain("electronic confirmation");
+    expect(chinese.signatureNotice).toContain("电子确认");
   });
 });
