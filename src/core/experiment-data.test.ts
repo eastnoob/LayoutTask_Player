@@ -9,6 +9,7 @@ import type { ExperimentCsvInput } from "./experiment-data";
 import type { ReferencePresentation } from "../types/schedule";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 import type { PauseSummary } from "../types/result";
+import type { ConsentRecord } from "./experiment-consent";
 
 describe("participant/session ids", () => {
   it("reads participant id from URL params by priority", () => {
@@ -170,6 +171,18 @@ describe("experiment data export", () => {
       replacement_attempt: 1,
       rotation_index: null,
     },
+    consent: {
+      consent_version: "informed-consent-2026-10-03-v1",
+      notice_version: "data-protection-2026-10-03-v1",
+      locale: "en-US",
+      consented_at: "2026-10-03T12:00:00.000Z",
+      signature_method: "checkbox_confirmation",
+      voluntary_participation_confirmed: true,
+      questions_answered_confirmed: true,
+      prestudy_document_confirmed: true,
+      withdrawal_right_understood_confirmed: true,
+      developer_mode: false,
+    } satisfies ConsentRecord,
   };
 
   it("builds session, results, and events CSV files", () => {
@@ -194,6 +207,10 @@ describe("experiment data export", () => {
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("prolific_id");
     expect(files[0].data).toContain(" 5f2a-original ");
+    expect(files[0].data).toContain("consent_version");
+    expect(files[0].data).toContain("data-protection-2026-10-03-v1");
+    expect(files[0].data).toContain("checkbox_confirmation");
+    expect(files[0].data).toContain("true,true,true,true,false");
     expect(files[0].data).toContain("assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,assign-1,2,sequence-02,run12-williams-v1,replacement,sequence-02,1,,1000,3000,2000");
     expect(files[0].data).toContain("pause_used,pause_count,pause_started_at,pause_ended_at,pause_duration_ms");
@@ -238,6 +255,7 @@ describe("experiment data export", () => {
       trial_count: 1,
       reference_mode: "persistent",
       assignment_id: "assign-1",
+      consent: rowInput.consent,
     });
     expect(JSON.parse(files[5].data)).toMatchObject({
       schema: "layouttask.tutorial-result.v1",
@@ -245,6 +263,7 @@ describe("experiment data export", () => {
       package_version: "tutorial-edc634ac7856-v1",
       pause: expect.objectContaining({ pause_used: true }),
       assignment_id: "assign-1",
+      consent: rowInput.consent,
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
   });
@@ -295,6 +314,7 @@ describe("experiment data export", () => {
     expect(payloads.every((payload) => payload.assignment_id === "assign-1" && payload.participant_number === 2)).toBe(true);
     expect(payloads.every((payload) => payload.assignment_mode === "replacement" && payload.requested_sequence_id === "sequence-02" && payload.replacement_attempt === 1 && payload.rotation_index === null)).toBe(true);
     expect(payloads.every((payload) => payload.prolific_id === " 5f2a-original ")).toBe(true);
+    expect(payloads.filter((payload) => /session|debug|tutorial_result/.test(payload.filename)).every((payload) => payload.data.includes("informed-consent-2026-10-03-v1"))).toBe(true);
   });
 });
 

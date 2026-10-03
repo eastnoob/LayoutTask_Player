@@ -711,6 +711,7 @@ export function createRunnableExperiment(
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
         completionCode,
+        consent: options.consent,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
         assignment: assignmentMetadata(options.assignment),

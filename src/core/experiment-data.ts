@@ -9,6 +9,7 @@ import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { PauseSummary } from "../types/result";
 import { summarizeExperimentRewards } from "./reward-calculator";
+import type { ConsentRecord } from "./experiment-consent";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -92,6 +93,7 @@ export interface ExperimentCsvInput {
   completionCode?: string;
   pauseSummary?: PauseSummary;
   assignment?: ExperimentAssignmentInput;
+  consent?: ConsentRecord;
 }
 
 export interface ExperimentCsvFile {
@@ -181,6 +183,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         encoded: tutorial.encoded,
         hash8: tutorial.hash8,
         completion_code: input.completionCode ?? "",
+        consent: input.consent,
         pause: isLayoutTaskResult(tutorial.result) ? tutorial.result.pause ?? input.pauseSummary : input.pauseSummary,
         result: tutorial.result,
       },
@@ -264,6 +267,16 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "fully_failed_count",
       "scorable_group_count",
       "prolific_id",
+      "consent_version",
+      "notice_version",
+      "consent_locale",
+      "consented_at",
+      "signature_method",
+      "voluntary_participation_confirmed",
+      "questions_answered_confirmed",
+      "prestudy_document_confirmed",
+      "withdrawal_right_understood_confirmed",
+      "developer_mode",
     ],
     [
       [
@@ -304,6 +317,16 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         reward.fullyFailedCount,
         reward.scorableGroupCount,
         input.prolificId,
+        input.consent?.consent_version,
+        input.consent?.notice_version,
+        input.consent?.locale,
+        input.consent?.consented_at,
+        input.consent?.signature_method,
+        input.consent?.voluntary_participation_confirmed,
+        input.consent?.questions_answered_confirmed,
+        input.consent?.prestudy_document_confirmed,
+        input.consent?.withdrawal_right_understood_confirmed,
+        input.consent?.developer_mode,
       ],
     ],
   );
@@ -593,6 +616,7 @@ function createDebugJson(input: ExperimentCsvInput, rewardSummary = summarizeExp
       prolific_id: input.prolificId ?? "",
       ...toAssignmentMetadata(input.assignment),
       completion_code: input.completionCode ?? "",
+      consent: input.consent,
       reference_mode: input.referenceMode,
       started_at: input.startTime,
       ended_at: input.endTime,
