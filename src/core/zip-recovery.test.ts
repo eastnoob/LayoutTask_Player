@@ -13,6 +13,7 @@ describe("createCompleteRecoveryZip", () => {
       ],
       {
         participantId: "P1",
+        prolificId: " 5f2a-original ",
         sessionId: "S1",
         experimentId: "E1",
         completionCode: "  CODE-17  ",
@@ -41,6 +42,7 @@ describe("createCompleteRecoveryZip", () => {
     ]);
     expect(JSON.parse(new TextDecoder().decode(files["manifest.json"]))).toMatchObject({
       participant_id: "P1",
+      prolific_id: " 5f2a-original ",
       assignment_id: "assign-1",
       participant_number: 2,
       sequence_id: "sequence-02",

@@ -372,6 +372,7 @@ export async function saveExperimentFiles(input: {
   dataSave: ExperimentDataSaveConfig;
   files: ExperimentCsvFile[];
   participantId?: string;
+  prolificId?: string;
   sessionId?: string;
   completionCode?: string;
   fetchImpl?: typeof fetch;
@@ -392,6 +393,7 @@ export async function saveExperimentFiles(input: {
   } catch (error) {
     const recoveryZip = await createCompleteRecoveryZip(input.files, {
       participantId: input.participantId ?? "unknown",
+      prolificId: input.prolificId,
       sessionId: input.sessionId ?? "unknown",
       experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
       completionCode: input.completionCode,
@@ -441,6 +443,7 @@ export async function saveExperimentFiles(input: {
               createReceiverSubmission({
                 dataSave,
                 participantId: input.participantId!,
+                prolificId: input.prolificId,
                 sessionId: input.sessionId!,
                 files: input.files,
                 assignment: input.assignment,
@@ -462,6 +465,7 @@ export async function saveExperimentFiles(input: {
     if (!response.ok) {
       const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
         participantId: input.participantId,
+        prolificId: input.prolificId,
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
         completionCode: input.completionCode,
@@ -484,6 +488,7 @@ export async function saveExperimentFiles(input: {
       experiment_id: dataSave.experimentId,
       participant_id: input.participantId,
       session_id: input.sessionId,
+      prolific_id: input.prolificId ?? "",
       ...assignmentMetadata(input.assignment),
     };
     let archiveError = "archive failed";
@@ -509,6 +514,7 @@ export async function saveExperimentFiles(input: {
     }
     const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
       participantId: input.participantId,
+      prolificId: input.prolificId,
       sessionId: input.sessionId,
       experimentId: dataSave.experimentId,
       completionCode: input.completionCode,
@@ -528,6 +534,7 @@ export async function saveExperimentFiles(input: {
   const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
     files: input.files,
+    prolificId: input.prolificId,
     assignment: assignmentMetadata(input.assignment),
   });
   const dataSave = input.dataSave;
@@ -572,6 +579,7 @@ export async function saveExperimentFiles(input: {
     if (failedFilenames.length > 0) {
       const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
         participantId: input.participantId ?? "unknown",
+        prolificId: input.prolificId,
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
         completionCode: input.completionCode,
@@ -619,12 +627,14 @@ export function createRunnableExperiment(
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
+    prolificId: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
   void localBackup?.saveSessionMetadata?.({
     session_id: sessionId,
+    prolific_id: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
     pause: session.pauseSnapshot,
   });
@@ -635,6 +645,7 @@ export function createRunnableExperiment(
       session.savePauseSnapshot(snapshot);
       void localBackup?.saveSessionMetadata?.({
         session_id: sessionId,
+        prolific_id: options.prolificId,
         assignment: assignmentMetadata(options.assignment),
         pause: snapshot,
       });
@@ -681,6 +692,7 @@ export function createRunnableExperiment(
       const tutorialRow = rows.find((row) => row.tutorial);
       const files = createExperimentCsvFiles({
         participantId,
+        prolificId: options.prolificId,
         sessionId,
         experimentId: config.experimentId,
         filenamePrefix: config.dataSave.filenamePrefix,
@@ -702,6 +714,7 @@ export function createRunnableExperiment(
       const saveResult = await saveExperimentFiles({
         dataSave: config.dataSave,
         participantId,
+        prolificId: options.prolificId,
         sessionId,
         files,
         localBackup,
@@ -849,6 +862,7 @@ function createReceiverSubmission(input: {
   participantId: string;
   sessionId: string;
   files: ExperimentCsvFile[];
+  prolificId?: string;
   assignment?: AssignmentRecord;
 }) {
   return {
@@ -856,6 +870,7 @@ function createReceiverSubmission(input: {
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,
+    prolific_id: input.prolificId ?? "",
     ...assignmentMetadata(input.assignment),
     files: input.files.map((file) => ({
       filename: file.filename,

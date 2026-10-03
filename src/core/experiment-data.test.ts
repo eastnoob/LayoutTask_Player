@@ -111,6 +111,7 @@ describe("experiment data export", () => {
 
   const rowInput: ExperimentCsvInput = {
     participantId: "P001",
+    prolificId: " 5f2a-original ",
     sessionId: "S001",
     experimentId: "layout_task_v1",
     referenceMode: "persistent",
@@ -191,6 +192,8 @@ describe("experiment data export", () => {
       "application/json",
     ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,started_at,ended_at,duration_ms");
+    expect(files[0].data).toContain("prolific_id");
+    expect(files[0].data).toContain(" 5f2a-original ");
     expect(files[0].data).toContain("assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index");
     expect(files[0].data).toContain("P001,S001,layout_task_v1,assign-1,2,sequence-02,run12-williams-v1,replacement,sequence-02,1,,1000,3000,2000");
     expect(files[0].data).toContain("pause_used,pause_count,pause_started_at,pause_ended_at,pause_duration_ms");
@@ -208,7 +211,7 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain(",true,1,5000,800");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[14] === "scene_001")!;
-    expect(rawResultRow).toHaveLength(30);
+    expect(rawResultRow).toHaveLength(31);
     expect(JSON.parse(rawResultRow[17])).toEqual(result);
     expect(rawResultRow.slice(18, 23)).toEqual(["presentation-1", "", "1", "", "25"]);
     expect(files[3].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid,event_index,event_time_ms,object_id,action,valid");
@@ -219,7 +222,7 @@ describe("experiment data export", () => {
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
     expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[13])).toEqual(["1"]);
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-12, -7)).toEqual([
+    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-13, -8)).toEqual([
       "presentation-1",
       "",
       "1",
@@ -229,6 +232,7 @@ describe("experiment data export", () => {
     expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",
+      prolific_id: " 5f2a-original ",
       session_id: "S001",
       experiment_id: "layout_task_v1",
       trial_count: 1,
@@ -275,6 +279,7 @@ describe("experiment data export", () => {
     const payloads = createExperimentDataPipePayloads({
       experimentId: "mshCnq690sD5",
       files: createExperimentCsvFiles(rowInput),
+      prolificId: rowInput.prolificId,
       assignment: rowInput.assignment,
     });
 
@@ -289,6 +294,7 @@ describe("experiment data export", () => {
     expect(payloads.every((payload) => payload.experimentID === "mshCnq690sD5")).toBe(true);
     expect(payloads.every((payload) => payload.assignment_id === "assign-1" && payload.participant_number === 2)).toBe(true);
     expect(payloads.every((payload) => payload.assignment_mode === "replacement" && payload.requested_sequence_id === "sequence-02" && payload.replacement_attempt === 1 && payload.rotation_index === null)).toBe(true);
+    expect(payloads.every((payload) => payload.prolific_id === " 5f2a-original ")).toBe(true);
   });
 });
 

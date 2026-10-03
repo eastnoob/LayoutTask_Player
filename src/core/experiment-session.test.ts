@@ -33,6 +33,25 @@ describe("experiment session persistence", () => {
     expect(reloaded.assignment).toEqual(assignment);
   });
 
+  it("persists the independently collected Prolific ID with the active session", () => {
+    const storage = memoryStorage();
+    bootstrapExperimentSession({
+      experimentId: "exp",
+      participantId: "P1",
+      prolificId: " 5f2a-original ",
+      storage,
+      createSessionId: () => "S1",
+    });
+    const reloaded = bootstrapExperimentSession({
+      experimentId: "exp",
+      participantId: "P1",
+      storage,
+      createSessionId: () => "S2",
+    });
+
+    expect(reloaded.prolificId).toBe(" 5f2a-original ");
+  });
+
   it("reuses an active session in the same tab and creates a new one after completion", () => {
     const storage = memoryStorage();
     const first = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S1" });

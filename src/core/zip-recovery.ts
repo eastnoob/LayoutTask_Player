@@ -5,6 +5,7 @@ import type { PauseSummary } from "../types/result";
 
 export interface RecoveryManifestInput {
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   experimentId: string;
   completionCode?: string;
@@ -21,6 +22,7 @@ export async function createCompleteRecoveryZip(
   const manifest = {
     schema: "layouttask.recovery-manifest.v1",
     participant_id: input.participantId,
+    prolific_id: input.prolificId ?? "",
     session_id: input.sessionId,
     experiment_id: input.experimentId,
     completion_code: input.completionCode ?? "",

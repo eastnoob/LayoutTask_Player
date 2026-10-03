@@ -15,6 +15,7 @@ interface StoredSessionRecord {
   schema_version: 1;
   experiment_id: string;
   participant_id: string;
+  prolific_id?: string;
   session_id: string;
   session_status: "active" | "completed";
   pause_used: boolean;
@@ -30,6 +31,7 @@ interface StoredSessionRecord {
 export interface ExperimentSession {
   experimentId: string;
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   pauseSnapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
@@ -44,6 +46,7 @@ export interface BootstrapExperimentSessionOptions {
   now?: () => number;
   createSessionId?: () => string;
   assignment?: ExperimentAssignmentMetadata;
+  prolificId?: string;
 }
 
 const SESSION_PREFIX = "layouttask:session:";
@@ -56,6 +59,10 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
   const record = existing?.session_status === "active"
     ? existing
     : createRecord(options, now());
+  if (options.prolificId !== undefined && record.prolific_id !== options.prolificId) {
+    record.prolific_id = options.prolificId;
+    storage.setItem(key, JSON.stringify(record));
+  }
   let pauseSnapshot = record.pause_snapshot
     ? restorePauseSnapshot(record.pause_snapshot, now())
     : undefined;
@@ -69,6 +76,7 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
   const session: ExperimentSession = {
     experimentId: options.experimentId,
     participantId: options.participantId,
+    prolificId: record.prolific_id,
     sessionId: record.session_id,
     assignment: record.assignment,
     pauseSnapshot,
@@ -130,6 +138,7 @@ function createRecord(options: BootstrapExperimentSessionOptions, updatedAt: num
     schema_version: 1,
     experiment_id: options.experimentId,
     participant_id: options.participantId,
+    prolific_id: options.prolificId,
     session_id: (options.createSessionId ?? createSessionId)(),
     session_status: "active",
     pause_used: false,

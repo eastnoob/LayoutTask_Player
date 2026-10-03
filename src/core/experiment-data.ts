@@ -76,6 +76,7 @@ function assignmentValues(assignment?: ExperimentAssignmentInput): CsvValue[] {
 
 export interface ExperimentCsvInput {
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   experimentId: string;
   referenceMode: ReferenceMode;
@@ -102,6 +103,7 @@ export interface ExperimentCsvFile {
 export interface ExperimentDataPipePayloadsInput {
   experimentId: string;
   files: ExperimentCsvFile[];
+  prolificId?: string;
   assignment?: ExperimentAssignmentInput;
 }
 
@@ -171,6 +173,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         reference_mode: input.referenceMode,
         package_version: input.tutorialPackageVersion,
         participant_id: input.participantId,
+        prolific_id: input.prolificId ?? "",
         session_id: input.sessionId,
         ...toAssignmentMetadata(input.assignment),
         task_id: tutorial.taskId,
@@ -208,11 +211,13 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
   requested_sequence_id?: string | null;
   replacement_attempt?: number;
   rotation_index?: number | null;
+  prolific_id?: string;
 }> {
   return input.files.map((file) => ({
     experimentID: input.experimentId,
     filename: file.filename,
     data: file.data,
+    prolific_id: input.prolificId,
     ...toAssignmentMetadata(input.assignment),
   }));
 }
@@ -253,6 +258,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "base_reward_cents",
       "earned_reward_cents",
       "total_reward_cents",
+      "prolific_id",
     ],
     [
       [
@@ -287,6 +293,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         reward.baseRewardCents,
         reward.earnedRewardCents,
         reward.totalRewardCents,
+        input.prolificId,
       ],
     ],
   );
@@ -345,6 +352,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         input.completionCode ?? "",
+        input.prolificId,
       ]);
     }
   });
@@ -393,6 +401,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -429,6 +438,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       input.pauseSummary?.pause_end_reason,
       input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
       input.completionCode ?? "",
+      input.prolificId,
     ]);
   });
 
@@ -457,6 +467,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -510,6 +521,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         input.completionCode ?? "",
+        input.prolificId,
       ]);
     }
   });
@@ -555,6 +567,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -567,6 +580,7 @@ function createDebugJson(input: ExperimentCsvInput, rewardSummary = summarizeExp
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
+      prolific_id: input.prolificId ?? "",
       ...toAssignmentMetadata(input.assignment),
       completion_code: input.completionCode ?? "",
       reference_mode: input.referenceMode,
@@ -627,6 +641,7 @@ function createRewardsCsv(input: ExperimentCsvInput): string {
         group.rewardCents,
         group.cumulativeRewardCents,
         trial.result.reward.referenceVersion,
+        input.prolificId,
       ]);
     }
   });
@@ -635,6 +650,7 @@ function createRewardsCsv(input: ExperimentCsvInput): string {
     "presentation_id", "repeat_group_id", "repeat_index", "group_id", "scorable",
     "position_correct", "rotation_correct", "movement_reward_cents", "rotation_reward_cents",
     "reward_cents", "cumulative_reward_cents", "reference_version",
+    "prolific_id",
   ], rows);
 }
 

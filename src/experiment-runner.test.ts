@@ -613,6 +613,7 @@ describe("saveExperimentFiles", () => {
     const result = await saveExperimentFiles({
       dataSave: receiverExperimentConfig().dataSave,
       participantId: "P001",
+      prolificId: " 5f2a-original ",
       sessionId: "S001",
       assignment,
       files: [
@@ -643,6 +644,7 @@ describe("saveExperimentFiles", () => {
       schema: "layouttask.receiver.submission.v1",
       experiment_id: "layout_task_v1",
       participant_id: "P001",
+      prolific_id: " 5f2a-original ",
       session_id: "S001",
       assignment_id: "assign-1",
       participant_number: 2,
