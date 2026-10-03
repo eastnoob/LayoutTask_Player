@@ -63,7 +63,7 @@ function assignmentMetadata(assignment?: AssignmentRecord) {
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController; onTaskReady?: () => void } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
@@ -137,6 +137,7 @@ export function buildExperimentTimeline(
         localBackup: options.localBackup,
         pause: options.pause,
         practicePause: options.practicePause,
+        onReady: options.onTaskReady,
         data: { tutorial: true },
       });
       timeline.push({
@@ -211,6 +212,7 @@ export function buildExperimentTimeline(
       localBackup: options.localBackup,
       pause: options.pause,
       practicePause: options.practicePause,
+      onReady: options.onTaskReady,
       reward: config.reward,
       rewardReference: config.rewardReference?.[trial.taskId],
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
@@ -656,6 +658,7 @@ export function createRunnableExperiment(
     ? createNoopPauseUi()
     : createExperimentPauseUi({ controller: pause, practiceController: practicePause });
   pauseUi.mount();
+  pauseUi.setPageActive(false);
   const startTime = Date.now();
   const jsPsych = initJsPsych({
     display_element: displayElement,
@@ -664,8 +667,7 @@ export function createRunnableExperiment(
         getCurrentTrial?: () => { tutorialMode?: boolean; data?: Record<string, unknown> };
       }).getCurrentTrial?.();
       const trial = (startedTrial ?? currentTrial) as { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined;
-      const data = trial?.data;
-      pauseUi.setPageActive(!data?.tutorial_intro && !data?.tutorial_reference_board);
+      pauseUi.setPageActive(false);
       pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
     },
     on_finish: async () => {
@@ -740,6 +742,7 @@ export function createRunnableExperiment(
       localBackup,
       pause,
       practicePause,
+      onTaskReady: () => pauseUi.setPageActive(true),
     }),
   };
 }

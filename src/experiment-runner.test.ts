@@ -234,6 +234,17 @@ describe("buildExperimentTimeline", () => {
     expect(debug.filter((trial) => trial.type === LayoutTaskPlugin).every((trial) => trial.developerMode === true)).toBe(true);
   });
 
+  it("wires readiness callbacks only to interactive Layout Task trials", () => {
+    const ready = vi.fn();
+    const timeline = buildExperimentTimeline(experimentConfig(), { onTaskReady: ready } as never);
+    const taskTrials = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+    const nonTaskTrials = timeline.filter((trial) => trial.type !== LayoutTaskPlugin);
+
+    expect(taskTrials).not.toHaveLength(0);
+    expect(taskTrials.every((trial) => typeof trial.onReady === "function")).toBe(true);
+    expect(nonTaskTrials.every((trial) => trial.onReady === undefined)).toBe(true);
+  });
+
   it("keeps the real static flow split between tutorial and 23 formal trials", () => {
     const config = parseExperimentConfig(
       JSON.parse(readFileSync(resolve(process.cwd(), "public/experiment/experiment.json"), "utf8")),
