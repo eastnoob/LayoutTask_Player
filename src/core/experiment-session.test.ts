@@ -5,6 +5,7 @@ import {
   restorePauseSnapshot,
 } from "./experiment-session";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
+import type { ConsentRecord } from "./experiment-consent";
 
 function memoryStorage(): ExperimentSessionStorage {
   const values = new Map<string, string>();
@@ -50,6 +51,33 @@ describe("experiment session persistence", () => {
     });
 
     expect(reloaded.prolificId).toBe(" 5f2a-original ");
+  });
+
+  it("persists the accepted informed-consent record with the active session", () => {
+    const storage = memoryStorage();
+    const consent: ConsentRecord = {
+      consent_version: "informed-consent-2026-10-03-v1",
+      notice_version: "data-protection-2026-10-03-v1",
+      locale: "en-US",
+      consented_at: "2026-10-03T12:00:00.000Z",
+      signature_method: "checkbox_confirmation",
+      voluntary_participation_confirmed: true,
+      questions_answered_confirmed: true,
+      prestudy_document_confirmed: true,
+      withdrawal_right_understood_confirmed: true,
+      developer_mode: false,
+    };
+    const session = bootstrapExperimentSession({
+      experimentId: "exp",
+      participantId: "P1",
+      consent,
+      storage,
+      createSessionId: () => "S1",
+    });
+    const reloaded = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S2" });
+
+    expect(session.consent).toEqual(consent);
+    expect(reloaded.consent).toEqual(consent);
   });
 
   it("reuses an active session in the same tab and creates a new one after completion", () => {

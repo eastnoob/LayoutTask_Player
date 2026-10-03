@@ -2,6 +2,7 @@ import { createSessionId } from "./participant-session";
 import { FORMAL_PAUSE_LIMIT_MS } from "./experiment-pause";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
 import type { ExperimentAssignmentMetadata } from "./experiment-data";
+import type { ConsentRecord } from "./experiment-consent";
 
 export type { ExperimentAssignmentMetadata } from "./experiment-data";
 
@@ -26,6 +27,7 @@ interface StoredSessionRecord {
   updated_at: number;
   pause_snapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
+  consent?: ConsentRecord;
 }
 
 export interface ExperimentSession {
@@ -35,6 +37,7 @@ export interface ExperimentSession {
   sessionId: string;
   pauseSnapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
+  consent?: ConsentRecord;
   savePauseSnapshot(snapshot: ExperimentPauseSnapshot, updatedAt?: number): void;
   markCompleted(updatedAt?: number): void;
 }
@@ -47,6 +50,7 @@ export interface BootstrapExperimentSessionOptions {
   createSessionId?: () => string;
   assignment?: ExperimentAssignmentMetadata;
   prolificId?: string;
+  consent?: ConsentRecord;
 }
 
 const SESSION_PREFIX = "layouttask:session:";
@@ -61,6 +65,10 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
     : createRecord(options, now());
   if (options.prolificId !== undefined && record.prolific_id !== options.prolificId) {
     record.prolific_id = options.prolificId;
+    storage.setItem(key, JSON.stringify(record));
+  }
+  if (options.consent !== undefined && record.consent !== options.consent) {
+    record.consent = options.consent;
     storage.setItem(key, JSON.stringify(record));
   }
   let pauseSnapshot = record.pause_snapshot
@@ -79,6 +87,7 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
     prolificId: record.prolific_id,
     sessionId: record.session_id,
     assignment: record.assignment,
+    consent: record.consent,
     pauseSnapshot,
     savePauseSnapshot(snapshot, updatedAt = now()) {
       pauseSnapshot = cloneSnapshot(snapshot);
@@ -145,6 +154,7 @@ function createRecord(options: BootstrapExperimentSessionOptions, updatedAt: num
     pause_duration_ms: 0,
     updated_at: updatedAt,
     assignment: options.assignment,
+    consent: options.consent,
   };
 }
 

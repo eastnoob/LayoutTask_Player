@@ -24,6 +24,7 @@ import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 import { CompletionCodeGate } from "./core/completion-code-gate";
 import { summarizeExperimentRewards } from "./core/reward-calculator";
 import type { ExperimentRewardSummary } from "./types/reward";
+import type { ConsentRecord } from "./core/experiment-consent";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -623,7 +624,7 @@ async function getRecoveryFiles(input: {
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore; prolificId?: string } = {},
+  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore; prolificId?: string; consent?: ConsentRecord } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const session = bootstrapExperimentSession({
@@ -631,6 +632,7 @@ export function createRunnableExperiment(
     participantId,
     prolificId: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
+    consent: options.consent,
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
@@ -638,6 +640,7 @@ export function createRunnableExperiment(
     session_id: sessionId,
     prolific_id: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
+    consent: options.consent,
     pause: session.pauseSnapshot,
   });
   const pause = new ExperimentPauseController({
@@ -649,6 +652,7 @@ export function createRunnableExperiment(
         session_id: sessionId,
         prolific_id: options.prolificId,
         assignment: assignmentMetadata(options.assignment),
+        consent: options.consent,
         pause: snapshot,
       });
     },
