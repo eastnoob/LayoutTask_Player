@@ -107,6 +107,32 @@ describe("buildExperimentTimeline", () => {
     expect(debug.trials).toHaveLength(23);
     expect(productionRaw.data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
     expect(debugRaw.data_save.endpoint).toBe("https://datapipe.eastnoob.top/submit");
+    expect(production.completionCodeGate.enabled).toBe(false);
+    expect(debug.completionCodeGate.enabled).toBe(false);
+    for (const config of [production, debug]) {
+      expect(config.reward).toMatchObject({
+        baseRewardCents: 400,
+        movementRewardCents: 4,
+        rotationRewardCents: 4,
+      });
+    }
+  });
+
+  it("keeps the Chinese completion gate and the shared pound reward settings", () => {
+    const production = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-zh.json"), "utf8")));
+    const debug = parseExperimentConfig(JSON.parse(readFileSync(resolve("public/experiment/experiment-debug-zh.json"), "utf8")));
+
+    expect(production.locale).toBe("zh-CN");
+    expect(debug.locale).toBe("zh-CN");
+    expect(production.completionCodeGate.enabled).toBe(true);
+    expect(debug.completionCodeGate.enabled).toBe(true);
+    for (const config of [production, debug]) {
+      expect(config.reward).toMatchObject({
+        baseRewardCents: 400,
+        movementRewardCents: 4,
+        rotationRewardCents: 4,
+      });
+    }
   });
 
   it("uses the receiver sequence id instead of deriving sequence from participant number", () => {

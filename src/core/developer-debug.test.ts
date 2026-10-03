@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExperimentConfig } from "../types/experiment";
-import { createDeveloperDebugConfig } from "./developer-debug";
+import { createDeveloperDebugConfig, getDeveloperProlificId } from "./developer-debug";
 
 function config(): ExperimentConfig {
   return {
@@ -28,6 +28,10 @@ function copyConfig(): ExperimentConfig {
 }
 
 describe("createDeveloperDebugConfig", () => {
+  it("uses a stable non-participant Prolific marker", () => {
+    expect(getDeveloperProlificId()).toBe("DEBUG_9999");
+  });
+
   it("keeps DataPipe enabled while isolating developer data", () => {
     const debug = createDeveloperDebugConfig(config());
 

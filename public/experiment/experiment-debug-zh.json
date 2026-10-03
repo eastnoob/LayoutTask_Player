@@ -8,6 +8,7 @@
   "reference_mode": "persistent",
   "order": "fixed",
   "locale": "zh-CN",
+  "completion_code_gate": { "enabled": true, "min_display_ms": 15000 },
   "tutorial": {
     "enabled": true,
     "baseUrl": "../layout-task-run12-core23-persistent/tutorial/",

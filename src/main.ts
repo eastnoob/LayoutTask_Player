@@ -3,7 +3,7 @@ import { ConfigLoader } from "./core/config-loader";
 import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
 import { createRunnableExperiment, requestAssignment } from "./experiment-runner";
-import { createDeveloperDebugConfig } from "./core/developer-debug";
+import { createDeveloperDebugConfig, getDeveloperProlificId } from "./core/developer-debug";
 import { waitForExperimentConsent, waitForProlificId } from "./core/experiment-consent";
 import {
   getDefaultExperimentConfigPath,
@@ -49,7 +49,7 @@ async function bootstrap(): Promise<void> {
       developerDebug = consent === "developer";
     }
     const prolificId = developerDebug
-      ? "DEBUG_9999"
+      ? getDeveloperProlificId()
       : await waitForProlificId({ root, locale: loadedConfig.locale });
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
     let assignment;
