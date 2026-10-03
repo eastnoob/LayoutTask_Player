@@ -249,6 +249,18 @@ describe("compileBatch", () => {
     });
   });
 
+  it("emits authored rotation equivalence classes in the private scoring reference", () => {
+    const batch = createBatch();
+    (batch.trials[0].objects[0].scoring as Record<string, unknown>).equivalence_classes = {
+      rotation_steps: [[-2, 2]],
+    };
+
+    const compiled = compileBatch(batch);
+
+    expect(compiled.scoringReference.tasks.room_generated_001.objects.chair_variable_01)
+      .toHaveProperty("equivalence_classes.rotation_steps", [[-2, 2]]);
+  });
+
   it("preserves relative-only targets in scoring reference without synthesizing absolute targets", () => {
     const batch = createBatch();
     batch.trials[0].objects[0].target = {

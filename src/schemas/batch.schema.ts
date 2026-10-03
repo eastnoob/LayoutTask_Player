@@ -26,6 +26,9 @@ const metadataValueSchema = z.union([
 const metadataSchema = z.record(metadataValueSchema);
 
 const labelsSchema = z.record(z.string());
+const equivalenceClassesSchema = z.object({
+  rotation_steps: z.array(z.array(z.number().int()).min(2)).min(1).optional(),
+});
 
 const filenameSafeIdSchema = z
   .string()
@@ -72,6 +75,7 @@ export const objectScoringSchema = z.object({
       target: objectTargetSchema.optional(),
   tolerance: scoringToleranceSchema.optional(),
   labels: labelsSchema.optional(),
+  equivalence_classes: equivalenceClassesSchema.optional(),
 });
 
 export const scoringSchema = z.object({
@@ -216,6 +220,7 @@ export const scoringReferenceSchema = z.object({
           target: objectTargetSchema.optional(),
           tolerance: scoringToleranceSchema.optional(),
           labels: labelsSchema.optional(),
+          equivalence_classes: equivalenceClassesSchema.optional(),
         }),
       ),
     }),

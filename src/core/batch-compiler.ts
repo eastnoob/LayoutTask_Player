@@ -150,7 +150,8 @@ function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringR
       target !== undefined ||
       scoring?.scorable !== undefined ||
       scoring?.tolerance !== undefined ||
-      scoring?.labels !== undefined;
+      scoring?.labels !== undefined ||
+      scoring?.equivalence_classes !== undefined;
 
     if (
       !shouldIncludeScoringObject({
@@ -173,6 +174,7 @@ function compileScoringObjects(trial: BatchTrialConfig): Record<string, ScoringR
     assignIfDefined(reference, "target", target);
     assignIfDefined(reference, "tolerance", scoring?.tolerance ?? trial.scoring?.default_tolerance);
     assignIfDefined(reference, "labels", scoring?.labels);
+    assignIfDefined(reference, "equivalence_classes", scoring?.equivalence_classes);
 
     objects[object.id] = reference;
   }

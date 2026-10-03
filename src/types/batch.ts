@@ -18,6 +18,7 @@ import type {
   ReferenceMode,
 } from "./config";
 import type { ExperimentSchedule } from "./schedule";
+import type { ScoringEquivalenceClasses } from "./scoring";
 
 export type BatchMetadataValue = string | number | boolean | null;
 export type BatchMetadata = Record<string, BatchMetadataValue>;
@@ -142,6 +143,7 @@ export interface ObjectScoringConfig {
   target?: ObjectTargetState;
   tolerance?: ScoringTolerance;
   labels?: Record<string, string>;
+  equivalence_classes?: ScoringEquivalenceClasses;
 }
 
 export interface ScoringTolerance {
@@ -182,6 +184,7 @@ export interface ScoringReferenceObject {
   target?: ObjectTargetState;
   tolerance?: ScoringTolerance;
   labels?: Record<string, string>;
+  equivalence_classes?: ScoringEquivalenceClasses;
 }
 
 export interface CompiledBatch {
