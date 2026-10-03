@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calculateTaskReward } from "./reward-calculator";
+import { calculateTaskReward, summarizeExperimentRewards } from "./reward-calculator";
+import type { LayoutTaskResult } from "../types/result";
 
 const config = {
   enabled: true,
@@ -91,5 +92,56 @@ describe("calculateTaskReward", () => {
 
     expect(result.groups).toHaveLength(1);
     expect(result.rewardCents).toBe(12);
+  });
+
+  it("records both correctness dimensions and summarizes formal groups", () => {
+    const makeResult = (dx_steps: number, rotation_steps: number) => calculateTaskReward({
+      config,
+      objects: [{ id: "variable", role: "variable", group_id: "group" }],
+      reference: {
+        qid: "Q1",
+        objects: {
+          variable: {
+            role: "variable",
+            group_id: "group",
+            scorable: true,
+            target: { relative: { dx_steps: 1, dy_steps: 2, rotation_steps: 3 } },
+          },
+        },
+      },
+      finalState: { variable: { dx_steps, dy_steps: 2, rotation_steps } },
+      cumulativeRewardCents: 0,
+    });
+
+    const positionOnly = makeResult(1, 0);
+    const rotationOnly = makeResult(0, 3);
+    const both = makeResult(1, 3);
+    const neither = makeResult(0, 0);
+
+    expect(positionOnly.groups[0]).toMatchObject({
+      positionCorrect: true,
+      rotationCorrect: false,
+      bothCorrect: false,
+      bothWrong: false,
+    });
+    expect(rotationOnly.groups[0]).toMatchObject({
+      positionCorrect: false,
+      rotationCorrect: true,
+      bothCorrect: false,
+      bothWrong: false,
+    });
+    expect(both.groups[0]).toMatchObject({ bothCorrect: true, bothWrong: false });
+    expect(neither.groups[0]).toMatchObject({ bothCorrect: false, bothWrong: true });
+
+    const summary = summarizeExperimentRewards(
+      [positionOnly, rotationOnly, both, neither].map((reward) => ({ reward } as unknown as LayoutTaskResult)),
+    );
+    expect(summary).toMatchObject({
+      correctPositionCount: 2,
+      correctRotationCount: 2,
+      fullyCorrectCount: 1,
+      fullyFailedCount: 1,
+      scorableGroupCount: 4,
+    });
   });
 });

@@ -11,6 +11,11 @@ export function calculateTaskReward(input: CalculateTaskRewardInput): TaskReward
     referenceVersion: input.reference?.reward_version ?? input.config.referenceVersion,
     groups: [],
     skippedGroupIds: [],
+    correctPositionCount: 0,
+    correctRotationCount: 0,
+    fullyCorrectCount: 0,
+    fullyFailedCount: 0,
+    scorableGroupCount: 0,
   };
 
   if (!input.config.enabled || !input.reference) {
@@ -52,6 +57,7 @@ export function calculateTaskReward(input: CalculateTaskRewardInput): TaskReward
     base.cumulativeRewardCents = groupReward.cumulativeRewardCents;
   }
 
+  Object.assign(base, summarizeRewardGroups(base.groups));
   return base;
 }
 
@@ -59,6 +65,7 @@ export function summarizeExperimentRewards(results: LayoutTaskResult[]): Experim
   const rewarded = results.map((result) => result.reward).filter((reward): reward is TaskRewardSummary => Boolean(reward));
   const first = rewarded[0];
   const earnedRewardCents = rewarded.reduce((total, reward) => total + reward.rewardCents, 0);
+  const groupSummary = summarizeRewardGroups(rewarded.flatMap((reward) => reward.groups));
   return {
     enabled: Boolean(first?.enabled),
     baseRewardCents: first?.baseRewardCents ?? 0,
@@ -66,6 +73,7 @@ export function summarizeExperimentRewards(results: LayoutTaskResult[]): Experim
     totalRewardCents: (first?.baseRewardCents ?? 0) + earnedRewardCents,
     formalTrialCount: results.length,
     rewardedGroupCount: rewarded.reduce((total, reward) => total + reward.groups.length, 0),
+    ...groupSummary,
   };
 }
 
@@ -90,6 +98,8 @@ function scoreScorableGroup(
     scorable: true,
     positionCorrect,
     rotationCorrect,
+    bothCorrect: positionCorrect && rotationCorrect,
+    bothWrong: !positionCorrect && !rotationCorrect,
     movementRewardCents,
     rotationRewardCents,
     rewardCents,
@@ -106,9 +116,25 @@ function createUnscorableGroup(input: CalculateTaskRewardInput, groupId: string)
     scorable: false,
     positionCorrect: null,
     rotationCorrect: null,
+    bothCorrect: null,
+    bothWrong: null,
     movementRewardCents,
     rotationRewardCents,
     rewardCents,
     cumulativeRewardCents: input.cumulativeRewardCents + rewardCents,
+  };
+}
+
+function summarizeRewardGroups(groups: RewardGroupResult[]): Pick<
+  TaskRewardSummary,
+  "correctPositionCount" | "correctRotationCount" | "fullyCorrectCount" | "fullyFailedCount" | "scorableGroupCount"
+> {
+  const scorable = groups.filter((group) => group.scorable);
+  return {
+    correctPositionCount: scorable.filter((group) => group.positionCorrect === true).length,
+    correctRotationCount: scorable.filter((group) => group.rotationCorrect === true).length,
+    fullyCorrectCount: scorable.filter((group) => group.bothCorrect === true).length,
+    fullyFailedCount: scorable.filter((group) => group.bothWrong === true).length,
+    scorableGroupCount: scorable.length,
   };
 }

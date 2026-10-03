@@ -263,6 +263,8 @@ const rewardGroupSchema = z.object({
   scorable: z.boolean(),
   positionCorrect: z.boolean().nullable(),
   rotationCorrect: z.boolean().nullable(),
+  bothCorrect: z.boolean().nullable(),
+  bothWrong: z.boolean().nullable(),
   movementRewardCents: z.number().int().nonnegative(),
   rotationRewardCents: z.number().int().nonnegative(),
   rewardCents: z.number().int().nonnegative(),
@@ -277,6 +279,11 @@ export const resultRewardSchema = z.object({
   referenceVersion: z.string().optional(),
   groups: z.array(rewardGroupSchema),
   skippedGroupIds: z.array(z.string()),
+  correctPositionCount: z.number().int().nonnegative(),
+  correctRotationCount: z.number().int().nonnegative(),
+  fullyCorrectCount: z.number().int().nonnegative(),
+  fullyFailedCount: z.number().int().nonnegative(),
+  scorableGroupCount: z.number().int().nonnegative(),
 });
 
 export const layoutTaskEventSchema = z.object({
