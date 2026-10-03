@@ -147,6 +147,7 @@ export function getKonamiProgress(progress: string[], key: string): string[] {
 export function waitForExperimentConsent(options: {
   root: HTMLElement;
   locale?: "en-US" | "zh-CN";
+  developerMode?: boolean;
   documentRef?: Document;
 }): Promise<ExperimentConsentResult> {
   const documentRef = options.documentRef ?? document;
@@ -154,7 +155,7 @@ export function waitForExperimentConsent(options: {
   return new Promise((resolve) => {
     let section: HTMLElement;
     let progress: string[] = [];
-    let mode: "agreed" | "developer" = "agreed";
+    let mode: "agreed" | "developer" = options.developerMode ? "developer" : "agreed";
 
     const renderConsent = () => {
       const copy = getConsentPageCopy(options.locale ?? "en-US");

@@ -43,11 +43,13 @@ async function bootstrap(): Promise<void> {
       configPath,
     });
     const loadedConfig = await loader.load();
-    let developerDebug = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
-    if (!developerDebug) {
-      const consent = await waitForExperimentConsent({ root, locale: loadedConfig.locale });
-      developerDebug = consent === "developer";
-    }
+    const requestedDeveloperMode = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
+    const consentResult = await waitForExperimentConsent({
+      root,
+      locale: loadedConfig.locale,
+      developerMode: requestedDeveloperMode,
+    });
+    const developerDebug = requestedDeveloperMode || consentResult.mode === "developer";
     const prolificId = await waitForProlificId({ root, locale: loadedConfig.locale });
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
     let assignment;
@@ -78,8 +80,8 @@ async function bootstrap(): Promise<void> {
       config,
       root,
       developerDebug
-        ? createDeveloperParticipantIdentity(prolificId)
-        : { assignment, requireAssignment: Boolean(config.schedule), prolificId },
+        ? { ...createDeveloperParticipantIdentity(prolificId), consent: consentResult.consent }
+        : { assignment, requireAssignment: Boolean(config.schedule), prolificId, consent: consentResult.consent },
     );
     await jsPsych.run(timeline);
     return;
