@@ -224,7 +224,12 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
 
 def main() -> None:
     config = load_config_from_env()
-    backend = build_archive_backend(config.archive_mode, config.archive_local_dir, config.archive_rclone_remote)
+    backend = build_archive_backend(
+        config.archive_mode,
+        config.archive_local_dir,
+        config.archive_rclone_remote,
+        config.archive_rclone_remotes,
+    )
     storage = ReceiverStorage(
         config.data_dir,
         archive_backend=backend,

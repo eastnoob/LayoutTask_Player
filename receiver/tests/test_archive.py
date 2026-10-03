@@ -4,10 +4,44 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-from app.archive import LocalArchiveBackend, RcloneArchiveBackend
+from app.archive import ArchiveResult, LocalArchiveBackend, MultiArchiveBackend, RcloneArchiveBackend
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_multi_archive_backend_keeps_target_results_separate(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            spool = Path(temp_dir) / "spool" / "sub1"
+            spool.mkdir(parents=True)
+            calls = []
+
+            class Target:
+                def __init__(self, name, succeeds):
+                    self.name = name
+                    self.succeeds = succeeds
+
+                def archive(self, spool_dir, archive_key):
+                    calls.append((self.name, archive_key))
+                    if not self.succeeds:
+                        return ArchiveResult(ok=False, error=f"{self.name} unavailable")
+                    return ArchiveResult(ok=True, archive_uri=f"{self.name}://{archive_key}")
+
+            backend = MultiArchiveBackend(
+                {
+                    "jianguoyun": Target("jianguoyun", True),
+                    "sciebo": Target("sciebo", False),
+                },
+            )
+
+            result = backend.archive(spool, "layout_task_v1/P001/S001/sub1")
+
+            self.assertFalse(result.ok)
+            self.assertEqual(result.archive_uri, "jianguoyun://layout_task_v1/P001/S001/sub1")
+            self.assertEqual(
+                [(item.target, item.ok) for item in result.target_results],
+                [("jianguoyun", True), ("sciebo", False)],
+            )
+            self.assertEqual(calls, [("jianguoyun", "layout_task_v1/P001/S001/sub1"), ("sciebo", "layout_task_v1/P001/S001/sub1")])
+
     def test_local_archive_copies_spool_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

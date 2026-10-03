@@ -6,7 +6,7 @@ import unittest
 from contextlib import closing
 from pathlib import Path
 
-from app.archive import ArchiveResult, LocalArchiveBackend
+from app.archive import ArchiveResult, LocalArchiveBackend, MultiArchiveBackend
 from app.models import validate_submission
 from app.storage import ReceiverStorage
 
@@ -37,6 +37,19 @@ class RecordingArchiveBackend:
         return ArchiveResult(ok=True, archive_uri=f"rclone://layouttask-receiver:metadata-indexes/{archive_key}")
 
 
+class ToggleTarget:
+    def __init__(self, name):
+        self.name = name
+        self.fail = True
+        self.calls = []
+
+    def archive(self, spool_dir: Path, archive_key: str) -> ArchiveResult:
+        self.calls.append(archive_key)
+        if self.fail:
+            return ArchiveResult(ok=False, error=f"{self.name} unavailable")
+        return ArchiveResult(ok=True, archive_uri=f"{self.name}://{archive_key}")
+
+
 class RaisingArchiveBackend:
     def archive(self, spool_dir: Path, archive_key: str) -> ArchiveResult:
         raise RuntimeError("backend exploded")
@@ -60,6 +73,48 @@ def valid_submission():
 
 
 class StorageTests(unittest.TestCase):
+    def test_partial_submission_archive_retries_only_failed_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            jianguoyun = ToggleTarget("jianguoyun")
+            sciebo = ToggleTarget("sciebo")
+            jianguoyun.fail = False
+            backend = MultiArchiveBackend({"jianguoyun": jianguoyun, "sciebo": sciebo})
+            storage = ReceiverStorage(data_dir, archive_backend=backend, delete_local_after_success=True)
+
+            stored = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            self.assertEqual(stored.archive_status, "partial")
+            self.assertTrue((data_dir / "spool" / stored.id).exists())
+            sciebo.fail = False
+            self.assertEqual(storage.retry_pending(), 1)
+            self.assertEqual(len(jianguoyun.calls), 1)
+            self.assertEqual(len(sciebo.calls), 2)
+            self.assertFalse((data_dir / "spool" / stored.id).exists())
+
+    def test_partial_session_archive_retries_only_failed_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            jianguoyun = ToggleTarget("jianguoyun")
+            sciebo = ToggleTarget("sciebo")
+            jianguoyun.fail = False
+            backend = MultiArchiveBackend({"jianguoyun": jianguoyun, "sciebo": sciebo})
+            storage = ReceiverStorage(data_dir, archive_backend=backend, archive_on_submit=False)
+            stored = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            first = storage.archive_session("layout_task_v1", "P001", "S001")
+
+            self.assertFalse(first.ok)
+            self.assertEqual(first.archive_status, "partial")
+            self.assertTrue((data_dir / "spool" / stored.id).exists())
+            sciebo.fail = False
+            second = storage.archive_session("layout_task_v1", "P001", "S001")
+
+            self.assertTrue(second.ok)
+            self.assertEqual(len(jianguoyun.calls), 1)
+            self.assertEqual(len(sciebo.calls), 2)
+            self.assertFalse((data_dir / "spool" / stored.id).exists())
+
     def test_allocate_assignment_is_idempotent_and_cycles_configured_sequences(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             storage = ReceiverStorage(Path(temp_dir))
@@ -305,6 +360,60 @@ class StorageTests(unittest.TestCase):
             self.assertEqual((data_dir / "submissions.jsonl").read_text(encoding="utf-8"), "")
             with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM submissions").fetchone(), (0,))
+
+    def test_partial_metadata_archive_retries_only_failed_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            jianguoyun = ToggleTarget("jianguoyun")
+            sciebo = ToggleTarget("sciebo")
+            jianguoyun.fail = False
+            backend = MultiArchiveBackend({"jianguoyun": jianguoyun, "sciebo": sciebo})
+            storage = ReceiverStorage(
+                data_dir,
+                metadata_archive_backend=backend,
+                metadata_delete_local_after_upload=True,
+            )
+            storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            first = storage.archive_metadata(label="metadata-test", keep_local=0)
+
+            self.assertTrue(first.local_kept)
+            self.assertTrue(first.local_path.exists())
+            sciebo.fail = False
+            second = storage.archive_metadata(label="metadata-test", keep_local=0)
+
+            self.assertFalse(second.local_kept)
+            self.assertFalse(second.local_path.exists())
+            self.assertEqual(len(jianguoyun.calls), 1)
+            self.assertEqual(len(sciebo.calls), 2)
+            self.assertEqual((data_dir / "submissions.jsonl").read_text(encoding="utf-8"), "")
+
+    def test_metadata_retry_does_not_clear_new_submissions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            jianguoyun = ToggleTarget("jianguoyun")
+            sciebo = ToggleTarget("sciebo")
+            jianguoyun.fail = False
+            backend = MultiArchiveBackend({"jianguoyun": jianguoyun, "sciebo": sciebo})
+            storage = ReceiverStorage(
+                data_dir,
+                metadata_archive_backend=backend,
+                metadata_delete_local_after_upload=True,
+            )
+
+            first = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha-1")
+            storage.archive_metadata(label="metadata-test", keep_local=0)
+            second = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha-2")
+
+            sciebo.fail = False
+            retried = storage.archive_metadata(label="metadata-test", keep_local=0)
+
+            self.assertFalse(retried.local_kept)
+            with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM submissions").fetchone(), (2,))
+            lines = (data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertEqual({json.loads(line)["id"] for line in lines}, {first.id, second.id})
 
     def test_clear_data_removes_local_data_without_metadata_snapshot(self):
         with tempfile.TemporaryDirectory() as temp_dir:

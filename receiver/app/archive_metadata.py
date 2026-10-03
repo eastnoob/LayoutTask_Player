@@ -10,8 +10,11 @@ def main() -> None:
     label = os.environ.get("ARCHIVE_METADATA_LABEL") or None
     keep_local = int(os.environ.get("METADATA_ARCHIVE_LOCAL_KEEP", "3"))
     metadata_remote = os.environ.get("METADATA_ARCHIVE_RCLONE_REMOTE") or None
+    metadata_remotes = os.environ.get("METADATA_ARCHIVE_RCLONE_REMOTES") or None
     metadata_backend = (
-        build_archive_backend("rclone", data_dir / "metadata_archives", metadata_remote) if metadata_remote else None
+        build_archive_backend("rclone", data_dir / "metadata_archives", metadata_remote, metadata_remotes)
+        if metadata_remote or metadata_remotes
+        else None
     )
     result = ReceiverStorage(
         data_dir,

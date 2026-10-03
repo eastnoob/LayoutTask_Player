@@ -11,6 +11,7 @@ def main() -> None:
         os.environ.get("ARCHIVE_MODE", "local"),
         Path(os.environ.get("ARCHIVE_LOCAL_DIR", str(data_dir / "archive"))),
         os.environ.get("ARCHIVE_RCLONE_REMOTE") or None,
+        os.environ.get("ARCHIVE_RCLONE_REMOTES") or None,
     )
     count = ReceiverStorage(
         data_dir,

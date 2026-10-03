@@ -23,11 +23,18 @@ For VPS production, configure `rclone/rclone.conf` on the server and set:
 
 ```text
 ARCHIVE_MODE=rclone
-ARCHIVE_RCLONE_REMOTE=layouttask-receiver:submissions
-METADATA_ARCHIVE_RCLONE_REMOTE=layouttask-receiver:metadata-indexes
+ARCHIVE_RCLONE_REMOTES=jianguoyun=layouttask-webdav:experimentalDataPipeline/layouttask-receiver/submissions;sciebo=layouttask-sciebo:experimentalDataPipeline/layouttask-receiver/submissions
+METADATA_ARCHIVE_RCLONE_REMOTES=jianguoyun=layouttask-webdav:experimentalDataPipeline/layouttask-receiver/metadata-indexes;sciebo=layouttask-sciebo:experimentalDataPipeline/layouttask-receiver/metadata-indexes
 METADATA_ARCHIVE_DELETE_LOCAL_AFTER_UPLOAD=true
 METADATA_ARCHIVE_LOCAL_KEEP=0
 ```
+
+`ARCHIVE_RCLONE_REMOTES` and `METADATA_ARCHIVE_RCLONE_REMOTES` use
+`name=rclone-remote:path;name=rclone-remote:path`. Each target is tracked
+independently in `archive_targets`. A successful target is not uploaded again
+by `retry_archive`; local spool data is deleted only after every configured
+target succeeds. The older singular variables remain supported for one-target
+deployments.
 
 4. Start:
 
@@ -45,7 +52,7 @@ Accepted submissions are stored in:
 
 ```text
 data/submissions.jsonl
-data/submissions.sqlite
+data/submissions.sqlite            # includes the archive_targets table
 data/spool/<submission_id>/        # pending or failed archive only
 data/metadata_archives/<timestamp>/ # recent local archived indexes, pruned automatically
 archive/<experiment>/...           # local development archive only

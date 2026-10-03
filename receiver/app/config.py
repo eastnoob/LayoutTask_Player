@@ -13,6 +13,9 @@ class ReceiverConfig:
     archive_mode: str = "local"
     archive_local_dir: Path = Path("/app/archive")
     archive_rclone_remote: str | None = None
+    archive_rclone_remotes: str | None = None
+    metadata_archive_rclone_remote: str | None = None
+    metadata_archive_rclone_remotes: str | None = None
     archive_delete_local_after_success: bool = True
     port: int = 3000
     max_body_bytes: int = 5_242_880
@@ -33,6 +36,9 @@ def load_config_from_env() -> ReceiverConfig:
         archive_mode=os.environ.get("ARCHIVE_MODE", "local"),
         archive_local_dir=Path(os.environ.get("ARCHIVE_LOCAL_DIR", "/app/archive")),
         archive_rclone_remote=os.environ.get("ARCHIVE_RCLONE_REMOTE") or None,
+        archive_rclone_remotes=os.environ.get("ARCHIVE_RCLONE_REMOTES") or None,
+        metadata_archive_rclone_remote=os.environ.get("METADATA_ARCHIVE_RCLONE_REMOTE") or None,
+        metadata_archive_rclone_remotes=os.environ.get("METADATA_ARCHIVE_RCLONE_REMOTES") or None,
         archive_delete_local_after_success=os.environ.get("ARCHIVE_DELETE_LOCAL_AFTER_SUCCESS", "true").lower()
         == "true",
         port=int(os.environ.get("PORT", "3000")),

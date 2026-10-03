@@ -11,7 +11,7 @@ import sqlite3
 from typing import Any
 import uuid
 
-from .archive import ArchiveResult
+from .archive import ArchiveResult, ArchiveTargetResult
 from .models import Submission
 
 
@@ -185,26 +185,26 @@ class ReceiverStorage:
         archive_status = "pending"
         archive_error = None
         archive_uri = None
+        target_results: list[ArchiveTargetResult] = []
         if self.archive_backend is not None and self.archive_on_submit:
             try:
                 result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
             except Exception as error:
                 result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
-            if result.ok and result.archive_uri:
-                archive_status = "archived"
-                archive_uri = result.archive_uri
-                for file_info in files:
-                    file_info["archive_status"] = "archived"
+            target_results = self._target_results(result)
+            archive_status = _aggregate_archive_status(target_results)
+            archive_uri = _first_archive_uri(target_results)
+            archive_error = _archive_error(target_results)
+            for file_info in files:
+                file_info["archive_status"] = archive_status
+                if archive_uri:
                     file_info["archive_uri"] = f"{archive_uri}/{file_info['archive_filename']}"
-                    if self.delete_local_after_success:
-                        file_info["local_path"] = None
-                if self.delete_local_after_success:
-                    shutil.rmtree(spool_path)
-            else:
-                archive_status = "failed"
-                archive_error = result.error or "archive failed"
-                for file_info in files:
-                    file_info["archive_status"] = "failed"
+                if archive_status == "archived" and self.delete_local_after_success:
+                    file_info["local_path"] = None
+            if archive_status == "archived" and self.delete_local_after_success:
+                shutil.rmtree(spool_path)
+        elif self.archive_backend is not None:
+            target_results = [ArchiveTargetResult(target=name, ok=False) for name in self._archive_target_names()]
 
         self._insert_submission(
             submission_id,
@@ -216,6 +216,7 @@ class ReceiverStorage:
             body_sha256,
             archive_status,
             files,
+            target_results,
         )
         self._append_jsonl(
             {
@@ -228,6 +229,7 @@ class ReceiverStorage:
                 "archive_status": archive_status,
                 "archive_uri": archive_uri,
                 "archive_error": archive_error,
+                "archive_targets": _target_results_payload(target_results),
                 "files": files,
             },
         )
@@ -260,37 +262,43 @@ class ReceiverStorage:
                 shutil.copytree(spool_dir, staging_dir / submission_id)
 
             archive_key = f"{experiment_id}/{participant_id}/{session_id}"
-            try:
-                result: ArchiveResult = self.archive_backend.archive(staging_dir, archive_key)
-            except Exception as error:
-                result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
-            if not result.ok or not result.archive_uri:
-                return SessionArchiveResult(False, "failed", error=result.error or "archive failed")
+            for target_name in self._archive_target_names():
+                pending_ids = [
+                    submission_id
+                    for (submission_id,) in rows
+                    if not self._submission_target_archived(submission_id, target_name)
+                ]
+                if not pending_ids:
+                    continue
+                try:
+                    result = self._archive_target(target_name, staging_dir, archive_key)
+                except Exception as error:
+                    result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
+                self._record_target_result(
+                    pending_ids,
+                    ArchiveTargetResult(
+                        target=target_name,
+                        ok=result.ok and bool(result.archive_uri),
+                        archive_uri=result.archive_uri,
+                        error=result.error,
+                    ),
+                    session_archive=True,
+                )
 
-            with closing(sqlite3.connect(self.sqlite_path)) as db:
-                for (submission_id,) in rows:
-                    db.execute(
-                        "UPDATE submissions SET archive_status = 'archived' WHERE id = ?",
-                        (submission_id,),
-                    )
-                    file_rows = db.execute(
-                        "SELECT id, archive_filename FROM submission_files WHERE submission_id = ? ORDER BY file_index",
-                        (submission_id,),
-                    ).fetchall()
-                    for file_id, archive_filename in file_rows:
-                        db.execute(
-                            """
-                            UPDATE submission_files
-                            SET archive_status = 'archived', archive_uri = ?, local_path = NULL
-                            WHERE id = ?
-                            """,
-                            (f"{result.archive_uri}/{submission_id}/{archive_filename}", file_id),
-                        )
-                db.commit()
-            self._mark_jsonl_archived({submission_id for (submission_id,) in rows}, result.archive_uri)
-            for (submission_id,) in rows:
-                shutil.rmtree(self.spool_dir / submission_id)
-            return SessionArchiveResult(True, "archived", archive_uri=result.archive_uri)
+            submission_ids = {row[0] for row in rows}
+            for submission_id in submission_ids:
+                self._sync_submission_state(submission_id)
+            statuses = [self._submission_status(submission_id) for submission_id in submission_ids]
+            if all(status == "archived" for status in statuses):
+                for submission_id in submission_ids:
+                    spool_path = self.spool_dir / submission_id
+                    if self.delete_local_after_success and spool_path.exists():
+                        shutil.rmtree(spool_path)
+                archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
+                return SessionArchiveResult(True, "archived", archive_uri=archive_uri)
+            archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
+            status = "partial" if any(status in {"partial", "archived"} for status in statuses) else "failed"
+            return SessionArchiveResult(False, status, archive_uri=archive_uri, error="one or more archive targets failed")
         finally:
             if staging_dir.exists():
                 shutil.rmtree(staging_dir)
@@ -319,7 +327,7 @@ class ReceiverStorage:
                 """
                 SELECT id, experiment_id, participant_id, session_id
                 FROM submissions
-                WHERE archive_status IN ('pending', 'failed')
+                WHERE archive_status IN ('pending', 'failed', 'partial')
                 ORDER BY received_at
                 """,
             ).fetchall()
@@ -329,42 +337,39 @@ class ReceiverStorage:
             if not spool_path.exists():
                 continue
             archive_key = f"{experiment_id}/{participant_id}/{session_id}/{submission_id}"
-            try:
-                result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
-            except Exception:
-                continue
-            if not result.ok or not result.archive_uri:
-                continue
-
-            with closing(sqlite3.connect(self.sqlite_path)) as db:
-                file_rows = db.execute(
-                    "SELECT id, archive_filename FROM submission_files WHERE submission_id = ? ORDER BY file_index",
-                    (submission_id,),
-                ).fetchall()
-                for file_row_id, archive_filename in file_rows:
-                    db.execute(
-                        """
-                        UPDATE submission_files
-                        SET archive_status = 'archived', archive_uri = ?, local_path = ?
-                        WHERE id = ?
-                        """,
-                        (
-                            f"{result.archive_uri}/{archive_filename}",
-                            None if self.delete_local_after_success else str(spool_path / archive_filename),
-                            file_row_id,
-                        ),
-                    )
-                db.execute(
-                    "UPDATE submissions SET archive_status = 'archived' WHERE id = ?",
-                    (submission_id,),
+            before = self._submission_status(submission_id)
+            target_names = self._ensure_archive_target_rows(submission_id)
+            for target_name in target_names:
+                if self._submission_target_archived(submission_id, target_name):
+                    continue
+                try:
+                    result = self._archive_target(target_name, spool_path, archive_key)
+                except Exception as error:
+                    result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
+                self._record_target_result(
+                    [submission_id],
+                    ArchiveTargetResult(
+                        target=target_name,
+                        ok=result.ok and bool(result.archive_uri),
+                        archive_uri=result.archive_uri,
+                        error=result.error,
+                    ),
                 )
-                db.commit()
-            if self.delete_local_after_success:
-                shutil.rmtree(spool_path)
-            retried += 1
+
+            self._sync_submission_state(submission_id)
+            after = self._submission_status(submission_id)
+            if after == "archived":
+                if self.delete_local_after_success and spool_path.exists():
+                    shutil.rmtree(spool_path)
+                if before != "archived":
+                    retried += 1
         return retried
 
     def archive_metadata(self, label: str | None = None, keep_local: int = 3) -> MetadataArchiveResult:
+        pending = self._pending_metadata_archives()
+        if pending:
+            return self._retry_metadata_archive(*pending[0], keep_local=keep_local)
+
         name = _metadata_archive_name(label)
         target = self.data_dir / "metadata_archives" / name
         target.mkdir(parents=True, exist_ok=False)
@@ -380,11 +385,16 @@ class ReceiverStorage:
         uploaded_uri = None
         local_kept = True
         if self.metadata_archive_backend is not None:
-            result: ArchiveResult = self.metadata_archive_backend.archive(target, name)
-            if not result.ok:
-                self._prune_metadata_archives(keep_local)
+            try:
+                result: ArchiveResult = self.metadata_archive_backend.archive(target, name)
+            except Exception as error:
+                result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
+            target_results = self._target_results(result)
+            if _aggregate_archive_status(target_results) != "archived":
+                self._write_metadata_archive_state(name, target_results)
+                self._prune_metadata_archives(keep_local, protected={name})
                 return MetadataArchiveResult(local_path=target, uploaded_uri=None, local_kept=True)
-            uploaded_uri = result.archive_uri
+            uploaded_uri = _first_archive_uri(target_results)
             if self.metadata_delete_local_after_upload:
                 shutil.rmtree(target)
                 local_kept = False
@@ -392,6 +402,94 @@ class ReceiverStorage:
         self._reset_metadata()
         self._prune_metadata_archives(keep_local)
         return MetadataArchiveResult(local_path=target, uploaded_uri=uploaded_uri, local_kept=local_kept)
+
+    def _pending_metadata_archives(self) -> list[tuple[str, Path, list[ArchiveTargetResult]]]:
+        root = self.data_dir / "metadata_archives"
+        if not root.exists():
+            return []
+        pending = []
+        for state_path in sorted(root.glob(".pending-*.json")):
+            name = state_path.name[len(".pending-") : -len(".json")]
+            target = root / name
+            if not name or not target.is_dir():
+                continue
+            try:
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+                results = [ArchiveTargetResult(**item) for item in payload["targets"]]
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            pending.append((name, target, results))
+        return pending
+
+    def _retry_metadata_archive(
+        self,
+        name: str,
+        target: Path,
+        target_results: list[ArchiveTargetResult],
+        keep_local: int,
+    ) -> MetadataArchiveResult:
+        if self.metadata_archive_backend is None:
+            return MetadataArchiveResult(local_path=target, uploaded_uri=None, local_kept=True)
+        updated = []
+        for previous in target_results:
+            if previous.ok:
+                updated.append(previous)
+                continue
+            try:
+                result = self._archive_target(
+                    previous.target,
+                    target,
+                    name,
+                    backend=self.metadata_archive_backend,
+                )
+            except Exception as error:
+                result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
+            updated.append(
+                ArchiveTargetResult(
+                    target=previous.target,
+                    ok=result.ok and bool(result.archive_uri),
+                    archive_uri=result.archive_uri,
+                    error=result.error,
+                ),
+            )
+        state_path = target.parent / f".pending-{name}.json"
+        if _aggregate_archive_status(updated) != "archived":
+            self._write_metadata_archive_state(name, updated)
+            self._prune_metadata_archives(keep_local, protected={name})
+            return MetadataArchiveResult(local_path=target, uploaded_uri=None, local_kept=True)
+
+        state_path.unlink(missing_ok=True)
+        uploaded_uri = _first_archive_uri(updated)
+        metadata_unchanged = self._metadata_matches_snapshot(target)
+        local_kept = True
+        if self.metadata_delete_local_after_upload:
+            shutil.rmtree(target)
+            local_kept = False
+        if metadata_unchanged:
+            self._reset_metadata()
+        self._prune_metadata_archives(keep_local)
+        return MetadataArchiveResult(local_path=target, uploaded_uri=uploaded_uri, local_kept=local_kept)
+
+    def _metadata_matches_snapshot(self, snapshot_dir: Path) -> bool:
+        for filename, active_path in (
+            ("submissions.sqlite", self.sqlite_path),
+            ("submissions.jsonl", self.jsonl_path),
+        ):
+            snapshot_path = snapshot_dir / filename
+            try:
+                if active_path.read_bytes() != snapshot_path.read_bytes():
+                    return False
+            except OSError:
+                return False
+        return True
+
+    def _write_metadata_archive_state(self, name: str, results: list[ArchiveTargetResult]) -> None:
+        root = self.data_dir / "metadata_archives"
+        state_path = root / f".pending-{name}.json"
+        temp_path = state_path.with_suffix(".tmp")
+        payload = {"snapshot": name, "targets": _target_results_payload(results)}
+        temp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        temp_path.replace(state_path)
 
     def clear_data(self) -> None:
         if self.spool_dir.exists():
@@ -455,6 +553,20 @@ class ReceiverStorage:
             )
             db.execute(
                 """
+                CREATE TABLE IF NOT EXISTS archive_targets(
+                  submission_id TEXT NOT NULL,
+                  target_name TEXT NOT NULL,
+                  archive_uri TEXT,
+                  archive_status TEXT NOT NULL,
+                  error TEXT,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY(submission_id, target_name),
+                  FOREIGN KEY(submission_id) REFERENCES submissions(id)
+                )
+                """,
+            )
+            db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS assignments(
                   assignment_id TEXT PRIMARY KEY,
                   experiment_id TEXT NOT NULL,
@@ -501,6 +613,7 @@ class ReceiverStorage:
         body_sha256: str,
         archive_status: str,
         files: list[dict[str, Any]],
+        target_results: list[ArchiveTargetResult],
     ) -> None:
         with closing(sqlite3.connect(self.sqlite_path)) as db:
             db.execute(
@@ -550,7 +663,208 @@ class ReceiverStorage:
                         file_info["archive_status"],
                     ),
                 )
+            for target_result in target_results:
+                db.execute(
+                    """
+                    INSERT INTO archive_targets(
+                      submission_id, target_name, archive_uri, archive_status, error, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        submission_id,
+                        target_result.target,
+                        target_result.archive_uri,
+                        "archived" if target_result.ok else "pending" if target_result.error is None else "failed",
+                        target_result.error,
+                        _utc_now(),
+                    ),
+                )
             db.commit()
+
+    def _archive_target_names(self) -> tuple[str, ...]:
+        if self.archive_backend is None:
+            return ()
+        names = getattr(self.archive_backend, "target_names", None)
+        if names:
+            return tuple(names)
+        return ("primary",)
+
+    def _target_results(self, result: ArchiveResult) -> list[ArchiveTargetResult]:
+        if result.target_results:
+            return list(result.target_results)
+        return [
+            ArchiveTargetResult(
+                target="primary",
+                ok=result.ok and bool(result.archive_uri),
+                archive_uri=result.archive_uri,
+                error=result.error,
+            ),
+        ]
+
+    def _archive_target(
+        self,
+        target_name: str,
+        spool_dir: Path,
+        archive_key: str,
+        backend: Any = None,
+    ) -> ArchiveResult:
+        backend = self.archive_backend if backend is None else backend
+        archive_target = getattr(backend, "archive_target", None)
+        if archive_target is not None:
+            return archive_target(target_name, spool_dir, archive_key)
+        return backend.archive(spool_dir, archive_key)
+
+    def _ensure_archive_target_rows(self, submission_id: str) -> tuple[str, ...]:
+        target_names = self._archive_target_names()
+        if not target_names:
+            return ()
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            for target_name in target_names:
+                db.execute(
+                    """
+                    INSERT OR IGNORE INTO archive_targets(
+                      submission_id, target_name, archive_uri, archive_status, error, updated_at
+                    )
+                    VALUES (?, ?, NULL, 'pending', NULL, ?)
+                    """,
+                    (submission_id, target_name, _utc_now()),
+                )
+            db.commit()
+        return target_names
+
+    def _submission_target_archived(self, submission_id: str, target_name: str) -> bool:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            row = db.execute(
+                "SELECT archive_status FROM archive_targets WHERE submission_id = ? AND target_name = ?",
+                (submission_id, target_name),
+            ).fetchone()
+        return bool(row and row[0] == "archived")
+
+    def _record_target_result(
+        self,
+        submission_ids: list[str],
+        target_result: ArchiveTargetResult,
+        session_archive: bool = False,
+    ) -> None:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            for submission_id in submission_ids:
+                archive_uri = target_result.archive_uri
+                if archive_uri and session_archive:
+                    archive_uri = f"{archive_uri.rstrip('/')}/{submission_id}"
+                db.execute(
+                    """
+                    INSERT INTO archive_targets(
+                      submission_id, target_name, archive_uri, archive_status, error, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(submission_id, target_name) DO UPDATE SET
+                      archive_uri = excluded.archive_uri,
+                      archive_status = excluded.archive_status,
+                      error = excluded.error,
+                      updated_at = excluded.updated_at
+                    """,
+                    (
+                        submission_id,
+                        target_result.target,
+                        archive_uri,
+                        "archived" if target_result.ok else "failed",
+                        target_result.error,
+                        _utc_now(),
+                    ),
+                )
+            db.commit()
+        for submission_id in submission_ids:
+            self._sync_submission_state(submission_id)
+
+    def _archive_target_rows(self, submission_id: str) -> list[ArchiveTargetResult]:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            rows = db.execute(
+                """
+                SELECT target_name, archive_uri, archive_status, error
+                FROM archive_targets
+                WHERE submission_id = ?
+                ORDER BY target_name
+                """,
+                (submission_id,),
+            ).fetchall()
+        return [
+            ArchiveTargetResult(
+                target=target_name,
+                ok=status == "archived",
+                archive_uri=archive_uri,
+                error=error,
+            )
+            for target_name, archive_uri, status, error in rows
+        ]
+
+    def _sync_submission_state(self, submission_id: str) -> None:
+        target_results = self._archive_target_rows(submission_id)
+        if not target_results:
+            return
+        archive_status = _aggregate_archive_status(target_results)
+        archive_uri = _first_archive_uri(target_results)
+        archive_error = _archive_error(target_results)
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            db.execute(
+                "UPDATE submissions SET archive_status = ? WHERE id = ?",
+                (archive_status, submission_id),
+            )
+            file_rows = db.execute(
+                "SELECT id, archive_filename FROM submission_files WHERE submission_id = ? ORDER BY file_index",
+                (submission_id,),
+            ).fetchall()
+            for file_row_id, archive_filename in file_rows:
+                db.execute(
+                    """
+                    UPDATE submission_files
+                    SET archive_status = ?, archive_uri = ?, local_path = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        archive_status,
+                        f"{archive_uri.rstrip('/')}/{archive_filename}" if archive_uri else None,
+                        None
+                        if archive_status == "archived" and self.delete_local_after_success
+                        else str(self.spool_dir / submission_id / archive_filename),
+                        file_row_id,
+                    ),
+                )
+            db.commit()
+        self._update_jsonl_submission(submission_id, archive_status, archive_uri, archive_error, target_results)
+
+    def _update_jsonl_submission(
+        self,
+        submission_id: str,
+        archive_status: str,
+        archive_uri: str | None,
+        archive_error: str | None,
+        target_results: list[ArchiveTargetResult],
+    ) -> None:
+        if not self.jsonl_path.exists():
+            return
+        updated: list[str] = []
+        for line in self.jsonl_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            if item.get("id") == submission_id:
+                item["archive_status"] = archive_status
+                item["archive_uri"] = archive_uri
+                item["archive_error"] = archive_error
+                item["archive_targets"] = _target_results_payload(target_results)
+                for file_info in item.get("files", []):
+                    file_info["archive_status"] = archive_status
+                    file_info["archive_uri"] = (
+                        f"{archive_uri.rstrip('/')}/{file_info['archive_filename']}" if archive_uri else None
+                    )
+                    file_info["local_path"] = (
+                        None
+                        if archive_status == "archived" and self.delete_local_after_success
+                        else str(self.spool_dir / submission_id / file_info["archive_filename"])
+                    )
+            updated.append(json.dumps(item, sort_keys=True))
+        self.jsonl_path.write_text("\n".join(updated) + ("\n" if updated else ""), encoding="utf-8")
 
     def _append_jsonl(self, item: dict[str, Any]) -> None:
         with self.jsonl_path.open("a", encoding="utf-8") as handle:
@@ -581,11 +895,15 @@ class ReceiverStorage:
         self.jsonl_path.write_text("", encoding="utf-8")
         self._init_schema()
 
-    def _prune_metadata_archives(self, keep_local: int) -> None:
+    def _prune_metadata_archives(self, keep_local: int, protected: set[str] | None = None) -> None:
         root = self.data_dir / "metadata_archives"
         if not root.exists():
             return
-        archives = sorted([path for path in root.iterdir() if path.is_dir()], key=lambda path: path.name)
+        protected = protected or set()
+        archives = sorted(
+            [path for path in root.iterdir() if path.is_dir() and path.name not in protected],
+            key=lambda path: path.name,
+        )
         keep = max(0, keep_local)
         for path in archives[:-keep] if keep else archives:
             shutil.rmtree(path)
@@ -605,3 +923,42 @@ def _metadata_archive_name(label: str | None) -> str:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _aggregate_archive_status(results: list[ArchiveTargetResult]) -> str:
+    if not results:
+        return "pending"
+    statuses = ["archived" if result.ok else "pending" if result.error is None else "failed" for result in results]
+    if all(status == "archived" for status in statuses):
+        return "archived"
+    if any(status == "archived" for status in statuses):
+        return "partial"
+    if any(status == "pending" for status in statuses):
+        return "pending"
+    return "failed"
+
+
+def _first_archive_uri(results: list[ArchiveTargetResult]) -> str | None:
+    for result in results:
+        if result.ok and result.archive_uri:
+            return result.archive_uri
+    return None
+
+
+def _archive_error(results: list[ArchiveTargetResult]) -> str | None:
+    errors = [f"{result.target}: {result.error}" for result in results if not result.ok and result.error]
+    if len(errors) == 1 and results and results[0].target == "primary":
+        return results[0].error
+    return "; ".join(errors) if errors else None
+
+
+def _target_results_payload(results: list[ArchiveTargetResult]) -> list[dict[str, Any]]:
+    return [
+        {
+            "target": result.target,
+            "ok": result.ok,
+            "archive_uri": result.archive_uri,
+            "error": result.error,
+        }
+        for result in results
+    ]
