@@ -3,6 +3,7 @@ import { scoringReferenceSchema } from "../../src/schemas/batch.schema";
 import type { ScoringReferenceConfig, ScoringReferenceObject } from "../../src/types/batch";
 import type { FinalObjectState, FinalState, RelativeFinalObjectState, ResultContextObject } from "../../src/types/result";
 import { localStepsToWorldDelta, normalizeRotation } from "../../src/utils/geometry";
+import { matchesScoringValue } from "../../src/types/scoring";
 import {
   isAbsoluteFinalState,
   isRelativeFinalState,
@@ -113,7 +114,11 @@ export function toObjectStateRows(
         target_relative_rotation_steps: targetRelative?.rotationSteps ?? "",
         error_relative_dx_steps: diff(relative?.dxSteps, targetRelative?.dxSteps),
         error_relative_dy_steps: diff(relative?.dySteps, targetRelative?.dySteps),
-        error_relative_rotation_steps: diff(relative?.rotationSteps, targetRelative?.rotationSteps),
+        error_relative_rotation_steps: scoringDiff(
+          relative?.rotationSteps,
+          targetRelative?.rotationSteps,
+          objectReference?.equivalence_classes?.rotation_steps,
+        ),
         absolute_x: absolute?.x ?? "",
         absolute_y: absolute?.y ?? "",
         absolute_rotation_deg: absolute?.rotationDeg ?? "",
@@ -233,6 +238,13 @@ function diff(observed?: number, target?: number): CsvNumber {
   }
 
   return observed - target;
+}
+
+function scoringDiff(observed?: number, target?: number, equivalenceClasses?: number[][]): CsvNumber {
+  if (observed === undefined || target === undefined) {
+    return "";
+  }
+  return matchesScoringValue(observed, target, equivalenceClasses) ? 0 : observed - target;
 }
 
 function distanceError(observed?: AbsoluteValues, target?: AbsoluteValues): CsvNumber {

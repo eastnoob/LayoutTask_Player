@@ -144,4 +144,47 @@ describe("calculateTaskReward", () => {
       scorableGroupCount: 4,
     });
   });
+
+  it("accepts a declared rotation equivalence class without changing position scoring", () => {
+    const result = calculateTaskReward({
+      config,
+      objects: [{ id: "scene_m05_variable", role: "variable", group_id: "scene_m05" }],
+      reference: {
+        qid: "Q1",
+        objects: {
+          scene_m05_variable: {
+            role: "variable",
+            group_id: "scene_m05",
+            target: { relative: { dx_steps: 1, dy_steps: 2, rotation_steps: 2 } },
+            equivalence_classes: { rotation_steps: [[-2, 2]] },
+          } as never,
+        },
+      },
+      finalState: { scene_m05_variable: { dx_steps: 1, dy_steps: 2, rotation_steps: -2 } },
+      cumulativeRewardCents: 0,
+    });
+
+    expect(result.groups[0]).toMatchObject({ positionCorrect: true, rotationCorrect: true, rewardCents: 12 });
+  });
+
+  it("keeps exact rotation matching when no equivalence class is declared", () => {
+    const result = calculateTaskReward({
+      config,
+      objects: [{ id: "scene_other_variable", role: "variable", group_id: "scene_other" }],
+      reference: {
+        qid: "Q1",
+        objects: {
+          scene_other_variable: {
+            role: "variable",
+            group_id: "scene_other",
+            target: { relative: { dx_steps: 1, dy_steps: 2, rotation_steps: 2 } },
+          },
+        },
+      },
+      finalState: { scene_other_variable: { dx_steps: 1, dy_steps: 2, rotation_steps: -2 } },
+      cumulativeRewardCents: 0,
+    });
+
+    expect(result.groups[0].rotationCorrect).toBe(false);
+  });
 });

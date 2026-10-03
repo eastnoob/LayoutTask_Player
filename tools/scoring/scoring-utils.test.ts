@@ -100,6 +100,24 @@ describe("object-level scoring export rows", () => {
     });
   });
 
+  it("treats declared rotation equivalence classes as zero scoring error", () => {
+    const result = createResult({
+      final_state_mode: "relative",
+      final_state: { chair_01: { dx_steps: 2, dy_steps: -1, rotation_steps: -2 } },
+    });
+    const reference = scoringReference({
+      relative: { dx_steps: 2, dy_steps: -1, rotation_steps: 2 },
+      absolute: { x: 150, y: 75, rotation_deg: 10 },
+    });
+    (reference.tasks.task1.objects.chair_01 as Record<string, unknown>).equivalence_classes = {
+      rotation_steps: [[-2, 2]],
+    };
+
+    const rows = toObjectStateRows([sourceRecord(result)], reference);
+
+    expect(rows[0].error_relative_rotation_steps).toBe(0);
+  });
+
   it("exports observed values with blank target and error fields when scoring reference is missing", () => {
     const rows = toObjectStateRows([sourceRecord(createResult())]);
 

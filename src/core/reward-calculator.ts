@@ -1,6 +1,7 @@
 import type { CalculateTaskRewardInput, ExperimentRewardSummary, RewardGroupResult, TaskRewardSummary } from "../types/reward";
 import type { LayoutTaskResult } from "../types/result";
 import { asRelativeFinalState } from "../types/reward";
+import { matchesScoringValue } from "../types/scoring";
 
 export function calculateTaskReward(input: CalculateTaskRewardInput): TaskRewardSummary {
   const base: TaskRewardSummary = {
@@ -89,7 +90,13 @@ function scoreScorableGroup(
   const positionCorrect = Boolean(
     target && answer && answer.dx_steps === target.dx_steps && answer.dy_steps === target.dy_steps,
   );
-  const rotationCorrect = Boolean(target && answer && answer.rotation_steps === target.rotation_steps);
+  const rotationCorrect = Boolean(
+    target && answer && matchesScoringValue(
+      answer.rotation_steps,
+      target.rotation_steps,
+      referenceObject.equivalence_classes?.rotation_steps,
+    ),
+  );
   const movementRewardCents = positionCorrect ? input.config.movementRewardCents : 0;
   const rotationRewardCents = rotationCorrect ? input.config.rotationRewardCents : 0;
   const rewardCents = movementRewardCents + rotationRewardCents;

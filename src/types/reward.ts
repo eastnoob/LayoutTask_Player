@@ -1,5 +1,6 @@
 import type { FinalState, RelativeFinalState } from "./result";
 import type { ObjectRole } from "./config";
+import type { ScoringEquivalenceClasses } from "./scoring";
 
 export interface RewardConfig {
   enabled: boolean;
@@ -21,6 +22,7 @@ export interface RewardReferenceObject {
       rotation_steps: number;
     };
   };
+  equivalence_classes?: ScoringEquivalenceClasses;
 }
 
 export interface RewardReferenceTask {
