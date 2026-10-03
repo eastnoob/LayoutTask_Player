@@ -1,6 +1,7 @@
 {
   "schema": "layouttask.generation-report.v1",
   "experiment_id": "run_12_core_23",
+  "reference_mode": "preview_10s",
   "task_count": 23,
   "generated_files": [
     "manifest.json",
@@ -28,6 +29,7 @@
     "tasks/scene_85b04c9ff8c0.json",
     "tasks/scene_395dba77481f.json",
     "scoring/scoring-reference.json",
+    "schedule.json",
     "generation-report.json"
   ],
   "warnings": []

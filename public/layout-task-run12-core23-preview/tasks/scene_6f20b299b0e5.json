@@ -237,6 +237,7 @@
       }
     }
   ],
+  "reference_mode": "preview_10s",
   "display_image": {
     "enabled": true,
     "src": "assets/images/stimulus/6f20b299b0e5_perspective_stimulus_1920x1080.png",
@@ -248,12 +249,12 @@
     "config": {
       "preview_duration_sec": 10,
       "require_preview_ack": true,
-      "intro_message": "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the scene from memory.",
+      "intro_message": "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the floor plan based on the picture you just studied.",
       "intro_confirm_label": "Start preview",
       "stage_during_preview": "hidden",
       "show_countdown": true,
       "message_before": "Next, you will have {seconds} seconds to study the image.",
-      "message_after": "Please reconstruct the scene from memory."
+      "message_after": "Please reconstruct the floor plan based on the picture you just studied."
     }
   },
   "stage": {

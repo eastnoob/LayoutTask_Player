@@ -280,6 +280,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -675,6 +685,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         }
       ],
@@ -777,6 +797,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -1099,6 +1129,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -1568,6 +1608,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -1743,6 +1793,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -2065,6 +2125,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -2534,6 +2604,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -2856,6 +2936,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -3104,6 +3194,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -3573,6 +3673,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         }
       ],
@@ -3675,6 +3785,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -3997,6 +4117,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -4539,6 +4669,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         }
       ],
@@ -4641,6 +4781,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -4964,6 +5114,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -5286,6 +5446,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         },
         {
@@ -5607,6 +5777,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -6002,6 +6182,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -6471,6 +6661,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         }
       ],
@@ -6793,6 +6993,16 @@
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
             }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
+            }
           }
         }
       ],
@@ -6895,6 +7105,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },
@@ -7217,6 +7437,16 @@
             "source": {
               "type": "svg",
               "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+            }
+          },
+          "scoring": {
+            "equivalence_classes": {
+              "rotation_steps": [
+                [
+                  -2,
+                  2
+                ]
+              ]
             }
           }
         },

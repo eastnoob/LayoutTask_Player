@@ -36,7 +36,7 @@
       "id": "scene_64b3b35fb323_m05_group",
       "asset": "m05_group",
       "x": -9950.468,
-      "y": 25148.945,
+      "y": 21658.967909507446,
       "behavior": {
         "config": {
           "movement": {
@@ -53,7 +53,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_group_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -61,7 +65,7 @@
       "id": "scene_64b3b35fb323_m05_variable",
       "asset": "m05_variable",
       "x": -11112.688,
-      "y": 23403.171,
+      "y": 19913.193909507445,
       "behavior": {
         "template": "button500_rotate45_limited"
       },
@@ -71,7 +75,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m05_variable_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -79,7 +87,7 @@
       "id": "scene_64b3b35fb323_m01_group",
       "asset": "m01_group",
       "x": -10498.45,
-      "y": 38500,
+      "y": 34781.90148911798,
       "behavior": {
         "config": {
           "movement": {
@@ -96,7 +104,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_group_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -104,7 +116,7 @@
       "id": "scene_64b3b35fb323_m01_variable",
       "asset": "m01_variable",
       "x": -10500,
-      "y": 38511.022,
+      "y": 34792.92348911798,
       "behavior": {
         "template": "button500_rotate45_limited"
       },
@@ -114,7 +126,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m01_variable_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -122,7 +138,7 @@
       "id": "scene_64b3b35fb323_m03_group",
       "asset": "m03_group",
       "x": -3507.532,
-      "y": 24500,
+      "y": 21010.022909507446,
       "behavior": {
         "config": {
           "movement": {
@@ -139,7 +155,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_group_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -147,7 +167,7 @@
       "id": "scene_64b3b35fb323_m03_variable",
       "asset": "m03_variable",
       "x": -2639.009,
-      "y": 23980.827,
+      "y": 20490.849909507448,
       "behavior": {
         "template": "button500_rotate45_limited"
       },
@@ -157,7 +177,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m03_variable_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -165,7 +189,7 @@
       "id": "scene_64b3b35fb323_m04_group",
       "asset": "m04_group",
       "x": -7000,
-      "y": 17500,
+      "y": 14173.19587628866,
       "behavior": {
         "config": {
           "movement": {
@@ -182,7 +206,11 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_group_COLLISION.svg"
+        },
         "padding": 0
       }
     },
@@ -190,7 +218,7 @@
       "id": "scene_64b3b35fb323_m04_variable",
       "asset": "m04_variable",
       "x": -7000,
-      "y": 17500,
+      "y": 14173.19587628866,
       "behavior": {
         "template": "button500_rotate45_limited"
       },
@@ -200,11 +228,16 @@
       "anchor": "center",
       "collision": {
         "enabled": true,
-        "shape": "box",
+        "shape": "asset_outline",
+        "source": {
+          "type": "svg",
+          "src": "assets/collision/objects/m04_variable_COLLISION.svg"
+        },
         "padding": 0
       }
     }
   ],
+  "reference_mode": "preview_10s",
   "display_image": {
     "enabled": true,
     "src": "assets/images/stimulus/64b3b35fb323_perspective_stimulus_1920x1080.png",
@@ -212,13 +245,29 @@
     "record_metrics": true
   },
   "flow": {
-    "mode": "direct_reconstruction"
+    "mode": "preview_then_reconstruct",
+    "config": {
+      "preview_duration_sec": 10,
+      "require_preview_ack": true,
+      "intro_message": "Next, you will have {seconds} seconds to study the image. After the image disappears, reconstruct the floor plan based on the picture you just studied.",
+      "intro_confirm_label": "Start preview",
+      "stage_during_preview": "hidden",
+      "show_countdown": true,
+      "message_before": "Next, you will have {seconds} seconds to study the image.",
+      "message_after": "Please reconstruct the floor plan based on the picture you just studied."
+    }
   },
   "stage": {
     "fit": "contain",
     "max_height_ratio": 0.88,
     "padding": 16,
     "display_rotation_deg": 0,
-    "display_flip_y": false
+    "display_flip_y": true,
+    "background_flip_y": true
+  },
+  "collision": {
+    "enabled": true,
+    "mode": "discrete",
+    "areas": []
   }
 }

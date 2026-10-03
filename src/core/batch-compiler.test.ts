@@ -106,6 +106,21 @@ describe("protocol examples", () => {
 });
 
 describe("compileBatch", () => {
+  it("declares rotation equivalence only for R12 M05 variable objects", () => {
+    const inputPath = path.join(repoRoot, "assets/generated-experiments/run_12_core_23/source/batch.json");
+    const batch = JSON.parse(readFileSync(inputPath, "utf8")) as BatchConfig;
+    const m05Variables = batch.trials.flatMap((trial) => trial.objects)
+      .filter((object) => object.id.endsWith("_m05_variable"));
+    const otherObjects = batch.trials.flatMap((trial) => trial.objects)
+      .filter((object) => !object.id.endsWith("_m05_variable"));
+
+    expect(m05Variables).toHaveLength(23);
+    expect(m05Variables.every((object) =>
+      object.scoring?.equivalence_classes?.rotation_steps?.some((group) => group.includes(-2) && group.includes(2)),
+    )).toBe(true);
+    expect(otherObjects.some((object) => object.scoring?.equivalence_classes?.rotation_steps)).toBe(false);
+  });
+
   it("emits the selected reference mode while preserving the default", () => {
     const preview = compileBatch(createBatch());
     const persistent = compileBatch(createBatch(), { referenceMode: "persistent" });

@@ -1,0 +1,16 @@
+{
+  "schema": "layouttask.manifest.v1",
+  "experiment_id": "tutorial_scene_edc634ac7856",
+  "title": "Fixed tutorial scene from E:/260917",
+  "asset_library": "assets/objects.json",
+  "background_library": "assets/backgrounds.json",
+  "behavior_library": "behaviors/behaviors.json",
+  "scoring_reference": "scoring/scoring-reference.json",
+  "tasks": [
+    {
+      "qid": "Q_scene_edc634ac7856",
+      "task_id": "scene_edc634ac7856",
+      "file": "tasks/scene_edc634ac7856.json"
+    }
+  ]
+}

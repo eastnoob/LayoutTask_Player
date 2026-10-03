@@ -4,6 +4,7 @@
   "asset_library": "assets/objects.json",
   "background_library": "assets/backgrounds.json",
   "behavior_library": "behaviors/behaviors.json",
+  "reference_mode": "preview_10s",
   "tasks": [
     {
       "qid": "Q_scene_be84fc97a8d1",
