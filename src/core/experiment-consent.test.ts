@@ -49,6 +49,7 @@ describe("experiment consent", () => {
       questions_answered_confirmed: true,
       prestudy_document_confirmed: true,
       withdrawal_right_understood_confirmed: true,
+      data_protection_statement_confirmed: true,
       developer_mode: false,
     });
   });
@@ -61,17 +62,17 @@ describe("experiment consent", () => {
     }).developer_mode).toBe(true);
   });
 
-  it("requires all four informed-consent confirmations", () => {
-    expect(isConsentComplete([true, true, true, false])).toBe(false);
-    expect(isConsentComplete([true, true, true, true])).toBe(true);
+  it("requires all five consent confirmations", () => {
+    expect(isConsentComplete([true, true, true, true, false])).toBe(false);
+    expect(isConsentComplete([true, true, true, true, true])).toBe(true);
   });
 
   it("keeps the four consent statements equivalent in English and Chinese", () => {
     const english = getConsentPageCopy("en-US");
     const chinese = getConsentPageCopy("zh-CN");
 
-    expect(english.confirmations).toHaveLength(4);
-    expect(chinese.confirmations).toHaveLength(4);
+    expect(english.confirmations).toHaveLength(5);
+    expect(chinese.confirmations).toHaveLength(5);
     expect(english.confirmations.join(" ")).toContain("volunteered to participate");
     expect(english.confirmations.join(" ")).toContain("allowed to ask questions");
     expect(english.confirmations.join(" ")).toContain("presented with this document");
@@ -82,5 +83,23 @@ describe("experiment consent", () => {
     expect(chinese.confirmations.join(" ")).toContain("随时退出");
     expect(english.signatureNotice).toContain("electronic confirmation");
     expect(chinese.signatureNotice).toContain("电子确认");
+  });
+
+  it("provides the complete consent and data-protection document for both locales", () => {
+    const english = getConsentPageCopy("en-US");
+    const chinese = getConsentPageCopy("zh-CN");
+
+    expect(english.confirmations).toHaveLength(5);
+    expect(chinese.confirmations).toHaveLength(5);
+    expect(english.fullDocumentHtml).toContain("Potential risks");
+    expect(english.fullDocumentHtml).toContain("Data Protection Officer");
+    expect(english.fullDocumentHtml).toContain("Prolific ID");
+    expect(english.fullDocumentHtml).toContain("20–40 minutes");
+    expect(chinese.fullDocumentHtml).toContain("潜在风险");
+    expect(chinese.fullDocumentHtml).toContain("数据保护官");
+    expect(chinese.fullDocumentHtml).toContain("Prolific ID");
+    expect(chinese.fullDocumentHtml).toContain("20–40 分钟");
+    expect(readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8"))
+      .toContain(".layout-task-consent-document");
   });
 });

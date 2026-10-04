@@ -276,6 +276,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "questions_answered_confirmed",
       "prestudy_document_confirmed",
       "withdrawal_right_understood_confirmed",
+      "data_protection_statement_confirmed",
       "developer_mode",
     ],
     [
@@ -326,6 +327,7 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         input.consent?.questions_answered_confirmed,
         input.consent?.prestudy_document_confirmed,
         input.consent?.withdrawal_right_understood_confirmed,
+        input.consent?.data_protection_statement_confirmed,
         input.consent?.developer_mode,
       ],
     ],

@@ -181,6 +181,7 @@ describe("experiment data export", () => {
       questions_answered_confirmed: true,
       prestudy_document_confirmed: true,
       withdrawal_right_understood_confirmed: true,
+      data_protection_statement_confirmed: true,
       developer_mode: false,
     } satisfies ConsentRecord,
   };

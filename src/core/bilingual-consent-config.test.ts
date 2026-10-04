@@ -23,9 +23,9 @@ describe("bilingual consent configuration", () => {
   });
 
   it("keeps the current study duration and compensation in both consent copies", () => {
-    expect(getConsentPageCopy("en-US").studyDetails).toContain("20–40 minutes");
-    expect(getConsentPageCopy("en-US").studyDetails).toContain("£4");
-    expect(getConsentPageCopy("zh-CN").studyDetails).toContain("20–40 分钟");
-    expect(getConsentPageCopy("zh-CN").studyDetails).toContain("£4");
+    expect(getConsentPageCopy("en-US").fullDocumentHtml).toContain("20–40 minutes");
+    expect(getConsentPageCopy("en-US").fullDocumentHtml).toContain("£4");
+    expect(getConsentPageCopy("zh-CN").fullDocumentHtml).toContain("20–40 分钟");
+    expect(getConsentPageCopy("zh-CN").fullDocumentHtml).toContain("£4");
   });
 });
