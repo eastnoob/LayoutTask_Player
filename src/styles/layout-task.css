@@ -257,6 +257,10 @@ body {
   pointer-events: none;
 }
 
+.layout-task-tutorial-interaction-locked .layout-task-workspace {
+  pointer-events: none;
+}
+
 .layout-task-flow-modal-dialog.is-tutorial-attention,
 .layout-task-display-image-frame.is-tutorial-attention,
 .layout-task-stage-wrap.is-tutorial-attention,

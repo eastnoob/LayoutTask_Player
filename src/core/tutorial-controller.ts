@@ -138,6 +138,10 @@ export class TutorialController {
     return this.getCurrentStep().id === "complete";
   }
 
+  isInteractionBlocked(): boolean {
+    return this.getCurrentStep().id === "view_direction";
+  }
+
   handle(event: TutorialEvent, _payload?: { objectId?: string }): boolean {
     if (this.getCurrentStep().expectedEvent !== event) {
       return false;

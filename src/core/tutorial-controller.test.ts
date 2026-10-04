@@ -21,6 +21,17 @@ describe("TutorialController", () => {
     expect(controller.getCurrentStep().id).toBe("preview");
   });
 
+  it("blocks all experiment interaction while the direction confirmation is pending", () => {
+    const controller = new TutorialController("persistent");
+
+    controller.handle("reconstruction_started");
+    expect(controller.getCurrentStep().id).toBe("view_direction");
+    expect(controller.isInteractionBlocked()).toBe(true);
+
+    controller.handle("view_direction_acknowledged");
+    expect(controller.isInteractionBlocked()).toBe(false);
+  });
+
   it("walks through real reconstruction actions", () => {
     const controller = new TutorialController();
 

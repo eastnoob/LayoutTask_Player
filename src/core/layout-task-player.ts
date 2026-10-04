@@ -204,6 +204,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       void completion?.copyAgain();
     },
     onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
+    isInteractionBlocked: () => tutorial?.isInteractionBlocked() ?? false,
     isPaused: () => options.pause?.isPaused() ?? false,
   });
 
@@ -277,6 +278,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           onObjectAction: (objectId) => advanceTutorial("object_moved_or_rotated", { objectId }),
           onObjectDeselected: (objectId) => advanceTutorial("object_deselected", { objectId }),
         },
+        isInteractionBlocked: () => tutorial?.isInteractionBlocked() ?? false,
         pause: options.pause,
       });
       completion = new CompletionController({

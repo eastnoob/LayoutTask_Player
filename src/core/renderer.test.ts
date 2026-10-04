@@ -283,6 +283,16 @@ describe("LayoutTaskRenderer stage fit", () => {
 });
 
 describe("LayoutTaskRenderer object interactivity", () => {
+  it("guards every interactive surface while the tutorial confirmation is pending", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const css = readFileSync("src/styles/layout-task.css", "utf8");
+
+    expect(renderer).toContain("isInteractionBlocked?: () => boolean;");
+    expect(renderer).toContain("layout-task-tutorial-interaction-locked");
+    expect(renderer).toContain("if (this.options.isInteractionBlocked?.())");
+    expect(css).toContain(".layout-task-tutorial-interaction-locked .layout-task-workspace");
+  });
+
   it("treats objects without movement or rotation as static context", () => {
     const config = createRuntimeConfig();
     const staticObject = {
@@ -360,7 +370,7 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
     expect(renderer).toContain("setPointerCapture(event.pointerId)");
     expect(renderer).toContain("releasePointerCapture(event.pointerId)");
-    expect(renderer).toContain("if (this.options.isPaused?.())");
+    expect(renderer).toContain("this.options.isPaused?.()");
     expect(renderer).not.toContain("event.button !== 2");
     expect(renderer).not.toContain('svg.addEventListener("contextmenu"');
     expect(renderer).toContain("preventDefault()");

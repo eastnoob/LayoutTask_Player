@@ -116,6 +116,7 @@ export class LayoutTaskRenderer {
       onDeveloperShortcut?: () => void;
       onCopyAgain?: () => void;
       onTutorialAcknowledge?: () => void;
+      isInteractionBlocked?: () => boolean;
       isPaused?: () => boolean;
       confidence?: {
         scale: number[];
@@ -211,7 +212,7 @@ export class LayoutTaskRenderer {
     svg.style.aspectRatio = stageFitStyle.aspectRatio;
     svg.style.maxHeight = stageFitStyle.maxHeight;
     svg.addEventListener("click", (event) => {
-      if (this.options.isPaused?.()) {
+      if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
         return;
       }
       if (event.target === svg || event.target === background) {
@@ -281,14 +282,14 @@ export class LayoutTaskRenderer {
         group.setAttribute("role", "button");
         group.setAttribute("aria-label", `${objectConfig.id} edit mode`);
         group.addEventListener("click", (event) => {
-          if (this.options.isPaused?.()) {
+          if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
             return;
           }
           event.stopPropagation();
           this.options.onObjectSelect?.(objectConfig.id);
         });
         group.addEventListener("keydown", (event) => {
-          if (this.options.isPaused?.()) {
+          if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
             return;
           }
           if (event.key !== "Enter" && event.key !== " ") {
@@ -404,7 +405,7 @@ export class LayoutTaskRenderer {
     confirmButton.textContent = "Confirm";
     confirmButton.dataset.layoutTaskAnchor = "confirm";
     confirmButton.addEventListener("click", () => {
-      if (!this.options.isPaused?.()) {
+      if (!this.options.isPaused?.() && !this.options.isInteractionBlocked?.()) {
         this.options.onConfirm?.();
       }
     });
@@ -418,7 +419,11 @@ export class LayoutTaskRenderer {
       developerShortcut.title = chinese
         ? "通过正常交互流程填写默认位置、旋转和置信度"
         : "Fill default poses and confidence through the normal interaction flow";
-      developerShortcut.addEventListener("click", () => this.options.onDeveloperShortcut?.());
+      developerShortcut.addEventListener("click", () => {
+        if (!this.options.isInteractionBlocked?.()) {
+          this.options.onDeveloperShortcut?.();
+        }
+      });
     }
 
     const status = document.createElement("p");
@@ -589,6 +594,9 @@ export class LayoutTaskRenderer {
           button.dataset.confidenceDimension = dimension;
           button.textContent = `${value} ${confidence.labels[String(value)] ?? ""}`.trim();
           button.addEventListener("click", () => {
+            if (this.options.isInteractionBlocked?.()) {
+              return;
+            }
             for (const item of buttons.querySelectorAll("button")) {
               item.classList.remove("is-selected");
             }
@@ -609,7 +617,9 @@ export class LayoutTaskRenderer {
       }
 
       saveButton.addEventListener("click", () => {
-        confidence.onSave();
+        if (!this.options.isInteractionBlocked?.()) {
+          confidence.onSave();
+        }
       });
     }
 
@@ -667,7 +677,9 @@ export class LayoutTaskRenderer {
     button.title = ariaLabel;
     button.addEventListener("click", (event) => {
       event.stopPropagation();
-      onClick();
+      if (!this.options.isInteractionBlocked?.()) {
+        onClick();
+      }
     });
     return button;
   }
@@ -709,6 +721,11 @@ export class LayoutTaskRenderer {
     renderTutorialMessage(message, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
+    const interactionBlocked = step.id === "view_direction";
+    this.options.root.classList.toggle("layout-task-tutorial-interaction-locked", interactionBlocked);
+    if (this.refs.confirmButton) {
+      this.refs.confirmButton.disabled = interactionBlocked;
+    }
     this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
     this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
@@ -719,6 +736,7 @@ export class LayoutTaskRenderer {
       this.refs.tutorialBubbleElement.hidden = true;
     }
     this.refs.tutorialViewingDirectionElement?.classList.remove("is-visible");
+    this.options.root.classList.remove("layout-task-tutorial-interaction-locked");
     this.setTutorialAttention();
   }
 
@@ -1128,7 +1146,7 @@ export class LayoutTaskRenderer {
   }
 
   private readonly handleViewportPanPointerDown = (event: PointerEvent): void => {
-    if (this.options.isPaused?.()) {
+    if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
       return;
     }
     if (!this.refs.svg || !(event.currentTarget instanceof HTMLElement)) {
@@ -1146,7 +1164,7 @@ export class LayoutTaskRenderer {
   };
 
   private readonly handleViewportPointerMove = (event: PointerEvent): void => {
-    if (this.options.isPaused?.()) {
+    if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
       return;
     }
     if (event.pointerId !== this.viewportPanPointerId || !this.viewportPanLast || !this.refs.svg) {
@@ -1290,7 +1308,7 @@ export class LayoutTaskRenderer {
       const icon = createControlIcon(control.icon, ui.controlIconSize);
 
       button.addEventListener("click", (event) => {
-        if (this.options.isPaused?.()) {
+        if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
           return;
         }
         event.stopPropagation();
@@ -1298,7 +1316,7 @@ export class LayoutTaskRenderer {
       });
 
       button.addEventListener("keydown", (event) => {
-        if (this.options.isPaused?.()) {
+        if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
           return;
         }
         if (event.key !== "Enter" && event.key !== " ") {
@@ -1704,7 +1722,7 @@ export class LayoutTaskRenderer {
 
   private bindObjectPointerEvents(element: SVGElement, objectId: string): void {
     element.addEventListener("pointerdown", (event) => {
-      if (this.options.isPaused?.()) {
+      if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
         return;
       }
       const pointer = this.eventToRendererPointer(event);
@@ -1715,7 +1733,7 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointermove", (event) => {
-      if (this.options.isPaused?.()) {
+      if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
         return;
       }
       if (!element.hasPointerCapture(event.pointerId)) {
@@ -1726,7 +1744,7 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointerup", (event) => {
-      if (this.options.isPaused?.()) {
+      if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
         return;
       }
       if (!element.hasPointerCapture(event.pointerId)) {
@@ -1738,7 +1756,7 @@ export class LayoutTaskRenderer {
     });
 
     element.addEventListener("pointercancel", (event) => {
-      if (this.options.isPaused?.()) {
+      if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
         return;
       }
       if (!element.hasPointerCapture(event.pointerId)) {
