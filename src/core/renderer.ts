@@ -729,6 +729,7 @@ export class LayoutTaskRenderer {
     this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
     this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
+    scrollTutorialStageIntoView(this.options.root, step.id);
   }
 
   hideTutorialStep(): void {
@@ -2101,6 +2102,17 @@ function renderTutorialMessage(container: HTMLElement, source: string): void {
   if (cursor < source.length) {
     container.append(document.createTextNode(source.slice(cursor)));
   }
+}
+
+export function scrollTutorialStageIntoView(root: HTMLElement, stepId: string): void {
+  if (stepId !== "view_direction") {
+    return;
+  }
+
+  root.querySelector<HTMLElement>('[data-layout-task-anchor="stage"]')?.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
 }
 
 export function getBackgroundDisplayTransform(config: RuntimeTaskConfig): string | undefined {

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
   getConfiguredObjectLocalRect,
@@ -15,6 +15,7 @@ import {
   getStageDisplayTransform,
   getStageFitStyle,
   getTutorialViewingDirectionGeometry,
+  scrollTutorialStageIntoView,
   getStageUiMetrics,
   getViewportCameraTransform,
   clampViewportZoom,
@@ -83,6 +84,30 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
+  it("scrolls the floor plan into view during the viewing-direction tutorial step", () => {
+    const scrollIntoView = vi.fn();
+    const root = {
+      querySelector: vi.fn(() => ({ scrollIntoView })),
+    } as unknown as HTMLElement;
+
+    scrollTutorialStageIntoView(root, "view_direction");
+
+    expect(root.querySelector).toHaveBeenCalledWith('[data-layout-task-anchor="stage"]');
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+  });
+
+  it("does not scroll for other tutorial steps", () => {
+    const scrollIntoView = vi.fn();
+    const root = {
+      querySelector: vi.fn(() => ({ scrollIntoView })),
+    } as unknown as HTMLElement;
+
+    scrollTutorialStageIntoView(root, "select_first");
+
+    expect(root.querySelector).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
   it("points the tutorial viewing arrow upward from the bottom center of the stage", () => {
     const config = createRuntimeConfig({
       world: {
