@@ -95,10 +95,16 @@ describe("experiment consent", () => {
     expect(english.fullDocumentHtml).toContain("Data Protection Officer");
     expect(english.fullDocumentHtml).toContain("£4 base payment");
     expect(english.fullDocumentHtml).toContain("20 minutes");
+    expect(english.fullDocumentHtml).not.toContain("Consent confirmations");
+    expect(english.fullDocumentHtml).not.toContain("Signature of researcher");
+    expect(english.fullDocumentHtml).not.toContain("Email address (optional)");
     expect(chinese.fullDocumentHtml).toContain("潜在风险");
     expect(chinese.fullDocumentHtml).toContain("数据保护官");
     expect(chinese.fullDocumentHtml).toContain("£4 基础奖金");
     expect(chinese.fullDocumentHtml).toContain("20 分钟");
+    expect(chinese.fullDocumentHtml).not.toContain("同意确认");
+    expect(chinese.fullDocumentHtml).not.toContain("研究人员签名");
+    expect(chinese.fullDocumentHtml).not.toContain("电子邮箱（可选）");
     expect(readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8"))
       .toContain(".layout-task-consent-document");
   });

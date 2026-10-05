@@ -83,15 +83,6 @@ const ENGLISH_DOCUMENT_HTML = `
     <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Each correctly reconstructed position or rotation earns an additional <strong>£0.04</strong>. Based on our testing, the expected total payment under normal performance is approximately <strong>€7 (about £6)</strong>. The actual amount may vary depending on your performance. Payment is administered directly through the third-party recruitment platform.</p>
     <p>You are free to stop, quit the study and retract your data at any time during the study with no further consequences. If you have any questions, please ask them now.</p>
     <p>For further questions, complains or issues, please contact the institute's Ethics-Committee: <a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>.</p>
-    <h3>Consent confirmations</h3>
-    <p>▢ I confirm I volunteered to participate in this study.</p>
-    <p>▢ I confirm I was allowed to ask questions and that I was provided with responses.</p>
-    <p>▢ I confirm I was presented with this document prior to the beginning of the study.</p>
-    <p>▢ I confirm and I understood my right to quit the study at any time.</p>
-    <p><strong>Date:</strong> _____________________________________________</p>
-    <p><strong>Signature of researcher:</strong> _____________________________________________</p>
-    <p><strong>Signature of participant:</strong> _____________________________________________</p>
-    <p><strong>Email address (optional):</strong> _____________________________________________<br />(Please provide your email address if you would like to be informed about future studies)</p>
     <h2>Data protection policy in accordance with Art. 13 GDPR</h2>
     <p><strong>Project/reason:</strong> Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph<br /><strong>Revision:</strong> 1</p>
     <h3>1. Name and address of the responsible controller</h3>
@@ -158,15 +149,6 @@ const CHINESE_DOCUMENT_HTML = `
     <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>。每个正确的位置或旋转答案均可获得额外 <strong>£0.04</strong>。根据我们的测试，在正常完成实验的情况下，预计总报酬约为 <strong>€7（约 £6）</strong>。实际金额会根据您的作答表现有所浮动。奖金由第三方招募平台直接发放。</p>
     <p>您可以在研究期间随时停止、退出研究并撤回您的数据，不会产生进一步后果。如果您有任何问题，请现在提出。</p>
     <p>如有进一步问题、投诉或其他事项，请联系研究伦理委员会：<a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>。</p>
-    <h3>同意确认</h3>
-    <p>▢ 我确认自己自愿参加本研究。</p>
-    <p>▢ 我确认自己有机会提问，并且已获得相应答复。</p>
-    <p>▢ 我确认自己在研究开始前已看到本文件。</p>
-    <p>▢ 我确认自己理解可以随时退出本研究。</p>
-    <p><strong>日期：</strong> _____________________________________________</p>
-    <p><strong>研究人员签名：</strong> _____________________________________________</p>
-    <p><strong>参与者签名：</strong> _____________________________________________</p>
-    <p><strong>电子邮箱（可选）：</strong> _____________________________________________<br />（如果您希望获知未来研究，请提供您的电子邮箱）</p>
     <h2>依据《通用数据保护条例》第 13 条的数据保护声明</h2>
     <p><strong>项目/研究名称：</strong>根据单张室内照片感知家具的位置与朝向<br /><strong>修订版本：</strong>1</p>
     <h3>1. 负责数据控制者的名称和地址</h3>
@@ -215,7 +197,7 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "知情同意",
       title: "开始实验前请阅读并确认",
       fullDocumentHtml: CHINESE_DOCUMENT_HTML,
-      signatureNotice: "勾选以下确认项并点击“我同意”即表示您作出电子确认，可视为本研究中的电子签字；这不代表生成手写签名。",
+      signatureNotice: "勾选全部确认项并点击“我同意并开始”即表示您同意本研究内容；此操作将作为您的电子确认和电子签字，不会生成手写签名。",
       confirmations: [
         "我确认自己自愿参加本研究。",
         "我确认自己有机会提问，并且已获得相应答复。",
@@ -229,7 +211,7 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "Informed consent",
       title: "Read and confirm before you begin",
       fullDocumentHtml: ENGLISH_DOCUMENT_HTML,
-      signatureNotice: "Checking the confirmations below and selecting “I agree” is your electronic confirmation and may be treated as your electronic signature for this study; it does not create a handwritten signature.",
+      signatureNotice: "Checking all confirmations below and selecting “I agree and begin” means that you consent to this study and serves as your electronic confirmation and electronic signature for this study; it does not create a handwritten signature.",
       confirmations: [
         "I confirm I volunteered to participate in this study.",
         "I confirm I was allowed to ask questions and that I was provided with responses.",
