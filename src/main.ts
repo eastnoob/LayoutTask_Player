@@ -37,7 +37,11 @@ async function bootstrap(): Promise<void> {
   if (isExperimentPath(window.location.pathname)) {
     const params = parseLayoutTaskUrlParams(window.location.search);
     const experimentParams = new URLSearchParams(window.location.search);
-    const configPath = getDefaultExperimentConfigPath(params.config, import.meta.env.DEV);
+    const configPath = getDefaultExperimentConfigPath(
+      params.config,
+      import.meta.env.DEV,
+      document.documentElement.dataset.defaultConfig,
+    );
     const loader = new ExperimentLoader({
       baseUrl: new URL("./", window.location.href).toString(),
       configPath,

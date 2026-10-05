@@ -7,6 +7,11 @@ describe("getDefaultExperimentConfigPath", () => {
     expect(getDefaultExperimentConfigPath("experiment-persistent.json", true)).toBe("experiment-persistent.json");
     expect(getDefaultExperimentConfigPath(undefined, false)).toBe("experiment.json");
   });
+
+  it("uses an entry-declared release config when no URL config is provided", () => {
+    expect(getDefaultExperimentConfigPath(undefined, false, "experiment-en.json")).toBe("experiment-en.json");
+    expect(getDefaultExperimentConfigPath("experiment-zh.json", false, "experiment-en.json")).toBe("experiment-zh.json");
+  });
 });
 
 describe("isDeveloperDebugExperiment", () => {
