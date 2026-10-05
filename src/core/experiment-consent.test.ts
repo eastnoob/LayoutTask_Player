@@ -93,12 +93,12 @@ describe("experiment consent", () => {
     expect(chinese.confirmations).toHaveLength(5);
     expect(english.fullDocumentHtml).toContain("Potential risks");
     expect(english.fullDocumentHtml).toContain("Data Protection Officer");
-    expect(english.fullDocumentHtml).toContain("Prolific ID");
-    expect(english.fullDocumentHtml).toContain("20–40 minutes");
+    expect(english.fullDocumentHtml).toContain("£4 base payment");
+    expect(english.fullDocumentHtml).toContain("20 minutes");
     expect(chinese.fullDocumentHtml).toContain("潜在风险");
     expect(chinese.fullDocumentHtml).toContain("数据保护官");
-    expect(chinese.fullDocumentHtml).toContain("Prolific ID");
-    expect(chinese.fullDocumentHtml).toContain("20–40 分钟");
+    expect(chinese.fullDocumentHtml).toContain("£4 基础奖金");
+    expect(chinese.fullDocumentHtml).toContain("20 分钟");
     expect(readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8"))
       .toContain(".layout-task-consent-document");
   });
