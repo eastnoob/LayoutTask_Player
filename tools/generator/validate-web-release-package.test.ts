@@ -17,4 +17,13 @@ describe("validateWebReleasePackage", () => {
     expect(report.failures).toContain("layout-task-run12-core23-persistent/manifest.json");
     expect(report.failures).toContain("layout-task-run12-core23-persistent/tutorial/manifest.json");
   });
+
+  it("rejects unrelated top-level packages that inflate the deployment checkout", async ({ task }) => {
+    const root = join(process.cwd(), ".tmp", "validate-web-release-package", task.id);
+    await mkdir(join(root, "layout-task-generated-first5-svg-only"), { recursive: true });
+
+    const report = await validateWebReleasePackage({ distDir: root });
+
+    expect(report.failures).toContain("unexpected top-level path: layout-task-generated-first5-svg-only");
+  });
 });

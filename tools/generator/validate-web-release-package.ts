@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -14,6 +14,15 @@ export interface WebReleasePackageReport {
 export async function validateWebReleasePackage(options: ValidateWebReleasePackageOptions): Promise<WebReleasePackageReport> {
   const distDir = path.resolve(options.distDir);
   const failures: string[] = [];
+  const allowedTopLevel = new Set([
+    "assets",
+    "experiment",
+    "index.html",
+    "layout-task-run12-core23-persistent",
+  ]);
+  for (const entry of await readdir(distDir)) {
+    if (!allowedTopLevel.has(entry)) failures.push(`unexpected top-level path: ${entry}`);
+  }
   const required = [
     "index.html",
     "experiment/index.html",
