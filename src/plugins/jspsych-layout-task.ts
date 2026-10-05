@@ -42,7 +42,6 @@ export interface LayoutTaskPluginParams {
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
-  practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
   onReady?: () => void;
@@ -129,10 +128,6 @@ const info = {
       type: ParameterType.OBJECT,
       default: null,
     },
-    practicePause: {
-      type: ParameterType.OBJECT,
-      default: null,
-    },
     onReady: {
       type: ParameterType.FUNCTION,
       default: null,
@@ -207,7 +202,6 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           },
           localBackup: trial.localBackup ?? undefined,
           pause: trial.pause ?? undefined,
-          practicePause: trial.practicePause ?? undefined,
           reward: trial.reward ?? undefined,
           rewardReference: trial.rewardReference ?? undefined,
         });

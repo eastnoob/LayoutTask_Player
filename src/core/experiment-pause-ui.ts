@@ -1,22 +1,18 @@
 import {
   ExperimentPauseController,
   FORMAL_PAUSE_LIMIT_MS,
-  PRACTICE_PAUSE_LIMIT_MS,
 } from "./experiment-pause";
 
 export interface ExperimentPauseUiOptions {
   controller: ExperimentPauseController;
-  practiceController?: ExperimentPauseController;
   documentRef?: Document;
   now?: () => number;
-  onTutorialPracticeStarted?: () => void;
-  onTutorialPracticeResumed?: () => void;
 }
 
 export interface ExperimentPauseUi {
   mount(): void;
   setPageActive(active: boolean): void;
-  setTutorialPracticeEnabled(enabled: boolean): void;
+  setPauseEnabled(enabled: boolean): void;
   destroy(): void;
 }
 
@@ -67,44 +63,18 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
 
   let mounted = false;
   let pageActive = true;
-  let practiceEnabled = false;
+  let pauseEnabled = true;
   let interval: ReturnType<typeof setInterval> | undefined;
-  let lastPracticeEventKey = "";
-  const unsubscribe = [options.controller.subscribe(update)];
-  if (options.practiceController) {
-    unsubscribe.push(options.practiceController.subscribe(update));
-  }
+  const unsubscribe = options.controller.subscribe(update);
 
-  function activeController(): ExperimentPauseController {
-    return practiceEnabled && options.practiceController ? options.practiceController : options.controller;
-  }
-
-  function update(changedSnapshot?: ReturnType<ExperimentPauseController["snapshot"]>): void {
-    const lastEvent = changedSnapshot?.events.at(-1);
-    const practiceEventKey = lastEvent?.mode === "tutorial_practice" && lastEvent
-      ? `${lastEvent.type}:${lastEvent.at}`
-      : "";
-    if (practiceEventKey && practiceEventKey !== lastPracticeEventKey) {
-      lastPracticeEventKey = practiceEventKey;
-      if (lastEvent?.type === "pause_confirmed") {
-        options.onTutorialPracticeStarted?.();
-      } else if (lastEvent?.type === "pause_resumed") {
-        options.onTutorialPracticeResumed?.();
-      }
-    }
-    const controller = activeController();
-    const snapshot = controller.snapshot();
-    const isPractice = practiceEnabled && Boolean(options.practiceController);
+  function update(): void {
+    const snapshot = options.controller.snapshot();
     root.hidden = !pageActive;
     dialog.hidden = snapshot.status !== "confirming";
-    overlay.hidden = !controller.isPaused();
-    button.disabled = isPractice
-      ? snapshot.status !== "practice_available"
-      : snapshot.status !== "available";
-    button.textContent = isPractice ? "Pause practice" : "Pause";
-    if (controller.isPaused() && snapshot.pauseStartedAt !== undefined) {
-      const limit = isPractice ? PRACTICE_PAUSE_LIMIT_MS : FORMAL_PAUSE_LIMIT_MS;
-      const seconds = Math.max(0, Math.ceil((limit - (now() - snapshot.pauseStartedAt)) / 1_000));
+    overlay.hidden = !options.controller.isPaused();
+    button.disabled = !pauseEnabled || snapshot.status !== "available";
+    if (options.controller.isPaused() && snapshot.pauseStartedAt !== undefined) {
+      const seconds = Math.max(0, Math.ceil((FORMAL_PAUSE_LIMIT_MS - (now() - snapshot.pauseStartedAt)) / 1_000));
       remaining.textContent = `${formatRemaining(seconds)} remaining`;
     }
   }
@@ -115,19 +85,22 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
   }
 
   button.addEventListener("click", () => {
-    activeController().requestPause();
+    if (!pauseEnabled) {
+      return;
+    }
+    options.controller.requestPause();
     update();
   });
   confirmButton.addEventListener("click", () => {
-    activeController().confirmPause();
+    options.controller.confirmPause();
     update();
   });
   cancelButton.addEventListener("click", () => {
-    activeController().cancelConfirmation();
+    options.controller.cancelConfirmation();
     update();
   });
   resumeButton.addEventListener("click", () => {
-    activeController().resume("manual_resume");
+    options.controller.resume("manual_resume");
     update();
   });
   ["pointerdown", "pointermove", "wheel", "contextmenu", "keydown"].forEach((type) => {
@@ -148,8 +121,8 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
       pageActive = active;
       update();
     },
-    setTutorialPracticeEnabled(enabled) {
-      practiceEnabled = enabled && Boolean(options.practiceController);
+    setPauseEnabled(enabled) {
+      pauseEnabled = enabled;
       update();
     },
     destroy() {
@@ -157,7 +130,7 @@ export function createExperimentPauseUi(options: ExperimentPauseUiOptions): Expe
         clearInterval(interval);
         interval = undefined;
       }
-      unsubscribe.forEach((remove) => remove());
+      unsubscribe();
       root.remove();
       mounted = false;
     },

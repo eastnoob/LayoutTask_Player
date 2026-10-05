@@ -64,7 +64,7 @@ function assignmentMetadata(assignment?: AssignmentRecord) {
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController; onTaskReady?: () => void } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; onTaskReady?: () => void } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
@@ -137,7 +137,6 @@ export function buildExperimentTimeline(
         dataSave: taskDataSave,
         localBackup: options.localBackup,
         pause: options.pause,
-        practicePause: options.practicePause,
         onReady: options.onTaskReady,
         data: { tutorial: true },
       });
@@ -154,7 +153,7 @@ export function buildExperimentTimeline(
             <div class="layout-task-tutorial-complete-note">
               <ul class="layout-task-tutorial-complete-list">
                 <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
-                <li>${chinese ? "你有一次正式暂停机会，最长15分钟。" : "You have one formal pause opportunity: a one-time 15-minute break."}</li>
+                <li>${chinese ? "正式实验期间可暂停一次，最长15分钟。" : "During the formal experiment, you may pause once for up to 15 minutes."}</li>
                 <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 ftian@uni-muenster.de 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at ftian@uni-muenster.de for assistance."}</li>
                 <li>${chinese ? "根据我们的测试，在正常完成实验的情况下，预计总报酬约为 €7（约 £6）。实际金额会根据您的作答表现有所浮动。每个正确的位置或旋转答案均可获得额外 £0.04。" : "Based on our testing, the expected total payment under normal performance is approximately €7 (about £6). The actual amount may vary depending on your performance. Each correctly reconstructed position or rotation earns an additional £0.04."}</li>
                 <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
@@ -213,7 +212,6 @@ export function buildExperimentTimeline(
       dataSave: taskDataSave,
       localBackup: options.localBackup,
       pause: options.pause,
-      practicePause: options.practicePause,
       onReady: options.onTaskReady,
       reward: config.reward,
       rewardReference: config.rewardReference?.[trial.taskId],
@@ -658,10 +656,9 @@ export function createRunnableExperiment(
       });
     },
   });
-  const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
   const pauseUi = typeof document === "undefined"
     ? createNoopPauseUi()
-    : createExperimentPauseUi({ controller: pause, practiceController: practicePause });
+    : createExperimentPauseUi({ controller: pause });
   pauseUi.mount();
   pauseUi.setPageActive(false);
   const startTime = Date.now();
@@ -673,7 +670,7 @@ export function createRunnableExperiment(
       }).getCurrentTrial?.();
       const trial = (startedTrial ?? currentTrial) as { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined;
       pauseUi.setPageActive(false);
-      pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
+      pauseUi.setPauseEnabled(!isTutorialTrial(trial));
     },
     on_finish: async () => {
       pauseUi.setPageActive(false);
@@ -747,7 +744,6 @@ export function createRunnableExperiment(
       requireAssignment: options.requireAssignment,
       localBackup,
       pause,
-      practicePause,
       onTaskReady: () => pauseUi.setPageActive(true),
     }),
   };
@@ -764,7 +760,7 @@ function createBrowserLocalBackup(
   return createIndexedDbLocalBackupStore(`${experimentId}:${participantId}:${sessionId}`);
 }
 
-export function isTutorialPausePage(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
+export function isTutorialTrial(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
   const data = trial?.data;
   return Boolean(trial?.tutorialMode || data?.tutorial);
 }
@@ -773,7 +769,7 @@ function createNoopPauseUi() {
   return {
     mount: () => undefined,
     setPageActive: (_active: boolean) => undefined,
-    setTutorialPracticeEnabled: (_enabled: boolean) => undefined,
+    setPauseEnabled: (_enabled: boolean) => undefined,
     destroy: () => undefined,
   };
 }

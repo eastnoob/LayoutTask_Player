@@ -39,7 +39,6 @@ export interface LayoutTaskPlayerOptions {
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
-  practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
 }
@@ -111,7 +110,6 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let flow: FlowController | undefined;
   let confidence: ConfidenceController | undefined;
   let tutorial: TutorialController | undefined;
-  let practicePauseUnsubscribe: (() => void) | undefined;
 
   const showTutorial = () => {
     if (tutorial) {
@@ -216,14 +214,6 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       if (options.tutorialMode) {
         tutorial = new TutorialController(options.config.referenceMode, options.locale);
         showTutorial();
-        practicePauseUnsubscribe = options.practicePause?.subscribe((snapshot) => {
-          const lastEvent = snapshot.events.at(-1);
-          if (lastEvent?.type === "pause_confirmed") {
-            advanceTutorial("pause_practice_started");
-          } else if (lastEvent?.type === "pause_resumed") {
-            advanceTutorial("pause_practice_resumed");
-          }
-        });
       }
       // Browser-only observer: in Node unit tests there is no window, so skip it.
       // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
@@ -241,7 +231,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       }
 
       const displayCollector = new DisplayInfoCollector(refs, options.config, displayChangeRecorder);
-      const pauseController = options.tutorialMode ? options.practicePause : options.pause;
+      const pauseController = options.pause;
       recorder = new Recorder({
     config: localizedConfig,
         sessionId,
@@ -323,8 +313,6 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       interaction?.unbind();
-      practicePauseUnsubscribe?.();
-      practicePauseUnsubscribe = undefined;
       flow?.destroy();
       displayChangeRecorder?.stop();
       referenceAssistanceRecorder?.stop();

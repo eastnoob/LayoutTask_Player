@@ -6,8 +6,6 @@ export type TutorialEvent =
   | "object_moved_or_rotated"
   | "confidence_chosen"
   | "object_deselected"
-  | "pause_practice_started"
-  | "pause_practice_resumed"
   | "submitted";
 
 export interface TutorialStep {
@@ -22,8 +20,6 @@ export interface TutorialStep {
     | "select_second"
     | "confidence_second"
     | "save_second"
-    | "pause_practice"
-    | "pause_practice_resume"
     | "submit"
     | "complete";
   anchor: string;
@@ -95,18 +91,6 @@ const steps: TutorialStep[] = [
     anchor: "confidence",
     message: "Click **Save** below to exit this object's edit mode. **Repeat this for every yellow object before submitting the tutorial.**",
     expectedEvent: "object_deselected",
-  },
-  {
-    id: "pause_practice",
-    anchor: "status",
-    message: "**Practice the pause control.** Click **Pause**, wait for the 10-second practice countdown, then click **Resume**. This practice pause does not use your formal pause opportunity.",
-    expectedEvent: "pause_practice_started",
-  },
-  {
-    id: "pause_practice_resume",
-    anchor: "status",
-    message: "**Keep the experiment paused until the countdown ends, then click Resume** to continue the tutorial.",
-    expectedEvent: "pause_practice_resumed",
   },
   {
     id: "submit",
@@ -184,8 +168,6 @@ function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
     select_second: "你已退出当前编辑模式。**现在可以点击另一个**[[yellow]]黄色物体[[/yellow]]**进入其编辑模式。**",
     confidence_second: "完成这个物体后，**请在下方选择它的置信度。**",
     save_second: "点击下方的**Save**退出这个物体的编辑模式。**提交教程前，请对每个黄色物体重复此操作。**",
-    pause_practice: "**练习暂停功能。**点击**Pause**，等待10秒练习倒计时，然后点击**Resume**。练习暂停不会消耗正式暂停机会。",
-    pause_practice_resume: "**保持暂停直到倒计时结束，然后点击Resume**继续教程。",
     submit: "**提交教程结果。**",
     complete: "**教程完成。**",
   };

@@ -5,7 +5,7 @@ import InstructionsPlugin from "@jspsych/plugin-instructions";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import {
   buildExperimentTimeline,
-  isTutorialPausePage,
+  isTutorialTrial,
   collectTutorialTrialResult,
   collectFormalTrialResults,
   createSavingPageHtml,
@@ -208,6 +208,7 @@ describe("buildExperimentTimeline", () => {
     expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
     expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要15-20分钟");
     expect(String(chineseTimeline[2].pages[0])).toContain("预计总报酬约为 €7（约 £6）");
+    expect(String(chineseTimeline[2].pages[0])).toContain("正式实验期间可暂停一次，最长15分钟");
     expect(String(chineseTimeline[2].pages[0])).toContain("ftian@uni-muenster.de");
     expect(String(chineseTimeline[2].pages[0])).not.toContain("floorplanrestoration.deluxe999@passmail.com");
 
@@ -221,14 +222,15 @@ describe("buildExperimentTimeline", () => {
     expect(complete).toContain("approximately 15-20 minutes");
     expect(complete).toContain("simply close the page to withdraw");
     expect(complete).toContain("approximately €7 (about £6)");
+    expect(complete).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
     expect(complete).toContain("ftian@uni-muenster.de");
     expect(complete).not.toContain("floorplanrestoration.deluxe999@passmail.com");
   });
 
-  it("recognizes tutorial pause pages from the started trial callback data", () => {
-    expect(isTutorialPausePage({ data: { tutorial: true } })).toBe(true);
-    expect(isTutorialPausePage({ data: { tutorial_reference_board: true } })).toBe(false);
-    expect(isTutorialPausePage({ data: { tutorial: false } })).toBe(false);
+  it("recognizes tutorial trials from the started trial callback data", () => {
+    expect(isTutorialTrial({ data: { tutorial: true } })).toBe(true);
+    expect(isTutorialTrial({ data: { tutorial_reference_board: true } })).toBe(false);
+    expect(isTutorialTrial({ data: { tutorial: false } })).toBe(false);
   });
   it("passes the developer shortcut only when explicitly enabled", () => {
     const normal = buildExperimentTimeline(experimentConfig());
@@ -346,7 +348,7 @@ describe("buildExperimentTimeline", () => {
     expect(String(timeline[2].pages[0])).toContain("layout-task-tutorial-complete-shell");
     expect(String(timeline[2].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(String(timeline[2].pages[0])).toContain("This is an experiment, not a test");
-    expect(String(timeline[2].pages[0])).toContain("one-time 15-minute break");
+    expect(String(timeline[2].pages[0])).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
     expect(String(timeline[2].pages[0])).toContain("simply close the page to withdraw");
     expect(String(timeline[2].pages[0])).toContain("truthfully");
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
