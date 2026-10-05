@@ -207,7 +207,9 @@ describe("buildExperimentTimeline", () => {
     expect(chineseTimeline[0].button_label_next).toBe("开始教程");
     expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
     expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要15-20分钟");
-    expect(String(chineseTimeline[2].pages[0])).toContain("floorplanrestoration.deluxe999@passmail.com");
+    expect(String(chineseTimeline[2].pages[0])).toContain("预计总报酬约为 €7（约 £6）");
+    expect(String(chineseTimeline[2].pages[0])).toContain("ftian@uni-muenster.de");
+    expect(String(chineseTimeline[2].pages[0])).not.toContain("floorplanrestoration.deluxe999@passmail.com");
 
     expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
     expect(createSavingPageHtml()).toContain("Saving your data");
@@ -218,7 +220,9 @@ describe("buildExperimentTimeline", () => {
     const complete = String(english[2].pages[0]);
     expect(complete).toContain("approximately 15-20 minutes");
     expect(complete).toContain("simply close the page to withdraw");
-    expect(complete).toContain("floorplanrestoration.deluxe999@passmail.com");
+    expect(complete).toContain("approximately €7 (about £6)");
+    expect(complete).toContain("ftian@uni-muenster.de");
+    expect(complete).not.toContain("floorplanrestoration.deluxe999@passmail.com");
   });
 
   it("recognizes tutorial pause pages from the started trial callback data", () => {

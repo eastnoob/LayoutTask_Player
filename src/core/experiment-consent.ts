@@ -78,7 +78,7 @@ const ENGLISH_DOCUMENT_HTML = `
     <h3>Privacy and data processing</h3>
     <p>The online experiment records your <strong>Prolific ID</strong>, participant and session information, furniture position and rotation answers, confidence ratings, response times, and task-operation records. Data are stored using university-provided research storage and the university research data pipeline. Data will be analysed in de-identified form for scientific research and will not be published in a way that identifies you. Please see the data-protection statement below for your rights and contact details.</p>
     <h3>Benefits and compensation</h3>
-    <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Payment is administered through the third-party recruitment platform. There may be no direct personal benefit from taking part.</p>
+    <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Each correctly reconstructed position or rotation earns an additional <strong>£0.04</strong>. Based on our testing, the expected total payment under normal performance is approximately <strong>€7 (about £6)</strong>. The actual amount may vary depending on your performance. Payment is administered through the third-party recruitment platform. There may be no direct personal benefit from taking part.</p>
     <p>You are free to stop or quit the study and withdraw consent at any time without giving a reason. If you have questions, please ask them before agreeing. For questions, complaints, or issues, contact the institute's Ethics Committee at <a href="mailto:ifgi-ethics@listserv.uni-muenster.de">ifgi-ethics@listserv.uni-muenster.de</a>.</p>
     <h2>Data protection policy in accordance with Art. 13 GDPR</h2>
     <p><strong>Project/reason:</strong> Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph<br /><strong>Revision:</strong> 1</p>
@@ -116,7 +116,7 @@ const CHINESE_DOCUMENT_HTML = `
     <h3>隐私与数据处理</h3>
     <p>在线实验会记录您的 <strong>Prolific ID</strong>、参与者和会话信息、家具位置与旋转答案、置信度、反应时间以及任务操作记录。数据将使用大学提供的研究存储和研究数据管道保存，并以去标识化形式用于科学研究；发布时不会以能够识别您个人的方式公开。下方的数据保护声明说明了您的权利和联系信息。</p>
     <h3>受益与报酬</h3>
-    <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>，通过第三方招募平台发放。参加本研究可能不会给您带来直接的个人收益。</p>
+    <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>。每个正确的位置或旋转答案均可获得额外 <strong>£0.04</strong>。根据我们的测试，在正常完成实验的情况下，预计总报酬约为 <strong>€7（约 £6）</strong>。实际金额会根据您的作答表现有所浮动。奖金通过第三方招募平台发放。参加本研究可能不会给您带来直接的个人收益。</p>
     <p>您可以随时停止或退出研究并撤回同意，无需说明理由。如果您有任何问题，请在同意前提出。若有问题、投诉或需要协助，请联系研究伦理委员会：<a href="mailto:ifgi-ethics@listserv.uni-muenster.de">ifgi-ethics@listserv.uni-muenster.de</a>。</p>
     <h2>依据《通用数据保护条例》第 13 条的数据保护声明</h2>
     <p><strong>项目/研究名称：</strong>根据单张室内照片感知家具的位置与朝向<br /><strong>修订版本：</strong>1</p>

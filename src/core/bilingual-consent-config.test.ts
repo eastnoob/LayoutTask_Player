@@ -23,9 +23,20 @@ describe("bilingual consent configuration", () => {
   });
 
   it("keeps the current study duration and compensation in both consent copies", () => {
-    expect(getConsentPageCopy("en-US").fullDocumentHtml).toContain("20–40 minutes");
-    expect(getConsentPageCopy("en-US").fullDocumentHtml).toContain("£4");
-    expect(getConsentPageCopy("zh-CN").fullDocumentHtml).toContain("20–40 分钟");
-    expect(getConsentPageCopy("zh-CN").fullDocumentHtml).toContain("£4");
+    const english = getConsentPageCopy("en-US").fullDocumentHtml;
+    const chinese = getConsentPageCopy("zh-CN").fullDocumentHtml;
+
+    expect(english).toContain("20–40 minutes");
+    expect(english).toContain("£4 base payment");
+    expect(english).toContain("Each correctly reconstructed position or rotation earns an additional");
+    expect(english).toContain("£0.04");
+    expect(english).toContain("approximately");
+    expect(english).toContain("€7 (about £6)");
+    expect(chinese).toContain("20–40 分钟");
+    expect(chinese).toContain("£4 基础奖金");
+    expect(chinese).toContain("每个正确的位置或旋转答案均可获得额外");
+    expect(chinese).toContain("£0.04");
+    expect(chinese).toContain("预计总报酬约为");
+    expect(chinese).toContain("€7（约 £6）");
   });
 });
