@@ -73,4 +73,20 @@ describe("bilingual consent configuration", () => {
       "我已阅读《根据单张室内照片感知家具的位置与朝向》项目的数据保护声明，并自愿同意收集和处理我的个人数据。我已获知随时撤回同意且无需说明理由的权利。",
     ]);
   });
+
+  it("describes the current image-above-floor-plan workflow in both consent copies", () => {
+    const english = getConsentPageCopy("en-US").fullDocumentHtml;
+    const chinese = getConsentPageCopy("zh-CN").fullDocumentHtml;
+
+    expect(english).toContain("at the top of the page");
+    expect(english).toContain("floor plan below");
+    expect(english.toLowerCase()).toContain("open every yellow furniture object once");
+    expect(english).toContain("Save");
+    expect(english).toContain("pause once for up to 15 minutes");
+    expect(chinese).toContain("页面顶部");
+    expect(chinese).toContain("平面图显示在下方");
+    expect(chinese).toContain("打开每个黄色家具物体一次");
+    expect(chinese).toContain("保存");
+    expect(chinese).toContain("暂停一次，最长 15 分钟");
+  });
 });
