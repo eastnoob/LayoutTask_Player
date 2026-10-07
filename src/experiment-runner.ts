@@ -381,6 +381,7 @@ export async function saveExperimentFiles(input: {
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
   pauseSummary?: import("./types/result").PauseSummary;
+  participantProfile?: ParticipantProfile;
   assignment?: AssignmentRecord;
 }): Promise<{
   ok: boolean;
@@ -401,6 +402,7 @@ export async function saveExperimentFiles(input: {
       completionCode: input.completionCode,
       failedFilenames: input.files.map((file) => file.filename),
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
     });
     return {
@@ -473,6 +475,7 @@ export async function saveExperimentFiles(input: {
         completionCode: input.completionCode,
       failedFilenames: ["receiver batch"],
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
       });
       return {
@@ -522,6 +525,7 @@ export async function saveExperimentFiles(input: {
       completionCode: input.completionCode,
       failedFilenames: ["receiver archive"],
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
     });
     return {
@@ -537,6 +541,7 @@ export async function saveExperimentFiles(input: {
     experimentId: input.dataSave.experimentId,
     files: input.files,
     prolificId: input.prolificId,
+    participantProfile: input.participantProfile,
     assignment: assignmentMetadata(input.assignment),
   });
   const dataSave = input.dataSave;
@@ -587,6 +592,7 @@ export async function saveExperimentFiles(input: {
         completionCode: input.completionCode,
         failedFilenames,
         pauseSummary: input.pauseSummary,
+        participantProfile: input.participantProfile,
         assignment: assignmentMetadata(input.assignment),
       });
       return {
@@ -729,6 +735,7 @@ export function createRunnableExperiment(
         localBackup,
         completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        participantProfile: options.participantProfile,
         assignment: options.assignment,
       });
       if (saveResult.ok) {

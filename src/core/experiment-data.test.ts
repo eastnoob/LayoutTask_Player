@@ -10,6 +10,7 @@ import type { ReferencePresentation } from "../types/schedule";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 import type { PauseSummary } from "../types/result";
 import type { ConsentRecord } from "./experiment-consent";
+import type { ParticipantProfile } from "./experiment-consent";
 
 describe("participant/session ids", () => {
   it("reads participant id from URL params by priority", () => {
@@ -184,6 +185,7 @@ describe("experiment data export", () => {
       data_protection_statement_confirmed: true,
       developer_mode: false,
     } satisfies ConsentRecord,
+    participantProfile: { participant_age: 31, requires_corrective_eyewear: true } satisfies ParticipantProfile,
   };
 
   it("builds session, results, and events CSV files", () => {
@@ -207,6 +209,9 @@ describe("experiment data export", () => {
     ]);
     expect(files[0].data).toContain("participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,started_at,ended_at,duration_ms");
     expect(files[0].data).toContain("prolific_id");
+    expect(files[0].data).toContain("participant_age");
+    expect(files[0].data).toContain("requires_corrective_eyewear");
+    expect(files[0].data).toContain(",31,true,");
     expect(files[0].data).toContain(" 5f2a-original ");
     expect(files[0].data).toContain("consent_version");
     expect(files[0].data).toContain("data-protection-2026-10-03-v1");
@@ -257,6 +262,7 @@ describe("experiment data export", () => {
       reference_mode: "persistent",
       assignment_id: "assign-1",
       consent: rowInput.consent,
+      participant_profile: rowInput.participantProfile,
     });
     expect(JSON.parse(files[5].data)).toMatchObject({
       schema: "layouttask.tutorial-result.v1",
@@ -265,6 +271,7 @@ describe("experiment data export", () => {
       pause: expect.objectContaining({ pause_used: true }),
       assignment_id: "assign-1",
       consent: rowInput.consent,
+      participant_profile: rowInput.participantProfile,
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
   });
@@ -300,6 +307,7 @@ describe("experiment data export", () => {
       experimentId: "mshCnq690sD5",
       files: createExperimentCsvFiles(rowInput),
       prolificId: rowInput.prolificId,
+      participantProfile: rowInput.participantProfile,
       assignment: rowInput.assignment,
     });
 
@@ -315,6 +323,8 @@ describe("experiment data export", () => {
     expect(payloads.every((payload) => payload.assignment_id === "assign-1" && payload.participant_number === 2)).toBe(true);
     expect(payloads.every((payload) => payload.assignment_mode === "replacement" && payload.requested_sequence_id === "sequence-02" && payload.replacement_attempt === 1 && payload.rotation_index === null)).toBe(true);
     expect(payloads.every((payload) => payload.prolific_id === " 5f2a-original ")).toBe(true);
+    expect(payloads.every((payload) => payload.participant_profile?.participant_age === 31 && payload.participant_profile.requires_corrective_eyewear)).toBe(true);
+    expect(payloads.filter((payload) => /session|debug|tutorial_result/.test(payload.filename)).every((payload) => payload.data.includes("participant_age") && payload.data.includes("requires_corrective_eyewear"))).toBe(true);
     expect(payloads.filter((payload) => /session|debug|tutorial_result/.test(payload.filename)).every((payload) => payload.data.includes("informed-consent-2026-10-03-v1"))).toBe(true);
   });
 });

@@ -29,6 +29,7 @@ describe("createCompleteRecoveryZip", () => {
           rotation_index: null,
         },
         pauseSummary: { pause_used: true, pause_count: 1, pause_duration_ms: 5_000, pause_events: [] },
+        participantProfile: { participant_age: 31, requires_corrective_eyewear: true },
       },
     );
 
@@ -54,6 +55,7 @@ describe("createCompleteRecoveryZip", () => {
       failed_filenames: ["results.csv"],
       pause: { pause_used: true, pause_count: 1 },
       completion_code: "  CODE-17  ",
+      participant_profile: { participant_age: 31, requires_corrective_eyewear: true },
     });
   });
 });

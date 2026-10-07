@@ -9,7 +9,7 @@ import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { PauseSummary } from "../types/result";
 import { summarizeExperimentRewards } from "./reward-calculator";
-import type { ConsentRecord } from "./experiment-consent";
+import type { ConsentRecord, ParticipantProfile } from "./experiment-consent";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -94,6 +94,7 @@ export interface ExperimentCsvInput {
   pauseSummary?: PauseSummary;
   assignment?: ExperimentAssignmentInput;
   consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
 }
 
 export interface ExperimentCsvFile {
@@ -106,6 +107,7 @@ export interface ExperimentDataPipePayloadsInput {
   experimentId: string;
   files: ExperimentCsvFile[];
   prolificId?: string;
+  participantProfile?: ParticipantProfile;
   assignment?: ExperimentAssignmentInput;
 }
 
@@ -184,6 +186,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         hash8: tutorial.hash8,
         completion_code: input.completionCode ?? "",
         consent: input.consent,
+        participant_profile: input.participantProfile,
         pause: isLayoutTaskResult(tutorial.result) ? tutorial.result.pause ?? input.pauseSummary : input.pauseSummary,
         result: tutorial.result,
       },
@@ -215,12 +218,14 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
   replacement_attempt?: number;
   rotation_index?: number | null;
   prolific_id?: string;
+  participant_profile?: ParticipantProfile;
 }> {
   return input.files.map((file) => ({
     experimentID: input.experimentId,
     filename: file.filename,
     data: file.data,
     prolific_id: input.prolificId,
+    participant_profile: input.participantProfile,
     ...toAssignmentMetadata(input.assignment),
   }));
 }
@@ -267,6 +272,8 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "fully_failed_count",
       "scorable_group_count",
       "prolific_id",
+      "participant_age",
+      "requires_corrective_eyewear",
       "consent_version",
       "notice_version",
       "consent_locale",
@@ -318,6 +325,8 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         reward.fullyFailedCount,
         reward.scorableGroupCount,
         input.prolificId,
+        input.participantProfile?.participant_age,
+        input.participantProfile?.requires_corrective_eyewear,
         input.consent?.consent_version,
         input.consent?.notice_version,
         input.consent?.locale,
@@ -619,6 +628,7 @@ function createDebugJson(input: ExperimentCsvInput, rewardSummary = summarizeExp
       ...toAssignmentMetadata(input.assignment),
       completion_code: input.completionCode ?? "",
       consent: input.consent,
+      participant_profile: input.participantProfile,
       reference_mode: input.referenceMode,
       started_at: input.startTime,
       ended_at: input.endTime,
