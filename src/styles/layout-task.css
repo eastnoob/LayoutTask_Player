@@ -61,6 +61,25 @@ body {
   margin: 0 auto;
 }
 
+.layout-task-profile-notice,
+.layout-task-profile-warning {
+  padding: 0.9rem 1rem;
+  border-left: 4px solid #b45309;
+  background: #fff7ed;
+}
+
+.layout-task-profile-warning {
+  border-color: #b91c1c;
+  background: #fef2f2;
+}
+
+.layout-task-profile-checkbox {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
 .layout-task-consent-document {
   max-height: min(62vh, 720px);
   overflow-y: auto;

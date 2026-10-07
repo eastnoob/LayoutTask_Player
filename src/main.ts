@@ -4,7 +4,7 @@ import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
 import { createRunnableExperiment, requestAssignment } from "./experiment-runner";
 import { createDeveloperDebugConfig, createDeveloperParticipantIdentity } from "./core/developer-debug";
-import { waitForExperimentConsent, waitForProlificId } from "./core/experiment-consent";
+import { waitForExperimentConsent, waitForParticipantProfile, waitForProlificId } from "./core/experiment-consent";
 import {
   getDefaultExperimentConfigPath,
   isDeveloperDebugExperiment,
@@ -54,6 +54,7 @@ async function bootstrap(): Promise<void> {
       developerMode: requestedDeveloperMode,
     });
     const developerDebug = requestedDeveloperMode || consentResult.mode === "developer";
+    const participantProfile = await waitForParticipantProfile({ root, locale: loadedConfig.locale });
     const prolificId = await waitForProlificId({ root, locale: loadedConfig.locale });
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
     let assignment;
@@ -84,8 +85,8 @@ async function bootstrap(): Promise<void> {
       config,
       root,
       developerDebug
-        ? { ...createDeveloperParticipantIdentity(prolificId), consent: consentResult.consent }
-        : { assignment, requireAssignment: Boolean(config.schedule), prolificId, consent: consentResult.consent },
+        ? { ...createDeveloperParticipantIdentity(prolificId), consent: consentResult.consent, participantProfile }
+        : { assignment, requireAssignment: Boolean(config.schedule), prolificId, consent: consentResult.consent, participantProfile },
     );
     await jsPsych.run(timeline);
     return;

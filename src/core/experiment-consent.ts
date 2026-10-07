@@ -25,6 +25,11 @@ export interface ConsentRecord {
   developer_mode: boolean;
 }
 
+export interface ParticipantProfile {
+  participant_age: number;
+  requires_corrective_eyewear: boolean;
+}
+
 export type ExperimentConsentResult = {
   mode: "agreed" | "developer";
   consent: ConsentRecord;
@@ -215,6 +220,46 @@ export function isConsentComplete(values: boolean[]): boolean {
 
 export function parseProlificIdInput(value: string): string | undefined {
   return value.trim() ? value : undefined;
+}
+
+export function parseParticipantAgeInput(value: number): number | undefined {
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+export function waitForParticipantProfile(options: {
+  root: HTMLElement;
+  locale?: "en-US" | "zh-CN";
+  documentRef?: Document;
+}): Promise<ParticipantProfile> {
+  const documentRef = options.documentRef ?? document;
+  const chinese = options.locale === "zh-CN";
+  return new Promise((resolve) => {
+    const section = documentRef.createElement("section");
+    section.className = "layout-task-shell layout-task-profile-shell";
+    section.innerHTML = chinese
+      ? `<header class="layout-task-header"><p class="layout-task-eyebrow">实验说明</p><h1>这是实验，不是考试</h1></header><p>犯错和不确定是正常的，请按您的真实判断作答。</p><p class="layout-task-profile-notice"><strong>视力提示：</strong>如果您日常需要使用眼镜、隐形眼镜或其他视力矫正设备，请在整个实验过程中佩戴，以便清楚查看实验材料。</p><p class="layout-task-profile-warning"><strong>重要：</strong>实验期间请勿缩放页面、最小化浏览器或刷新页面，否则可能导致记分失效，您将无法获得报酬。</p><p>正式实验期间可暂停一次，最长 15 分钟，之后将自动恢复。</p><label for="layout-task-participant-age">年龄</label><input id="layout-task-participant-age" type="number" min="1" step="1" required /><label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />我在日常生活中需要佩戴眼镜。</label><p class="layout-task-form-error" role="alert" hidden>请输入有效年龄后继续。</p><button type="button" class="layout-task-primary-button">继续</button>`
+      : `<header class="layout-task-header"><p class="layout-task-eyebrow">Study instructions</p><h1>This is an experiment, not a test</h1></header><p>Mistakes and uncertainty are normal. Please respond according to your honest judgment.</p><p class="layout-task-profile-notice"><strong>Vision:</strong> If you normally use glasses, contact lenses, or another vision-correction aid, please wear it throughout the experiment so you can clearly view the study materials.</p><p class="layout-task-profile-warning"><strong>Important:</strong> Do not zoom the page, minimise the browser, or refresh during the experiment. Doing so may invalidate your score and make you ineligible for payment.</p><p>During the formal experiment, you may pause once for up to 15 minutes, after which it will automatically resume.</p><label for="layout-task-participant-age">Age</label><input id="layout-task-participant-age" type="number" min="1" step="1" required /><label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />I need to wear glasses in daily life.</label><p class="layout-task-form-error" role="alert" hidden>Please enter a valid age before continuing.</p><button type="button" class="layout-task-primary-button">Continue</button>`;
+    options.root.replaceChildren(section);
+    const ageInput = section.querySelector<HTMLInputElement>("#layout-task-participant-age")!;
+    const eyewearInput = section.querySelector<HTMLInputElement>("#layout-task-corrective-eyewear")!;
+    const error = section.querySelector<HTMLElement>(".layout-task-form-error")!;
+    const button = section.querySelector<HTMLButtonElement>("button")!;
+    const submit = () => {
+      const age = parseParticipantAgeInput(ageInput.valueAsNumber);
+      if (age === undefined) {
+        error.hidden = false;
+        ageInput.focus();
+        return;
+      }
+      section.remove();
+      resolve({ participant_age: age, requires_corrective_eyewear: eyewearInput.checked });
+    };
+    button.addEventListener("click", submit);
+    ageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") submit();
+    });
+    ageInput.focus();
+  });
 }
 
 export function waitForProlificId(options: {

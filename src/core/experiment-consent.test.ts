@@ -7,6 +7,7 @@ import {
   getKonamiProgress,
   isConsentComplete,
   parseProlificIdInput,
+  parseParticipantAgeInput,
 } from "./experiment-consent";
 
 describe("experiment consent", () => {
@@ -32,6 +33,13 @@ describe("experiment consent", () => {
   it("rejects blank Prolific IDs while preserving the entered non-empty string", () => {
     expect(parseProlificIdInput("   ")).toBeUndefined();
     expect(parseProlificIdInput(" 5f2a-original ")).toBe(" 5f2a-original ");
+  });
+
+  it("accepts only positive integer participant ages", () => {
+    expect(parseParticipantAgeInput(0)).toBeUndefined();
+    expect(parseParticipantAgeInput(29.5)).toBeUndefined();
+    expect(parseParticipantAgeInput(Number.NaN)).toBeUndefined();
+    expect(parseParticipantAgeInput(29)).toBe(29);
   });
 
   it("creates a signed consent record with all required confirmations", () => {

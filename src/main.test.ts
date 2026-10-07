@@ -8,5 +8,7 @@ describe("experiment bootstrap consent ordering", () => {
     expect(source).toContain("const consentResult = await waitForExperimentConsent");
     expect(source).toContain('consentResult.mode === "developer"');
     expect(source).toContain("consent: consentResult.consent");
+    expect(source).toContain("const participantProfile = await waitForParticipantProfile");
+    expect(source).toContain("participantProfile");
   });
 });
