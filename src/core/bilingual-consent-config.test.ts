@@ -48,7 +48,8 @@ describe("bilingual consent configuration", () => {
     expect(english.fullDocumentHtml).toContain("typically no more than around 30 minutes");
     expect(english.fullDocumentHtml).toContain("One week after the completion of the study it might no longer be possible to retract your data");
     expect(english.fullDocumentHtml).toContain("(1) first and last name");
-    expect(english.fullDocumentHtml).toContain("Full name:");
+    expect(english.fullDocumentHtml).not.toContain("Full name:");
+    expect(english.fullDocumentHtml).toContain("With your signature, you indicate confirmation of the following:");
     expect(english.confirmations).toEqual([
       "I confirm I volunteered to participate in this study.",
       "I confirm I was allowed to ask questions and that I was provided with responses.",
@@ -62,7 +63,8 @@ describe("bilingual consent configuration", () => {
     expect(chinese.fullDocumentHtml).toContain("通常不超过约 30 分钟");
     expect(chinese.fullDocumentHtml).toContain("研究完成一周后，您可能无法再从此类汇总分析中撤回您的数据");
     expect(chinese.fullDocumentHtml).toContain("（1）姓名");
-    expect(chinese.fullDocumentHtml).toContain("姓名：");
+    expect(chinese.fullDocumentHtml).not.toContain("姓名：");
+    expect(chinese.fullDocumentHtml).toContain("您签名即表示确认以下内容");
     expect(chinese.confirmations).toEqual([
       "我确认自己自愿参加本研究。",
       "我确认自己有机会提问，并且已获得相应答复。",
