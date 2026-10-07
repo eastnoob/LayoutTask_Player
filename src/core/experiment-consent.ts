@@ -110,18 +110,11 @@ const ENGLISH_DOCUMENT_HTML = `
     <p>You have the right to information about your personal data processed by the University of Münster (Art. 15 GDPR), the right to rectification (Art. 16 GDPR), erasure (Art. 17 GDPR), restriction of processing (Art. 18 GDPR) and the right to withdraw prior consent to such processing (Art. 7 (3) GDPR). You may withdraw your consent in writing or by email from the contact persons listed under nos. 1 and 2 (see above) of this data protection statement. You also have the right to lodge a complaint with the supervisory authority. The responsible supervisory authority is the Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Postfach 20 04 44, 40102 Düsseldorf, tel: +49 211 / 38424-0, email: <a href="mailto:poststelle@ldi.nrw.de">poststelle@ldi.nrw.de</a></p>
     <h3>Declaration of consent</h3>
     <p><strong>Subject/reason:</strong> Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph</p>
-    <p><strong>Full name:</strong> _____________________________________________</p>
-    <p><strong>Date of birth:</strong> _____________________________________________</p>
-    <p><strong>(if applicable) Name of parent or legal guardian:</strong> _____________________________________________</p>
-    <p><strong>Email address:</strong> _____________________________________________</p>
     <p>With your consent, you hereby grant permission to the University of Münster to collect and process the personal data listed above under (3a) for the purposes indicated in (3b).</p>
     <p>You have the right to withdraw your consent from the responsible party at any time. The legality of all data processing from the time of consent until withdrawal of consent remains unaffected.</p>
     <p>With your signature, you indicate confirmation of the following:</p>
     <p>“I have read the data protection statement for the project Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph. I hereby voluntarily consent to having my personal data collected and processed. I have been informed of the scope and purpose of data collection and processing, as well as the right to withdraw consent. I have received a copy of the data protection policy and the declaration of consent.”</p>
     <p>(if applicable) I confirm that I hold sole custody of the underage person named above – or in the case of joint custody – that I am permitted to grant consent on behalf of the other legal guardian or custodial parent.</p>
-    <p><strong>City, Date:</strong> _____________________________________________</p>
-    <p><strong>Signature:</strong> _____________________________________________<br />(consenting party)</p>
-    <p><strong>(if applicable) Signature of the parent or legal guardian:</strong> _____________________________________________</p>
   </article>
 `;
 
@@ -176,18 +169,11 @@ const CHINESE_DOCUMENT_HTML = `
     <p>您有权了解明斯特大学处理的个人数据（GDPR 第 15 条）、更正权（GDPR 第 16 条）、删除权（GDPR 第 17 条）、限制处理权（GDPR 第 18 条）以及撤回此前同意的权利（GDPR 第 7 条第 3 款）。您可以通过书面或电子邮件向本数据保护声明第 1、2 项所列的联系人撤回同意。您还有权向监管机构投诉。负责的监管机构是北莱茵-威斯特法伦州数据保护与信息自由专员，Postfach 20 04 44, 40102 Düsseldorf；电话：+49 211 / 38424-0；邮箱：<a href="mailto:poststelle@ldi.nrw.de">poststelle@ldi.nrw.de</a>。</p>
     <h3>同意声明</h3>
     <p><strong>主题/事由：</strong>根据单张室内照片感知家具的位置与朝向</p>
-    <p><strong>姓名：</strong> _____________________________________________</p>
-    <p><strong>出生日期：</strong> _____________________________________________</p>
-    <p><strong>（如适用）父母或法定监护人姓名：</strong> _____________________________________________</p>
-    <p><strong>电子邮箱：</strong> _____________________________________________</p>
     <p>您同意后，即表示您允许明斯特大学为第 3a 项所述目的处理上面列出的个人数据。</p>
     <p>您有权随时向负责方撤回同意。从同意作出到撤回同意期间进行的数据处理，其合法性不受影响。</p>
     <p>您签名即表示确认以下内容：</p>
     <p>“我已阅读《根据单张室内照片感知家具的位置与朝向》项目的数据保护声明。我自愿同意收集和处理我的个人数据。我已获知数据收集和处理的范围与目的，以及撤回同意的权利。我已收到数据保护政策和同意声明的副本。”</p>
     <p>（如适用）我确认自己对上述未成年人拥有单独监护权；或者在共同监护的情况下，我有权代表另一位法定监护人或监护父母作出同意。</p>
-    <p><strong>地点、日期：</strong> _____________________________________________</p>
-    <p><strong>签名：</strong> _____________________________________________<br />（同意方）</p>
-    <p><strong>（如适用）父母或法定监护人签名：</strong> _____________________________________________</p>
   </article>
 `;
 
@@ -197,7 +183,7 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "知情同意",
       title: "开始实验前请阅读并确认",
       fullDocumentHtml: CHINESE_DOCUMENT_HTML,
-      signatureNotice: "勾选全部确认项并点击“我同意并开始”即表示您同意本研究内容；此操作将作为您的电子确认和电子签字，不会生成手写签名。",
+      signatureNotice: "勾选全部确认项并点击“我同意并开始”即表示您同意上面的两份文件；此操作将作为您对两份文件的电子确认和电子签署，不会生成手写签名。",
       confirmations: [
         "我确认自己自愿参加本研究。",
         "我确认自己有机会提问，并且已获得相应答复。",
@@ -211,7 +197,7 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "Informed consent",
       title: "Read and confirm before you begin",
       fullDocumentHtml: ENGLISH_DOCUMENT_HTML,
-      signatureNotice: "Checking all confirmations below and selecting “I agree and begin” means that you consent to this study and serves as your electronic confirmation and electronic signature for this study; it does not create a handwritten signature.",
+      signatureNotice: "Checking all confirmations below and selecting “I agree and begin” means that you consent to both documents above; this acts as your electronic confirmation and electronic signature for both documents and does not create a handwritten signature.",
       confirmations: [
         "I confirm I volunteered to participate in this study.",
         "I confirm I was allowed to ask questions and that I was provided with responses.",

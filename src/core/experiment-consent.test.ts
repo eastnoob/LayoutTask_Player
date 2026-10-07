@@ -98,6 +98,10 @@ describe("experiment consent", () => {
     expect(english.fullDocumentHtml).not.toContain("Consent confirmations");
     expect(english.fullDocumentHtml).not.toContain("Signature of researcher");
     expect(english.fullDocumentHtml).not.toContain("Email address (optional)");
+    expect(english.fullDocumentHtml).not.toContain("Full name:");
+    expect(english.fullDocumentHtml).not.toContain("Date of birth:</strong> _");
+    expect(english.fullDocumentHtml).not.toContain("City, Date:");
+    expect(english.fullDocumentHtml).not.toContain("consenting party");
     expect(chinese.fullDocumentHtml).toContain("潜在风险");
     expect(chinese.fullDocumentHtml).toContain("数据保护官");
     expect(chinese.fullDocumentHtml).toContain("£4 基础奖金");
@@ -105,6 +109,13 @@ describe("experiment consent", () => {
     expect(chinese.fullDocumentHtml).not.toContain("同意确认");
     expect(chinese.fullDocumentHtml).not.toContain("研究人员签名");
     expect(chinese.fullDocumentHtml).not.toContain("电子邮箱（可选）");
+    expect(chinese.fullDocumentHtml).not.toContain("<strong>姓名：</strong> _");
+    expect(chinese.fullDocumentHtml).not.toContain("地点、日期");
+    expect(chinese.fullDocumentHtml).not.toContain("（同意方）");
+    expect(english.signatureNotice).toContain("both documents");
+    expect(english.signatureNotice).toContain("electronic signature");
+    expect(chinese.signatureNotice).toContain("两份文件");
+    expect(chinese.signatureNotice).toContain("电子签署");
     expect(readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8"))
       .toContain(".layout-task-consent-document");
   });
