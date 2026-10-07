@@ -2109,9 +2109,20 @@ export function scrollTutorialStageIntoView(root: HTMLElement, stepId: string): 
     return;
   }
 
-  root.querySelector<HTMLElement>('[data-layout-task-anchor="stage"]')?.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
+  requestAnimationFrame(() => {
+    const arrow = root.querySelector<SVGPathElement>(".layout-task-tutorial-viewing-direction-arrow");
+    if (!arrow) {
+      return;
+    }
+
+    const bounds = arrow.getBoundingClientRect();
+    const arrowCenter = (bounds.top + bounds.bottom) / 2;
+    const scrollDelta = arrowCenter - window.innerHeight / 2;
+    if (Math.abs(scrollDelta) < 1) {
+      return;
+    }
+
+    window.scrollBy(0, scrollDelta);
   });
 }
 

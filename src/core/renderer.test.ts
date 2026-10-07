@@ -84,28 +84,41 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
-  it("scrolls the floor plan into view during the viewing-direction tutorial step", () => {
-    const scrollIntoView = vi.fn();
+  it("waits for layout before centering the floor plan during the viewing-direction tutorial step", () => {
+    const scrollBy = vi.fn();
     const root = {
-      querySelector: vi.fn(() => ({ scrollIntoView })),
+      querySelector: vi.fn(() => ({
+        getBoundingClientRect: () => ({ top: 500, bottom: 700 }),
+      })),
     } as unknown as HTMLElement;
+    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("window", { innerHeight: 600, scrollBy });
+    vi.stubGlobal("requestAnimationFrame", requestAnimationFrame);
 
-    scrollTutorialStageIntoView(root, "view_direction");
+    try {
+      scrollTutorialStageIntoView(root, "view_direction");
 
-    expect(root.querySelector).toHaveBeenCalledWith('[data-layout-task-anchor="stage"]');
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+      expect(root.querySelector).toHaveBeenCalledWith(".layout-task-tutorial-viewing-direction-arrow");
+      expect(requestAnimationFrame).toHaveBeenCalledOnce();
+      expect(scrollBy).toHaveBeenCalledWith(0, 300);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("does not scroll for other tutorial steps", () => {
-    const scrollIntoView = vi.fn();
+    const scrollBy = vi.fn();
     const root = {
-      querySelector: vi.fn(() => ({ scrollIntoView })),
+      querySelector: vi.fn(() => ({ getBoundingClientRect: vi.fn() })),
     } as unknown as HTMLElement;
 
     scrollTutorialStageIntoView(root, "select_first");
 
     expect(root.querySelector).not.toHaveBeenCalled();
-    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollBy).not.toHaveBeenCalled();
   });
 
   it("points the tutorial viewing arrow upward from the bottom center of the stage", () => {
