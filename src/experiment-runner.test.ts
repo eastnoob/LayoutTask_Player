@@ -206,8 +206,8 @@ describe("buildExperimentTimeline", () => {
     expect(intro).toContain("图片显示在页面顶部");
     expect(chineseTimeline[0].button_label_next).toBe("开始教程");
     expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
-    expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要15-20分钟");
-    expect(String(chineseTimeline[2].pages[0])).toContain("预计总报酬约为 €7（约 £6）");
+    expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要20-45分钟");
+    expect(String(chineseTimeline[2].pages[0])).toContain("最多可获得 £12");
     expect(String(chineseTimeline[2].pages[0])).toContain("正式实验期间可暂停一次，最长15分钟");
     expect(String(chineseTimeline[2].pages[0])).toContain("ftian@uni-muenster.de");
     expect(String(chineseTimeline[2].pages[0])).not.toContain("floorplanrestoration.deluxe999@passmail.com");
@@ -219,9 +219,9 @@ describe("buildExperimentTimeline", () => {
   it("uses the cross-language withdrawal and contact wording", () => {
     const english = buildExperimentTimeline(experimentConfig());
     const complete = String(english[2].pages[0]);
-    expect(complete).toContain("approximately 15-20 minutes");
+    expect(complete).toContain("approximately 20-45 minutes");
     expect(complete).toContain("simply close the page to withdraw");
-    expect(complete).toContain("approximately €7 (about £6)");
+    expect(complete).toContain("maximum £12 in total");
     expect(complete).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
     expect(complete).toContain("ftian@uni-muenster.de");
     expect(complete).not.toContain("floorplanrestoration.deluxe999@passmail.com");

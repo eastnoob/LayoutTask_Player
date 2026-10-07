@@ -155,9 +155,9 @@ export function buildExperimentTimeline(
                 <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
                 <li>${chinese ? "正式实验期间可暂停一次，最长15分钟。" : "During the formal experiment, you may pause once for up to 15 minutes."}</li>
                 <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 ftian@uni-muenster.de 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at ftian@uni-muenster.de for assistance."}</li>
-                <li>${chinese ? "根据我们的测试，在正常完成实验的情况下，预计总报酬约为 €7（约 £6）。实际金额会根据您的作答表现有所浮动。每个正确的位置或旋转答案均可获得额外 £0.04。" : "Based on our testing, the expected total payment under normal performance is approximately €7 (about £6). The actual amount may vary depending on your performance. Each correctly reconstructed position or rotation earns an additional £0.04."}</li>
+                <li>${chinese ? "本研究报酬为 £4 基础奖金，另加任务表现奖金。每个正确的位置或旋转答案均可获得额外 £0.04，因此参与者最多可获得 £12。" : "The compensation for this study is a £4 base payment plus task-performance bonuses. Each correctly reconstructed position or rotation earns an additional £0.04, so that the participant can earn maximum £12 in total."}</li>
                 <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
-                <li>${chinese ? "整个研究大约需要15-20分钟。" : "The complete study takes approximately 15-20 minutes."}</li>
+                <li>${chinese ? "整个研究大约需要20-45分钟。" : "The complete study takes approximately 20-45 minutes."}</li>
               </ul>
             </div>
           </section>`,

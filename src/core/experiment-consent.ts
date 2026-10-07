@@ -78,14 +78,14 @@ const ENGLISH_DOCUMENT_HTML = `
     <h3>Procedure</h3>
     <p>If you agree to participate in this study, you will complete the following steps: 1. Read the study instructions and confirm your informed consent. 2. Before the tutorial, read the experiment instructions and provide your age and daily corrective-eyewear information. 3. For each task, the picture will be displayed at the top of the page and the floor plan below it. Reconstruct the scene by moving the yellow furniture objects on the floor plan to the positions and orientations that match the picture as closely as possible. 4. Open every yellow furniture object once, even if its initial position is already correct. Use the pop-up move and rotate tools; only yellow objects can be moved. 5. Choose your confidence for the position and rotation of each yellow object, then select Save before submitting. Please note: yellow highlighting appears only on the floor plan. In the 3D scene images, furniture retains its original colors and may look similar to other items. Your reconstruction results, response times, certainty ratings, and task-related actions will be recorded. You may withdraw from the study at any time without giving a reason. All data will be stored anonymously or in a de-identified format and used solely for scientific research purposes.</p>
     <h3>Duration</h3>
-    <p>This study is expected to take approximately <strong>20 minutes</strong>, though the actual duration may vary slightly depending on individual response speed, typically no more than around 30 minutes.</p>
+    <p>This study is expected to take approximately <strong>20-45 minutes</strong>.</p>
     <h3>Potential risks</h3>
     <p>This study is classified as a low-risk online computer-based experiment. Participants are required to view images of indoor scenes and perform spatial judgment tasks; prolonged screen viewing or sustained attention may result in mild eye strain, cognitive fatigue, or brief discomfort. The study involves no invasive physical procedures, physical exertion, virtual reality equipment, emotionally intense content, or rapidly flashing stimuli. The experimental materials consist of images of ordinary indoor spaces and furniture arrangements featuring soft colors and brightness levels, containing no content likely to trigger strong emotional reactions. The experiment is conducted entirely on the participant's personal computer, and participants may close the webpage at any time to immediately cease participation. During the experiment, there is a single pause opportunity lasting up to 15 minutes, after which it will automatically resume.</p>
     <h3>Privacy</h3>
     <p>Original data obtained from this study will be anonymised and only processed to draw scientific conclusions about groups, not about individual participants. Anonymised data might be published in academic journals, presentations, open science data repositories, or other media, but not in a way that would allow individual identification. One week after the completion of the study it might no longer be possible to retract your data from such aggregated analyses. You can contact the researcher in order to access your data or request its removal.</p>
     <p>Once processed, anonymised data from this experiment will be made available under the following link: <a href="https://datastore.uni-muenster.de/uploads/d1d07-a0b07">https://datastore.uni-muenster.de/uploads/d1d07-a0b07</a></p>
     <h3>Benefits and compensation</h3>
-    <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Each correctly reconstructed position or rotation earns an additional <strong>£0.04</strong>. Based on our testing, the expected total payment under normal performance is approximately <strong>€7 (about £6)</strong>. The actual amount may vary depending on your performance. Payment is administered directly through the third-party recruitment platform.</p>
+    <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Each correctly reconstructed position or rotation earns an additional <strong>£0.04</strong>, so that the participant can earn maximum <strong>£12 in total</strong>. Payment is administered directly through the third-party recruitment platform.</p>
     <p>You are free to stop, quit the study and retract your data at any time during the study with no further consequences. If you have any questions, please ask them now.</p>
     <p>For further questions, complains or issues, please contact the institute's Ethics-Committee: <a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>.</p>
     <h2>Data protection policy in accordance with Art. 13 GDPR</h2>
@@ -137,14 +137,14 @@ const CHINESE_DOCUMENT_HTML = `
     <h3>研究流程</h3>
     <p>如果您同意参加本研究，您将完成以下步骤：1. 阅读研究说明并确认知情同意。2. 在教程开始前，阅读实验说明并填写年龄和日常视力矫正设备使用情况。3. 在每个任务中，图片显示在页面顶部，平面图显示在下方。请根据图片，将平面图中的黄色家具物体移动到与图片尽可能一致的位置和朝向，以还原场景。4. 每个黄色家具物体都必须打开一次，即使其初始位置已经正确。请使用弹出的移动和旋转工具；只有黄色物体可以移动。5. 为每个黄色物体选择位置和旋转的置信度，然后在提交前选择“保存”。请注意：黄色标记只出现在平面图中；三维场景图片中的家具保留原有颜色，可能与其他家具相似。系统会记录您的还原结果、反应时间、置信度和任务相关操作。您可以随时退出研究，无需说明理由。所有数据都会以匿名或去标识化形式保存，仅用于科学研究。</p>
     <h3>研究时长</h3>
-    <p>本研究预计需要约 <strong>20 分钟</strong>，但实际时长可能会因个人回答速度略有不同，通常不超过约 30 分钟。</p>
+    <p>本研究预计需要约 <strong>20-45 分钟</strong>。</p>
     <h3>潜在风险</h3>
     <p>本研究属于低风险的在线计算机实验。参与者需要查看室内场景图片并完成空间判断任务；长时间看屏幕或持续集中注意力可能造成轻微眼疲劳、认知疲劳或短暂不适。研究不涉及侵入性操作、体力活动、虚拟现实设备、强烈情绪内容或快速闪烁刺激。实验材料由普通室内空间和家具布置图片组成，使用柔和的颜色和亮度，不包含可能引发强烈情绪反应的内容。实验完全在参与者自己的电脑上进行，参与者可以随时关闭网页，立即停止参加。实验期间有一次最长 15 分钟的暂停机会，达到时限后会自动恢复。</p>
     <h3>隐私</h3>
     <p>本研究获得的原始数据将被匿名化，并且只用于得出关于群体而非个人参与者的科学结论。匿名化数据可能会发表在学术期刊、报告、开放科学数据存储库或其他媒体中，但不会以能够识别个人身份的方式发表。研究完成一周后，您可能无法再从此类汇总分析中撤回您的数据。您可以联系研究人员，访问您的数据或要求删除数据。</p>
     <p>数据处理完成后，本实验的匿名化数据将通过以下链接提供：<a href="https://datastore.uni-muenster.de/uploads/d1d07-a0b07">https://datastore.uni-muenster.de/uploads/d1d07-a0b07</a></p>
     <h3>受益与报酬</h3>
-    <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>。每个正确的位置或旋转答案均可获得额外 <strong>£0.04</strong>。根据我们的测试，在正常完成实验的情况下，预计总报酬约为 <strong>€7（约 £6）</strong>。实际金额会根据您的作答表现有所浮动。奖金由第三方招募平台直接发放。</p>
+    <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>。每个正确的位置或旋转答案均可获得额外 <strong>£0.04</strong>，因此参与者最多可获得 <strong>£12</strong>。奖金由第三方招募平台直接发放。</p>
     <p>您可以在研究期间随时停止、退出研究并撤回您的数据，不会产生进一步后果。如果您有任何问题，请现在提出。</p>
     <p>如有进一步问题、投诉或其他事项，请联系研究伦理委员会：<a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>。</p>
     <h2>依据《通用数据保护条例》第 13 条的数据保护声明</h2>

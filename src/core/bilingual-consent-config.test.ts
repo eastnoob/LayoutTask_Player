@@ -26,26 +26,25 @@ describe("bilingual consent configuration", () => {
     const english = getConsentPageCopy("en-US").fullDocumentHtml;
     const chinese = getConsentPageCopy("zh-CN").fullDocumentHtml;
 
-    expect(english).toContain("20 minutes");
+    expect(english).toContain("20-45 minutes");
     expect(english).toContain("£4 base payment");
     expect(english).toContain("Each correctly reconstructed position or rotation earns an additional");
     expect(english).toContain("£0.04");
     expect(english).toContain("approximately");
-    expect(english).toContain("€7 (about £6)");
-    expect(chinese).toContain("20 分钟");
+    expect(english).toContain("£12 in total");
+    expect(chinese).toContain("20-45 分钟");
     expect(chinese).toContain("£4 基础奖金");
     expect(chinese).toContain("每个正确的位置或旋转答案均可获得额外");
     expect(chinese).toContain("£0.04");
-    expect(chinese).toContain("预计总报酬约为");
-    expect(chinese).toContain("€7（约 £6）");
+    expect(chinese).toContain("£12");
   });
 
   it("keeps the consent and data-protection documents aligned with the supplied PDFs", () => {
     const english = getConsentPageCopy("en-US");
     const chinese = getConsentPageCopy("zh-CN");
 
-    expect(english.fullDocumentHtml).toContain("This study is expected to take approximately <strong>20 minutes</strong>");
-    expect(english.fullDocumentHtml).toContain("typically no more than around 30 minutes");
+    expect(english.fullDocumentHtml).toContain("This study is expected to take approximately <strong>20-45 minutes</strong>");
+    expect(english.fullDocumentHtml).not.toContain("typically no more than around 30 minutes");
     expect(english.fullDocumentHtml).toContain("One week after the completion of the study it might no longer be possible to retract your data");
     expect(english.fullDocumentHtml).toContain("(1) first and last name");
     expect(english.fullDocumentHtml).not.toContain("Full name:");
@@ -59,8 +58,8 @@ describe("bilingual consent configuration", () => {
     ]);
     expect(english.fullDocumentHtml).not.toContain("There may be no direct personal benefit from taking part");
 
-    expect(chinese.fullDocumentHtml).toContain("本研究预计需要约 <strong>20 分钟</strong>");
-    expect(chinese.fullDocumentHtml).toContain("通常不超过约 30 分钟");
+    expect(chinese.fullDocumentHtml).toContain("本研究预计需要约 <strong>20-45 分钟</strong>");
+    expect(chinese.fullDocumentHtml).not.toContain("通常不超过约 30 分钟");
     expect(chinese.fullDocumentHtml).toContain("研究完成一周后，您可能无法再从此类汇总分析中撤回您的数据");
     expect(chinese.fullDocumentHtml).toContain("（1）姓名");
     expect(chinese.fullDocumentHtml).not.toContain("姓名：");
