@@ -6,6 +6,7 @@ import {
 } from "./experiment-session";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
 import type { ConsentRecord } from "./experiment-consent";
+import type { ParticipantProfile } from "./experiment-consent";
 
 function memoryStorage(): ExperimentSessionStorage {
   const values = new Map<string, string>();
@@ -79,6 +80,22 @@ describe("experiment session persistence", () => {
 
     expect(session.consent).toEqual(consent);
     expect(reloaded.consent).toEqual(consent);
+  });
+
+  it("persists the pre-study participant profile with the active session", () => {
+    const storage = memoryStorage();
+    const profile: ParticipantProfile = { participant_age: 31, requires_corrective_eyewear: true };
+    const session = bootstrapExperimentSession({
+      experimentId: "exp",
+      participantId: "P1",
+      participantProfile: profile,
+      storage,
+      createSessionId: () => "S1",
+    });
+    const reloaded = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S2" });
+
+    expect(session.participantProfile).toEqual(profile);
+    expect(reloaded.participantProfile).toEqual(profile);
   });
 
   it("reuses an active session in the same tab and creates a new one after completion", () => {

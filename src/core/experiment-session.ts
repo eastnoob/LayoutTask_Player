@@ -2,7 +2,7 @@ import { createSessionId } from "./participant-session";
 import { FORMAL_PAUSE_LIMIT_MS } from "./experiment-pause";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
 import type { ExperimentAssignmentMetadata } from "./experiment-data";
-import type { ConsentRecord } from "./experiment-consent";
+import type { ConsentRecord, ParticipantProfile } from "./experiment-consent";
 
 export type { ExperimentAssignmentMetadata } from "./experiment-data";
 
@@ -28,6 +28,7 @@ interface StoredSessionRecord {
   pause_snapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
   consent?: ConsentRecord;
+  participant_profile?: ParticipantProfile;
 }
 
 export interface ExperimentSession {
@@ -38,6 +39,7 @@ export interface ExperimentSession {
   pauseSnapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
   consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
   savePauseSnapshot(snapshot: ExperimentPauseSnapshot, updatedAt?: number): void;
   markCompleted(updatedAt?: number): void;
 }
@@ -51,6 +53,7 @@ export interface BootstrapExperimentSessionOptions {
   assignment?: ExperimentAssignmentMetadata;
   prolificId?: string;
   consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
 }
 
 const SESSION_PREFIX = "layouttask:session:";
@@ -71,6 +74,10 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
     record.consent = options.consent;
     storage.setItem(key, JSON.stringify(record));
   }
+  if (options.participantProfile !== undefined && record.participant_profile !== options.participantProfile) {
+    record.participant_profile = options.participantProfile;
+    storage.setItem(key, JSON.stringify(record));
+  }
   let pauseSnapshot = record.pause_snapshot
     ? restorePauseSnapshot(record.pause_snapshot, now())
     : undefined;
@@ -88,6 +95,7 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
     sessionId: record.session_id,
     assignment: record.assignment,
     consent: record.consent,
+    participantProfile: record.participant_profile,
     pauseSnapshot,
     savePauseSnapshot(snapshot, updatedAt = now()) {
       pauseSnapshot = cloneSnapshot(snapshot);
@@ -155,6 +163,7 @@ function createRecord(options: BootstrapExperimentSessionOptions, updatedAt: num
     updated_at: updatedAt,
     assignment: options.assignment,
     consent: options.consent,
+    participant_profile: options.participantProfile,
   };
 }
 
