@@ -82,11 +82,11 @@ describe("bilingual consent configuration", () => {
     expect(english).toContain("floor plan below");
     expect(english.toLowerCase()).toContain("open every yellow furniture object once");
     expect(english).toContain("Save");
-    expect(english).toContain("pause once for up to 15 minutes");
+    expect(english).not.toContain("pause once for up to 15 minutes");
     expect(chinese).toContain("页面顶部");
     expect(chinese).toContain("平面图显示在下方");
-    expect(chinese).toContain("打开每个黄色家具物体一次");
+    expect(chinese).toContain("每个黄色家具物体都必须打开一次");
     expect(chinese).toContain("保存");
-    expect(chinese).toContain("暂停一次，最长 15 分钟");
+    expect(chinese).not.toContain("暂停一次，最长 15 分钟");
   });
 });
