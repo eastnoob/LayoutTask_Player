@@ -36,6 +36,8 @@ function buildTutorialReferenceBoardHtml(input: {
     const url = new URL(path, absoluteBaseUrl);
     return isAbsoluteUrl(input.baseUrl) ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
   };
+  const svgImage = (path: string, label: string) =>
+    `<div class="layout-task-tutorial-board-svg" role="img" aria-label="${escapeHtmlAttribute(label)}" style="background-image: ${escapeHtmlAttribute(`url(${JSON.stringify(assetUrl(path))})`)}"></div>`;
   const columns = input.board.items
     .map(
       (item) => `
@@ -48,11 +50,11 @@ function buildTutorialReferenceBoardHtml(input: {
             <div class="layout-task-tutorial-board-svg-grid">
               <figure class="layout-task-tutorial-board-media-frame">
                 <figcaption>${chinese ? "全部家具" : "All Furniture"}</figcaption>
-                <img class="layout-task-tutorial-board-svg" src="${escapeHtmlAttribute(assetUrl(item.allSvg))}" alt="${chinese ? "全部家具的俯视摆放" : "All furniture top-down arrangement"}" />
+                ${svgImage(item.allSvg, chinese ? "全部家具的俯视摆放" : "All furniture top-down arrangement")}
               </figure>
               <figure class="layout-task-tutorial-board-media-frame">
                 <figcaption>${chinese ? "可移动家具" : "Movable Item"}</figcaption>
-                <img class="layout-task-tutorial-board-svg" src="${escapeHtmlAttribute(assetUrl(item.variableSvg))}" alt="${chinese ? "可移动家具的俯视摆放" : "Movable furniture item top-down arrangement"}" />
+                ${svgImage(item.variableSvg, chinese ? "可移动家具的俯视摆放" : "Movable furniture item top-down arrangement")}
               </figure>
             </div>
             <div class="layout-task-tutorial-board-gif-grid">

@@ -386,7 +386,6 @@ body {
 .layout-task-tutorial-viewing-direction {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 160ms ease;
 }
 
 .layout-task-tutorial-viewing-direction.is-visible {
@@ -1289,6 +1288,13 @@ body {
   height: 100%;
   overflow: hidden;
   background: #edf1f7;
+}
+
+/* Older WebKit clips percentage-sized SVGs in <img> even with object-fit: contain. */
+.layout-task-tutorial-board-svg {
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .layout-task-output {

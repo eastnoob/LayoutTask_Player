@@ -85,7 +85,7 @@ describe("buildTutorialReferenceBoardPage", () => {
       baseUrl: expectedBase,
       board: experimentConfig.tutorial.referenceBoard as ExperimentTutorialReferenceBoardConfig,
     });
-    const sources = Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/g), (match) => match[1]);
+    const sources = Array.from(html.matchAll(/(?:src="|background-image: url\(&quot;)([^"&]+)/g), (match) => match[1]);
 
     expect(sources).toHaveLength(16);
     expect(sources.every((source) => source.startsWith(`${expectedBase}assets/`))).toBe(true);

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tutorial rendering regression</title>
+    <link rel="stylesheet" href="../../src/styles/layout-task.css" />
+  </head>
+  <body>
+    <main id="board"></main>
+    <div id="player"></div>
+    <script type="module">
+      import { buildTutorialReferenceBoardPages } from "../../src/core/tutorial-reference-board.ts";
+      import { LayoutTaskRenderer } from "../../src/core/renderer.ts";
+      import { TutorialController } from "../../src/core/tutorial-controller.ts";
+      import { StateStore } from "../../src/core/state-store.ts";
+      import { createRuntimeConfig } from "../../src/test-support/runtime-config.ts";
+
+      const experiment = await (await fetch("/experiment/experiment.json")).json();
+      const assert = (condition, message) => { if (!condition) throw new Error(message); };
+      const player = document.querySelector("#player");
+
+      window.showBoard = async (index = 3, baseUrl = "/layout-task-run12-core23-persistent/tutorial/") => {
+        player.hidden = true;
+        document.querySelector("#board").innerHTML = buildTutorialReferenceBoardPages({
+          baseUrl, board: experiment.tutorial.referenceBoard,
+        })[index];
+        const images = Array.from(document.querySelectorAll("#board img"));
+        for (const element of document.querySelectorAll("#board .layout-task-tutorial-board-svg")) {
+          const image = new Image();
+          image.src = JSON.parse(element.style.backgroundImage.slice(4, -1));
+          images.push(image);
+        }
+        await Promise.all(images.map(image => new Promise((resolve, reject) => {
+          const loaded = () => image.naturalWidth > 0 ? resolve() : reject(new Error("Image failed: " + image.src));
+          if (image.complete) loaded();
+          else {
+            image.addEventListener("load", loaded, { once: true });
+            image.addEventListener("error", () => reject(new Error("Image failed: " + image.src)), { once: true });
+          }
+        })));
+      };
+
+      window.checkBoardFit = () => {
+        for (const media of document.querySelectorAll(".layout-task-tutorial-board-svg")) {
+          const style = getComputedStyle(media);
+          assert(style.backgroundImage !== "none", "SVG must use the Safari-compatible background rendering path");
+          assert(style.backgroundSize === "contain", "SVG must fit without cropping");
+          assert(style.backgroundPosition === "50% 50%", "SVG must be centered");
+          assert(style.backgroundRepeat === "no-repeat", "SVG must not repeat");
+          assert(media.getAttribute("role") === "img" && media.getAttribute("aria-label"), "SVG must retain its accessible image description");
+        }
+        return true;
+      };
+
+      window.checkArrow = () => {
+        player.hidden = false;
+        const results = [];
+        for (const referenceMode of ["persistent", "preview_10s"]) {
+          for (const locale of ["zh-CN", "en-US"]) {
+            const config = createRuntimeConfig({ referenceMode });
+            const tutorial = new TutorialController(referenceMode, locale);
+            const renderer = new LayoutTaskRenderer({
+              root: player, config, store: new StateStore(config), tutorialMode: true, locale,
+              onTutorialAcknowledge: () => {
+                tutorial.handle("view_direction_acknowledged");
+                renderer.showTutorialStep(tutorial.getCurrentStep());
+              },
+            });
+            renderer.mount();
+            const visible = () => renderer.refs.tutorialViewingDirectionElement.classList.contains("is-visible");
+            renderer.showTutorialStep(tutorial.getCurrentStep());
+            assert(!visible(), "Arrow must be hidden before viewing-direction guidance");
+            if (referenceMode === "preview_10s") tutorial.handle("preview_acknowledged");
+            tutorial.handle("reconstruction_started");
+            renderer.showTutorialStep(tutorial.getCurrentStep());
+            assert(visible(), "Arrow must appear in viewing-direction guidance");
+            assert(renderer.refs.confirmButton.disabled, "Task submit must be disabled before acknowledgment");
+            renderer.refs.tutorialBubbleButtonElement.click();
+            assert(tutorial.getCurrentStep().id === "select_first", "OK must advance the tutorial");
+            assert(!visible(), "Arrow must disappear immediately after OK");
+            assert(getComputedStyle(renderer.refs.tutorialViewingDirectionElement).opacity === "0", "Arrow must disappear without a fade-out delay");
+            assert(!renderer.refs.confirmButton.disabled, "Acknowledgment must unlock interaction");
+            let laterSteps = 0;
+            while (!tutorial.isComplete()) {
+              tutorial.handle(tutorial.getCurrentStep().expectedEvent);
+              renderer.showTutorialStep(tutorial.getCurrentStep());
+              assert(!visible(), "Arrow must remain hidden in " + tutorial.getCurrentStep().id);
+              laterSteps++;
+            }
+            results.push({ referenceMode, locale, laterSteps });
+          }
+        }
+        const config = createRuntimeConfig();
+        const formal = new LayoutTaskRenderer({ root: player, config, store: new StateStore(config) });
+        formal.mount();
+        assert(!player.querySelector(".layout-task-tutorial-viewing-direction"), "Formal trials must not create the arrow");
+        return results;
+      };
+      window.ready = window.showBoard();
+    </script>
+  </body>
+</html>

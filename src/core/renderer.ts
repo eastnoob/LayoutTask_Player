@@ -726,7 +726,7 @@ export class LayoutTaskRenderer {
     if (this.refs.confirmButton) {
       this.refs.confirmButton.disabled = interactionBlocked;
     }
-    this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
+    this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "view_direction");
     this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
     scrollTutorialStageIntoView(this.options.root, step.id);
