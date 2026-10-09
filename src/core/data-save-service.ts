@@ -1,4 +1,4 @@
-import type { RuntimeDataSaveConfig } from "../types/runtime";
+import type { RuntimeDataSaveConfig, RuntimeReceiverSaveConfig } from "../types/runtime";
 import type { CompletionPayload } from "./completion-controller";
 import type { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
@@ -36,6 +36,25 @@ export class DataSaveService {
       payload,
     );
 
+    if (this.options.config.mode === "receiver" && this.options.config.assignment) {
+      if (!this.options.config.session_id) {
+        return { ok: false, provider: "receiver", filename, error: "Experiment session_id is required for assigned receiver saves" };
+      }
+      const expected = this.options.config.expected_presentation;
+      const actual = payload.result.presentation;
+      if ((expected || actual) && (!expected || !actual
+        || actual.presentationId !== expected.presentationId
+        || actual.trialIndex !== expected.trialIndex
+        || actual.taskId !== expected.taskId
+        || payload.result.task_id !== expected.taskId)) {
+        return { ok: false, provider: "receiver", filename, error: "Trial presentation does not match the assigned sequence position" };
+      }
+    }
+
+    const trialIdentity = this.options.config.mode === "receiver" && this.options.config.assignment
+      ? createReceiverTrialIdentity(this.options.config, payload)
+      : undefined;
+
     if (this.options.config.mode === "copy") {
       try {
         await this.options.localBackup?.saveFile({
@@ -57,7 +76,7 @@ export class DataSaveService {
       return { ok: true, provider: "copy" };
     }
 
-    const data = createDataPipeData(this.options.config, payload);
+    const data = createDataPipeData(this.options.config, payload, trialIdentity);
     try {
       await this.options.localBackup?.saveFile({
         filename,
@@ -80,10 +99,20 @@ export class DataSaveService {
 
     const request = this.options.config.mode === "receiver"
       ? {
-          schema: "layouttask.receiver.submission.v1" as const,
-          experiment_id: this.options.config.experiment_id,
-          participant_id: this.options.config.participant_id,
-          session_id: payload.result.session,
+          schema: trialIdentity ? "layouttask.receiver.submission.v2" as const : "layouttask.receiver.submission.v1" as const,
+          ...(trialIdentity
+            ? {
+                submission_kind: "trial" as const,
+                ...trialIdentity,
+                hash8: payload.encoded.hash8,
+                encoding: payload.encoded.encoding,
+                encoded: payload.encoded.output,
+              }
+            : {
+                experiment_id: this.options.config.experiment_id,
+                participant_id: this.options.config.participant_id,
+                session_id: payload.result.session,
+              }),
           files: [{ filename, content_type: "application/json", data }],
         }
       : {
@@ -168,6 +197,7 @@ function createDataPipeFilename(
 function createDataPipeData(
   config: Extract<RuntimeDataSaveConfig, { mode: "datapipe" | "receiver" }>,
   payload: CompletionPayload,
+  trialIdentity?: ReturnType<typeof createReceiverTrialIdentity>,
 ): string {
   // DataPipe 只接收 data string；这里集中决定文件内容格式，方便不同研究项目按配置切换。
   if (config.payload_format === "encoded-only") {
@@ -181,8 +211,9 @@ function createDataPipeData(
   // Store the compressed trial backup in a self-describing envelope.
   // lz-uri is compression/transport encoding, not encryption.
   return JSON.stringify({
-    schema: "layouttask.backup.v1",
+    schema: trialIdentity ? "layouttask.backup.v2" : "layouttask.backup.v1",
     saved_at: new Date().toISOString(),
+    ...trialIdentity,
     qid: payload.result.qid,
     task_id: payload.result.task_id,
     session: payload.result.session,
@@ -192,6 +223,22 @@ function createDataPipeData(
     pause: payload.result.pause,
     result: config.save_result ? payload.result : undefined,
   });
+}
+
+function createReceiverTrialIdentity(config: RuntimeReceiverSaveConfig, payload: CompletionPayload) {
+  const presentation = payload.result.presentation;
+  return {
+    experiment_id: config.experiment_id,
+    participant_id: config.participant_id,
+    session_id: config.session_id,
+    trial_session_id: payload.result.session,
+    ...config.assignment,
+    trial_type: presentation ? "formal" as const : "tutorial" as const,
+    trial_index: presentation?.trialIndex,
+    task_id: payload.result.task_id,
+    qid: payload.result.qid,
+    presentation_id: presentation?.presentationId,
+  };
 }
 
 function createCsvRow(payload: CompletionPayload): string {

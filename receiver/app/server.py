@@ -193,7 +193,8 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                     hashlib.sha256(body_bytes).hexdigest(),
                 )
             except ValidationError as error:
-                json_response(self, 400, {"ok": False, "error": error.code, "message": error.message}, origin)
+                status = 409 if error.code in ("submission_conflict", "assignment_conflict") else 400
+                json_response(self, status, {"ok": False, "error": error.code, "message": error.message}, origin)
                 return
             except Exception as error:
                 print(f"storage_error: {error}", file=sys.stderr)
@@ -205,7 +206,9 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 )
                 return
 
-            json_response(self, 201, {"ok": True, "submission_id": stored.id, "file_count": stored.file_count, "archive_status": stored.archive_status}, origin)
+            json_response(self, 200 if stored.duplicate else 201,
+                          {"ok": True, "submission_id": stored.id, "file_count": stored.file_count,
+                           "archive_status": stored.archive_status}, origin)
 
         def rate_allowed(self) -> bool:
             now = time.time() * 1000

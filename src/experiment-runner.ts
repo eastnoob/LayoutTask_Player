@@ -7,6 +7,7 @@ import {
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
+  type ExperimentAssignmentMetadata,
 } from "./core/experiment-data";
 import { getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
@@ -64,11 +65,14 @@ function assignmentMetadata(assignment?: AssignmentRecord) {
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; onTaskReady?: () => void } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; sessionId?: string; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; onTaskReady?: () => void } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
-  const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
+  const taskDataSave = toRuntimeTaskDataSave(
+    config.dataSave, options.participantId, options.sessionId,
+    options.developerMode ? undefined : assignmentMetadata(options.assignment),
+  );
 
   if (config.tutorial.enabled) {
     const tutorialBaseUrl = config.tutorial.baseUrl ?? `${config.baseUrl}tutorial/`;
@@ -209,7 +213,9 @@ export function buildExperimentTimeline(
       writeEncodedToData: true,
       writeResultToData: true,
       writeHeaderToData: true,
-      dataSave: taskDataSave,
+      dataSave: taskDataSave.mode === "receiver" && taskDataSave.assignment
+        ? { ...taskDataSave, expected_presentation: { ...presentation } }
+        : taskDataSave,
       localBackup: options.localBackup,
       pause: options.pause,
       onReady: options.onTaskReady,
@@ -225,6 +231,8 @@ export function buildExperimentTimeline(
 export function toRuntimeTaskDataSave(
   dataSave: ExperimentDataSaveConfig,
   participantId = "unknown",
+  sessionId?: string,
+  assignment?: ExperimentAssignmentMetadata,
 ): RuntimeDataSaveConfig {
   if (dataSave.mode === "copy") {
     return { mode: "copy" };
@@ -236,6 +244,8 @@ export function toRuntimeTaskDataSave(
       endpoint: dataSave.endpoint,
       filename_prefix: dataSave.filenamePrefix,
       participant_id: participantId,
+      session_id: sessionId,
+      assignment,
       submit_token: dataSave.submitToken,
       payload_format: "json-envelope",
       save_encoded: true,
@@ -383,6 +393,7 @@ export async function saveExperimentFiles(input: {
   pauseSummary?: import("./types/result").PauseSummary;
   participantProfile?: ParticipantProfile;
   assignment?: AssignmentRecord;
+  developerMode?: boolean;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -450,7 +461,7 @@ export async function saveExperimentFiles(input: {
                 prolificId: input.prolificId,
                 sessionId: input.sessionId!,
                 files: input.files,
-                assignment: input.assignment,
+                assignment: input.developerMode ? undefined : input.assignment,
               }),
             ),
           }),
@@ -494,7 +505,7 @@ export async function saveExperimentFiles(input: {
       participant_id: input.participantId,
       session_id: input.sessionId,
       prolific_id: input.prolificId ?? "",
-      ...assignmentMetadata(input.assignment),
+      ...assignmentMetadata(input.developerMode ? undefined : input.assignment),
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -737,6 +748,7 @@ export function createRunnableExperiment(
         pauseSummary: createPauseSummary(pause.snapshot()),
         participantProfile: options.participantProfile,
         assignment: options.assignment,
+        developerMode: options.developerMode,
       });
       if (saveResult.ok) {
         session.markCompleted();
@@ -750,6 +762,7 @@ export function createRunnableExperiment(
     timeline: buildExperimentTimeline(config, {
       developerMode: options.developerMode,
       participantId,
+      sessionId,
       participantNumber: options.participantNumber,
       assignment: options.assignment,
       requireAssignment: options.requireAssignment,
@@ -890,7 +903,8 @@ function createReceiverSubmission(input: {
   assignment?: AssignmentRecord;
 }) {
   return {
-    schema: "layouttask.receiver.submission.v1" as const,
+    schema: input.assignment ? "layouttask.receiver.submission.v2" as const : "layouttask.receiver.submission.v1" as const,
+    ...(input.assignment ? { submission_kind: "final" as const } : {}),
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,

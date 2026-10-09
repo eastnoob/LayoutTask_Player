@@ -19,6 +19,8 @@ import type {
   StageConfig,
   WorldConfig,
 } from "./config";
+import type { ExperimentAssignmentMetadata } from "../core/experiment-data";
+import type { ReferencePresentation } from "./schedule";
 
 // Runtime types are the resolved, app-ready shape after config loading.
 // 和 `config.ts` 的区别在于：asset path 已解析，defaults 也已经补齐。
@@ -166,6 +168,9 @@ export interface RuntimeReceiverSaveConfig {
   endpoint: string;
   filename_prefix: string;
   participant_id: string;
+  session_id?: string;
+  assignment?: ExperimentAssignmentMetadata;
+  expected_presentation?: ReferencePresentation;
   submit_token?: string;
   payload_format: "json-envelope";
   save_encoded: boolean;

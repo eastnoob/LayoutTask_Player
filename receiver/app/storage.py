@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
+import csv
 import hashlib
+import io
 import json
 from pathlib import Path
 import shutil
@@ -12,7 +14,7 @@ from typing import Any
 import uuid
 
 from .archive import ArchiveResult, ArchiveTargetResult
-from .models import Submission
+from .models import ASSIGNMENT_FIELDS, IDENTITY_FIELDS, TRIAL_FIELDS, Submission, ValidationError
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class StoredSubmission:
     id: str
     file_count: int
     archive_status: str
+    duplicate: bool = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,8 @@ class ReceiverStorage:
         self.sqlite_path = self.data_dir / "submissions.sqlite"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._init_schema()
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            self._reconcile_jsonl()
 
     def allocate_assignment(
         self,
@@ -142,6 +147,19 @@ class ReceiverStorage:
         user_agent: str | None,
         body_sha256: str,
     ) -> StoredSubmission:
+        content_sha256 = None
+        if submission.submission_kind:
+            self._validate_v2(submission)
+            if submission.submission_kind == "trial":
+                content_sha256 = hashlib.sha256(submission.encoded.encode("utf-8")).hexdigest()
+            else:
+                content = [(file.filename, file.data) for file in submission.files]
+                content_sha256 = hashlib.sha256(json.dumps(sorted(content), ensure_ascii=False).encode("utf-8")).hexdigest()
+            with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+                existing = self._existing_v2(submission, content_sha256)
+                if existing:
+                    self._reconcile_jsonl(existing.id)
+                    return existing
         submission_id = uuid.uuid4().hex
         received_at = _utc_now()
         archive_key = _archive_key(submission, submission_id)
@@ -153,7 +171,7 @@ class ReceiverStorage:
             file_id = f"{submission_id}-f{index:03d}"
             archive_filename = f"f{index:03d}__{submitted_file.filename}"
             file_path = spool_path / archive_filename
-            file_path.write_text(submitted_file.data, encoding="utf-8")
+            file_path.write_bytes(submitted_file.data.encode("utf-8"))
             sha256 = hashlib.sha256(submitted_file.data.encode("utf-8")).hexdigest()
             files.append(
                 {
@@ -180,128 +198,207 @@ class ReceiverStorage:
             "received_at": received_at,
             "files": files,
         }
+        if submission.submission_kind:
+            manifest.update(self._v2_metadata(submission, content_sha256))
         (spool_path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
-        archive_status = "pending"
-        archive_error = None
-        archive_uri = None
-        target_results: list[ArchiveTargetResult] = []
-        if self.archive_backend is not None and self.archive_on_submit:
+        target_results = [ArchiveTargetResult(target=name, ok=False) for name in self._archive_target_names()]
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            if submission.submission_kind:
+                existing = self._existing_v2(submission, content_sha256)
+                if existing:
+                    shutil.rmtree(spool_path)
+                    self._reconcile_jsonl(existing.id)
+                    return existing
             try:
-                result: ArchiveResult = self.archive_backend.archive(spool_path, archive_key)
-            except Exception as error:
-                result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
-            target_results = self._target_results(result)
-            archive_status = _aggregate_archive_status(target_results)
-            archive_uri = _first_archive_uri(target_results)
-            archive_error = _archive_error(target_results)
-            for file_info in files:
-                file_info["archive_status"] = archive_status
-                if archive_uri:
-                    file_info["archive_uri"] = f"{archive_uri}/{file_info['archive_filename']}"
-                if archive_status == "archived" and self.delete_local_after_success:
-                    file_info["local_path"] = None
-            if archive_status == "archived" and self.delete_local_after_success:
+                self._insert_submission(
+                    submission_id, submission, received_at, remote_addr, user_agent,
+                    len(files), body_sha256, "pending", files, target_results, content_sha256,
+                )
+            except sqlite3.IntegrityError as error:
                 shutil.rmtree(spool_path)
-        elif self.archive_backend is not None:
-            target_results = [ArchiveTargetResult(target=name, ok=False) for name in self._archive_target_names()]
-
-        self._insert_submission(
-            submission_id,
-            submission,
-            received_at,
-            remote_addr,
-            user_agent,
-            len(files),
-            body_sha256,
-            archive_status,
-            files,
-            target_results,
-        )
-        self._append_jsonl(
-            {
+                if submission.submission_kind:
+                    existing = self._existing_v2(submission, content_sha256)
+                    if existing:
+                        self._reconcile_jsonl(existing.id)
+                        return existing
+                raise ValidationError("submission_conflict", "submission identity already exists") from error
+            except Exception:
+                shutil.rmtree(spool_path)
+                raise
+            index_item = {
                 "id": submission_id,
                 "experiment_id": submission.experiment_id,
                 "participant_id": submission.participant_id,
                 "session_id": submission.session_id,
                 "received_at": received_at,
                 "file_count": len(files),
-                "archive_status": archive_status,
-                "archive_uri": archive_uri,
-                "archive_error": archive_error,
+                "archive_status": "pending",
+                "archive_uri": None,
+                "archive_error": None,
                 "archive_targets": _target_results_payload(target_results),
                 "files": files,
-            },
-        )
-        return StoredSubmission(id=submission_id, file_count=len(files), archive_status=archive_status)
+            }
+            if submission.submission_kind:
+                index_item.update(self._v2_metadata(submission, content_sha256))
+            self._append_jsonl(index_item)
+        if self.archive_backend is not None and self.archive_on_submit:
+            with _process_lock(self._session_lock_path(submission.experiment_id, submission.participant_id, submission.session_id)):
+                for target_name in self._archive_target_names():
+                    if self._submission_target_archived(submission_id, target_name):
+                        continue
+                    if not spool_path.exists():
+                        break
+                    try:
+                        result = self._archive_target(target_name, spool_path, archive_key)
+                    except Exception as error:
+                        result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
+                    self._record_target_result(
+                        [submission_id], ArchiveTargetResult(target=target_name,
+                            ok=result.ok and bool(result.archive_uri), archive_uri=result.archive_uri, error=result.error),
+                    )
+                if self._submission_status(submission_id) == "archived" and self.delete_local_after_success and spool_path.exists():
+                    shutil.rmtree(spool_path)
+        return StoredSubmission(id=submission_id, file_count=len(files), archive_status=self._submission_status(submission_id))
+
+    def _v2_metadata(self, submission: Submission, content_sha256: str) -> dict[str, Any]:
+        return {field: getattr(submission, field) for field in ("submission_kind", *ASSIGNMENT_FIELDS, *TRIAL_FIELDS) if field != "encoded"} | {"content_sha256": content_sha256}
+
+    def _existing_v2(self, submission: Submission, content_sha256: str) -> StoredSubmission | None:
+        fields = ASSIGNMENT_FIELDS
+        if submission.submission_kind == "trial":
+            fields += tuple(field for field in TRIAL_FIELDS if field != "encoded")
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            existing = db.execute(
+                f"SELECT id, file_count, archive_status, content_sha256, {', '.join(fields)} FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? AND submission_kind = ? AND trial_session_id IS ?",
+                (submission.experiment_id, submission.participant_id, submission.session_id,
+                 submission.submission_kind, submission.trial_session_id),
+            ).fetchone()
+        if existing is None:
+            return None
+        if existing[3] != content_sha256 or existing[4:] != tuple(getattr(submission, field) for field in fields):
+            raise ValidationError("submission_conflict", "submission identity already has different content or metadata")
+        return StoredSubmission(*existing[:3], duplicate=True)
+
+    def _validate_v2(self, submission: Submission) -> None:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            row = db.execute(
+                "SELECT experiment_id, participant_id, participant_number, sequence_id, schedule_version, assignment_mode, requested_sequence_id, replacement_attempt, rotation_index FROM assignments WHERE assignment_id = ?",
+                (submission.assignment_id,),
+            ).fetchone()
+        if row is None:
+            raise ValidationError("invalid_assignment", "assignment_id does not exist")
+        actual = dict(zip(("experiment_id", "participant_id", *ASSIGNMENT_FIELDS[1:]), row))
+        for field in ("experiment_id", *ASSIGNMENT_FIELDS[1:]):
+            if getattr(submission, field) != actual[field]:
+                raise ValidationError("invalid_assignment", f"{field} differs from assignment")
+        if actual["participant_id"] is not None and actual["participant_id"] != submission.participant_id:
+            raise ValidationError("assignment_conflict", "assignment is bound to another participant")
+        identity = {field: getattr(submission, field) for field in IDENTITY_FIELDS}
+        if submission.submission_kind == "trial":
+            if len(submission.files) != 1 or not submission.files[0].filename.endswith(".json"):
+                raise ValidationError("invalid_trial_file", "v2 trial requires one JSON backup")
+            try:
+                backup = json.loads(submission.files[0].data)
+            except json.JSONDecodeError as error:
+                raise ValidationError("invalid_trial_file", "backup is not JSON") from error
+            if not isinstance(backup, dict) or backup.get("schema") != "layouttask.backup.v2":
+                raise ValidationError("invalid_trial_file", "backup schema must be layouttask.backup.v2")
+            for field, expected in (identity | {field: getattr(submission, field) for field in TRIAL_FIELDS}).items():
+                if backup.get(field) != expected:
+                    raise ValidationError("identity_mismatch", f"backup {field} differs from submission")
+            if backup.get("session") != submission.trial_session_id:
+                raise ValidationError("identity_mismatch", "backup result session differs from trial_session_id")
+        else:
+            for kind in ("_session_", "_raw_results_"):
+                matches = [file for file in submission.files if kind in file.filename and file.filename.endswith(".csv")]
+                if len(matches) != 1:
+                    raise ValidationError("invalid_final_files", f"final requires one {kind} CSV")
+                try:
+                    reader = csv.DictReader(io.StringIO(matches[0].data))
+                    if not reader.fieldnames or not set(identity) <= set(reader.fieldnames):
+                        raise ValidationError("identity_mismatch", f"{kind} CSV lacks identity columns")
+                    rows = list(reader)
+                except csv.Error as error:
+                    raise ValidationError("invalid_final_files", f"{kind} CSV is malformed") from error
+                if kind == "_session_" and len(rows) != 1:
+                    raise ValidationError("invalid_final_files", "session CSV requires one data row")
+                for row in rows:
+                    for field, expected in identity.items():
+                        if row.get(field) != ("" if expected is None else str(expected)):
+                            raise ValidationError("identity_mismatch", f"{kind} CSV {field} differs from submission")
 
     def archive_session(self, experiment_id: str, participant_id: str, session_id: str) -> SessionArchiveResult:
-        """Archive every pending submission for one session as one idempotent unit."""
-        with closing(sqlite3.connect(self.sqlite_path)) as db:
-            rows = db.execute(
-                "SELECT id FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? ORDER BY received_at",
-                (experiment_id, participant_id, session_id),
-            ).fetchall()
+        """Archive each outstanding submission for each target in one session."""
+        with _process_lock(self._session_lock_path(experiment_id, participant_id, session_id)):
+            return self._archive_session_locked(experiment_id, participant_id, session_id)
 
-        if not rows:
-            return SessionArchiveResult(False, "missing", error="session has no accepted submissions")
-        if all(self._submission_status(submission_id) == "archived" for (submission_id,) in rows):
-            archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
-            return SessionArchiveResult(True, "archived", archive_uri=archive_uri, already_archived=True)
-        if self.archive_backend is None:
-            return SessionArchiveResult(False, "pending", error="archive backend is disabled")
+    def _archive_session_locked(self, experiment_id: str, participant_id: str, session_id: str) -> SessionArchiveResult:
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                rows = db.execute(
+                    "SELECT id FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? ORDER BY received_at",
+                    (experiment_id, participant_id, session_id),
+                ).fetchall()
 
-        staging_root = self.data_dir / "session-staging"
-        staging_dir = staging_root / uuid.uuid4().hex
-        staging_dir.mkdir(parents=True, exist_ok=False)
-        try:
+            if not rows:
+                return SessionArchiveResult(False, "missing", error="session has no accepted submissions")
+            if all(self._submission_status(submission_id) == "archived" for (submission_id,) in rows):
+                archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
+                return SessionArchiveResult(True, "archived", archive_uri=archive_uri, already_archived=True)
+            if self.archive_backend is None:
+                return SessionArchiveResult(False, "pending", error="archive backend is disabled")
+
+        archive_key = f"{experiment_id}/{participant_id}/{session_id}"
+        for target_name in self._archive_target_names():
             for (submission_id,) in rows:
+                if self._submission_target_archived(submission_id, target_name):
+                    continue
                 spool_dir = self.spool_dir / submission_id
                 if not spool_dir.exists():
                     return SessionArchiveResult(False, "failed", error=f"missing spool for submission {submission_id}")
-                shutil.copytree(spool_dir, staging_dir / submission_id)
-
-            archive_key = f"{experiment_id}/{participant_id}/{session_id}"
-            for target_name in self._archive_target_names():
-                pending_ids = [
-                    submission_id
-                    for (submission_id,) in rows
-                    if not self._submission_target_archived(submission_id, target_name)
-                ]
-                if not pending_ids:
-                    continue
                 try:
-                    result = self._archive_target(target_name, staging_dir, archive_key)
+                    result = self._archive_target(target_name, spool_dir, f"{archive_key}/{submission_id}")
                 except Exception as error:
                     result = ArchiveResult(ok=False, error=str(error) or error.__class__.__name__)
                 self._record_target_result(
-                    pending_ids,
+                    [submission_id],
                     ArchiveTargetResult(
                         target=target_name,
                         ok=result.ok and bool(result.archive_uri),
                         archive_uri=result.archive_uri,
                         error=result.error,
                     ),
-                    session_archive=True,
                 )
 
-            submission_ids = {row[0] for row in rows}
+        submission_ids = {row[0] for row in rows}
+        if all(self._submission_status(submission_id) == "archived" for submission_id in submission_ids):
             for submission_id in submission_ids:
-                self._sync_submission_state(submission_id)
-            statuses = [self._submission_status(submission_id) for submission_id in submission_ids]
-            if all(status == "archived" for status in statuses):
-                for submission_id in submission_ids:
-                    spool_path = self.spool_dir / submission_id
-                    if self.delete_local_after_success and spool_path.exists():
-                        shutil.rmtree(spool_path)
-                archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
-                return SessionArchiveResult(True, "archived", archive_uri=archive_uri)
+                spool_path = self.spool_dir / submission_id
+                if self.delete_local_after_success and spool_path.exists():
+                    shutil.rmtree(spool_path)
+
+        # Publication can accept more session rows during archive I/O; report the current snapshot.
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                current_rows = db.execute(
+                    "SELECT id, archive_status FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? ORDER BY received_at",
+                    (experiment_id, participant_id, session_id),
+                ).fetchall()
+            statuses = [status for _submission_id, status in current_rows]
             archive_uri = self._session_archive_uri(experiment_id, participant_id, session_id)
-            status = "partial" if any(status in {"partial", "archived"} for status in statuses) else "failed"
-            return SessionArchiveResult(False, status, archive_uri=archive_uri, error="one or more archive targets failed")
-        finally:
-            if staging_dir.exists():
-                shutil.rmtree(staging_dir)
+            if all(status == "archived" for status in statuses):
+                return SessionArchiveResult(True, "archived", archive_uri=archive_uri)
+            if any(status in {"partial", "archived"} for status in statuses):
+                status = "partial"
+            elif all(status == "pending" for status in statuses):
+                status = "pending"
+            else:
+                status = "failed"
+            error = "one or more archive targets failed"
+            if any(submission_id not in submission_ids for submission_id, _status in current_rows):
+                error = "session has pending submissions; retry archive to include them"
+            return SessionArchiveResult(False, status, archive_uri=archive_uri, error=error)
 
     def _submission_status(self, submission_id: str) -> str:
         with closing(sqlite3.connect(self.sqlite_path)) as db:
@@ -321,18 +418,27 @@ class ReceiverStorage:
     def retry_pending(self) -> int:
         if self.archive_backend is None:
             return 0
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                sessions = db.execute(
+                    "SELECT DISTINCT experiment_id, participant_id, session_id FROM submissions WHERE archive_status IN ('pending', 'failed', 'partial')"
+                ).fetchall()
         retried = 0
-        with closing(sqlite3.connect(self.sqlite_path)) as db:
-            rows = db.execute(
-                """
-                SELECT id, experiment_id, participant_id, session_id
-                FROM submissions
-                WHERE archive_status IN ('pending', 'failed', 'partial')
-                ORDER BY received_at
-                """,
-            ).fetchall()
+        for experiment_id, participant_id, session_id in sessions:
+            with _process_lock(self._session_lock_path(experiment_id, participant_id, session_id)):
+                retried += self._retry_session_locked(experiment_id, participant_id, session_id)
+        return retried
 
-        for submission_id, experiment_id, participant_id, session_id in rows:
+    def _retry_session_locked(self, experiment_id: str, participant_id: str, session_id: str) -> int:
+        with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                rows = db.execute(
+                    "SELECT id FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? AND archive_status IN ('pending', 'failed', 'partial') ORDER BY received_at",
+                    (experiment_id, participant_id, session_id),
+                ).fetchall()
+
+        retried = 0
+        for (submission_id,) in rows:
             spool_path = self.spool_dir / submission_id
             if not spool_path.exists():
                 continue
@@ -364,6 +470,11 @@ class ReceiverStorage:
                 if before != "archived":
                     retried += 1
         return retried
+
+    def _session_lock_path(self, experiment_id: str, participant_id: str, session_id: str) -> Path:
+        identity = json.dumps([experiment_id, participant_id, session_id], ensure_ascii=False, separators=(",", ":"))
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        return self.data_dir / f".session-{digest}.lock.sqlite"
 
     def archive_metadata(self, label: str | None = None, keep_local: int = 3) -> MetadataArchiveResult:
         pending = self._pending_metadata_archives()
@@ -518,6 +629,19 @@ class ReceiverStorage:
                 )
                 """,
             )
+            submission_columns = {row[1] for row in db.execute("PRAGMA table_info(submissions)")}
+            for column, sql_type in {"submission_kind": "TEXT", "assignment_id": "TEXT",
+                                     "participant_number": "INTEGER", "sequence_id": "TEXT",
+                                     "schedule_version": "TEXT", "assignment_mode": "TEXT",
+                                     "requested_sequence_id": "TEXT", "replacement_attempt": "INTEGER",
+                                     "rotation_index": "INTEGER", "trial_session_id": "TEXT",
+                                     "trial_type": "TEXT", "trial_index": "INTEGER", "task_id": "TEXT",
+                                     "qid": "TEXT", "presentation_id": "TEXT", "hash8": "TEXT",
+                                     "encoding": "TEXT", "content_sha256": "TEXT"}.items():
+                if column not in submission_columns:
+                    db.execute(f"ALTER TABLE submissions ADD COLUMN {column} {sql_type}")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS v2_trial_identity ON submissions(experiment_id, participant_id, session_id, trial_session_id) WHERE submission_kind = 'trial'")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS v2_final_identity ON submissions(experiment_id, participant_id, session_id) WHERE submission_kind = 'final'")
             db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS submission_files(
@@ -582,6 +706,7 @@ class ReceiverStorage:
             )
             assignment_columns = {row[1] for row in db.execute("PRAGMA table_info(assignments)")}
             for column, statement in {
+                "participant_id": "ALTER TABLE assignments ADD COLUMN participant_id TEXT",
                 "assignment_mode": "ALTER TABLE assignments ADD COLUMN assignment_mode TEXT",
                 "requested_sequence_id": "ALTER TABLE assignments ADD COLUMN requested_sequence_id TEXT",
                 "replacement_attempt": "ALTER TABLE assignments ADD COLUMN replacement_attempt INTEGER",
@@ -599,8 +724,7 @@ class ReceiverStorage:
                 for index, (assignment_id,) in enumerate(rows):
                     db.execute("UPDATE assignments SET rotation_index = ? WHERE assignment_id = ? AND rotation_index IS NULL", (index, assignment_id))
             db.commit()
-        if not self.jsonl_path.exists():
-            self.jsonl_path.write_text("", encoding="utf-8")
+        self.jsonl_path.touch(exist_ok=True)
 
     def _insert_submission(
         self,
@@ -614,15 +738,27 @@ class ReceiverStorage:
         archive_status: str,
         files: list[dict[str, Any]],
         target_results: list[ArchiveTargetResult],
+        content_sha256: str | None,
     ) -> None:
         with closing(sqlite3.connect(self.sqlite_path)) as db:
+            if submission.submission_kind:
+                cursor = db.execute(
+                    "UPDATE assignments SET participant_id = ? WHERE assignment_id = ? AND (participant_id IS NULL OR participant_id = ?)",
+                    (submission.participant_id, submission.assignment_id, submission.participant_id),
+                )
+                if cursor.rowcount != 1:
+                    raise ValidationError("assignment_conflict", "assignment is bound to another participant")
             db.execute(
                 """
                 INSERT INTO submissions(
                   id, experiment_id, participant_id, session_id, received_at,
-                  remote_addr, user_agent, file_count, status, body_sha256, archive_status
+                  remote_addr, user_agent, file_count, status, body_sha256, archive_status,
+                  submission_kind, assignment_id, participant_number, sequence_id, schedule_version,
+                  assignment_mode, requested_sequence_id, replacement_attempt, rotation_index,
+                  trial_session_id, trial_type, trial_index, task_id, qid, presentation_id,
+                  hash8, encoding, content_sha256
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     submission_id,
@@ -636,6 +772,24 @@ class ReceiverStorage:
                     "accepted",
                     body_sha256,
                     archive_status,
+                    submission.submission_kind,
+                    submission.assignment_id,
+                    submission.participant_number,
+                    submission.sequence_id,
+                    submission.schedule_version,
+                    submission.assignment_mode,
+                    submission.requested_sequence_id,
+                    submission.replacement_attempt,
+                    submission.rotation_index,
+                    submission.trial_session_id,
+                    submission.trial_type,
+                    submission.trial_index,
+                    submission.task_id,
+                    submission.qid,
+                    submission.presentation_id,
+                    submission.hash8,
+                    submission.encoding,
+                    content_sha256,
                 ),
             )
             for file_info in files:
@@ -745,13 +899,10 @@ class ReceiverStorage:
         self,
         submission_ids: list[str],
         target_result: ArchiveTargetResult,
-        session_archive: bool = False,
     ) -> None:
         with closing(sqlite3.connect(self.sqlite_path)) as db:
             for submission_id in submission_ids:
                 archive_uri = target_result.archive_uri
-                if archive_uri and session_archive:
-                    archive_uri = f"{archive_uri.rstrip('/')}/{submission_id}"
                 db.execute(
                     """
                     INSERT INTO archive_targets(
@@ -841,6 +992,17 @@ class ReceiverStorage:
         archive_error: str | None,
         target_results: list[ArchiveTargetResult],
     ) -> None:
+        with _process_lock(self.data_dir / ".jsonl-lock.sqlite"):
+            self._update_jsonl_submission_locked(submission_id, archive_status, archive_uri, archive_error, target_results)
+
+    def _update_jsonl_submission_locked(
+        self,
+        submission_id: str,
+        archive_status: str,
+        archive_uri: str | None,
+        archive_error: str | None,
+        target_results: list[ArchiveTargetResult],
+    ) -> None:
         if not self.jsonl_path.exists():
             return
         updated: list[str] = []
@@ -864,13 +1026,90 @@ class ReceiverStorage:
                         else str(self.spool_dir / submission_id / file_info["archive_filename"])
                     )
             updated.append(json.dumps(item, sort_keys=True))
-        self.jsonl_path.write_text("\n".join(updated) + ("\n" if updated else ""), encoding="utf-8")
+        self._replace_jsonl(updated)
 
     def _append_jsonl(self, item: dict[str, Any]) -> None:
-        with self.jsonl_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(item, sort_keys=True) + "\n")
+        with _process_lock(self.data_dir / ".jsonl-lock.sqlite"):
+            with self.jsonl_path.open("a+b") as handle:
+                if handle.seek(0, io.SEEK_END):
+                    handle.seek(-1, io.SEEK_END)
+                    if handle.read(1) != b"\n":
+                        handle.write(b"\n")
+                handle.write((json.dumps(item, sort_keys=True) + "\n").encode("utf-8"))
+
+    def _reconcile_jsonl(self, submission_id: str | None = None) -> None:
+        """Restore committed SQLite rows missing from JSONL; caller holds publication lock."""
+        with _process_lock(self.data_dir / ".jsonl-lock.sqlite"):
+            lines = []
+            indexed_ids = set()
+            content = self.jsonl_path.read_text(encoding="utf-8")
+            changed = bool(content and not content.endswith("\n"))
+            for line in content.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    changed = True  # A process may have stopped midway through append.
+                    continue
+                if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                    changed = True
+                    continue
+                if item.get("id") in indexed_ids:
+                    changed = True
+                    continue
+                indexed_ids.add(item.get("id"))
+                lines.append(line)
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                db.row_factory = sqlite3.Row
+                if submission_id is None or changed:
+                    rows = db.execute("SELECT * FROM submissions ORDER BY received_at, id").fetchall()
+                else:
+                    rows = db.execute("SELECT * FROM submissions WHERE id = ?", (submission_id,)).fetchall()
+                for row in rows:
+                    if row["id"] in indexed_ids:
+                        continue
+                    files = [dict(file_row) for file_row in db.execute(
+                        "SELECT file_index, file_id, filename, archive_filename, kind, content_type, size_bytes, sha256, local_path, archive_uri, archive_status FROM submission_files WHERE submission_id = ? ORDER BY file_index",
+                        (row["id"],),
+                    )]
+                    target_results = [ArchiveTargetResult(target=target["target_name"], ok=target["archive_status"] == "archived",
+                                                          archive_uri=target["archive_uri"], error=target["error"])
+                                      for target in db.execute(
+                                          "SELECT target_name, archive_uri, archive_status, error FROM archive_targets WHERE submission_id = ? ORDER BY target_name",
+                                          (row["id"],),
+                                      )]
+                    item = {
+                        "id": row["id"], "experiment_id": row["experiment_id"],
+                        "participant_id": row["participant_id"], "session_id": row["session_id"],
+                        "received_at": row["received_at"], "file_count": row["file_count"],
+                        "archive_status": row["archive_status"],
+                        "archive_uri": _first_archive_uri(target_results),
+                        "archive_error": _archive_error(target_results),
+                        "archive_targets": _target_results_payload(target_results), "files": files,
+                    }
+                    if row["submission_kind"]:
+                        item.update({field: row[field] for field in ("submission_kind", *ASSIGNMENT_FIELDS, *TRIAL_FIELDS)
+                                     if field != "encoded"})
+                        item["content_sha256"] = row["content_sha256"]
+                    lines.append(json.dumps(item, sort_keys=True))
+                    changed = True
+            if changed:
+                self._replace_jsonl(lines)
+
+    def _replace_jsonl(self, lines: list[str]) -> None:
+        temporary = self.data_dir / f".submissions-{uuid.uuid4().hex}.tmp"
+        try:
+            temporary.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+            temporary.replace(self.jsonl_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _mark_jsonl_archived(self, submission_ids: set[str], archive_uri: str) -> None:
+        with _process_lock(self.data_dir / ".jsonl-lock.sqlite"):
+            self._mark_jsonl_archived_locked(submission_ids, archive_uri)
+
+    def _mark_jsonl_archived_locked(self, submission_ids: set[str], archive_uri: str) -> None:
         if not self.jsonl_path.exists():
             return
         updated: list[str] = []
@@ -887,12 +1126,13 @@ class ReceiverStorage:
                     file_info["archive_uri"] = f"{archive_uri}/{item['id']}/{file_info['archive_filename']}"
                     file_info["local_path"] = None
             updated.append(json.dumps(item, sort_keys=True))
-        self.jsonl_path.write_text("\n".join(updated) + ("\n" if updated else ""), encoding="utf-8")
+        self._replace_jsonl(updated)
 
     def _reset_metadata(self) -> None:
         if self.sqlite_path.exists():
             self.sqlite_path.unlink()
-        self.jsonl_path.write_text("", encoding="utf-8")
+        with _process_lock(self.data_dir / ".jsonl-lock.sqlite"):
+            self._replace_jsonl([])
         self._init_schema()
 
     def _prune_metadata_archives(self, keep_local: int, protected: set[str] | None = None) -> None:
@@ -907,6 +1147,16 @@ class ReceiverStorage:
         keep = max(0, keep_local)
         for path in archives[:-keep] if keep else archives:
             shutil.rmtree(path)
+
+
+@contextmanager
+def _process_lock(path: Path):
+    with closing(sqlite3.connect(path, timeout=3600)) as db:
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        finally:
+            db.rollback()
 
 
 def _archive_key(submission: Submission, submission_id: str) -> str:

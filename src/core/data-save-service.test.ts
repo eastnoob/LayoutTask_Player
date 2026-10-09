@@ -131,6 +131,168 @@ describe("DataSaveService", () => {
       files: [{ content_type: "application/json" }],
     });
     expect(body).not.toHaveProperty("experimentID");
+    expect(JSON.parse(body.files[0].data).schema).toBe("layouttask.backup.v1");
+  });
+
+  it("stores and submits the same formal trial identity with distinct experiment and trial sessions", async () => {
+    const backup = createMemoryLocalBackupStore("experiment-session");
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 201, statusText: "Created" });
+    const payload = createPayload();
+    payload.result.presentation = {
+      presentationId: "seq6-trial1",
+      taskId: "room01",
+      repeatGroupId: null,
+      repeatIndex: 0,
+      repeatOfTaskId: null,
+      trialIndex: 1,
+      trialTotal: 25,
+    };
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver",
+        experiment_id: "EXP123",
+        endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task",
+        participant_id: "P047",
+        session_id: "EXPERIMENT_SESSION",
+        expected_presentation: payload.result.presentation,
+        assignment: {
+          assignment_id: "assign-47",
+          participant_number: 47,
+          sequence_id: "6",
+          schedule_version: "schedule-v1",
+          assignment_mode: "replacement",
+          requested_sequence_id: "6",
+          replacement_attempt: 2,
+          rotation_index: null,
+        },
+        payload_format: "json-envelope",
+        save_encoded: true,
+        save_result: false,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      localBackup: backup,
+    });
+
+    await expect(service.save(payload)).resolves.toMatchObject({
+      ok: true,
+      filename: "layout-task_room01_Q1_SESSION1.json",
+    });
+    const stored = JSON.parse((await backup.listFiles())[0].data);
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    const identity = {
+      experiment_id: "EXP123",
+      participant_id: "P047",
+      session_id: "EXPERIMENT_SESSION",
+      trial_session_id: "SESSION1",
+      assignment_id: "assign-47",
+      participant_number: 47,
+      sequence_id: "6",
+      schedule_version: "schedule-v1",
+      assignment_mode: "replacement",
+      requested_sequence_id: "6",
+      replacement_attempt: 2,
+      rotation_index: null,
+      trial_type: "formal",
+      trial_index: 1,
+      task_id: "room01",
+      qid: "Q1",
+      presentation_id: "seq6-trial1",
+    };
+    expect(stored).toMatchObject({ schema: "layouttask.backup.v2", ...identity, hash8: "HASH0001", encoded: "ENCODED" });
+    expect(request).toMatchObject({
+      schema: "layouttask.receiver.submission.v2", submission_kind: "trial", ...identity,
+      hash8: "HASH0001", encoding: "plain-json", encoded: "ENCODED",
+    });
+    expect(request.files[0].data).toBe((await backup.listFiles())[0].data);
+    expect(stored.result).toBeUndefined();
+  });
+
+  it.each([
+    { field: "presentationId", actual: "seq5-trial1" },
+    { field: "trialIndex", actual: 2 },
+    { field: "taskId", actual: "room02" },
+  ] as const)("rejects an assigned trial with a mismatched $field before backup or upload", async ({ field, actual }) => {
+    const backup = createMemoryLocalBackupStore("experiment-session");
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 201, statusText: "Created" });
+    const payload = createPayload();
+    const expected = {
+      presentationId: "seq6-trial1", taskId: "room01", trialIndex: 1,
+      repeatGroupId: null, repeatIndex: 0, repeatOfTaskId: null, trialTotal: 25,
+    };
+    payload.result.presentation = { ...expected, [field]: actual };
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver", experiment_id: "EXP123", endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task", participant_id: "P047", session_id: "EXPERIMENT_SESSION",
+        expected_presentation: expected,
+        assignment: {
+          assignment_id: "assign-47", participant_number: 47, sequence_id: "6", schedule_version: "schedule-v1",
+          assignment_mode: "replacement", requested_sequence_id: "6", replacement_attempt: 2, rotation_index: null,
+        },
+        payload_format: "json-envelope", save_encoded: true, save_result: false,
+      },
+      localBackup: backup,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(service.save(payload)).resolves.toMatchObject({
+      ok: false, provider: "receiver", error: expect.stringContaining("presentation"),
+    });
+    expect(await backup.listFiles()).toEqual([]);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects an assigned receiver save with no experiment session before backup or upload", async () => {
+    const backup = createMemoryLocalBackupStore("experiment-session");
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 201, statusText: "Created" });
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver", experiment_id: "EXP123", endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task", participant_id: "P047",
+        assignment: {
+          assignment_id: "assign-47", participant_number: 47, sequence_id: "6", schedule_version: "schedule-v1",
+          assignment_mode: "replacement", requested_sequence_id: "6", replacement_attempt: 2, rotation_index: null,
+        },
+        payload_format: "json-envelope", save_encoded: true, save_result: false,
+      },
+      localBackup: backup,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(service.save(createPayload())).resolves.toMatchObject({
+      ok: false, provider: "receiver", error: expect.stringContaining("session_id"),
+    });
+    expect(await backup.listFiles()).toEqual([]);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("submits a formal tutorial trial without a presentation position", async () => {
+    const backup = createMemoryLocalBackupStore("experiment-session");
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 201, statusText: "Created" });
+    const service = new DataSaveService({
+      config: {
+        mode: "receiver", experiment_id: "EXP123", endpoint: "https://data.example.com/submit",
+        filename_prefix: "layout-task", participant_id: "P047", session_id: "EXPERIMENT_SESSION",
+        assignment: {
+          assignment_id: "assign-47", participant_number: 47, sequence_id: "6", schedule_version: "schedule-v1",
+          assignment_mode: "replacement", requested_sequence_id: "6", replacement_attempt: 2, rotation_index: null,
+        },
+        payload_format: "json-envelope", save_encoded: true, save_result: false,
+      },
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      localBackup: backup,
+    });
+
+    await service.save(createPayload());
+    const stored = JSON.parse((await backup.listFiles())[0].data);
+    const request = JSON.parse(fetchImpl.mock.calls[0][1].body);
+    expect(stored).toMatchObject({ schema: "layouttask.backup.v2", trial_type: "tutorial", session_id: "EXPERIMENT_SESSION", trial_session_id: "SESSION1" });
+    expect(request).toMatchObject({ schema: "layouttask.receiver.submission.v2", submission_kind: "trial", trial_type: "tutorial" });
+    for (const item of [stored, request]) {
+      expect(item).not.toHaveProperty("presentation_id");
+      expect(item).not.toHaveProperty("trial_index");
+    }
   });
 
   it("can post only the encoded result as a text file", async () => {

@@ -157,6 +157,44 @@ describe("buildExperimentTimeline", () => {
     expect(formal.at(-1)!.presentation).toEqual(sequenceSix.presentations.at(-1));
   });
 
+  it("passes one assigned experiment identity to tutorial and formal trial saves", () => {
+    const timeline = buildExperimentTimeline(receiverExperimentConfig(), {
+      participantId: "P047",
+      sessionId: "EXPERIMENT_SESSION",
+      assignment: {
+        assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "schedule-v1",
+        assignmentMode: "replacement", requestedSequenceId: "6", replacementAttempt: 2, rotationIndex: null,
+      },
+    });
+    const taskTrials = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+    expect(taskTrials).toHaveLength(3);
+    for (const trial of taskTrials) {
+      expect(trial.dataSave).toMatchObject({
+        mode: "receiver", participant_id: "P047", session_id: "EXPERIMENT_SESSION",
+        assignment: {
+          assignment_id: "assign-47", participant_number: 47, sequence_id: "6", schedule_version: "schedule-v1",
+          assignment_mode: "replacement", requested_sequence_id: "6", replacement_attempt: 2, rotation_index: null,
+        },
+      });
+    }
+    expect(taskTrials[0].dataSave.expected_presentation).toBeUndefined();
+    for (const trial of taskTrials.slice(1)) {
+      expect(trial.dataSave.expected_presentation).toEqual(trial.presentation);
+    }
+  });
+
+  it("keeps developer trial saves on the unassigned v1 path", () => {
+    const timeline = buildExperimentTimeline(receiverExperimentConfig(), {
+      developerMode: true,
+      participantId: "DEBUG",
+      sessionId: "DEBUG_SESSION",
+      assignment: { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "schedule-v1" },
+    });
+    const taskTrials = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+    expect(taskTrials).toHaveLength(3);
+    expect(taskTrials.every((trial) => trial.dataSave.assignment === undefined)).toBe(true);
+  });
+
   it("uses the assigned participant number to select the configured sequence", () => {
     const config = experimentConfig();
     config.schedule = createPresentationSchedule(
@@ -516,6 +554,24 @@ describe("createRunnableExperiment", () => {
 
     expect(initJsPsych).toHaveBeenCalledWith(expect.objectContaining({ display_element: root }));
   });
+
+  it("passes its bootstrapped session ID into trial save configuration", () => {
+    const previousSessionStorage = globalThis.sessionStorage;
+    const values = new Map<string, string>();
+    Object.defineProperty(globalThis, "sessionStorage", {
+      configurable: true,
+      value: { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) },
+    });
+    try {
+      const { timeline } = createRunnableExperiment(receiverExperimentConfig(), undefined, { participantId: "P047" });
+      const stored = JSON.parse(values.get("layouttask:session:layout_task_v1:P047")!);
+      const tasks = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
+      expect(tasks).toHaveLength(3);
+      expect(tasks.every((trial) => trial.dataSave.session_id === stored.session_id)).toBe(true);
+    } finally {
+      Object.defineProperty(globalThis, "sessionStorage", { configurable: true, value: previousSessionStorage });
+    }
+  });
 });
 
 describe("createSavingPageHtml", () => {
@@ -671,7 +727,7 @@ describe("saveExperimentFiles", () => {
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
     const assignment = {
       assignmentId: "assign-1",
-      participantNumber: 2,
+      participantNumber: 47,
       sequenceId: "6",
       scheduleVersion: "v1",
       assignmentMode: "replacement" as const,
@@ -711,13 +767,14 @@ describe("saveExperimentFiles", () => {
       String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[0][1].body),
     );
     expect(body).toEqual({
-      schema: "layouttask.receiver.submission.v1",
+      schema: "layouttask.receiver.submission.v2",
+      submission_kind: "final",
       experiment_id: "layout_task_v1",
       participant_id: "P001",
       prolific_id: " 5f2a-original ",
       session_id: "S001",
       assignment_id: "assign-1",
-      participant_number: 2,
+      participant_number: 47,
       sequence_id: "6",
       schedule_version: "v1",
       assignment_mode: "replacement",
@@ -732,6 +789,9 @@ describe("saveExperimentFiles", () => {
         { filename: "layout-task_tutorial_result_P001_S001.json", content_type: "application/json", data: '{"tutorial":true}' },
       ],
     });
+    expect(body).not.toHaveProperty("trial_session_id");
+    expect(body).not.toHaveProperty("trial_index");
+    expect(body).not.toHaveProperty("presentation_id");
     expect(JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[1][1].body)).schema).toBe(
       "layouttask.receiver.archive.v1",
     );
@@ -741,6 +801,25 @@ describe("saveExperimentFiles", () => {
       replacement_attempt: 1,
       rotation_index: null,
     });
+  });
+
+  it("keeps the final receiver request v1 in developer mode even when assignment is supplied", async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
+      participantId: "DEBUG",
+      sessionId: "DEBUG_SESSION",
+      developerMode: true,
+      assignment: { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "schedule-v1" },
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(true);
+    const body = JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[0][1].body));
+    expect(body).toMatchObject({ schema: "layouttask.receiver.submission.v1", session_id: "DEBUG_SESSION" });
+    expect(body).not.toHaveProperty("submission_kind");
+    expect(body).not.toHaveProperty("assignment_id");
   });
 
   it("reports receiver JSON error details", async () => {
@@ -835,6 +914,8 @@ describe("saveExperimentFiles", () => {
     expect(result.ok).toBe(true);
     expect(requests).toHaveLength(2);
     expect(requests[0].url).toBe("https://data.example.com/submit");
+    expect(requests[0].body).toMatchObject({ schema: "layouttask.receiver.submission.v1", session_id: "S001" });
+    expect(requests[0].body).not.toHaveProperty("submission_kind");
     expect(requests[1].url).toBe("https://data.example.com/archive");
     expect(requests[1].body).toMatchObject({
       schema: "layouttask.receiver.archive.v1",
