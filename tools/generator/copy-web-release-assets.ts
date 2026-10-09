@@ -21,6 +21,12 @@ export async function copyWebReleaseAssets(options: CopyWebReleaseAssetsOptions)
   }
 
   await cp(
+    path.join(experimentDir, "layout-task", "assets", "icons"),
+    path.join(distExperimentDir, "layout-task", "assets", "icons"),
+    { recursive: true },
+  );
+
+  await cp(
     path.join(publicDir, "layout-task-run12-core23-persistent"),
     path.join(distDir, "layout-task-run12-core23-persistent"),
     { recursive: true },

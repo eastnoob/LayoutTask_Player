@@ -1,4 +1,4 @@
-import { access, readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -31,6 +31,10 @@ export async function validateWebReleasePackage(options: ValidateWebReleasePacka
     "experiment/experiment-en.json",
     "experiment/experiment-debug-zh.json",
     "experiment/experiment-debug-en.json",
+    ...[
+      "arrow-up.svg", "arrow-down.svg", "arrow-left.svg", "arrow-right.svg",
+      "rotate-ccw.svg", "rotate-cw.svg", "move.svg", "info.svg", "hand.svg", "alert-circle.svg",
+    ].map((icon) => `experiment/layout-task/assets/icons/${icon}`),
     "layout-task-run12-core23-persistent/manifest.json",
     "layout-task-run12-core23-persistent/scoring/scoring-reference.json",
     "layout-task-run12-core23-persistent/tutorial/manifest.json",
@@ -38,7 +42,8 @@ export async function validateWebReleasePackage(options: ValidateWebReleasePacka
   ];
 
   for (const relativePath of required) {
-    if (!(await exists(path.join(distDir, relativePath)))) {
+    const fullPath = path.join(distDir, relativePath);
+    if (relativePath.includes("/assets/icons/") ? !(await isFile(fullPath)) : !(await exists(fullPath))) {
       failures.push(relativePath);
     }
   }
@@ -73,6 +78,14 @@ async function exists(filePath: string): Promise<boolean> {
   try {
     await access(filePath);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isFile(filePath: string): Promise<boolean> {
+  try {
+    return (await stat(filePath)).isFile();
   } catch {
     return false;
   }
