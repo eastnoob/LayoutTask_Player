@@ -21,6 +21,17 @@ describe("TutorialController", () => {
     expect(controller.getCurrentStep().id).toBe("preview");
   });
 
+  it("blocks all experiment interaction while the direction confirmation is pending", () => {
+    const controller = new TutorialController("persistent");
+
+    controller.handle("reconstruction_started");
+    expect(controller.getCurrentStep().id).toBe("view_direction");
+    expect(controller.isInteractionBlocked()).toBe(true);
+
+    controller.handle("view_direction_acknowledged");
+    expect(controller.isInteractionBlocked()).toBe(false);
+  });
+
   it("walks through real reconstruction actions", () => {
     const controller = new TutorialController();
 
@@ -37,16 +48,14 @@ describe("TutorialController", () => {
     expect(controller.handle("confidence_chosen")).toBe(true);
     expect(controller.getCurrentStep()).toMatchObject({ id: "save_second", anchor: "confidence" });
     expect(controller.handle("object_deselected")).toBe(true);
-    expect(controller.handle("pause_practice_started")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("pause_practice_resume");
-    expect(controller.handle("pause_practice_resumed")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("submit");
     expect(controller.handle("submitted")).toBe(true);
 
     expect(controller.isComplete()).toBe(true);
     expect(controller.getCurrentStep().id).toBe("complete");
   });
 
-  it("requires a tutorial-only pause practice before tutorial submission", () => {
+  it("does not require pause practice before tutorial submission", () => {
     const controller = new TutorialController();
     controller.handle("preview_acknowledged");
     controller.handle("reconstruction_started");
@@ -59,12 +68,9 @@ describe("TutorialController", () => {
     controller.handle("confidence_chosen");
     controller.handle("object_deselected");
 
-    expect(controller.getCurrentStep()).toMatchObject({ id: "pause_practice" });
-    expect(controller.handle("submitted")).toBe(false);
-    expect(controller.handle("pause_practice_started")).toBe(true);
-    expect(controller.handle("pause_practice_started")).toBe(false);
-    expect(controller.handle("pause_practice_resumed")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("submit");
+    expect(controller.getCurrentStep()).toMatchObject({ id: "submit" });
+    expect(controller.handle("submitted")).toBe(true);
+    expect(controller.getCurrentStep().id).toBe("complete");
   });
 
   it("uses persistent-reference guidance without a preview gate", () => {
@@ -137,7 +143,7 @@ describe("TutorialController", () => {
     expect(selectController.getCurrentStep().anchor).toBe("viewport-tools");
     expect(selectController.getCurrentStep().id).toBe("view_direction");
     expect(selectController.getCurrentStep().message).toContain("at the bottom of the floor plan");
-    expect(selectController.getCurrentStep().message).toContain("The arrow shows the direction you are looking");
+    expect(selectController.getCurrentStep().message).toContain("as shown by the yellow arrow");
     expect(selectController.getCurrentStep().message).toContain("viewing angle will remain unchanged");
     expect(selectController.handle("view_direction_acknowledged")).toBe(true);
     expect(selectController.getCurrentStep().id).toBe("select_first");
@@ -154,15 +160,15 @@ describe("TutorialController", () => {
     expect(selectController.getCurrentStep().message).toContain("release **Pan**");
     expect(selectController.getCurrentStep().message).toContain("not furniture positions");
     expect(selectController.getCurrentStep().message).toContain("Right-click");
-    expect(selectController.getCurrentStep().message.match(/\[\[block\]\]/g)).toHaveLength(2);
-    expect(selectController.getCurrentStep().message.match(/\[\[\/block\]\]/g)).toHaveLength(2);
+    expect(selectController.getCurrentStep().message.match(/\[\[block\]\]/g)).toHaveLength(3);
+    expect(selectController.getCurrentStep().message.match(/\[\[\/block\]\]/g)).toHaveLength(3);
 
     const chineseController = new TutorialController("persistent", "zh-CN");
     chineseController.handle("reconstruction_started");
     expect(chineseController.getCurrentStep()).toMatchObject({ anchor: "viewport-tools" });
     expect(chineseController.getCurrentStep().id).toBe("view_direction");
     expect(chineseController.getCurrentStep().message).toContain("平面图的最下方");
-    expect(chineseController.getCurrentStep().message).toContain("您正在注视的方向如箭头所示");
+    expect(chineseController.getCurrentStep().message).toContain("您正在注视的方向如黄色箭头所示");
     expect(chineseController.getCurrentStep().message).toContain("这个观察视角都不会改变");
     chineseController.handle("view_direction_acknowledged");
     expect(chineseController.getCurrentStep().message).toContain("右上角");

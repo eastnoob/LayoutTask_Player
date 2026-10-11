@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ExperimentPauseController } from "./experiment-pause";
 import { createExperimentPauseUi } from "./experiment-pause-ui";
 
@@ -36,17 +36,22 @@ describe("ExperimentPauseUi", () => {
     ui.destroy();
   });
 
-  it("uses a separate tutorial practice controller", () => {
+  it("keeps the pause button visible but disabled during the tutorial", () => {
     const documentRef = new FakeDocument();
-    const formal = new ExperimentPauseController({ mode: "formal" });
-    const practice = new ExperimentPauseController({ mode: "tutorial_practice" });
-    const ui = createExperimentPauseUi({ controller: formal, practiceController: practice, documentRef: documentRef as unknown as Document });
+    const controller = new ExperimentPauseController({ mode: "formal" });
+    const ui = createExperimentPauseUi({ controller, documentRef: documentRef as unknown as Document });
     ui.mount();
-    ui.setTutorialPracticeEnabled(true);
-    documentRef.querySelector<FakeElement>("[data-layout-task-pause]")?.click();
-    expect(practice.snapshot().status).toBe("practice_paused");
-    expect(formal.snapshot().pauseUsed).toBe(false);
-    vi.useRealTimers();
+    ui.setPageActive(true);
+    ui.setPauseEnabled(false);
+
+    const pauseButton = documentRef.querySelector<FakeElement>("[data-layout-task-pause]");
+    expect(documentRef.querySelector<FakeElement>("[data-layout-task-pause-root]")?.hidden).toBe(false);
+    expect(pauseButton?.disabled).toBe(true);
+    pauseButton?.click();
+    expect(controller.snapshot().status).toBe("available");
+
+    ui.setPauseEnabled(true);
+    expect(pauseButton?.disabled).toBe(false);
     ui.destroy();
   });
 });

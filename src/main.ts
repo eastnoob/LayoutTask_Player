@@ -3,8 +3,8 @@ import { ConfigLoader } from "./core/config-loader";
 import { createLayoutTaskPlayer } from "./core/layout-task-player";
 import { ExperimentLoader } from "./core/experiment-loader";
 import { createRunnableExperiment, requestAssignment } from "./experiment-runner";
-import { createDeveloperDebugConfig } from "./core/developer-debug";
-import { waitForExperimentConsent } from "./core/experiment-consent";
+import { createDeveloperDebugConfig, createDeveloperParticipantIdentity } from "./core/developer-debug";
+import { waitForExperimentConsent, waitForParticipantProfile, waitForProlificId } from "./core/experiment-consent";
 import {
   getDefaultExperimentConfigPath,
   isDeveloperDebugExperiment,
@@ -37,17 +37,25 @@ async function bootstrap(): Promise<void> {
   if (isExperimentPath(window.location.pathname)) {
     const params = parseLayoutTaskUrlParams(window.location.search);
     const experimentParams = new URLSearchParams(window.location.search);
-    const configPath = getDefaultExperimentConfigPath(params.config, import.meta.env.DEV);
+    const configPath = getDefaultExperimentConfigPath(
+      params.config,
+      import.meta.env.DEV,
+      document.documentElement.dataset.defaultConfig,
+    );
     const loader = new ExperimentLoader({
       baseUrl: new URL("./", window.location.href).toString(),
       configPath,
     });
     const loadedConfig = await loader.load();
-    let developerDebug = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
-    if (!developerDebug) {
-      const consent = await waitForExperimentConsent({ root, locale: loadedConfig.locale });
-      developerDebug = consent === "developer";
-    }
+    const requestedDeveloperMode = isDeveloperDebugExperiment(configPath, experimentParams.get("debug"));
+    const consentResult = await waitForExperimentConsent({
+      root,
+      locale: loadedConfig.locale,
+      developerMode: requestedDeveloperMode,
+    });
+    const developerDebug = requestedDeveloperMode || consentResult.mode === "developer";
+    const participantProfile = await waitForParticipantProfile({ root, locale: loadedConfig.locale });
+    const prolificId = await waitForProlificId({ root, locale: loadedConfig.locale });
     const config = developerDebug ? createDeveloperDebugConfig(loadedConfig) : loadedConfig;
     let assignment;
     if (!developerDebug && config.schedule) {
@@ -77,8 +85,8 @@ async function bootstrap(): Promise<void> {
       config,
       root,
       developerDebug
-        ? { participantId: "9999", participantNumber: 9999, developerMode: true }
-        : { assignment, requireAssignment: Boolean(config.schedule) },
+        ? { ...createDeveloperParticipantIdentity(prolificId), consent: consentResult.consent, participantProfile }
+        : { assignment, requireAssignment: Boolean(config.schedule), prolificId, consent: consentResult.consent, participantProfile },
     );
     await jsPsych.run(timeline);
     return;

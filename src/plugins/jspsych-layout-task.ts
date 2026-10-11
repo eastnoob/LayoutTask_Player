@@ -42,9 +42,9 @@ export interface LayoutTaskPluginParams {
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
   pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
-  practicePause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
+  onReady?: () => void;
 }
 
 // jsPsych reads this static metadata to validate and hydrate trial parameters.
@@ -128,8 +128,8 @@ const info = {
       type: ParameterType.OBJECT,
       default: null,
     },
-    practicePause: {
-      type: ParameterType.OBJECT,
+    onReady: {
+      type: ParameterType.FUNCTION,
       default: null,
     },
   },
@@ -202,12 +202,12 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           },
           localBackup: trial.localBackup ?? undefined,
           pause: trial.pause ?? undefined,
-          practicePause: trial.practicePause ?? undefined,
           reward: trial.reward ?? undefined,
           rewardReference: trial.rewardReference ?? undefined,
         });
 
         player.start();
+        trial.onReady?.();
       });
     } catch (error) {
       // Fail loudly inside jsPsych: 显示错误，同时把 error trial 写入数据，方便排查配置问题。

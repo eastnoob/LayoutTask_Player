@@ -9,6 +9,7 @@ import type { ReferenceMode } from "../types/config";
 import type { ReferencePresentation } from "../types/schedule";
 import type { PauseSummary } from "../types/result";
 import { summarizeExperimentRewards } from "./reward-calculator";
+import type { ConsentRecord, ParticipantProfile } from "./experiment-consent";
 
 export type ExperimentTrialType = "tutorial" | "formal";
 
@@ -76,6 +77,7 @@ function assignmentValues(assignment?: ExperimentAssignmentInput): CsvValue[] {
 
 export interface ExperimentCsvInput {
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   experimentId: string;
   referenceMode: ReferenceMode;
@@ -91,6 +93,8 @@ export interface ExperimentCsvInput {
   completionCode?: string;
   pauseSummary?: PauseSummary;
   assignment?: ExperimentAssignmentInput;
+  consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
 }
 
 export interface ExperimentCsvFile {
@@ -102,6 +106,8 @@ export interface ExperimentCsvFile {
 export interface ExperimentDataPipePayloadsInput {
   experimentId: string;
   files: ExperimentCsvFile[];
+  prolificId?: string;
+  participantProfile?: ParticipantProfile;
   assignment?: ExperimentAssignmentInput;
 }
 
@@ -171,6 +177,7 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         reference_mode: input.referenceMode,
         package_version: input.tutorialPackageVersion,
         participant_id: input.participantId,
+        prolific_id: input.prolificId ?? "",
         session_id: input.sessionId,
         ...toAssignmentMetadata(input.assignment),
         task_id: tutorial.taskId,
@@ -178,6 +185,8 @@ export function createTutorialResultFile(input: ExperimentCsvInput): ExperimentC
         encoded: tutorial.encoded,
         hash8: tutorial.hash8,
         completion_code: input.completionCode ?? "",
+        consent: input.consent,
+        participant_profile: input.participantProfile,
         pause: isLayoutTaskResult(tutorial.result) ? tutorial.result.pause ?? input.pauseSummary : input.pauseSummary,
         result: tutorial.result,
       },
@@ -208,11 +217,15 @@ export function createExperimentDataPipePayloads(input: ExperimentDataPipePayloa
   requested_sequence_id?: string | null;
   replacement_attempt?: number;
   rotation_index?: number | null;
+  prolific_id?: string;
+  participant_profile?: ParticipantProfile;
 }> {
   return input.files.map((file) => ({
     experimentID: input.experimentId,
     filename: file.filename,
     data: file.data,
+    prolific_id: input.prolificId,
+    participant_profile: input.participantProfile,
     ...toAssignmentMetadata(input.assignment),
   }));
 }
@@ -253,6 +266,25 @@ function createSessionCsv(input: ExperimentCsvInput): string {
       "base_reward_cents",
       "earned_reward_cents",
       "total_reward_cents",
+      "correct_position_count",
+      "correct_rotation_count",
+      "fully_correct_count",
+      "fully_failed_count",
+      "scorable_group_count",
+      "prolific_id",
+      "participant_age",
+      "requires_corrective_eyewear",
+      "consent_version",
+      "notice_version",
+      "consent_locale",
+      "consented_at",
+      "signature_method",
+      "voluntary_participation_confirmed",
+      "questions_answered_confirmed",
+      "prestudy_document_confirmed",
+      "withdrawal_right_understood_confirmed",
+      "data_protection_statement_confirmed",
+      "developer_mode",
     ],
     [
       [
@@ -287,6 +319,25 @@ function createSessionCsv(input: ExperimentCsvInput): string {
         reward.baseRewardCents,
         reward.earnedRewardCents,
         reward.totalRewardCents,
+        reward.correctPositionCount,
+        reward.correctRotationCount,
+        reward.fullyCorrectCount,
+        reward.fullyFailedCount,
+        reward.scorableGroupCount,
+        input.prolificId,
+        input.participantProfile?.participant_age,
+        input.participantProfile?.requires_corrective_eyewear,
+        input.consent?.consent_version,
+        input.consent?.notice_version,
+        input.consent?.locale,
+        input.consent?.consented_at,
+        input.consent?.signature_method,
+        input.consent?.voluntary_participation_confirmed,
+        input.consent?.questions_answered_confirmed,
+        input.consent?.prestudy_document_confirmed,
+        input.consent?.withdrawal_right_understood_confirmed,
+        input.consent?.data_protection_statement_confirmed,
+        input.consent?.developer_mode,
       ],
     ],
   );
@@ -345,6 +396,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         input.completionCode ?? "",
+        input.prolificId,
       ]);
     }
   });
@@ -393,6 +445,7 @@ function createResultsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -429,6 +482,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       input.pauseSummary?.pause_end_reason,
       input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
       input.completionCode ?? "",
+      input.prolificId,
     ]);
   });
 
@@ -457,6 +511,7 @@ function createRawResultsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -510,6 +565,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
         input.pauseSummary?.pause_end_reason,
         input.pauseSummary ? JSON.stringify(input.pauseSummary.pause_events) : undefined,
         input.completionCode ?? "",
+        input.prolificId,
       ]);
     }
   });
@@ -555,6 +611,7 @@ function createEventsCsv(input: ExperimentCsvInput): string {
       "pause_end_reason",
       "pause_events_json",
       "completion_code",
+      "prolific_id",
     ],
     rows,
   );
@@ -567,8 +624,11 @@ function createDebugJson(input: ExperimentCsvInput, rewardSummary = summarizeExp
       participant_id: input.participantId,
       session_id: input.sessionId,
       experiment_id: input.experimentId,
+      prolific_id: input.prolificId ?? "",
       ...toAssignmentMetadata(input.assignment),
       completion_code: input.completionCode ?? "",
+      consent: input.consent,
+      participant_profile: input.participantProfile,
       reference_mode: input.referenceMode,
       started_at: input.startTime,
       ended_at: input.endTime,
@@ -622,11 +682,14 @@ function createRewardsCsv(input: ExperimentCsvInput): string {
         group.scorable,
         group.positionCorrect,
         group.rotationCorrect,
+        group.bothCorrect,
+        group.bothWrong,
         group.movementRewardCents,
         group.rotationRewardCents,
         group.rewardCents,
         group.cumulativeRewardCents,
         trial.result.reward.referenceVersion,
+        input.prolificId,
       ]);
     }
   });
@@ -634,7 +697,9 @@ function createRewardsCsv(input: ExperimentCsvInput): string {
     "participant_id", "session_id", "experiment_id", "trial_index", "task_id", "qid",
     "presentation_id", "repeat_group_id", "repeat_index", "group_id", "scorable",
     "position_correct", "rotation_correct", "movement_reward_cents", "rotation_reward_cents",
+    "both_correct", "both_wrong",
     "reward_cents", "cumulative_reward_cents", "reference_version",
+    "prolific_id",
   ], rows);
 }
 

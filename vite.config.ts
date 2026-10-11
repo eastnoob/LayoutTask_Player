@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: "./",
+  publicDir: command === "build" ? false : "public",
   build: {
     rollupOptions: {
       input: {
@@ -20,4 +21,4 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, "**/.worktrees/**"],
     globals: false,
   },
-});
+}));

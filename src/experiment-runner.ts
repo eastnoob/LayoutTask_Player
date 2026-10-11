@@ -7,6 +7,7 @@ import {
   type ExperimentTrialType,
   type ExperimentCsvFile,
   type ExperimentTrialResultItem,
+  type ExperimentAssignmentMetadata,
 } from "./core/experiment-data";
 import { getParticipantId } from "./core/participant-session";
 import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
@@ -24,6 +25,7 @@ import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 import { CompletionCodeGate } from "./core/completion-code-gate";
 import { summarizeExperimentRewards } from "./core/reward-calculator";
 import type { ExperimentRewardSummary } from "./types/reward";
+import type { ConsentRecord, ParticipantProfile } from "./core/experiment-consent";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -63,11 +65,14 @@ function assignmentMetadata(assignment?: AssignmentRecord) {
 
 export function buildExperimentTimeline(
   config: ExperimentConfig,
-  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; practicePause?: ExperimentPauseController } = {},
+  options: { developerMode?: boolean; participantId?: string; participantNumber?: number; sessionId?: string; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; onTaskReady?: () => void } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
-  const taskDataSave = toRuntimeTaskDataSave(config.dataSave, options.participantId);
+  const taskDataSave = toRuntimeTaskDataSave(
+    config.dataSave, options.participantId, options.sessionId,
+    options.developerMode ? undefined : assignmentMetadata(options.assignment),
+  );
 
   if (config.tutorial.enabled) {
     const tutorialBaseUrl = config.tutorial.baseUrl ?? `${config.baseUrl}tutorial/`;
@@ -136,7 +141,7 @@ export function buildExperimentTimeline(
         dataSave: taskDataSave,
         localBackup: options.localBackup,
         pause: options.pause,
-        practicePause: options.practicePause,
+        onReady: options.onTaskReady,
         data: { tutorial: true },
       });
       timeline.push({
@@ -152,10 +157,11 @@ export function buildExperimentTimeline(
             <div class="layout-task-tutorial-complete-note">
               <ul class="layout-task-tutorial-complete-list">
                 <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
-                <li>${chinese ? "你有一次正式暂停机会，最长15分钟。" : "You have one formal pause opportunity: a one-time 15-minute break."}</li>
-                <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 floorplanrestoration.deluxe999@passmail.com 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at floorplanrestoration.deluxe999@passmail.com for assistance."}</li>
+                <li>${chinese ? "正式实验期间可暂停一次，最长15分钟。" : "During the formal experiment, you may pause once for up to 15 minutes."}</li>
+                <li>${chinese ? "如果实验让你感到任何不适，您可以简单地通过关闭页面来退出实验，在这种情况下，您将无法获得承诺报酬，但您也不需要为此付出任何代价。如果有任何问题，请通过邮箱 ftian@uni-muenster.de 联系我们协助。" : "If the experiment causes you any discomfort, you may simply close the page to withdraw. In that case, you will not receive the promised compensation, but you will not be penalized or incur any cost. If you have any questions, please contact us at ftian@uni-muenster.de for assistance."}</li>
+                <li>${chinese ? "本研究报酬为 £4 基础奖金，另加任务表现奖金。每个正确的位置或旋转答案均可获得额外 £0.04，因此参与者最多可获得 £12。" : "The compensation for this study is a £4 base payment plus task-performance bonuses. Each correctly reconstructed position or rotation earns an additional £0.04, so that the participant can earn maximum £12 in total."}</li>
                 <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
-                <li>${chinese ? "整个研究大约需要15-20分钟。" : "The complete study takes approximately 15-20 minutes."}</li>
+                <li>${chinese ? "整个研究大约需要20-45分钟。" : "The complete study takes approximately 20-45 minutes."}</li>
               </ul>
             </div>
           </section>`,
@@ -207,10 +213,12 @@ export function buildExperimentTimeline(
       writeEncodedToData: true,
       writeResultToData: true,
       writeHeaderToData: true,
-      dataSave: taskDataSave,
+      dataSave: taskDataSave.mode === "receiver" && taskDataSave.assignment
+        ? { ...taskDataSave, expected_presentation: { ...presentation } }
+        : taskDataSave,
       localBackup: options.localBackup,
       pause: options.pause,
-      practicePause: options.practicePause,
+      onReady: options.onTaskReady,
       reward: config.reward,
       rewardReference: config.rewardReference?.[trial.taskId],
       data: { formal: true, taskId: trial.taskId, qid: trial.qid, presentation },
@@ -223,6 +231,8 @@ export function buildExperimentTimeline(
 export function toRuntimeTaskDataSave(
   dataSave: ExperimentDataSaveConfig,
   participantId = "unknown",
+  sessionId?: string,
+  assignment?: ExperimentAssignmentMetadata,
 ): RuntimeDataSaveConfig {
   if (dataSave.mode === "copy") {
     return { mode: "copy" };
@@ -234,6 +244,8 @@ export function toRuntimeTaskDataSave(
       endpoint: dataSave.endpoint,
       filename_prefix: dataSave.filenamePrefix,
       participant_id: participantId,
+      session_id: sessionId,
+      assignment,
       submit_token: dataSave.submitToken,
       payload_format: "json-envelope",
       save_encoded: true,
@@ -372,13 +384,16 @@ export async function saveExperimentFiles(input: {
   dataSave: ExperimentDataSaveConfig;
   files: ExperimentCsvFile[];
   participantId?: string;
+  prolificId?: string;
   sessionId?: string;
   completionCode?: string;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   localBackup?: LocalBackupStore;
   pauseSummary?: import("./types/result").PauseSummary;
+  participantProfile?: ParticipantProfile;
   assignment?: AssignmentRecord;
+  developerMode?: boolean;
 }): Promise<{
   ok: boolean;
   error?: string;
@@ -392,11 +407,13 @@ export async function saveExperimentFiles(input: {
   } catch (error) {
     const recoveryZip = await createCompleteRecoveryZip(input.files, {
       participantId: input.participantId ?? "unknown",
+      prolificId: input.prolificId,
       sessionId: input.sessionId ?? "unknown",
       experimentId: input.dataSave.mode === "copy" ? "layout-task" : input.dataSave.experimentId,
       completionCode: input.completionCode,
       failedFilenames: input.files.map((file) => file.filename),
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
     });
     return {
@@ -441,9 +458,10 @@ export async function saveExperimentFiles(input: {
               createReceiverSubmission({
                 dataSave,
                 participantId: input.participantId!,
+                prolificId: input.prolificId,
                 sessionId: input.sessionId!,
                 files: input.files,
-                assignment: input.assignment,
+                assignment: input.developerMode ? undefined : input.assignment,
               }),
             ),
           }),
@@ -462,11 +480,13 @@ export async function saveExperimentFiles(input: {
     if (!response.ok) {
       const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
         participantId: input.participantId,
+        prolificId: input.prolificId,
         sessionId: input.sessionId,
         experimentId: dataSave.experimentId,
         completionCode: input.completionCode,
       failedFilenames: ["receiver batch"],
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
       });
       return {
@@ -484,7 +504,8 @@ export async function saveExperimentFiles(input: {
       experiment_id: dataSave.experimentId,
       participant_id: input.participantId,
       session_id: input.sessionId,
-      ...assignmentMetadata(input.assignment),
+      prolific_id: input.prolificId ?? "",
+      ...assignmentMetadata(input.developerMode ? undefined : input.assignment),
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -509,11 +530,13 @@ export async function saveExperimentFiles(input: {
     }
     const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
       participantId: input.participantId,
+      prolificId: input.prolificId,
       sessionId: input.sessionId,
       experimentId: dataSave.experimentId,
       completionCode: input.completionCode,
       failedFilenames: ["receiver archive"],
       pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
       assignment: assignmentMetadata(input.assignment),
     });
     return {
@@ -528,6 +551,8 @@ export async function saveExperimentFiles(input: {
   const payloads = createExperimentDataPipePayloads({
     experimentId: input.dataSave.experimentId,
     files: input.files,
+    prolificId: input.prolificId,
+    participantProfile: input.participantProfile,
     assignment: assignmentMetadata(input.assignment),
   });
   const dataSave = input.dataSave;
@@ -572,11 +597,13 @@ export async function saveExperimentFiles(input: {
     if (failedFilenames.length > 0) {
       const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
         participantId: input.participantId ?? "unknown",
+        prolificId: input.prolificId,
         sessionId: input.sessionId ?? "unknown",
         experimentId: dataSave.experimentId,
         completionCode: input.completionCode,
         failedFilenames,
         pauseSummary: input.pauseSummary,
+        participantProfile: input.participantProfile,
         assignment: assignmentMetadata(input.assignment),
       });
       return {
@@ -613,19 +640,25 @@ async function getRecoveryFiles(input: {
 export function createRunnableExperiment(
   config: ExperimentConfig,
   displayElement?: HTMLElement,
-  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore } = {},
+  options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore; prolificId?: string; consent?: ConsentRecord; participantProfile?: ParticipantProfile } = {},
 ) {
   const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
+    prolificId: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
+    consent: options.consent,
+    participantProfile: options.participantProfile,
   });
   const sessionId = session.sessionId;
   const localBackup = options.localBackup ?? createBrowserLocalBackup(config.experimentId, participantId, sessionId);
   void localBackup?.saveSessionMetadata?.({
     session_id: sessionId,
+    prolific_id: options.prolificId,
     assignment: assignmentMetadata(options.assignment),
+    consent: options.consent,
+    participant_profile: options.participantProfile,
     pause: session.pauseSnapshot,
   });
   const pause = new ExperimentPauseController({
@@ -635,16 +668,19 @@ export function createRunnableExperiment(
       session.savePauseSnapshot(snapshot);
       void localBackup?.saveSessionMetadata?.({
         session_id: sessionId,
+        prolific_id: options.prolificId,
         assignment: assignmentMetadata(options.assignment),
+        consent: options.consent,
+        participant_profile: options.participantProfile,
         pause: snapshot,
       });
     },
   });
-  const practicePause = new ExperimentPauseController({ mode: "tutorial_practice" });
   const pauseUi = typeof document === "undefined"
     ? createNoopPauseUi()
-    : createExperimentPauseUi({ controller: pause, practiceController: practicePause });
+    : createExperimentPauseUi({ controller: pause });
   pauseUi.mount();
+  pauseUi.setPageActive(false);
   const startTime = Date.now();
   const jsPsych = initJsPsych({
     display_element: displayElement,
@@ -653,9 +689,8 @@ export function createRunnableExperiment(
         getCurrentTrial?: () => { tutorialMode?: boolean; data?: Record<string, unknown> };
       }).getCurrentTrial?.();
       const trial = (startedTrial ?? currentTrial) as { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined;
-      const data = trial?.data;
-      pauseUi.setPageActive(!data?.tutorial_intro && !data?.tutorial_reference_board);
-      pauseUi.setTutorialPracticeEnabled(isTutorialPausePage(trial));
+      pauseUi.setPageActive(false);
+      pauseUi.setPauseEnabled(!isTutorialTrial(trial));
     },
     on_finish: async () => {
       pauseUi.setPageActive(false);
@@ -681,6 +716,7 @@ export function createRunnableExperiment(
       const tutorialRow = rows.find((row) => row.tutorial);
       const files = createExperimentCsvFiles({
         participantId,
+        prolificId: options.prolificId,
         sessionId,
         experimentId: config.experimentId,
         filenamePrefix: config.dataSave.filenamePrefix,
@@ -693,6 +729,8 @@ export function createRunnableExperiment(
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
         completionCode,
+        consent: options.consent,
+        participantProfile: options.participantProfile,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
         assignment: assignmentMetadata(options.assignment),
@@ -702,12 +740,15 @@ export function createRunnableExperiment(
       const saveResult = await saveExperimentFiles({
         dataSave: config.dataSave,
         participantId,
+        prolificId: options.prolificId,
         sessionId,
         files,
         localBackup,
         completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
+        participantProfile: options.participantProfile,
         assignment: options.assignment,
+        developerMode: options.developerMode,
       });
       if (saveResult.ok) {
         session.markCompleted();
@@ -721,12 +762,13 @@ export function createRunnableExperiment(
     timeline: buildExperimentTimeline(config, {
       developerMode: options.developerMode,
       participantId,
+      sessionId,
       participantNumber: options.participantNumber,
       assignment: options.assignment,
       requireAssignment: options.requireAssignment,
       localBackup,
       pause,
-      practicePause,
+      onTaskReady: () => pauseUi.setPageActive(true),
     }),
   };
 }
@@ -742,16 +784,20 @@ function createBrowserLocalBackup(
   return createIndexedDbLocalBackupStore(`${experimentId}:${participantId}:${sessionId}`);
 }
 
-export function isTutorialPausePage(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
+export function isTutorialTrial(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
   const data = trial?.data;
   return Boolean(trial?.tutorialMode || data?.tutorial);
+}
+
+export function isTutorialPausePage(trial: { tutorialMode?: boolean; data?: Record<string, unknown> } | undefined): boolean {
+  return Boolean(trial?.data?.tutorial);
 }
 
 function createNoopPauseUi() {
   return {
     mount: () => undefined,
     setPageActive: (_active: boolean) => undefined,
-    setTutorialPracticeEnabled: (_enabled: boolean) => undefined,
+    setPauseEnabled: (_enabled: boolean) => undefined,
     destroy: () => undefined,
   };
 }
@@ -770,6 +816,16 @@ export function createSavingPageHtml(locale: "en-US" | "zh-CN" = "en-US"): strin
       <p>This usually takes less than 1 minute.</p>
     </section>
   `;
+}
+
+export function formatRewardSummary(
+  rewardSummary: ExperimentRewardSummary,
+  locale: "en-US" | "zh-CN" = "en-US",
+): string {
+  if (locale === "zh-CN") {
+    return `基础奖金 £${(rewardSummary.baseRewardCents / 100).toFixed(2)}；额外奖金 £${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总奖金 £${(rewardSummary.totalRewardCents / 100).toFixed(2)}。位置正确 ${rewardSummary.correctPositionCount}；旋转正确 ${rewardSummary.correctRotationCount}；位置和旋转均正确 ${rewardSummary.fullyCorrectCount}；位置和旋转均错误 ${rewardSummary.fullyFailedCount}；可评分家具组 ${rewardSummary.scorableGroupCount}。`;
+  }
+  return `Base payment £${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned reward £${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total reward £${(rewardSummary.totalRewardCents / 100).toFixed(2)}. Position correct ${rewardSummary.correctPositionCount}; rotation correct ${rewardSummary.correctRotationCount}; both correct ${rewardSummary.fullyCorrectCount}; both wrong ${rewardSummary.fullyFailedCount}; scorable furniture groups ${rewardSummary.scorableGroupCount}.`;
 }
 
 export function renderSavingPage(locale: "en-US" | "zh-CN" = "en-US"): void {
@@ -821,9 +877,7 @@ function renderEndPage(
   if (rewardSummary?.enabled) {
     const reward = document.createElement("p");
     reward.className = "layout-task-reward-summary";
-    reward.textContent = locale === "zh-CN"
-      ? `基础报酬 €${(rewardSummary.baseRewardCents / 100).toFixed(2)}；完成奖励 €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}；总计 €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`
-      : `Base payment €${(rewardSummary.baseRewardCents / 100).toFixed(2)}; earned rewards €${(rewardSummary.earnedRewardCents / 100).toFixed(2)}; total €${(rewardSummary.totalRewardCents / 100).toFixed(2)}`;
+    reward.textContent = formatRewardSummary(rewardSummary, locale);
     section.append(reward);
   }
   if (!saveResult.ok) {
@@ -849,13 +903,16 @@ function createReceiverSubmission(input: {
   participantId: string;
   sessionId: string;
   files: ExperimentCsvFile[];
+  prolificId?: string;
   assignment?: AssignmentRecord;
 }) {
   return {
-    schema: "layouttask.receiver.submission.v1" as const,
+    schema: input.assignment ? "layouttask.receiver.submission.v2" as const : "layouttask.receiver.submission.v1" as const,
+    ...(input.assignment ? { submission_kind: "final" as const } : {}),
     experiment_id: input.dataSave.experimentId,
     participant_id: input.participantId,
     session_id: input.sessionId,
+    prolific_id: input.prolificId ?? "",
     ...assignmentMetadata(input.assignment),
     files: input.files.map((file) => ({
       filename: file.filename,

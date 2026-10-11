@@ -2,9 +2,11 @@ import { zipSync } from "fflate";
 import type { ExperimentCsvFile } from "./experiment-data";
 import type { ExperimentAssignmentMetadata } from "./experiment-data";
 import type { PauseSummary } from "../types/result";
+import type { ParticipantProfile } from "./experiment-consent";
 
 export interface RecoveryManifestInput {
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   experimentId: string;
   completionCode?: string;
@@ -12,6 +14,7 @@ export interface RecoveryManifestInput {
   sequenceId?: number;
   assignment?: ExperimentAssignmentMetadata;
   pauseSummary?: PauseSummary;
+  participantProfile?: ParticipantProfile;
 }
 
 export async function createCompleteRecoveryZip(
@@ -21,6 +24,7 @@ export async function createCompleteRecoveryZip(
   const manifest = {
     schema: "layouttask.recovery-manifest.v1",
     participant_id: input.participantId,
+    prolific_id: input.prolificId ?? "",
     session_id: input.sessionId,
     experiment_id: input.experimentId,
     completion_code: input.completionCode ?? "",
@@ -28,6 +32,7 @@ export async function createCompleteRecoveryZip(
     ...input.assignment,
     failed_filenames: input.failedFilenames ?? [],
     pause: input.pauseSummary,
+    participant_profile: input.participantProfile,
     files: files.map((file) => ({ filename: file.filename, content_type: file.contentType })),
   };
   const archive = zipSync({

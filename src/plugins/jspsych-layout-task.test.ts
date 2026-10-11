@@ -16,6 +16,7 @@ vi.mock("jspsych", () => ({
     OBJECT: "object",
     STRING: "string",
     BOOL: "bool",
+    FUNCTION: "function",
   },
 }));
 
@@ -70,6 +71,33 @@ describe("LayoutTaskPlugin", () => {
         result: payload.result,
       }),
     );
+  });
+
+  it("signals readiness only after the interactive player has mounted", async () => {
+    const ready = vi.fn();
+    const start = vi.fn();
+    vi.mocked(createLayoutTaskPlayer).mockReturnValue(createPlayerStub(start));
+    const plugin = new LayoutTaskPlugin({ finishTrial: vi.fn() } as unknown as JsPsych);
+
+    const trialPromise = plugin.trial(createDisplayElement(), {
+      type: LayoutTaskPlugin,
+      config: createRuntimeConfig(),
+      baseUrl: "/layout-task/",
+      manifestPath: "manifest.json",
+      taskId: null,
+      qid: null,
+      autoFinishTrial: true,
+      writeEncodedToData: true,
+      writeResultToData: true,
+      writeHeaderToData: true,
+      title: "Layout Task",
+      onReady: ready,
+    } as never);
+    await flushPromises();
+
+    expect(start).toHaveBeenCalledOnce();
+    expect(ready).toHaveBeenCalledOnce();
+    await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
   it("renders an accessible loading state while the next trial is loading", () => {

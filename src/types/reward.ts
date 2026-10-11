@@ -1,5 +1,6 @@
 import type { FinalState, RelativeFinalState } from "./result";
 import type { ObjectRole } from "./config";
+import type { ScoringEquivalenceClasses } from "./scoring";
 
 export interface RewardConfig {
   enabled: boolean;
@@ -21,6 +22,7 @@ export interface RewardReferenceObject {
       rotation_steps: number;
     };
   };
+  equivalence_classes?: ScoringEquivalenceClasses;
 }
 
 export interface RewardReferenceTask {
@@ -34,6 +36,8 @@ export interface RewardGroupResult {
   scorable: boolean;
   positionCorrect: boolean | null;
   rotationCorrect: boolean | null;
+  bothCorrect: boolean | null;
+  bothWrong: boolean | null;
   movementRewardCents: number;
   rotationRewardCents: number;
   rewardCents: number;
@@ -48,6 +52,11 @@ export interface TaskRewardSummary {
   referenceVersion?: string;
   groups: RewardGroupResult[];
   skippedGroupIds: string[];
+  correctPositionCount: number;
+  correctRotationCount: number;
+  fullyCorrectCount: number;
+  fullyFailedCount: number;
+  scorableGroupCount: number;
 }
 
 export interface ExperimentRewardSummary {
@@ -57,6 +66,11 @@ export interface ExperimentRewardSummary {
   totalRewardCents: number;
   formalTrialCount: number;
   rewardedGroupCount: number;
+  correctPositionCount: number;
+  correctRotationCount: number;
+  fullyCorrectCount: number;
+  fullyFailedCount: number;
+  scorableGroupCount: number;
 }
 
 export interface CalculateTaskRewardInput {

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
   getConfiguredObjectLocalRect,
@@ -15,6 +15,7 @@ import {
   getStageDisplayTransform,
   getStageFitStyle,
   getTutorialViewingDirectionGeometry,
+  scrollTutorialStageIntoView,
   getStageUiMetrics,
   getViewportCameraTransform,
   clampViewportZoom,
@@ -101,6 +102,43 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
+  it("waits for layout before centering the floor plan during the viewing-direction tutorial step", () => {
+    const scrollBy = vi.fn();
+    const root = {
+      querySelector: vi.fn(() => ({
+        getBoundingClientRect: () => ({ top: 500, bottom: 700 }),
+      })),
+    } as unknown as HTMLElement;
+    const requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("window", { innerHeight: 600, scrollBy });
+    vi.stubGlobal("requestAnimationFrame", requestAnimationFrame);
+
+    try {
+      scrollTutorialStageIntoView(root, "view_direction");
+
+      expect(root.querySelector).toHaveBeenCalledWith(".layout-task-tutorial-viewing-direction-arrow");
+      expect(requestAnimationFrame).toHaveBeenCalledOnce();
+      expect(scrollBy).toHaveBeenCalledWith(0, 300);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not scroll for other tutorial steps", () => {
+    const scrollBy = vi.fn();
+    const root = {
+      querySelector: vi.fn(() => ({ getBoundingClientRect: vi.fn() })),
+    } as unknown as HTMLElement;
+
+    scrollTutorialStageIntoView(root, "select_first");
+
+    expect(root.querySelector).not.toHaveBeenCalled();
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
   it("points the tutorial viewing arrow upward from the bottom center of the stage", () => {
     const config = createRuntimeConfig({
       world: {
@@ -301,6 +339,16 @@ describe("LayoutTaskRenderer stage fit", () => {
 });
 
 describe("LayoutTaskRenderer object interactivity", () => {
+  it("guards every interactive surface while the tutorial confirmation is pending", () => {
+    const renderer = readFileSync("src/core/renderer.ts", "utf8");
+    const css = readFileSync("src/styles/layout-task.css", "utf8");
+
+    expect(renderer).toContain("isInteractionBlocked?: () => boolean;");
+    expect(renderer).toContain("layout-task-tutorial-interaction-locked");
+    expect(renderer).toContain("if (this.options.isInteractionBlocked?.())");
+    expect(css).toContain(".layout-task-tutorial-interaction-locked .layout-task-workspace");
+  });
+
   it("treats objects without movement or rotation as static context", () => {
     const config = createRuntimeConfig();
     const staticObject = {
@@ -378,7 +426,7 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
     expect(renderer).toContain("setPointerCapture(event.pointerId)");
     expect(renderer).toContain("releasePointerCapture(event.pointerId)");
-    expect(renderer).toContain("if (this.options.isPaused?.())");
+    expect(renderer).toContain("this.options.isPaused?.()");
     expect(renderer).not.toContain("event.button !== 2");
     expect(renderer).not.toContain('svg.addEventListener("contextmenu"');
     expect(renderer).toContain("preventDefault()");

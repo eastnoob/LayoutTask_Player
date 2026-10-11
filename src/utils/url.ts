@@ -6,12 +6,16 @@ export interface LayoutTaskUrlParams {
   requestedSequenceId?: string;
 }
 
-export function getDefaultExperimentConfigPath(configPath: string | undefined, isDev: boolean): string {
-  return configPath ?? (isDev ? "experiment-debug.json" : "experiment.json");
+export function getDefaultExperimentConfigPath(
+  configPath: string | undefined,
+  isDev: boolean,
+  entryDefaultConfigPath?: string,
+): string {
+  return configPath ?? entryDefaultConfigPath ?? (isDev ? "experiment-debug.json" : "experiment.json");
 }
 
 export function isDeveloperDebugExperiment(configPath: string, debugParam: string | null): boolean {
-  return debugParam === "1" || configPath === "experiment-debug.json";
+  return debugParam === "1" || /^experiment-debug(?:-[^.]+)?\.json$/.test(configPath);
 }
 
 export function parseLayoutTaskUrlParams(input: string): LayoutTaskUrlParams {

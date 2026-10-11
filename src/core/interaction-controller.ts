@@ -53,6 +53,7 @@ export class InteractionController {
         onObjectAction(objectId: string): void;
         onObjectDeselected(objectId: string): void;
       };
+      isInteractionBlocked?: () => boolean;
       pause?: { isPaused(): boolean };
     },
   ) {}
@@ -69,7 +70,7 @@ export class InteractionController {
   }
 
   selectObject(objectId: string): void {
-    if (!this.bound || this.options.store.isLocked() || this.options.pause?.isPaused()) {
+    if (!this.bound || this.options.store.isLocked() || this.options.pause?.isPaused() || this.options.isInteractionBlocked?.()) {
       return;
     }
 
@@ -105,7 +106,7 @@ export class InteractionController {
   }
 
   deselectObject(): void {
-    if (!this.bound || !this.activeObjectId || this.dragSession || this.options.pause?.isPaused()) {
+    if (!this.bound || !this.activeObjectId || this.dragSession || this.options.pause?.isPaused() || this.options.isInteractionBlocked?.()) {
       return;
     }
 
@@ -123,7 +124,7 @@ export class InteractionController {
   }
 
   saveActiveConfidence(): void {
-    if (!this.bound || !this.activeObjectId || this.dragSession || !this.options.confidence || this.options.pause?.isPaused()) {
+    if (!this.bound || !this.activeObjectId || this.dragSession || !this.options.confidence || this.options.pause?.isPaused() || this.options.isInteractionBlocked?.()) {
       return;
     }
 
@@ -145,6 +146,9 @@ export class InteractionController {
   requestAction(request: ActionRequest): { ok: boolean; reason?: string } {
     if (!this.bound) {
       return { ok: false, reason: "controller_not_bound" };
+    }
+    if (this.options.isInteractionBlocked?.()) {
+      return { ok: false, reason: "tutorial_confirmation_required" };
     }
     if (this.options.pause?.isPaused()) {
       return { ok: false, reason: "paused" };
@@ -199,6 +203,9 @@ export class InteractionController {
     if (!this.bound) {
       return { ok: false, reason: "controller_not_bound" };
     }
+    if (this.options.isInteractionBlocked?.()) {
+      return { ok: false, reason: "tutorial_confirmation_required" };
+    }
     if (this.options.pause?.isPaused()) {
       return { ok: false, reason: "paused" };
     }
@@ -240,6 +247,9 @@ export class InteractionController {
   }
 
   requestDragMove(request: DragRequest): { ok: boolean; reason?: string } {
+    if (this.options.isInteractionBlocked?.()) {
+      return { ok: false, reason: "tutorial_confirmation_required" };
+    }
     if (this.options.pause?.isPaused()) {
       return { ok: false, reason: "paused" };
     }
@@ -258,6 +268,9 @@ export class InteractionController {
   }
 
   requestDragEnd(request: DragRequest): { ok: boolean; reason?: string } {
+    if (this.options.isInteractionBlocked?.()) {
+      return { ok: false, reason: "tutorial_confirmation_required" };
+    }
     if (this.options.pause?.isPaused()) {
       return { ok: false, reason: "paused" };
     }
@@ -279,6 +292,9 @@ export class InteractionController {
   }
 
   requestDragCancel(request: DragRequest): { ok: boolean; reason?: string } {
+    if (this.options.isInteractionBlocked?.()) {
+      return { ok: false, reason: "tutorial_confirmation_required" };
+    }
     const session = this.dragSession;
     if (!session || session.objectId !== request.objectId || session.pointerId !== request.pointer.pointerId) {
       return { ok: false, reason: "drag_not_active" };

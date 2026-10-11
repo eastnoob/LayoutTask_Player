@@ -2,6 +2,7 @@ import { createSessionId } from "./participant-session";
 import { FORMAL_PAUSE_LIMIT_MS } from "./experiment-pause";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
 import type { ExperimentAssignmentMetadata } from "./experiment-data";
+import type { ConsentRecord, ParticipantProfile } from "./experiment-consent";
 
 export type { ExperimentAssignmentMetadata } from "./experiment-data";
 
@@ -15,6 +16,7 @@ interface StoredSessionRecord {
   schema_version: 1;
   experiment_id: string;
   participant_id: string;
+  prolific_id?: string;
   session_id: string;
   session_status: "active" | "completed";
   pause_used: boolean;
@@ -25,14 +27,19 @@ interface StoredSessionRecord {
   updated_at: number;
   pause_snapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
+  consent?: ConsentRecord;
+  participant_profile?: ParticipantProfile;
 }
 
 export interface ExperimentSession {
   experimentId: string;
   participantId: string;
+  prolificId?: string;
   sessionId: string;
   pauseSnapshot?: ExperimentPauseSnapshot;
   assignment?: ExperimentAssignmentMetadata;
+  consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
   savePauseSnapshot(snapshot: ExperimentPauseSnapshot, updatedAt?: number): void;
   markCompleted(updatedAt?: number): void;
 }
@@ -44,6 +51,9 @@ export interface BootstrapExperimentSessionOptions {
   now?: () => number;
   createSessionId?: () => string;
   assignment?: ExperimentAssignmentMetadata;
+  prolificId?: string;
+  consent?: ConsentRecord;
+  participantProfile?: ParticipantProfile;
 }
 
 const SESSION_PREFIX = "layouttask:session:";
@@ -56,6 +66,18 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
   const record = existing?.session_status === "active"
     ? existing
     : createRecord(options, now());
+  if (options.prolificId !== undefined && record.prolific_id !== options.prolificId) {
+    record.prolific_id = options.prolificId;
+    storage.setItem(key, JSON.stringify(record));
+  }
+  if (options.consent !== undefined && record.consent !== options.consent) {
+    record.consent = options.consent;
+    storage.setItem(key, JSON.stringify(record));
+  }
+  if (options.participantProfile !== undefined && record.participant_profile !== options.participantProfile) {
+    record.participant_profile = options.participantProfile;
+    storage.setItem(key, JSON.stringify(record));
+  }
   let pauseSnapshot = record.pause_snapshot
     ? restorePauseSnapshot(record.pause_snapshot, now())
     : undefined;
@@ -69,8 +91,11 @@ export function bootstrapExperimentSession(options: BootstrapExperimentSessionOp
   const session: ExperimentSession = {
     experimentId: options.experimentId,
     participantId: options.participantId,
+    prolificId: record.prolific_id,
     sessionId: record.session_id,
     assignment: record.assignment,
+    consent: record.consent,
+    participantProfile: record.participant_profile,
     pauseSnapshot,
     savePauseSnapshot(snapshot, updatedAt = now()) {
       pauseSnapshot = cloneSnapshot(snapshot);
@@ -130,12 +155,15 @@ function createRecord(options: BootstrapExperimentSessionOptions, updatedAt: num
     schema_version: 1,
     experiment_id: options.experimentId,
     participant_id: options.participantId,
+    prolific_id: options.prolificId,
     session_id: (options.createSessionId ?? createSessionId)(),
     session_status: "active",
     pause_used: false,
     pause_duration_ms: 0,
     updated_at: updatedAt,
     assignment: options.assignment,
+    consent: options.consent,
+    participant_profile: options.participantProfile,
   };
 }
 
