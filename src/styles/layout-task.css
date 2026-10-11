@@ -875,6 +875,7 @@ body {
   background: #ffffff;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
   color: #0f172a;
+  -webkit-overflow-scrolling: touch;
 }
 
 .layout-task-tutorial-bubble[data-anchor="viewport-tools"] {
@@ -930,6 +931,22 @@ body {
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
+}
+
+.layout-task-tutorial-task {
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 4px solid #0e7490;
+  color: #0e7490;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.layout-task-tutorial-body {
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 .layout-task-tutorial-message strong {
@@ -1408,5 +1425,19 @@ body {
   .layout-task-consent-document {
     max-height: 58vh;
     padding: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .layout-task-tutorial-bubble {
+    top: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .layout-task-tutorial-task {
+    font-size: 15px;
   }
 }
