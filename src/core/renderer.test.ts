@@ -58,6 +58,24 @@ describe("persistent reference display", () => {
     expect(source).toContain("is-persistent-reference");
   });
 
+  it("renders each tutorial task as the first independent paragraph", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('const taskElement = document.createElement("p");');
+    expect(source).toContain('taskElement.className = "layout-task-tutorial-task";');
+    expect(source).toContain('renderTutorialMessage(message, step.task, step.message);');
+    expect(source).toContain("messageContainer.append(taskElement, body);");
+  });
+
+  it("keeps tutorial task styling readable on narrow Safari viewports", () => {
+    const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
+
+    expect(css).toContain(".layout-task-tutorial-task {");
+    expect(css).toContain("-webkit-overflow-scrolling: touch;");
+    expect(css).toContain("@media (max-width: 560px)");
+    expect(css).toContain(".layout-task-tutorial-task {");
+  });
+
   it("directs missing-submission feedback to the status prompt, not confidence controls", () => {
     const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
 

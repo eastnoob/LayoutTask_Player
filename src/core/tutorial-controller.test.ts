@@ -173,4 +173,48 @@ describe("TutorialController", () => {
     expect(chineseController.getCurrentStep().message).toContain("松开");
     expect(chineseController.getCurrentStep().message).toContain("家具位置");
   });
+
+  it("gives every English and Chinese step a task and moves the click checklist to submit", () => {
+    for (const [locale, prefix] of [["en-US", "Your task:"], ["zh-CN", "你的任务："]] as const) {
+      for (const referenceMode of ["preview_10s", "persistent"] as const) {
+        const controller = new TutorialController(referenceMode, locale);
+        const seen: string[] = [];
+
+        for (let index = 0; index < 20 && !controller.isComplete(); index += 1) {
+          const step = controller.getCurrentStep();
+          seen.push(step.id);
+          expect(step.task).toMatch(new RegExp(`^${prefix}`));
+          expect(step.expectedEvent).toBeDefined();
+          controller.handle(step.expectedEvent!);
+        }
+
+        expect(controller.isComplete()).toBe(true);
+        expect(seen).toContain("submit");
+      }
+
+      const selectStep = new TutorialController("persistent", locale);
+      selectStep.handle("reconstruction_started");
+      selectStep.handle("view_direction_acknowledged");
+      expect(selectStep.getCurrentStep().id).toBe("select_first");
+      expect(selectStep.getCurrentStep().message).not.toMatch(/every yellow object|每个黄色物体/i);
+
+      const submitStep = new TutorialController("persistent", locale);
+      submitStep.handle("reconstruction_started");
+      submitStep.handle("view_direction_acknowledged");
+      for (const event of [
+        "object_selected",
+        "object_moved_or_rotated",
+        "confidence_chosen",
+        "object_deselected",
+        "object_selected",
+        "confidence_chosen",
+        "object_deselected",
+      ] as const) {
+        submitStep.handle(event);
+      }
+      expect(submitStep.getCurrentStep().id).toBe("submit");
+      expect(submitStep.getCurrentStep().task).toMatch(/Your task:|你的任务：/);
+      expect(submitStep.getCurrentStep().message).toMatch(/every yellow object|每个黄色物体/i);
+    }
+  });
 });

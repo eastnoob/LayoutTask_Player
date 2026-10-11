@@ -53,6 +53,126 @@ body {
   font-size: 2.5rem;
 }
 
+.layout-task-consent-copy,
+.layout-task-consent-document,
+.layout-task-consent-checklist {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.layout-task-profile-notice,
+.layout-task-profile-warning {
+  padding: 0.9rem 1rem;
+  border-left: 4px solid #b45309;
+  background: #fff7ed;
+}
+
+.layout-task-profile-warning {
+  border-color: #b91c1c;
+  background: #fef2f2;
+}
+
+.layout-task-profile-checkbox {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.layout-task-consent-document {
+  max-height: min(62vh, 720px);
+  overflow-y: auto;
+  padding: 24px 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.06);
+  scroll-behavior: smooth;
+}
+
+.layout-task-consent-document:focus-visible {
+  outline: 3px solid rgba(14, 116, 144, 0.28);
+  outline-offset: 2px;
+}
+
+.layout-task-consent-document-content {
+  color: #334155;
+}
+
+.layout-task-consent-document-content h2 {
+  margin: 0 0 16px;
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.layout-task-consent-document-content h2:not(:first-child) {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #d9e1ee;
+}
+
+.layout-task-consent-document-content h3 {
+  margin: 22px 0 8px;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.layout-task-consent-document-content p {
+  margin: 0 0 12px;
+}
+
+.layout-task-consent-document-content a {
+  color: #0e7490;
+  overflow-wrap: anywhere;
+}
+
+.layout-task-consent-copy {
+  color: #334155;
+}
+
+.layout-task-consent-signature-notice,
+.layout-task-consent-developer-notice {
+  padding: 12px 14px;
+  border-left: 4px solid #155e75;
+  background: #ecfeff;
+}
+
+.layout-task-consent-developer-notice {
+  border-left-color: #b45309;
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.layout-task-consent-checklist {
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.layout-task-consent-checklist legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.layout-task-consent-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.layout-task-consent-checkbox input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #155e75;
+}
+
 .layout-task-eyebrow {
   margin: 0 0 8px;
   font-size: 0.875rem;
@@ -153,6 +273,10 @@ body {
 
 .layout-task-workspace.is-flow-preview-locked .layout-task-stage-wrap {
   opacity: 0.52;
+  pointer-events: none;
+}
+
+.layout-task-tutorial-interaction-locked .layout-task-workspace {
   pointer-events: none;
 }
 
@@ -262,7 +386,6 @@ body {
 .layout-task-tutorial-viewing-direction {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 160ms ease;
 }
 
 .layout-task-tutorial-viewing-direction.is-visible {
@@ -752,6 +875,7 @@ body {
   background: #ffffff;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
   color: #0f172a;
+  -webkit-overflow-scrolling: touch;
 }
 
 .layout-task-tutorial-bubble[data-anchor="viewport-tools"] {
@@ -807,6 +931,22 @@ body {
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
+}
+
+.layout-task-tutorial-task {
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 4px solid #0e7490;
+  color: #0e7490;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.layout-task-tutorial-body {
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 .layout-task-tutorial-message strong {
@@ -1167,6 +1307,13 @@ body {
   background: #edf1f7;
 }
 
+/* Older WebKit clips percentage-sized SVGs in <img> even with object-fit: contain. */
+.layout-task-tutorial-board-svg {
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .layout-task-output {
   width: 100%;
   min-height: 180px;
@@ -1271,5 +1418,26 @@ body {
 
   .layout-task-stage-wrap {
     min-height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout-task-consent-document {
+    max-height: 58vh;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .layout-task-tutorial-bubble {
+    top: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .layout-task-tutorial-task {
+    font-size: 15px;
   }
 }

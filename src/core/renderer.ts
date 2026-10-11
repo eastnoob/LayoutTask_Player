@@ -464,7 +464,7 @@ export class LayoutTaskRenderer {
     const tutorialBubble = document.createElement("div");
     tutorialBubble.className = "layout-task-tutorial-bubble";
     tutorialBubble.hidden = true;
-    const tutorialMessage = document.createElement("p");
+    const tutorialMessage = document.createElement("div");
     tutorialMessage.className = "layout-task-tutorial-message";
     const tutorialButton = document.createElement("button");
     tutorialButton.className = "layout-task-tutorial-button layout-task-primary-button";
@@ -699,14 +699,14 @@ export class LayoutTaskRenderer {
     this.refs.confidenceElement.classList.remove("is-required");
   }
 
-  showTutorialStep(step: { id: string; anchor: string; message: string }): void {
+  showTutorialStep(step: { id: string; anchor: string; task: string; message: string }): void {
     const bubble = this.refs.tutorialBubbleElement;
     const message = this.refs.tutorialBubbleMessageElement;
     if (!bubble || !message) {
       return;
     }
 
-    renderTutorialMessage(message, step.message);
+    renderTutorialMessage(message, step.task, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
     this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "select_first" || step.id === "view_direction");
@@ -2048,8 +2048,18 @@ export function getObjectVisualDisplayTransform(config: RuntimeTaskConfig): stri
   return config.stage.display_flip_y ? "scale(1 -1)" : undefined;
 }
 
-function renderTutorialMessage(container: HTMLElement, source: string): void {
-  container.replaceChildren();
+function renderTutorialMessage(messageContainer: HTMLElement, task: string, source: string): void {
+  messageContainer.replaceChildren();
+  const taskElement = document.createElement("p");
+  taskElement.className = "layout-task-tutorial-task";
+  taskElement.textContent = task;
+  const body = document.createElement("div");
+  body.className = "layout-task-tutorial-body";
+  renderTutorialMarkup(body, source);
+  messageContainer.append(taskElement, body);
+}
+
+function renderTutorialMarkup(container: HTMLElement, source: string): void {
   const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\])/g;
   let cursor = 0;
 
@@ -2063,7 +2073,7 @@ function renderTutorialMessage(container: HTMLElement, source: string): void {
     if (token.startsWith("[[block]]")) {
       const block = document.createElement("span");
       block.className = "layout-task-tutorial-block";
-      renderTutorialMessage(block, token.slice("[[block]]".length, -"[[/block]]".length));
+      renderTutorialMarkup(block, token.slice("[[block]]".length, -"[[/block]]".length));
       container.append(block);
       cursor = start + token.length;
       continue;
