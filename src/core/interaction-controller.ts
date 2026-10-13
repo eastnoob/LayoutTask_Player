@@ -52,8 +52,10 @@ export class InteractionController {
         onObjectSelected(objectId: string): void;
         onObjectAction(objectId: string): void;
         onObjectDeselected(objectId: string): void;
+        onObjectSaved?(objectId: string): void;
       };
       isInteractionBlocked?: () => boolean;
+      canSelectObject?: (objectId: string) => boolean;
       pause?: { isPaused(): boolean };
     },
   ) {}
@@ -73,6 +75,7 @@ export class InteractionController {
     if (!this.bound || this.options.store.isLocked() || this.options.pause?.isPaused() || this.options.isInteractionBlocked?.()) {
       return;
     }
+    if (this.options.canSelectObject && !this.options.canSelectObject(objectId)) return;
 
     const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
     // Fixed/context objects can still be visible collision geometry, but only
@@ -140,6 +143,7 @@ export class InteractionController {
     this.options.renderer.clearActiveObject();
     this.options.renderer.hideConfidence();
     this.options.renderer.setStatus(`Saved confidence for ${previousObjectId}. Select another furniture group or confirm.`);
+    this.options.tutorial?.onObjectSaved?.(previousObjectId);
     this.options.tutorial?.onObjectDeselected(previousObjectId);
   }
 

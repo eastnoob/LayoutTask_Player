@@ -32,6 +32,7 @@ export class CompletionController {
       confidence?: {
         canSubmit(): { ok: true } | { ok: false; reason: string; groupId: string };
       };
+      tutorial?: { canSubmit(): boolean };
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
       pause?: { isPaused(): boolean };
@@ -46,6 +47,13 @@ export class CompletionController {
       return;
     }
     if (this.options.store.isLocked()) {
+      return;
+    }
+
+    if (this.options.tutorial && !this.options.tutorial.canSubmit()) {
+      this.options.renderer.setStatus(this.options.locale === "zh-CN"
+        ? "请完成放大镜与暂停练习，保存所有家具的两项置信度后再提交。"
+        : "Complete the magnifier and Pause practices and save both ratings for every furniture group before submitting.");
       return;
     }
 

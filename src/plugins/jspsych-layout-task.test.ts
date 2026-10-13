@@ -56,10 +56,14 @@ describe("LayoutTaskPlugin", () => {
       writeResultToData: true,
       writeHeaderToData: true,
       title: "Layout Task",
+      tutorialReferenceBoard: { pages: ["one", "two", "three", "four"], continueLabel: "Continue" },
     });
 
     expect(loadSpy).not.toHaveBeenCalled();
     expect(start).toHaveBeenCalledOnce();
+    expect(createLayoutTaskPlayer).toHaveBeenCalledWith(expect.objectContaining({
+      tutorialReferenceBoard: { pages: ["one", "two", "three", "four"], continueLabel: "Continue" },
+    }));
     expect(finishTrial).toHaveBeenCalledWith(
       expect.objectContaining({
         qid: "Q1",

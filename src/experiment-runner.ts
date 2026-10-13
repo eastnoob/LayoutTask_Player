@@ -10,7 +10,8 @@ import {
   type ExperimentAssignmentMetadata,
 } from "./core/experiment-data";
 import { getParticipantId } from "./core/participant-session";
-import { buildTutorialReferenceBoardPages } from "./core/tutorial-reference-board";
+import { buildTutorialReferenceBoardPages, startReferenceBoardContinueCountdown } from "./core/tutorial-reference-board";
+export { startReferenceBoardContinueCountdown } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
 import type { RuntimeDataSaveConfig } from "./types/runtime";
@@ -97,7 +98,7 @@ export function buildExperimentTimeline(
           button_label_next: chinese ? "开始教程" : "Start tutorial",
       data: { tutorial_intro: true },
     });
-    if (config.tutorial.referenceBoard?.enabled) {
+    if (config.tutorial.referenceBoard?.enabled && !config.tutorial.taskId) {
       const board = config.tutorial.referenceBoard;
       const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board, locale: config.locale });
       const continueLabel = chinese ? "继续" : board.continueLabel ?? "Continue";
@@ -130,6 +131,10 @@ export function buildExperimentTimeline(
         taskId: config.tutorial.taskId,
         qid: config.tutorial.qid,
         tutorialMode: true,
+        tutorialReferenceBoard: config.tutorial.referenceBoard?.enabled ? {
+          pages: buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board: config.tutorial.referenceBoard, locale: config.locale }),
+          continueLabel: chinese ? "继续" : config.tutorial.referenceBoard.continueLabel ?? "Continue",
+        } : undefined,
         locale: config.locale,
         developerMode: options.developerMode,
         referenceMode: config.referenceMode,
@@ -261,44 +266,6 @@ export function toRuntimeTaskDataSave(
     save_encoded: true,
     save_result: false,
   };
-}
-
-export function startReferenceBoardContinueCountdown(input: {
-  documentRef?: Document;
-  windowRef?: Pick<Window, "setInterval" | "clearInterval">;
-  label: string;
-  seconds?: number;
-}): void {
-  const documentRef = input.documentRef ?? document;
-  const windowRef = input.windowRef ?? window;
-  const seconds = input.seconds ?? 5;
-  const nav = documentRef.querySelector<HTMLElement>(".layout-task-reference-board-trial .jspsych-instructions-nav");
-  const nextButton = documentRef.querySelector<HTMLButtonElement>(
-    ".layout-task-reference-board-trial #jspsych-instructions-next",
-  );
-  if (!nav || !nextButton) {
-    return;
-  }
-
-  nav.style.visibility = "visible";
-  let remaining = seconds;
-  const update = () => {
-    nextButton.disabled = remaining > 0;
-    nextButton.textContent = remaining > 0 ? `${input.label} (${remaining})` : input.label;
-  };
-
-  update();
-  if (remaining <= 0) {
-    return;
-  }
-
-  const timer = windowRef.setInterval(() => {
-    remaining -= 1;
-    update();
-    if (remaining <= 0) {
-      windowRef.clearInterval(timer);
-    }
-  }, 1_000);
 }
 
 export function collectFormalTrialResults(rows: Array<Record<string, unknown>>): ExperimentTrialResultItem[] {

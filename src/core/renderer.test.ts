@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 import {
+  LayoutTaskRenderer,
   getConfiguredObjectLocalRect,
   getBackgroundDisplayTransform,
   getControlButtonTransform,
@@ -23,6 +24,8 @@ import {
   isObjectInteractive,
   getTrialHeaderContent,
 } from "./renderer";
+import { StateStore } from "./state-store";
+import { TutorialController } from "./tutorial-controller";
 
 describe("LayoutTaskRenderer trial header", () => {
   it("uses a large trial label before the scene identifier", () => {
@@ -102,6 +105,40 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
+  it("clears the direction arrow immediately while retaining the board and practice interaction locks", () => {
+    const config = createRuntimeConfig();
+    const tutorial = new TutorialController("persistent", "en-US", { referenceBoardRequired: true });
+    const direction = { classList: { toggle: vi.fn() } };
+    const acknowledge = { toggleAttribute: vi.fn() };
+    const confirm = { disabled: false };
+    const root = { classList: { toggle: vi.fn() }, querySelector: vi.fn(() => null), querySelectorAll: () => [] };
+    const renderer = new LayoutTaskRenderer({ root: root as unknown as HTMLElement, config,
+      store: new StateStore(config), isInteractionBlocked: () => tutorial.isInteractionBlocked() });
+    Object.assign(renderer.refs, {
+      tutorialViewingDirectionElement: direction, tutorialBubbleButtonElement: acknowledge, confirmButton: confirm,
+      tutorialBubbleElement: { hidden: true, dataset: {} }, tutorialBubbleMessageElement: { replaceChildren: vi.fn(), append: vi.fn() },
+    });
+    vi.stubGlobal("document", { createElement: () => ({ append: vi.fn() }), createTextNode: (text: string) => text });
+    vi.stubGlobal("requestAnimationFrame", vi.fn());
+    try {
+      tutorial.handle("reconstruction_started"); renderer.showTutorialStep(tutorial.getCurrentStep());
+      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", true);
+      expect(acknowledge.toggleAttribute).toHaveBeenLastCalledWith("hidden", false);
+      tutorial.handle("view_direction_acknowledged"); renderer.showTutorialStep(tutorial.getCurrentStep());
+      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
+      expect(acknowledge.toggleAttribute).toHaveBeenLastCalledWith("hidden", true);
+      expect(confirm.disabled).toBe(true);
+      tutorial.handle("reference_board_completed"); renderer.showTutorialStep(tutorial.getCurrentStep());
+      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
+      expect(confirm.disabled).toBe(true);
+      tutorial.handle("magnifier_entered");
+      tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
+      tutorial.handle("magnifier_exited", { exitReason: "escape" }); renderer.showTutorialStep(tutorial.getCurrentStep());
+      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
+      expect(confirm.disabled).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it("waits for layout before centering the floor plan during the viewing-direction tutorial step", () => {
     const scrollBy = vi.fn();
     const root = {

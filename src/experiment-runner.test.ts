@@ -315,8 +315,9 @@ describe("buildExperimentTimeline", () => {
     });
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true)).toHaveLength(23);
     expect(layoutTaskTrials.filter((trial) => trial.tutorialMode !== true).every((trial) => trial.baseUrl === config.baseUrl)).toBe(true);
-    expect(boardPages).toHaveLength(4);
-    expect(boardPages.every((trial) => String(trial.pages[0]).includes("layout-task-run12-core23-persistent/tutorial"))).toBe(true);
+    expect(boardPages).toHaveLength(0);
+    expect(tutorialTrial?.tutorialReferenceBoard.pages).toHaveLength(4);
+    expect(tutorialTrial?.tutorialReferenceBoard.pages.every((page: string) => page.includes("layout-task-run12-core23-persistent/tutorial"))).toBe(true);
   });
 
   it("passes persistent mode to the tutorial and every formal trial", () => {
@@ -416,28 +417,20 @@ describe("buildExperimentTimeline", () => {
 
     const timeline = buildExperimentTimeline(config);
 
-    expect(timeline.slice(1, 5).map((trial) => trial.data)).toEqual([
-      { tutorial_reference_board: true, reference_board_item_id: "m01", reference_board_page: 1, reference_board_total: 4 },
-      { tutorial_reference_board: true, reference_board_item_id: "m03", reference_board_page: 2, reference_board_total: 4 },
-      { tutorial_reference_board: true, reference_board_item_id: "m04", reference_board_page: 3, reference_board_total: 4 },
-      { tutorial_reference_board: true, reference_board_item_id: "m05", reference_board_page: 4, reference_board_total: 4 },
-    ]);
+    expect(timeline.filter((trial) => trial.data?.tutorial_reference_board)).toHaveLength(0);
     expect(timeline[1]).toMatchObject({
-      type: InstructionsPlugin,
-      allow_backward: false,
-      button_label_next: "Continue",
-      css_classes: "layout-task-reference-board-trial",
+      type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true,
+      tutorialReferenceBoard: { continueLabel: "Continue", pages: expect.any(Array) },
     });
-    expect(typeof timeline[1].on_load).toBe("function");
-    expect(timeline[1].pages).toHaveLength(1);
-    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
-    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
-    expect(String(timeline[1].pages[0])).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
-    expect(String(timeline[1].pages[0])).toContain(">1 / 4<");
-    expect(String(timeline[2].pages[0])).toContain(">2 / 4<");
-    expect(timeline[5]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
-    expect(timeline[6]).toMatchObject({ button_label_next: "Start formal experiment" });
-    expect(timeline[7]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
+    const pages = timeline[1].tutorialReferenceBoard.pages;
+    expect(pages).toHaveLength(4);
+    expect(pages[0]).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/m01.gif");
+    expect(pages[0]).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/variable/m01.gif");
+    expect(pages[0]).toContain("/layout-task-run12-core23-preview/tutorial/assets/tutorial-reference/tutorial/whole/svg/m01.svg");
+    expect(pages[0]).toContain(">1 / 4<");
+    expect(pages[1]).toContain(">2 / 4<");
+    expect(timeline[2]).toMatchObject({ button_label_next: "Start formal experiment" });
+    expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 
   it("can run a board-only tutorial before formal trials", () => {

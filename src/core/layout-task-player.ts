@@ -16,7 +16,8 @@ import { ReferenceAssistanceRecorder } from "./reference-assistance-recorder";
 import { LayoutTaskRenderer } from "./renderer";
 import { StateStore } from "./state-store";
 import { createSessionId } from "../utils/time";
-import { TutorialController, type TutorialEvent } from "./tutorial-controller";
+import { TutorialController, type TutorialEvent, type TutorialEventPayload, type TutorialPracticeEvent, type TutorialStep } from "./tutorial-controller";
+import { mountTutorialReferenceBoard, type TutorialReferenceBoard } from "./tutorial-reference-board";
 import { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
 import { createPauseSummary } from "./experiment-pause";
@@ -33,6 +34,7 @@ export interface LayoutTaskPlayerOptions {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  tutorialReferenceBoard?: TutorialReferenceBoard;
   locale?: "en-US" | "zh-CN";
   developerMode?: boolean;
   presentation?: ReferencePresentation;
@@ -48,6 +50,10 @@ export interface LayoutTaskPlayer {
   destroy(): void;
   getState(): FinalState;
   isLocked(): boolean;
+  getTutorialStep(): TutorialStep | undefined;
+  handleTutorialPractice(event: TutorialPracticeEvent, payload?: TutorialEventPayload): boolean;
+  canStartMagnifier(): boolean;
+  canStartPause(): boolean;
 }
 
 // ===== Player lifecycle =====
@@ -110,6 +116,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let flow: FlowController | undefined;
   let confidence: ConfidenceController | undefined;
   let tutorial: TutorialController | undefined;
+  let referenceBoard: ReturnType<typeof mountTutorialReferenceBoard> | undefined;
+  let destroyed = false;
+
+  const isInteractionBlocked = () => tutorial?.isInteractionBlocked() ?? false;
 
   const showTutorial = () => {
     if (tutorial) {
@@ -117,10 +127,21 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     }
   };
 
-  const advanceTutorial = (event: TutorialEvent, payload?: { objectId?: string }) => {
+  const advanceTutorial = (event: TutorialEvent, payload?: TutorialEventPayload): boolean => {
+    if (destroyed || store.isLocked() && event !== "submitted") return false;
     if (tutorial?.handle(event, payload)) {
       showTutorial();
+      if (tutorial.getCurrentStep().id === "reference_board" && options.tutorialReferenceBoard && !referenceBoard) {
+        referenceBoard = mountTutorialReferenceBoard({ root: options.root, ...options.tutorialReferenceBoard,
+          onComplete: () => {
+            referenceBoard = undefined;
+            advanceTutorial("reference_board_completed");
+          },
+        });
+      }
+      return true;
     }
+    return false;
   };
 
   const renderer = new LayoutTaskRenderer({
@@ -135,6 +156,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           scale: localizedConfidence.scale,
           labels: localizedConfidence.labels,
           onChoose: (dimension, value) => {
+            if (isInteractionBlocked() || options.pause?.isPaused() || store.isLocked()) return;
             confidence?.choose(dimension, value);
             advanceTutorial("confidence_chosen");
           },
@@ -173,7 +195,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     },
     developerMode: options.developerMode,
     onDeveloperShortcut: () => {
-      if (!options.developerMode || !interaction || !confidence) {
+      if (!options.developerMode || options.tutorialMode || !interaction || !confidence || options.pause?.isPaused() || store.isLocked()) {
         return;
       }
 
@@ -202,7 +224,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       void completion?.copyAgain();
     },
     onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
-    isInteractionBlocked: () => tutorial?.isInteractionBlocked() ?? false,
+    isInteractionBlocked,
     isPaused: () => options.pause?.isPaused() ?? false,
   });
 
@@ -211,10 +233,6 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Mount before measuring or binding. Display metadata should describe the
       // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
-      if (options.tutorialMode) {
-        tutorial = new TutorialController(options.config.referenceMode, options.locale);
-        showTutorial();
-      }
       // Browser-only observer: in Node unit tests there is no window, so skip it.
       // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
       displayChangeRecorder =
@@ -257,6 +275,17 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
             requireAllGroupsOnSubmit: true,
           })
         : undefined;
+      if (options.tutorialMode) {
+        tutorial = new TutorialController(options.config.referenceMode, options.locale, {
+          confidence,
+          getGroupId: (objectId) => {
+            const object = options.config.objects.find((item) => item.id === objectId);
+            return object && (object.group_id ?? object.id);
+          },
+          referenceBoardRequired: !!options.tutorialReferenceBoard?.pages.length,
+        });
+        showTutorial();
+      }
       interaction = new InteractionController({
         config: options.config,
         store,
@@ -267,8 +296,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           onObjectSelected: (objectId) => advanceTutorial("object_selected", { objectId }),
           onObjectAction: (objectId) => advanceTutorial("object_moved_or_rotated", { objectId }),
           onObjectDeselected: (objectId) => advanceTutorial("object_deselected", { objectId }),
+          onObjectSaved: (objectId) => advanceTutorial("object_saved", { objectId }),
         },
-        isInteractionBlocked: () => tutorial?.isInteractionBlocked() ?? false,
+        isInteractionBlocked,
+        canSelectObject: (objectId) => tutorial?.canSelectObject(objectId) ?? true,
         pause: options.pause,
       });
       completion = new CompletionController({
@@ -280,6 +311,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         clipboard,
         dataSave,
         confidence,
+        tutorial,
         // The tutorial has its own staged guidance and completion bubble. Avoid
         // the formal experiment's native confirmation dialogs here because they
         // interrupt the tutorial flow and can appear as an unresponsive button.
@@ -312,6 +344,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     destroy() {
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
+      destroyed = true;
+      referenceBoard?.destroy();
       interaction?.unbind();
       flow?.destroy();
       displayChangeRecorder?.stop();
@@ -326,5 +360,12 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     isLocked() {
       return store.isLocked();
     },
+    getTutorialStep() { return tutorial?.getCurrentStep(); },
+    // Tasks 4/5 call these contracts from their actual controller/UI events.
+    // There is no user-facing control that generates synthetic practice events.
+    handleTutorialPractice(event, payload) { return advanceTutorial(event, payload); },
+    canStartMagnifier() { return !destroyed && !store.isLocked() && !options.pause?.isPaused()
+      && (tutorial?.canStartMagnifier() ?? true); },
+    canStartPause() { return !destroyed && !store.isLocked() && (tutorial?.canStartPause() ?? true); },
   };
 }

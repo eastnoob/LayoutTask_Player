@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import experimentConfig from "../../public/experiment/experiment.json";
-import { buildTutorialReferenceBoardPage, buildTutorialReferenceBoardPages } from "./tutorial-reference-board";
+import { buildTutorialReferenceBoardPage, buildTutorialReferenceBoardPages, mountTutorialReferenceBoard } from "./tutorial-reference-board";
 import type { ExperimentTutorialReferenceBoardConfig } from "../types/experiment";
 
 function board(): ExperimentTutorialReferenceBoardConfig {
@@ -26,6 +26,48 @@ function board(): ExperimentTutorialReferenceBoardConfig {
 }
 
 describe("buildTutorialReferenceBoardPage", () => {
+  it("mounts four pages in one player, gates each Continue for five seconds, and restores its DOM", () => {
+    vi.useFakeTimers();
+    const documentRef = { createElement: (tag: string) => new BoardElement(tag) };
+    const root = new BoardElement("root");
+    root.ownerDocument = documentRef;
+    const playerShell = new BoardElement("section");
+    root.append(playerShell);
+    const onComplete = vi.fn();
+    const mounted = mountTutorialReferenceBoard({ root: root as unknown as HTMLElement,
+      pages: ["page1", "page2", "page3", "page4"], continueLabel: "Continue", onComplete });
+    try {
+      expect(playerShell.style.display).toBe("none");
+      const host = root.children[1];
+      const [content, nav] = host.children;
+      const button = nav.children[0];
+      expect(content.innerHTML).toBe("page1");
+      for (let page = 1; page <= 4; page++) {
+        expect(button.disabled).toBe(true);
+        button.click(); expect(content.innerHTML).toBe(`page${page}`);
+        vi.advanceTimersByTime(4_000); expect(button.disabled).toBe(true);
+        vi.advanceTimersByTime(1_000); expect(button.disabled).toBe(false);
+        button.click();
+      }
+      expect(onComplete).toHaveBeenCalledOnce();
+      expect(root.children).toEqual([playerShell]);
+      expect(playerShell.style.display).toBe("");
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { mounted.destroy(); vi.useRealTimers(); }
+  });
+
+  it("cleans up an interrupted reading countdown without completing the board", () => {
+    vi.useFakeTimers();
+    const root = new BoardElement("root");
+    root.ownerDocument = { createElement: (tag: string) => new BoardElement(tag) };
+    const onComplete = vi.fn();
+    const mounted = mountTutorialReferenceBoard({ root: root as unknown as HTMLElement,
+      pages: ["page1"], continueLabel: "继续", onComplete });
+    mounted.destroy();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(onComplete).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
   it("renders each card as an SVG row above an independent GIF row", () => {
     const html = buildTutorialReferenceBoardPage({
       baseUrl: "/layout-task-generated/",
@@ -107,3 +149,33 @@ describe("buildTutorialReferenceBoardPage", () => {
     }
   });
 });
+
+class BoardElement {
+  children: BoardElement[] = [];
+  ownerDocument: { createElement(tag: string): BoardElement } = { createElement: (tag) => new BoardElement(tag) };
+  style = { display: "", visibility: "" };
+  dataset: Record<string, string> = {};
+  disabled = false;
+  className = "";
+  id = "";
+  type = "";
+  innerHTML = "";
+  textContent = "";
+  parent?: BoardElement;
+  listeners = new Map<string, () => void>();
+  constructor(readonly tag: string) {}
+  append(...children: BoardElement[]) { children.forEach((child) => { child.parent = this; this.children.push(child); }); }
+  remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); }
+  setAttribute() {}
+  focus() {}
+  addEventListener(type: string, listener: () => void) { this.listeners.set(type, listener); }
+  click() { this.listeners.get("click")?.(); }
+  querySelector(selector: string): BoardElement | null {
+    for (const child of this.children) {
+      if (selector.endsWith(".jspsych-instructions-nav") && child.className === "jspsych-instructions-nav") return child;
+      if (selector.endsWith("#jspsych-instructions-next") && child.id === "jspsych-instructions-next") return child;
+      const nested = child.querySelector(selector); if (nested) return nested;
+    }
+    return null;
+  }
+}

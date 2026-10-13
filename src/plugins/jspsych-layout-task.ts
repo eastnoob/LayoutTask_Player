@@ -10,6 +10,7 @@ import type { RuntimeDataSaveConfig } from "../types/runtime";
 import type { LocalBackupStore } from "../core/local-backup-store";
 import type { ExperimentPauseController } from "../core/experiment-pause";
 import type { RewardConfig, RewardReferenceTask } from "../types/reward";
+import type { TutorialReferenceBoard } from "../core/tutorial-reference-board";
 
 // Public jsPsych trial parameters.
 // 这里是研究者在 timeline 里会直接看到和配置的入口，所以命名保持 explicit。
@@ -35,6 +36,7 @@ export interface LayoutTaskPluginParams {
     labels: Record<string, string>;
   };
   tutorialMode?: boolean;
+  tutorialReferenceBoard?: TutorialReferenceBoard;
   locale?: "en-US" | "zh-CN";
   developerMode?: boolean;
   referenceMode?: ReferenceMode;
@@ -99,6 +101,10 @@ const info = {
     tutorialMode: {
       type: ParameterType.BOOL,
       default: false,
+    },
+    tutorialReferenceBoard: {
+      type: ParameterType.OBJECT,
+      default: null,
     },
     locale: {
       type: ParameterType.STRING,
@@ -181,6 +187,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
           config: runtimeConfig,
           confidence: trial.confidence ?? undefined,
           tutorialMode: trial.tutorialMode,
+          tutorialReferenceBoard: trial.tutorialReferenceBoard ?? undefined,
           locale: trial.locale,
           developerMode: trial.developerMode,
           presentation: trial.presentation,

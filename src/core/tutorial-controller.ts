@@ -1,203 +1,193 @@
-export type TutorialEvent =
-  | "preview_acknowledged"
-  | "reconstruction_started"
-  | "view_direction_acknowledged"
-  | "object_selected"
-  | "object_moved_or_rotated"
-  | "confidence_chosen"
-  | "object_deselected"
-  | "submitted";
+import type { ConfidenceController } from "./confidence-controller";
+
+export type TutorialPracticeEvent =
+  | "magnifier_entered"
+  | "magnifier_zoom_changed"
+  | "magnifier_exited"
+  | "pause_requested"
+  | "pause_cancelled"
+  | "pause_confirmed"
+  | "pause_resumed";
+
+export type TutorialEvent = TutorialPracticeEvent
+  | "preview_acknowledged" | "reconstruction_started" | "view_direction_acknowledged"
+  | "reference_board_completed" | "object_selected" | "object_moved_or_rotated"
+  | "confidence_chosen" | "object_deselected" | "object_saved" | "submitted";
+
+export interface TutorialEventPayload {
+  objectId?: string;
+  zoomBefore?: number;
+  zoomAfter?: number;
+  exitReason?: "escape" | "destroy";
+  resumeReason?: "manual_resume" | "auto_resume_10s" | "auto_resume_15m";
+}
 
 export interface TutorialStep {
-  id:
-    | "intro"
-  | "preview"
-    | "view_direction"
-    | "select_first"
-    | "move_or_rotate"
-    | "confidence_first"
-    | "save_first"
-    | "select_second"
-    | "confidence_second"
-    | "save_second"
-    | "submit"
-    | "complete";
+  id: "intro" | "preview" | "view_direction" | "reference_board" | "magnifier_practice"
+    | "select_first" | "confidence_first" | "save_first" | "pause_practice"
+    | "remaining_objects" | "submit" | "complete";
   anchor: string;
   task: string;
   message: string;
   expectedEvent?: TutorialEvent;
 }
 
-const steps: TutorialStep[] = [
-  {
-    id: "intro",
-    anchor: "flow-modal",
-    task: "Your task: Study the reference image and prepare to reconstruct the floor plan.",
-    message:
-      "You will first study an image for 10 seconds. Remember the furniture state at each marked point, including which furniture is there, its position, and its orientation. Then reconstruct the floor plan based on the picture you just studied.",
-    expectedEvent: "preview_acknowledged",
-  },
-  {
-    id: "preview",
-    anchor: "display-image",
-    task: "Your task: Memorize the furniture positions and orientations before the image disappears.",
-    message: "Study the reference image. It will disappear when the countdown ends.",
-    expectedEvent: "reconstruction_started",
-  },
-  {
-    id: "view_direction",
-    anchor: "viewport-tools",
-    task: "Your task: Confirm the viewing direction shown by the yellow arrow.",
-    message: "You are standing at the bottom of the floor plan, where the observer's eyes are. You are looking forward, as shown by the yellow arrow. This viewing angle will remain unchanged throughout the experiment.",
-    expectedEvent: "view_direction_acknowledged",
-  },
-  {
-    id: "select_first",
-    anchor: "viewport-tools",
-    task: "Your task: Click one yellow object to begin editing.",
-    message:
-      "[[block]]**Click any** [[yellow]]yellow object[[/yellow]] **in the floor plan to start editing.**[[/block]] [[block]]Use the picture at the top of the page to reconstruct the floor plan below. Move the [[yellow]]yellow objects[[/yellow]] in the floor plan so that their positions and orientations match the furniture in the perspective image above. **Only yellow objects can be moved.** If needed, use the **zoom in**, **zoom out**, and **reset** controls in the **upper-right corner** of the floor plan.[[/block]] [[block]]To inspect the scene, hold **Pan** and drag; release **Pan** to stop panning. These controls change only the view, not furniture positions or orientations. Right-click is not used for panning.[[/block]]",
-    expectedEvent: "object_selected",
-  },
-  {
-    id: "move_or_rotate",
-    anchor: "controls",
-    task: "Your task: Match this object's position and orientation to the perspective image.",
-    message:
-      "Adjust the selected [[yellow]]yellow object[[/yellow]] so that its position and orientation match the furniture in the perspective image. **Use the arrow buttons to move** or **the rotate buttons to adjust** this furniture group. If the handles obstruct your view, move the pointer away from the object to hide them. Point back at the object to show them again; **this does not exit edit mode.**",
-    expectedEvent: "object_moved_or_rotated",
-  },
-  {
-    id: "confidence_first",
-    anchor: "confidence",
-    task: "Your task: Rate your confidence for this object's position and orientation.",
-    message: "Reconstruct the floor plan as closely as possible to the image you just studied. When you are finished with this object, **choose a confidence rating below.**",
-    expectedEvent: "confidence_chosen",
-  },
-  {
-    id: "save_first",
-    anchor: "confidence",
-    task: "Your task: Save the ratings and finish this object's edit.",
-    message: "Click **Save** below to store the rating and exit this object's edit mode.",
-    expectedEvent: "object_deselected",
-  },
-  {
-    id: "select_second",
-    anchor: "stage",
-    task: "Your task: Select the next yellow object to continue.",
-    message: "You have exited the current edit mode. **You can now click another** [[yellow]]yellow object[[/yellow]] **to enter its edit mode.**",
-    expectedEvent: "object_selected",
-  },
-  {
-    id: "confidence_second",
-    anchor: "confidence",
-    task: "Your task: Rate your confidence for this object's position and orientation.",
-    message: "When you are finished with this object, **choose its confidence rating below.**",
-    expectedEvent: "confidence_chosen",
-  },
-  {
-    id: "save_second",
-    anchor: "confidence",
-    task: "Your task: Save the ratings and leave this object's edit mode.",
-    message: "Click **Save** below to exit this object's edit mode.",
-    expectedEvent: "object_deselected",
-  },
-  {
-    id: "submit",
-    anchor: "confirm",
-    task: "Your task: Finish all remaining yellow objects, then continue.",
-    message: "Before submitting, open every yellow object at least once. Finish all remaining objects, then select **Confirm**.",
-    expectedEvent: "submitted",
-  },
-  {
-    id: "complete",
-    anchor: "status",
-    task: "Your task: Tutorial complete.",
-    message: "Tutorial complete.",
-  },
-];
+interface TutorialFacts {
+  confidence?: Pick<ConfidenceController, "getRequiredGroupIds" | "getFinalConfidence" | "getActiveGroupId" | "canLeaveActiveGroup">;
+  getGroupId?: (objectId: string) => string | undefined;
+  referenceBoardRequired?: boolean;
+}
 
+// Guidance reads saved answers from ConfidenceController. Practice state contains
+// only observed actions; selecting/deselecting an object never constitutes Save.
 export class TutorialController {
-  private index = 0;
-  private readonly steps: TutorialStep[];
+  private step: TutorialStep["id"] = "intro";
+  private firstGroupId?: string;
+  private magnifierActive = false;
+  private sessionZoomChanged = false;
+  private magnifierComplete = false;
+  private pauseState: "available" | "confirming" | "paused" | "complete" = "available";
 
-  constructor(referenceMode: "preview_10s" | "persistent" = "preview_10s", locale: "en-US" | "zh-CN" = "en-US") {
-    const selectedSteps = referenceMode === "persistent" ? createPersistentSteps() : steps;
-    this.steps = locale === "zh-CN" ? createChineseSteps(selectedSteps) : selectedSteps;
-  }
+  constructor(
+    private readonly referenceMode: "preview_10s" | "persistent" = "preview_10s",
+    private readonly locale: "en-US" | "zh-CN" = "en-US",
+    private readonly facts: TutorialFacts = {},
+  ) {}
 
   getCurrentStep(): TutorialStep {
-    return this.steps[this.index];
+    const [anchor, task, message, expectedEvent] = guidance[this.step];
+    const chinese = this.locale === "zh-CN";
+    return { id: this.step, anchor, task: (chinese ? "你的任务：" : "Your task: ") + task[chinese ? 1 : 0],
+      message: this.step === "intro" && this.referenceMode === "persistent"
+        ? (chinese ? "你可以随时查看透视图。请注意每件标记家具的位置和方向。" : "You may refer to the perspective image at any time. Remember each marked item's position and orientation.")
+        : message[chinese ? 1 : 0],
+      expectedEvent: this.step === "intro" && this.referenceMode === "persistent" ? "reconstruction_started" : expectedEvent };
   }
 
-  isComplete(): boolean {
-    return this.getCurrentStep().id === "complete";
-  }
+  isComplete(): boolean { return this.step === "complete"; }
 
   isInteractionBlocked(): boolean {
-    return this.getCurrentStep().id === "view_direction";
+    return this.magnifierActive || this.pauseState === "confirming" || this.pauseState === "paused"
+      || ["intro", "preview", "view_direction", "reference_board", "magnifier_practice", "pause_practice", "complete"].includes(this.step);
   }
 
-  handle(event: TutorialEvent, _payload?: { objectId?: string }): boolean {
-    if (this.getCurrentStep().expectedEvent !== event) {
-      return false;
+  canSelectObject(objectId: string): boolean {
+    if (this.isInteractionBlocked()) return false;
+    if (this.step !== "select_first") return true;
+    const groupId = this.facts.getGroupId?.(objectId);
+    return !!groupId && !!this.facts.confidence?.getRequiredGroupIds().includes(groupId)
+      && !this.facts.confidence.getFinalConfidence()[groupId];
+  }
+
+  canStartMagnifier(): boolean {
+    return !this.magnifierActive && this.pauseState !== "confirming" && this.pauseState !== "paused"
+      && (this.step === "magnifier_practice" || !this.isInteractionBlocked());
+  }
+
+  canStartPause(): boolean {
+    return this.step === "pause_practice" && this.pauseState === "available" && !this.magnifierActive;
+  }
+
+  canSubmit(): boolean {
+    const confidence = this.facts.confidence;
+    return this.step === "submit" && this.magnifierComplete && this.pauseState === "complete"
+      && !this.magnifierActive && !!confidence && confidence.getActiveGroupId() === undefined
+      && confidence.canLeaveActiveGroup().ok && this.allGroupsSaved();
+  }
+
+  handle(event: TutorialEvent, payload: TutorialEventPayload = {}): boolean {
+    if (event === "magnifier_entered") {
+      if (!this.canStartMagnifier()) return false;
+      this.magnifierActive = true; this.sessionZoomChanged = false; return true;
     }
+    if (event === "magnifier_zoom_changed") {
+      if (!this.magnifierActive || !Number.isFinite(payload.zoomBefore) || !Number.isFinite(payload.zoomAfter)
+        || payload.zoomBefore === payload.zoomAfter) return false;
+      this.sessionZoomChanged = true; return true;
+    }
+    if (event === "magnifier_exited") {
+      if (!this.magnifierActive) return false;
+      this.magnifierActive = false;
+      if (this.step === "magnifier_practice" && this.sessionZoomChanged && payload.exitReason === "escape") {
+        this.magnifierComplete = true; this.step = "select_first";
+      }
+      this.sessionZoomChanged = false; return true;
+    }
+    if (event === "pause_requested") {
+      if (!this.canStartPause()) return false;
+      this.pauseState = "confirming"; return true;
+    }
+    if (event === "pause_cancelled") {
+      if (this.pauseState !== "confirming") return false;
+      this.pauseState = "available"; return true;
+    }
+    if (event === "pause_confirmed") {
+      if (this.pauseState !== "confirming") return false;
+      this.pauseState = "paused"; return true;
+    }
+    if (event === "pause_resumed") {
+      if (this.pauseState !== "paused" || !["manual_resume", "auto_resume_10s"].includes(payload.resumeReason ?? "")) return false;
+      this.pauseState = "complete"; this.step = this.allGroupsSaved() ? "submit" : "remaining_objects"; return true;
+    }
+    if (this.magnifierActive || this.pauseState === "confirming" || this.pauseState === "paused") return false;
+    if (this.step === "intro" && event === this.getCurrentStep().expectedEvent) {
+      this.step = this.referenceMode === "persistent" ? "view_direction" : "preview"; return true;
+    }
+    if (this.step === "preview" && event === "reconstruction_started") { this.step = "view_direction"; return true; }
+    if (this.step === "view_direction" && event === "view_direction_acknowledged") {
+      this.step = this.facts.referenceBoardRequired ? "reference_board" : "magnifier_practice"; return true;
+    }
+    if (this.step === "reference_board" && event === "reference_board_completed") { this.step = "magnifier_practice"; return true; }
+    if (this.step === "select_first" && event === "object_selected" && payload.objectId && this.canSelectObject(payload.objectId)) {
+      this.firstGroupId = this.facts.getGroupId?.(payload.objectId); this.step = "confidence_first"; return true;
+    }
+    if (this.step === "confidence_first" && event === "confidence_chosen") {
+      const gate = this.facts.confidence?.canLeaveActiveGroup();
+      if (!gate || gate.ok || gate.reason !== "confidence_save_required") return false;
+      this.step = "save_first"; return true;
+    }
+    if (event === "object_saved") {
+      const groupId = payload.objectId && this.facts.getGroupId?.(payload.objectId);
+      if (!groupId || !this.facts.confidence?.getFinalConfidence()[groupId]
+        || this.facts.confidence.getActiveGroupId() !== undefined) return false;
+      if (this.step === "save_first" && groupId === this.firstGroupId) { this.step = "pause_practice"; return true; }
+      if (this.step === "remaining_objects" && this.allGroupsSaved()) { this.step = "submit"; return true; }
+    }
+    if (event === "submitted" && this.canSubmit()) { this.step = "complete"; return true; }
+    return false;
+  }
 
-    this.index = Math.min(this.index + 1, this.steps.length - 1);
-    return true;
+  private allGroupsSaved(): boolean {
+    const confidence = this.facts.confidence;
+    if (!confidence) return false;
+    const saved = confidence.getFinalConfidence();
+    return confidence.getRequiredGroupIds().every((id) => saved[id]?.position !== undefined && saved[id]?.rotation !== undefined);
   }
 }
 
-function createPersistentSteps(): TutorialStep[] {
-  return steps
-    .filter((step) => step.id !== "preview")
-    .map((step) =>
-      step.id === "intro"
-        ? {
-            ...step,
-            expectedEvent: "reconstruction_started" as const,
-            message:
-              "**You may refer to the perspective image at any time.** Do not enlarge it using browser zoom, **Ctrl + scroll**, or any magnification tool. These actions may be recorded. You may use the floor-plan zoom controls; they do not enlarge the perspective image.",
-          }
-        : step,
-    );
-}
-
-function createChineseSteps(source: TutorialStep[]): TutorialStep[] {
-  const messages: Record<TutorialStep["id"], string> = {
-    intro:
-      "你可以随时查看页面顶部的透视图。请根据刚才看到的图片还原场景平面图。请不要使用浏览器缩放、**Ctrl + 滚轮**或其他放大工具；这些行为可能会被记录。你可以使用平面图右下角的缩放按钮。",
-    preview: "观察顶部的参考图片。倒计时结束后图片会消失。",
-    view_direction:
-      "你当前站在平面图的最下方，也就是观察者眼睛的位置。您正在注视的方向如黄色箭头所示。在整个实验期间，这个观察视角都不会改变。",
-    select_first:
-      "[[block]]**点击平面图中的任意一个**[[yellow]]黄色物体[[/yellow]]**，开始编辑。**[[/block]] [[block]]使用页面上方的图片还原下方的场景平面图。请移动平面图中的[[yellow]]黄色物体[[/yellow]]，使它们的位置和方向与上方透视图中的家具一致。**只有黄色物体可以移动。**如需查看细节，可使用平面图**右上角的放大、缩小和重置按钮**。[[/block]] [[block]]如需查看场景细节，请按住**Pan**并拖动；松开**Pan**后停止平移。这些操作只改变视图，不改变家具位置或方向。请勿使用右键平移。[[/block]]",
-    move_or_rotate:
-      "请调整选中的[[yellow]]黄色物体[[/yellow]]，使它的位置和方向与透视图中的家具一致。**使用箭头按钮移动**，或**使用旋转按钮调整方向**。如果操作箭头挡住视线，请将鼠标移出物体以隐藏箭头；重新指向物体即可显示，**这不会退出编辑模式。**",
-    confidence_first:
-      "请尽可能根据刚刚看到的图片还原场景平面图。完成这个物体后，**请在下方选择置信度。**",
-    save_first: "点击下方的**Save**保存置信度并退出这个物体的编辑模式。",
-    select_second: "你已退出当前编辑模式。**现在可以点击另一个**[[yellow]]黄色物体[[/yellow]]**进入其编辑模式。**",
-    confidence_second: "完成这个物体后，**请在下方选择它的置信度。**",
-    save_second: "点击下方的**Save**退出这个物体的编辑模式。",
-    submit: "提交前，请至少点击或打开每个黄色物体一次。完成所有剩余黄色物体，然后选择 **Confirm**。",
-    complete: "教程完成。",
-  };
-
-  const tasks: Record<TutorialStep["id"], string> = {
-    intro: "你的任务：阅读说明，并准备还原场景平面图。",
-    preview: "你的任务：在图片消失前记住家具的位置和方向。",
-    view_direction: "你的任务：确认黄色箭头所示的观察方向。",
-    select_first: "你的任务：点击一个黄色物体，开始编辑。",
-    move_or_rotate: "你的任务：使这个物体的位置和方向与透视图一致。",
-    confidence_first: "你的任务：评估你对这个物体位置和方向的把握程度。",
-    save_first: "你的任务：保存置信度并完成这个物体的编辑。",
-    select_second: "你的任务：选择下一个黄色物体继续操作。",
-    confidence_second: "你的任务：评估你对这个物体位置和方向的把握程度。",
-    save_second: "你的任务：保存置信度并退出这个物体的编辑模式。",
-    submit: "你的任务：完成所有剩余的黄色物体，然后继续。",
-    complete: "你的任务：教程完成。",
-  };
-
-  return source.map((step) => ({ ...step, task: tasks[step.id], message: messages[step.id] }));
-}
+type Guidance = [string, [string, string], [string, string], TutorialEvent?];
+const guidance: Record<TutorialStep["id"], Guidance> = {
+  intro: ["flow-modal", ["Study the reference image and prepare to reconstruct the floor plan.", "观察参考图，准备还原平面图。"],
+    ["You have 10 seconds to remember the furniture positions and orientations.", "你有 10 秒记住家具的位置和方向。"], "preview_acknowledged"],
+  preview: ["display-image", ["Remember the furniture before the image disappears.", "在图片消失前记住家具信息。"],
+    ["Study the image until the countdown ends.", "请观察图片，直到倒计时结束。"], "reconstruction_started"],
+  view_direction: ["viewport-tools", ["Confirm the viewing direction shown by the yellow arrow.", "确认黄色箭头所示的观察方向。"],
+    ["You are standing at the bottom of the floor plan. The yellow arrow shows your viewing direction throughout the experiment.", "你当前站在平面图的最下方。黄色箭头表示整个实验中的观察方向。"], "view_direction_acknowledged"],
+  reference_board: ["reference-board", ["Study the four furniture reference pages.", "观察四页家具参考板。"],
+    ["Each page becomes available to continue after 5 seconds.", "每页观察 5 秒后即可继续。"], "reference_board_completed"],
+  magnifier_practice: ["viewport-tools", ["Try the magnifier, change its zoom, then press ESC.", "使用放大镜，改变倍率后按 ESC 退出。"],
+    ["Enter the magnifier, use the wheel to change the zoom, and press ESC in the same use. You can retry after an early exit.", "进入放大镜，使用滚轮改变倍率，并在同一次使用中按 ESC 退出。提前退出后可以重试。"], "magnifier_exited"],
+  select_first: ["stage", ["Click an unsaved yellow object to begin editing.", "点击一个尚未保存的黄色物体，开始编辑。"],
+    ["Click one [[yellow]]yellow object[[/yellow]] to enter edit mode.", "点击一个尚未保存的[[yellow]]黄色物体[[/yellow]]进入编辑模式。"], "object_selected"],
+  confidence_first: ["confidence", ["Choose both position and rotation confidence ratings.", "选择位置与方向两项置信度。"],
+    ["Use the arrow and rotate buttons if needed, or keep the current pose. Choose both confidence ratings below.", "可使用箭头和旋转按钮调整，也可保持当前姿态。请在下方选择两项置信度。"], "confidence_chosen"],
+  save_first: ["confidence", ["Save both ratings for this object.", "保存这个物体的两项置信度。"],
+    ["Click **Save** to store both ratings and leave edit mode.", "点击**Save**保存两项置信度并退出编辑模式。"], "object_saved"],
+  pause_practice: ["pause", ["Try Pause, confirm, then resume.", "点击暂停并确认，然后恢复。"],
+    ["Confirm Pause, then select Resume or wait for the 10-second automatic resume. Cancelling confirmation allows another try.", "确认暂停后，点击恢复或等待 10 秒自动恢复。取消确认后可以重试。"], "pause_resumed"],
+  remaining_objects: ["stage", ["Save both ratings for every remaining yellow object.", "为每个剩余黄色物体保存两项置信度。"],
+    ["You may keep each pose or adjust it before choosing both ratings and clicking **Save**.", "可以保持或调整姿态，再选择两项置信度并点击**Save**。"], "object_saved"],
+  submit: ["confirm", ["Submit your saved furniture answers.", "提交已保存的家具回答。"],
+    ["Every required furniture group must have both ratings saved. Finish any current edit before selecting **Confirm**.", "每个必答家具组都必须保存两项置信度。完成当前编辑后选择**Confirm**。"], "submitted"],
+  complete: ["status", ["Tutorial complete.", "教程完成。"], ["Tutorial complete.", "教程完成。"]],
+};

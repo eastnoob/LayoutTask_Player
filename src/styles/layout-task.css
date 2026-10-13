@@ -972,6 +972,14 @@ body {
   background: #f5f7fb;
 }
 
+.layout-task-reference-board-mounted {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  background: #f5f7fb;
+}
+
 .layout-task-tutorial-board-title {
   display: inline-flex;
   align-items: center;

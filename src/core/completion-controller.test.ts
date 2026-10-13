@@ -5,10 +5,74 @@ import type { LayoutTaskResult } from "../types/result";
 import type { LayoutTaskRenderer } from "./renderer";
 import { CompletionController } from "./completion-controller";
 import { StateStore } from "./state-store";
+import { TutorialController } from "./tutorial-controller";
+import { ConfidenceController } from "./confidence-controller";
 import { createRuntimeConfig } from "../test-support/runtime-config";
 
 describe("CompletionController", () => {
   const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+  it.each(["en-US", "zh-CN"] as const)("enforces the tutorial gate before freezing or encoding (%s)", async (locale) => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn().mockResolvedValue(createResult()) };
+    const encoder = { encode: vi.fn().mockResolvedValue(createEncoded("PAYLOAD")) };
+    const tutorial = new TutorialController("persistent", locale);
+    const controller = new CompletionController({ config, store, renderer, recorder: recorder as never,
+      encoder: encoder as never, clipboard: { copy: vi.fn() } as never, tutorial, locale, confirmImpl: () => true });
+    await controller.requestComplete();
+    expect(store.isLocked()).toBe(false);
+    expect(recorder.finish).not.toHaveBeenCalled();
+    expect(encoder.encode).not.toHaveBeenCalled();
+    expect(renderer.setStatus).toHaveBeenCalledWith(locale === "zh-CN"
+      ? "请完成放大镜与暂停练习，保存所有家具的两项置信度后再提交。"
+      : "Complete the magnifier and Pause practices and save both ratings for every furniture group before submitting.");
+  });
+
+  it("submits zero-movement saved answers only after practices and any re-edit have finished", async () => {
+    const base = createRuntimeConfig();
+    const config = { ...base, objects: [{ ...base.objects[0], role: "variable" as const }] };
+    const object = config.objects[0];
+    const confidence = new ConfidenceController({ config, required: true, scale: [1, 2, 3, 4, 5], requireAllGroupsOnSubmit: true });
+    const tutorial = new TutorialController("persistent", "en-US", {
+      confidence, getGroupId: () => object.group_id ?? object.id,
+    });
+    const store = new StateStore(config);
+    const renderer = createCompletionRendererStub();
+    const recorder = { finish: vi.fn().mockResolvedValue(createResult()) };
+    const encoder = { encode: vi.fn().mockResolvedValue(createEncoded("TUTORIAL")) };
+    const controller = new CompletionController({ config, store, renderer, confidence, tutorial,
+      recorder: recorder as never, encoder: encoder as never, clipboard: { copy: vi.fn() } as never,
+      confirmImpl: () => true, onComplete: () => tutorial.handle("submitted") });
+    const expectBlocked = async () => {
+      await controller.requestComplete();
+      expect(store.isLocked()).toBe(false);
+      expect(recorder.finish).not.toHaveBeenCalled();
+      expect(encoder.encode).not.toHaveBeenCalled();
+    };
+    tutorial.handle("reconstruction_started"); tutorial.handle("view_direction_acknowledged");
+    tutorial.handle("magnifier_entered");
+    tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+    confidence.enterObjectEdit(object.id); tutorial.handle("object_selected", { objectId: object.id });
+    confidence.choose("position", 3); confidence.choose("rotation", 4); tutorial.handle("confidence_chosen");
+    confidence.saveActiveGroup(); tutorial.handle("object_saved", { objectId: object.id });
+    await expectBlocked();
+    tutorial.handle("pause_requested"); await expectBlocked();
+    tutorial.handle("pause_confirmed"); await expectBlocked();
+    tutorial.handle("pause_resumed", { resumeReason: "manual_resume" });
+    confidence.enterObjectEdit(object.id); await expectBlocked();
+    confidence.choose("position", 4); confidence.choose("rotation", 4); confidence.saveActiveGroup();
+    tutorial.handle("magnifier_entered"); await expectBlocked();
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+    expect(store.hasEdits()).toBe(false);
+    await controller.requestComplete();
+    expect(store.isLocked()).toBe(true);
+    expect(recorder.finish).toHaveBeenCalledOnce();
+    expect(encoder.encode).toHaveBeenCalledOnce();
+    expect(tutorial.isComplete()).toBe(true);
+  });
 
   it("locks and encodes without copying until the user clicks Copy", async () => {
     const config = createRuntimeConfig();

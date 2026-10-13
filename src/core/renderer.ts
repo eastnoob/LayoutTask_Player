@@ -721,7 +721,7 @@ export class LayoutTaskRenderer {
     renderTutorialMessage(message, step.task, step.message);
     bubble.hidden = false;
     bubble.dataset.anchor = step.anchor;
-    const interactionBlocked = step.id === "view_direction";
+    const interactionBlocked = this.options.isInteractionBlocked?.() ?? step.id === "view_direction";
     this.options.root.classList.toggle("layout-task-tutorial-interaction-locked", interactionBlocked);
     if (this.refs.confirmButton) {
       this.refs.confirmButton.disabled = interactionBlocked;

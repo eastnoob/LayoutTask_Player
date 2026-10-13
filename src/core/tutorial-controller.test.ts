@@ -1,226 +1,150 @@
 import { describe, expect, it } from "vitest";
+import { ConfidenceController } from "./confidence-controller";
 import { TutorialController } from "./tutorial-controller";
+import { createRuntimeConfig } from "../test-support/runtime-config";
 
-describe("TutorialController", () => {
-  it("starts with the preview explanation step", () => {
-    const controller = new TutorialController();
+function fixture(locale: "en-US" | "zh-CN" = "en-US", mode: "persistent" | "preview_10s" = "persistent") {
+  const base = createRuntimeConfig();
+  const config = { ...base, objects: ["chair", "table", "sofa"].map((id) => ({ ...base.objects[0], id, group_id: id, role: "variable" as const })) };
+  const confidence = new ConfidenceController({ config, required: true, scale: [1, 2, 3, 4, 5], requireAllGroupsOnSubmit: true });
+  const tutorial = new TutorialController(mode, locale, { confidence, getGroupId: (id) => id, referenceBoardRequired: true });
+  const observe = () => {
+    if (mode === "preview_10s") tutorial.handle("preview_acknowledged");
+    tutorial.handle("reconstruction_started");
+    tutorial.handle("view_direction_acknowledged");
+    tutorial.handle("reference_board_completed");
+  };
+  const magnify = () => {
+    tutorial.handle("magnifier_entered");
+    tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+  };
+  const save = (id: string) => {
+    confidence.enterObjectEdit(id);
+    tutorial.handle("object_selected", { objectId: id });
+    confidence.choose("position", 3); tutorial.handle("confidence_chosen");
+    confidence.choose("rotation", 4); tutorial.handle("confidence_chosen");
+    expect(confidence.saveActiveGroup().ok).toBe(true);
+    tutorial.handle("object_saved", { objectId: id });
+  };
+  return { tutorial, confidence, observe, magnify, save };
+}
 
-    expect(controller.getCurrentStep()).toMatchObject({
-      id: "intro",
-      anchor: "flow-modal",
-    });
-  });
-
-  it("advances only on the expected event", () => {
-    const controller = new TutorialController();
-
-    expect(controller.handle("object_selected", { objectId: "chair_01" })).toBe(false);
-    expect(controller.getCurrentStep().id).toBe("intro");
-
-    expect(controller.handle("preview_acknowledged")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("preview");
-  });
-
-  it("blocks all experiment interaction while the direction confirmation is pending", () => {
-    const controller = new TutorialController("persistent");
-
-    controller.handle("reconstruction_started");
-    expect(controller.getCurrentStep().id).toBe("view_direction");
-    expect(controller.isInteractionBlocked()).toBe(true);
-
-    controller.handle("view_direction_acknowledged");
-    expect(controller.isInteractionBlocked()).toBe(false);
-  });
-
-  it("walks through real reconstruction actions", () => {
-    const controller = new TutorialController();
-
-    expect(controller.handle("preview_acknowledged")).toBe(true);
-    expect(controller.handle("reconstruction_started")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("view_direction");
-    expect(controller.handle("view_direction_acknowledged")).toBe(true);
-    expect(controller.handle("object_selected", { objectId: "chair_01" })).toBe(true);
-    expect(controller.handle("object_moved_or_rotated")).toBe(true);
-    expect(controller.handle("confidence_chosen")).toBe(true);
-    expect(controller.getCurrentStep()).toMatchObject({ id: "save_first", anchor: "confidence" });
-    expect(controller.handle("object_deselected")).toBe(true);
-    expect(controller.handle("object_selected", { objectId: "table_01" })).toBe(true);
-    expect(controller.handle("confidence_chosen")).toBe(true);
-    expect(controller.getCurrentStep()).toMatchObject({ id: "save_second", anchor: "confidence" });
-    expect(controller.handle("object_deselected")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("submit");
-    expect(controller.handle("submitted")).toBe(true);
-
-    expect(controller.isComplete()).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("complete");
-  });
-
-  it("does not require pause practice before tutorial submission", () => {
-    const controller = new TutorialController();
-    controller.handle("preview_acknowledged");
-    controller.handle("reconstruction_started");
-    controller.handle("view_direction_acknowledged");
-    controller.handle("object_selected", { objectId: "chair_01" });
-    controller.handle("object_moved_or_rotated");
-    controller.handle("confidence_chosen");
-    controller.handle("object_deselected");
-    controller.handle("object_selected", { objectId: "table_01" });
-    controller.handle("confidence_chosen");
-    controller.handle("object_deselected");
-
-    expect(controller.getCurrentStep()).toMatchObject({ id: "submit" });
-    expect(controller.handle("submitted")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("complete");
-  });
-
-  it("uses persistent-reference guidance without a preview gate", () => {
-    const controller = new TutorialController("persistent");
-
-    expect(controller.getCurrentStep()).toMatchObject({
-      id: "intro",
-      expectedEvent: "reconstruction_started",
-    });
-    expect(controller.getCurrentStep().message).toContain("perspective image at any time");
-    expect(controller.getCurrentStep().message).toContain("Ctrl + scroll");
-    expect(controller.handle("reconstruction_started")).toBe(true);
-    expect(controller.handle("view_direction_acknowledged")).toBe(true);
-    expect(controller.getCurrentStep().id).toBe("select_first");
-  });
-
-  it("uses Chinese tutorial guidance when the experiment locale is zh-CN", () => {
-    const controller = new TutorialController("persistent", "zh-CN");
-
-    expect(controller.getCurrentStep().message).toContain("透视图");
-    controller.handle("reconstruction_started");
-    controller.handle("view_direction_acknowledged");
-    expect(controller.getCurrentStep().message).toContain("黄色");
-    expect(controller.getCurrentStep().message).toContain("页面上方的图片");
-    expect(controller.getCurrentStep().message).toContain("移动平面图中的");
-    expect(controller.getCurrentStep().message).toContain("与上方透视图中的家具一致");
-  });
-
-  it("keeps the operation instructions with the first confidence prompt", () => {
-    const controller = new TutorialController();
-
-    controller.handle("preview_acknowledged");
-    controller.handle("reconstruction_started");
-    controller.handle("view_direction_acknowledged");
-    controller.handle("view_direction_acknowledged");
-    controller.handle("object_selected", { objectId: "chair_01" });
-    controller.handle("object_moved_or_rotated");
-
-    expect(controller.getCurrentStep().message).toContain("finished with this object");
-    expect(controller.getCurrentStep().message).toContain("choose a confidence rating below");
-
-    expect(controller.handle("confidence_chosen")).toBe(true);
-    expect(controller.getCurrentStep()).toMatchObject({
-      id: "save_first",
-      message: expect.stringContaining("Click **Save** below"),
-    });
-
-    expect(controller.handle("object_deselected")).toBe(true);
-    expect(controller.getCurrentStep()).toMatchObject({
-      id: "select_second",
-      message: expect.stringContaining("You can now click another"),
-    });
-  });
-
-  it("marks important tutorial phrases for visual emphasis", () => {
-    const controller = new TutorialController();
-
-    controller.handle("preview_acknowledged");
-    controller.handle("reconstruction_started");
-    controller.handle("view_direction_acknowledged");
-    controller.handle("object_selected", { objectId: "chair_01" });
-
-    expect(controller.getCurrentStep().message).toContain("**Use the arrow buttons to move**");
-    expect(controller.getCurrentStep().message).toContain("**the rotate buttons to adjust**");
-    expect(controller.getCurrentStep().message).toContain("this does not exit edit mode");
-
-    const selectController = new TutorialController();
-    selectController.handle("preview_acknowledged");
-    selectController.handle("reconstruction_started");
-    expect(selectController.getCurrentStep().anchor).toBe("viewport-tools");
-    expect(selectController.getCurrentStep().id).toBe("view_direction");
-    expect(selectController.getCurrentStep().message).toContain("at the bottom of the floor plan");
-    expect(selectController.getCurrentStep().message).toContain("as shown by the yellow arrow");
-    expect(selectController.getCurrentStep().message).toContain("viewing angle will remain unchanged");
-    expect(selectController.handle("view_direction_acknowledged")).toBe(true);
-    expect(selectController.getCurrentStep().id).toBe("select_first");
-    expect(selectController.getCurrentStep().message).toContain("[[yellow]]yellow objects[[/yellow]]");
-    expect(selectController.getCurrentStep().message).toContain("**Only yellow objects can be moved.**");
-    expect(selectController.getCurrentStep().message).toContain("picture at the top of the page");
-    expect(selectController.getCurrentStep().message).toContain("floor plan below");
-    expect(selectController.getCurrentStep().message).toContain("match the furniture in the perspective image above");
-    expect(selectController.getCurrentStep().message).toContain("upper-right corner");
-    expect(selectController.getCurrentStep().message).toContain("zoom in");
-    expect(selectController.getCurrentStep().message).toContain("zoom out");
-    expect(selectController.getCurrentStep().message).toContain("reset");
-    expect(selectController.getCurrentStep().message).toContain("hold **Pan**");
-    expect(selectController.getCurrentStep().message).toContain("release **Pan**");
-    expect(selectController.getCurrentStep().message).toContain("not furniture positions");
-    expect(selectController.getCurrentStep().message).toContain("Right-click");
-    expect(selectController.getCurrentStep().message.match(/\[\[block\]\]/g)).toHaveLength(3);
-    expect(selectController.getCurrentStep().message.match(/\[\[\/block\]\]/g)).toHaveLength(3);
-
-    const chineseController = new TutorialController("persistent", "zh-CN");
-    chineseController.handle("reconstruction_started");
-    expect(chineseController.getCurrentStep()).toMatchObject({ anchor: "viewport-tools" });
-    expect(chineseController.getCurrentStep().id).toBe("view_direction");
-    expect(chineseController.getCurrentStep().message).toContain("平面图的最下方");
-    expect(chineseController.getCurrentStep().message).toContain("您正在注视的方向如黄色箭头所示");
-    expect(chineseController.getCurrentStep().message).toContain("这个观察视角都不会改变");
-    chineseController.handle("view_direction_acknowledged");
-    expect(chineseController.getCurrentStep().message).toContain("右上角");
-    expect(chineseController.getCurrentStep().message).toContain("放大");
-    expect(chineseController.getCurrentStep().message).toContain("缩小");
-    expect(chineseController.getCurrentStep().message).toContain("重置");
-    expect(chineseController.getCurrentStep().message).toContain("按住");
-    expect(chineseController.getCurrentStep().message).toContain("松开");
-    expect(chineseController.getCurrentStep().message).toContain("家具位置");
-  });
-
-  it("gives every English and Chinese step a task and moves the click checklist to submit", () => {
-    for (const [locale, prefix] of [["en-US", "Your task:"], ["zh-CN", "你的任务："]] as const) {
-      for (const referenceMode of ["preview_10s", "persistent"] as const) {
-        const controller = new TutorialController(referenceMode, locale);
-        const seen: string[] = [];
-
-        for (let index = 0; index < 20 && !controller.isComplete(); index += 1) {
-          const step = controller.getCurrentStep();
-          seen.push(step.id);
-          expect(step.task).toMatch(new RegExp(`^${prefix}`));
-          expect(step.expectedEvent).toBeDefined();
-          controller.handle(step.expectedEvent!);
-        }
-
-        expect(controller.isComplete()).toBe(true);
-        expect(seen).toContain("submit");
-      }
-
-      const selectStep = new TutorialController("persistent", locale);
-      selectStep.handle("reconstruction_started");
-      selectStep.handle("view_direction_acknowledged");
-      expect(selectStep.getCurrentStep().id).toBe("select_first");
-      expect(selectStep.getCurrentStep().message).not.toMatch(/every yellow object|每个黄色物体/i);
-
-      const submitStep = new TutorialController("persistent", locale);
-      submitStep.handle("reconstruction_started");
-      submitStep.handle("view_direction_acknowledged");
-      for (const event of [
-        "object_selected",
-        "object_moved_or_rotated",
-        "confidence_chosen",
-        "object_deselected",
-        "object_selected",
-        "confidence_chosen",
-        "object_deselected",
-      ] as const) {
-        submitStep.handle(event);
-      }
-      expect(submitStep.getCurrentStep().id).toBe("submit");
-      expect(submitStep.getCurrentStep().task).toMatch(/Your task:|你的任务：/);
-      expect(submitStep.getCurrentStep().message).toMatch(/every yellow object|每个黄色物体/i);
+describe("TutorialController confirmed gates", () => {
+  it.each(["persistent", "preview_10s"] as const)("orders observation, practices, zero-movement saves and submission (%s)", (mode) => {
+    const { tutorial, confidence, magnify, save } = fixture("en-US", mode);
+    expect(tutorial.getCurrentStep().id).toBe("intro");
+    expect(tutorial.handle("object_selected", { objectId: "chair" })).toBe(false);
+    if (mode === "preview_10s") {
+      tutorial.handle("preview_acknowledged");
+      expect(tutorial.getCurrentStep().id).toBe("preview");
     }
+    tutorial.handle("reconstruction_started");
+    expect(tutorial.getCurrentStep().id).toBe("view_direction");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    tutorial.handle("view_direction_acknowledged");
+    expect(tutorial.getCurrentStep().id).toBe("reference_board");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    expect(tutorial.handle("magnifier_entered")).toBe(false);
+    tutorial.handle("reference_board_completed");
+    expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    magnify();
+    expect(tutorial.getCurrentStep().id).toBe("select_first");
+    expect(tutorial.isInteractionBlocked()).toBe(false);
+    confidence.enterObjectEdit("chair"); tutorial.handle("object_selected", { objectId: "chair" });
+    expect(tutorial.getCurrentStep().id).toBe("confidence_first");
+    expect(confidence.getFinalConfidence()).toEqual({});
+    confidence.choose("position", 3);
+    expect(tutorial.handle("confidence_chosen")).toBe(false);
+    expect(tutorial.handle("object_saved", { objectId: "chair" })).toBe(false);
+    expect(confidence.saveActiveGroup().ok).toBe(false);
+    confidence.choose("rotation", 4); tutorial.handle("confidence_chosen");
+    expect(tutorial.getCurrentStep().id).toBe("save_first");
+    expect(tutorial.handle("object_deselected", { objectId: "chair" })).toBe(false);
+    confidence.saveActiveGroup(); tutorial.handle("object_saved", { objectId: "chair" });
+    expect(tutorial.getCurrentStep().id).toBe("pause_practice");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    expect(tutorial.handle("object_selected", { objectId: "table" })).toBe(false);
+    tutorial.handle("pause_requested"); tutorial.handle("pause_confirmed");
+    tutorial.handle("pause_resumed", { resumeReason: "manual_resume" });
+    expect(tutorial.getCurrentStep().id).toBe("remaining_objects");
+    save("table"); expect(tutorial.canSubmit()).toBe(false);
+    save("sofa"); expect(tutorial.getCurrentStep().id).toBe("submit");
+    expect(tutorial.canSubmit()).toBe(true);
+    tutorial.handle("submitted"); expect(tutorial.isComplete()).toBe(true);
+  });
+
+  it("requires actual zoom and ESC in the same session; early exits allow retry", () => {
+    const { tutorial, observe, magnify } = fixture();
+    observe();
+    expect(tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 })).toBe(false);
+    tutorial.handle("magnifier_entered");
+    tutorial.handle("magnifier_zoom_changed", { zoomBefore: 4, zoomAfter: 4 });
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+    expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
+    tutorial.handle("magnifier_entered");
+    tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
+    tutorial.handle("magnifier_exited", { exitReason: "destroy" });
+    expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
+    tutorial.handle("magnifier_entered");
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+    expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
+    magnify(); expect(tutorial.getCurrentStep().id).toBe("select_first");
+  });
+
+  it.each(["manual_resume", "auto_resume_10s"] as const)("requires request and confirmation; cancellation allows retry (%s)", (resumeReason) => {
+    const { tutorial, observe, magnify, save } = fixture();
+    observe(); magnify(); save("chair");
+    expect(tutorial.handle("pause_confirmed")).toBe(false);
+    expect(tutorial.handle("pause_resumed", { resumeReason })).toBe(false);
+    tutorial.handle("pause_requested"); expect(tutorial.canStartMagnifier()).toBe(false);
+    tutorial.handle("pause_cancelled");
+    expect(tutorial.getCurrentStep().id).toBe("pause_practice");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    tutorial.handle("pause_requested"); tutorial.handle("pause_confirmed");
+    expect(tutorial.handle("pause_resumed", { resumeReason: "auto_resume_15m" })).toBe(false);
+    tutorial.handle("pause_resumed", { resumeReason });
+    expect(tutorial.isInteractionBlocked()).toBe(false);
+  });
+
+  it("keeps first-save facts during re-edit, but refuses unsaved confidence and active modes", () => {
+    const { tutorial, confidence, observe, magnify, save } = fixture();
+    observe(); magnify(); save("chair");
+    tutorial.handle("pause_requested"); tutorial.handle("pause_confirmed"); tutorial.handle("pause_resumed", { resumeReason: "auto_resume_10s" });
+    save("table"); save("sofa");
+    confidence.enterObjectEdit("chair");
+    expect(confidence.getFinalConfidence().chair).toEqual({ position: 3, rotation: 4 });
+    expect(tutorial.canSubmit()).toBe(false);
+    confidence.choose("position", 2); confidence.choose("rotation", 2); confidence.saveActiveGroup();
+    expect(tutorial.canSubmit()).toBe(true);
+    tutorial.handle("magnifier_entered");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    expect(tutorial.canStartPause()).toBe(false);
+    expect(tutorial.handle("submitted")).toBe(false);
+    expect(tutorial.canSubmit()).toBe(false);
+    tutorial.handle("magnifier_exited", { exitReason: "escape" });
+    expect(tutorial.canSubmit()).toBe(true);
+  });
+
+  it("rejects early submission even when all answers were saved externally", () => {
+    const { tutorial, confidence, observe } = fixture();
+    for (const id of confidence.getRequiredGroupIds()) {
+      confidence.enterObjectEdit(id); confidence.choose("position", 3); confidence.choose("rotation", 3); confidence.saveActiveGroup();
+    }
+    observe();
+    expect(tutorial.canSubmit()).toBe(false);
+    expect(tutorial.handle("submitted")).toBe(false);
+    expect(tutorial.handle("object_selected", { objectId: "chair" })).toBe(false);
+  });
+
+  it.each(["en-US", "zh-CN"] as const)("localizes new practice guidance (%s)", (locale) => {
+    const { tutorial, observe, magnify, save } = fixture(locale);
+    const prefix = locale === "zh-CN" ? "你的任务：" : "Your task:";
+    expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
+    observe(); expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
+    magnify(); save("chair");
+    expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
+    expect(tutorial.getCurrentStep().message).toContain("10");
   });
 });
