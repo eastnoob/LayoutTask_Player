@@ -232,6 +232,7 @@ describe("experiment data export", () => {
     expect(files[1].data).toContain("assign-1,2,sequence-02,run12-williams-v1");
     expect(files[1].data).toContain("100,200,90,50,45,150,200,90,1,0,0");
     expect(files[1].data).toContain("pause_used");
+    expect(files[1].data).toContain("magnifier_used,magnifier_use_count,magnifier_duration_ms,effective_duration_ms");
     expect(files[1].data).toContain(",true,1,5000,800");
     expect(files[2].data).toContain("trial_type,reference_mode,participant_id,session_id,experiment_id,assignment_id,participant_number,sequence_id,schedule_version,assignment_mode,requested_sequence_id,replacement_attempt,rotation_index,trial_index,task_id,qid,hash8,result_json");
     const rawResultRow = parseCsvRecords(files[2].data).find((row) => row[14] === "scene_001")!;
@@ -246,13 +247,16 @@ describe("experiment data export", () => {
       expect(records.slice(1).every((record) => record.length === records[0].length)).toBe(true);
     }
     expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal").map((row) => row[13])).toEqual(["1"]);
-    expect(parseCsvRecords(files[1].data).filter((row) => row[0] === "formal")[0].slice(-13, -8)).toEqual([
-      "presentation-1",
-      "",
-      "1",
-      "",
-      "25",
-    ]);
+    const trialHeaders = parseCsvRecords(files[1].data)[0];
+    const formalRow = parseCsvRecords(files[1].data).find((row) => row[0] === "formal")!;
+    const formalValues = Object.fromEntries(trialHeaders.map((header, index) => [header, formalRow[index]]));
+    expect(formalValues).toMatchObject({
+      presentation_id: "presentation-1",
+      repeat_group_id: "",
+      repeat_index: "1",
+      repeat_of_task_id: "",
+      trial_total: "25",
+    });
     expect(JSON.parse(files[4].data)).toMatchObject({
       schema: "layouttask.debug.v1",
       participant_id: "P001",
@@ -275,6 +279,37 @@ describe("experiment data export", () => {
       participant_profile: rowInput.participantProfile,
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
+  });
+
+  it("exports magnifier timing in trial CSV and leaves legacy results blank", () => {
+    const resultWithMagnifier = {
+      ...result,
+      magnifier: { use_count: 2, total_duration_ms: 100 },
+      effective_duration_ms: 700,
+    };
+    const files = createExperimentCsvFiles({
+      ...rowInput,
+      trialResults: [{ ...rowInput.trialResults[0], result: resultWithMagnifier }],
+      tutorialResult: undefined,
+    });
+    const [headers, row] = parseCsvRecords(files[1].data);
+    const values = Object.fromEntries(headers.map((header, index) => [header, row[index]]));
+
+    expect(values).toMatchObject({
+      magnifier_used: "true",
+      magnifier_use_count: "2",
+      magnifier_duration_ms: "100",
+      effective_duration_ms: "700",
+    });
+
+    const [legacyHeaders, legacyRow] = parseCsvRecords(createExperimentCsvFiles(rowInput)[1].data);
+    const legacyValues = Object.fromEntries(legacyHeaders.map((header, index) => [header, legacyRow[index]]));
+    expect(legacyValues).toMatchObject({
+      magnifier_used: "",
+      magnifier_use_count: "",
+      magnifier_duration_ms: "",
+      effective_duration_ms: "",
+    });
   });
 
   it.each(["v1", "v2"] as const)("exports %s consent compatibly in session CSV and JSON files", (version) => {

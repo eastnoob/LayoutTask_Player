@@ -84,6 +84,7 @@ export const pageTimingSchema = z.object({
   player_start_time: z.number().finite().optional(),
   player_elapsed_ms: z.number().finite().nonnegative().optional(),
   active_player_elapsed_ms: z.number().finite().nonnegative().optional(),
+  effective_player_elapsed_ms: z.number().finite().nonnegative().optional(),
 });
 
 export const pauseEventSchema = z.discriminatedUnion("type", [
@@ -109,6 +110,11 @@ export const pauseSummarySchema = z.object({
   pause_end_reason: z.enum(["manual_resume", "auto_resume_10s", "auto_resume_15m"]).optional(),
   pause_events: z.array(pauseEventSchema),
   tutorial_pause_practice: z.boolean().optional(),
+});
+
+export const magnifierSummarySchema = z.object({
+  use_count: z.number().int().nonnegative(),
+  total_duration_ms: z.number().finite().nonnegative(),
 });
 
 export const displayInfoSchema = z.object({
@@ -345,6 +351,8 @@ export const resultSchema = z.object({
   start_time: z.number().int().positive(),
   end_time: z.number().int().positive(),
   duration_ms: z.number().int().nonnegative(),
+  magnifier: magnifierSummarySchema.optional(),
+  effective_duration_ms: z.number().finite().nonnegative().optional(),
   page_timing: pageTimingSchema.optional(),
   pause: pauseSummarySchema.optional(),
   display: displayInfoSchema.optional(),

@@ -12,13 +12,15 @@ import type { ReferencePresentation } from "../types/schedule";
 import type { RewardConfig, RewardReferenceTask } from "../types/reward";
 import { calculateTaskReward } from "./reward-calculator";
 import { elapsedMs, now } from "../utils/time";
+import type { MagnifierSnapshot } from "./magnifier-controller";
 
 interface RecorderOptions {
   config: RuntimeTaskConfig;
   sessionId: string;
   getDisplayInfo?: () => Promise<DisplayInfo | undefined>;
   getFinalState: () => LayoutTaskResult["final_state"];
-  getPageTiming?: (submitTime: number, playerStartTime: number) => PageTimingInfo;
+  getPageTiming?: (submitTime: number, playerStartTime: number, magnifierDurationMs?: number) => PageTimingInfo;
+  getMagnifierSnapshot?: (taskWindow: { start: number; end: number }) => MagnifierSnapshot;
   getFlowInfo?: () => ResultFlowInfo;
   getConfidence?: () => ConfidenceByGroup | undefined;
   getReferenceAssistance?: () => ReferenceAssistanceInfo | undefined;
@@ -74,8 +76,15 @@ export class Recorder {
       ? await this.options.getDisplayInfo?.()
       : undefined;
 
+    const duration = this.options.pause?.getActiveElapsedMs(this.startTime, this.endTime)
+      ?? elapsedMs(this.startTime, this.endTime);
+    const magnifier = this.options.getMagnifierSnapshot?.({ start: this.startTime, end: this.endTime });
+    const effectiveDuration = magnifier
+      ? Math.max(0, duration - magnifier.total_duration_ms)
+      : undefined;
+
     const pageTiming = this.options.config.recording.record_page_timing
-      ? this.options.getPageTiming?.(this.endTime, this.startTime)
+      ? this.options.getPageTiming?.(this.endTime, this.startTime, magnifier?.total_duration_ms)
       : undefined;
     const confidence = this.options.getConfidence?.();
 
@@ -89,8 +98,9 @@ export class Recorder {
       session: this.options.sessionId,
       start_time: this.startTime,
       end_time: this.endTime,
-      duration_ms: this.options.pause?.getActiveElapsedMs(this.startTime, this.endTime)
-        ?? elapsedMs(this.startTime, this.endTime),
+      duration_ms: duration,
+      magnifier,
+      effective_duration_ms: effectiveDuration,
       page_timing: pageTiming,
       pause: this.options.pause?.snapshot?.(),
       display,

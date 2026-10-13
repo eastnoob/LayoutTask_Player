@@ -56,12 +56,17 @@ export interface TrialCsvRow {
   start_time: number | "";
   end_time: number | "";
   duration_ms: number | "";
+  effective_duration_ms: number | "";
+  magnifier_used: boolean | "";
+  magnifier_use_count: number | "";
+  magnifier_duration_ms: number | "";
   page_timing_source: string;
   page_open_time: number | "";
   submit_time: number | "";
   total_elapsed_ms: number | "";
   player_start_time: number | "";
   player_elapsed_ms: number | "";
+  effective_player_elapsed_ms: number | "";
   locked: boolean | "";
   final_state_mode: string;
   world_unit: string;
@@ -276,12 +281,17 @@ export function toTrialRows(records: DecodedSourceRecord[]): TrialCsvRow[] {
       start_time: result.start_time,
       end_time: result.end_time,
       duration_ms: result.duration_ms,
+      effective_duration_ms: result.effective_duration_ms ?? "",
+      magnifier_used: result.magnifier ? result.magnifier.use_count > 0 : "",
+      magnifier_use_count: result.magnifier?.use_count ?? "",
+      magnifier_duration_ms: result.magnifier?.total_duration_ms ?? "",
       page_timing_source: result.page_timing?.source ?? "",
       page_open_time: result.page_timing?.page_open_time ?? "",
       submit_time: result.page_timing?.submit_time ?? "",
       total_elapsed_ms: result.page_timing?.total_elapsed_ms ?? "",
       player_start_time: result.page_timing?.player_start_time ?? "",
       player_elapsed_ms: result.page_timing?.player_elapsed_ms ?? "",
+      effective_player_elapsed_ms: result.page_timing?.effective_player_elapsed_ms ?? "",
       locked: result.locked,
       final_state_mode: result.final_state_mode ?? inferFinalStateMode(result.final_state),
       world_unit: result.context?.world.unit ?? "",
@@ -407,9 +417,29 @@ function validateTiming(result: LayoutTaskResult, errors: string[], warnings: st
     errors.push("start_time_after_end_time");
   }
 
-  const expectedDuration = Math.max(0, result.end_time - result.start_time);
+  const expectedDuration = Math.max(0, result.end_time - result.start_time - (result.pause?.pause_duration_ms ?? 0));
   if (result.duration_ms !== expectedDuration) {
     errors.push("duration_mismatch");
+  }
+
+  if (result.effective_duration_ms !== undefined) {
+    const expectedEffectiveDuration = Math.max(0, result.duration_ms - (result.magnifier?.total_duration_ms ?? 0));
+    if (result.effective_duration_ms !== expectedEffectiveDuration) {
+      errors.push("effective_duration_mismatch");
+    }
+  }
+
+  if (result.page_timing?.effective_player_elapsed_ms !== undefined) {
+    const activePlayerElapsed = result.page_timing.active_player_elapsed_ms ?? result.page_timing.player_elapsed_ms;
+    if (activePlayerElapsed !== undefined) {
+      const expectedEffectivePlayerElapsed = Math.max(
+        0,
+        activePlayerElapsed - (result.magnifier?.total_duration_ms ?? 0),
+      );
+      if (result.page_timing.effective_player_elapsed_ms !== expectedEffectivePlayerElapsed) {
+        errors.push("effective_player_duration_mismatch");
+      }
+    }
   }
 
   if (result.copy_timestamp !== undefined && result.copy_timestamp < result.start_time) {
@@ -697,12 +727,17 @@ function emptyTrialRow(record: DecodedSourceRecord): TrialCsvRow {
     start_time: "",
     end_time: "",
     duration_ms: "",
+    effective_duration_ms: "",
+    magnifier_used: "",
+    magnifier_use_count: "",
+    magnifier_duration_ms: "",
     page_timing_source: "",
     page_open_time: "",
     submit_time: "",
     total_elapsed_ms: "",
     player_start_time: "",
     player_elapsed_ms: "",
+    effective_player_elapsed_ms: "",
     locked: "",
     final_state_mode: "",
     world_unit: "",

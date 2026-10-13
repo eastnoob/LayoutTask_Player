@@ -25,6 +25,7 @@ export interface PageTimingInfo {
   player_start_time?: number;
   player_elapsed_ms?: number;
   active_player_elapsed_ms?: number;
+  effective_player_elapsed_ms?: number;
 }
 
 export type PauseMode = "formal" | "tutorial_practice";
@@ -43,6 +44,11 @@ export interface PauseSummary {
   pause_end_reason?: PauseEndReason;
   pause_events: PauseEvent[];
   tutorial_pause_practice?: boolean;
+}
+
+export interface MagnifierSummary {
+  use_count: number;
+  total_duration_ms: number;
 }
 
 export interface DisplayInfo {
@@ -263,6 +269,8 @@ export interface LayoutTaskResult {
   start_time: number;
   end_time: number;
   duration_ms: number;
+  magnifier?: MagnifierSummary;
+  effective_duration_ms?: number;
   page_timing?: PageTimingInfo;
   pause?: PauseSummary;
   display?: DisplayInfo;

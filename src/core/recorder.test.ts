@@ -176,6 +176,26 @@ describe("Recorder", () => {
     expect(result.duration_ms).toBe(4_000);
   });
 
+  it("stores magnifier usage and subtracts it from the effective duration", async () => {
+    const recorder = new Recorder({
+      config: createRuntimeConfig(),
+      sessionId: "SESSION1",
+      getFinalState: () => ({}),
+      getMagnifierSnapshot: (taskWindow) => {
+        expect(taskWindow).toEqual({ start: 1_000, end: 10_000 });
+        return { use_count: 2, total_duration_ms: 2_000 };
+      },
+      nowImpl: createNowSequence([1_000, 10_000]),
+    });
+
+    recorder.start();
+    const result = await recorder.finish();
+
+    expect(result.duration_ms).toBe(9_000);
+    expect(result.magnifier).toEqual({ use_count: 2, total_duration_ms: 2_000 });
+    expect(result.effective_duration_ms).toBe(7_000);
+  });
+
   it("accepts a pause controller method passed through the player boundary", () => {
     const pause = new ExperimentPauseController({ mode: "tutorial_practice", now: () => 1_000 });
     const recorder = new Recorder({

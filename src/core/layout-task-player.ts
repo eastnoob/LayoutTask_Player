@@ -315,7 +315,9 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         sessionId,
         getDisplayInfo: () => displayCollector.collect(),
         getFinalState: () => store.getFinalState(),
-        getPageTiming: (submitTime, playerStartTime) => pageTiming.collect(submitTime, playerStartTime),
+        getPageTiming: (submitTime, playerStartTime, magnifierDurationMs) =>
+          pageTiming.collect(submitTime, playerStartTime, magnifierDurationMs),
+        getMagnifierSnapshot: (taskWindow) => magnifier.snapshot(taskWindow),
         getFlowInfo: () => flow?.getFlowInfo() ?? { mode: options.config.flow.mode },
         getConfidence: () => confidence?.getFinalConfidence(),
         getReferenceAssistance: () => referenceAssistanceRecorder?.snapshot(),

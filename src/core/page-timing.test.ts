@@ -52,4 +52,20 @@ describe("PageTimingCollector", () => {
       active_player_elapsed_ms: 4_000,
     });
   });
+
+  it("subtracts magnifier time only from the effective player duration", () => {
+    const collector = new PageTimingCollector({
+      nowImpl: () => 10_000,
+      performanceRef: { timeOrigin: 1_000, timing: {} as PerformanceTiming },
+      pause: {
+        getActiveElapsedMs: (startAt, endAt = startAt) => endAt - startAt - 1_000,
+      },
+    });
+
+    expect(collector.collect(10_000, 1_000, 2_000)).toMatchObject({
+      player_elapsed_ms: 9_000,
+      active_player_elapsed_ms: 8_000,
+      effective_player_elapsed_ms: 6_000,
+    });
+  });
 });

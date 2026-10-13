@@ -23,9 +23,15 @@ export class PageTimingCollector {
     this.source = resolved.source ?? "collector_created";
   }
 
-  collect(submitTime = this.nowImpl(), playerStartTime?: number): PageTimingInfo {
+  collect(submitTime = this.nowImpl(), playerStartTime?: number, magnifierDurationMs?: number): PageTimingInfo {
     // Keep both total and player durations visible. 这样后期能区分“页面加载/阅读耗时”和真正任务耗时。
     const playerElapsed = playerStartTime === undefined ? undefined : elapsedMs(playerStartTime, submitTime);
+    const activePlayerElapsed = playerStartTime === undefined
+      ? undefined
+      : this.pause?.getActiveElapsedMs(playerStartTime, submitTime) ?? playerElapsed;
+    const effectivePlayerElapsed = activePlayerElapsed === undefined || magnifierDurationMs === undefined
+      ? undefined
+      : Math.max(0, activePlayerElapsed - Math.max(0, magnifierDurationMs));
     return {
       source: this.source,
       page_open_time: this.pageOpenTime,
@@ -37,9 +43,10 @@ export class PageTimingCollector {
         ? {
             active_total_elapsed_ms: this.pause.getActiveElapsedMs(this.pageOpenTime, submitTime),
             active_player_elapsed_ms:
-              playerStartTime === undefined ? undefined : this.pause.getActiveElapsedMs(playerStartTime, submitTime),
+              activePlayerElapsed,
           }
         : {}),
+      ...(effectivePlayerElapsed === undefined ? {} : { effective_player_elapsed_ms: effectivePlayerElapsed }),
     };
   }
 }

@@ -42,6 +42,7 @@ describe("pageTimingSchema", () => {
       total_elapsed_ms: 279327.8000488281,
       player_start_time: 1777994239766,
       player_elapsed_ms: 278438,
+      effective_player_elapsed_ms: 278000,
     });
 
     expect(parsed.total_elapsed_ms).toBe(279327.8000488281);
@@ -136,5 +137,28 @@ describe("resultSchema confidence", () => {
     };
 
     expect(() => resultSchema.parse(result)).toThrow();
+  });
+});
+
+describe("resultSchema magnifier timing", () => {
+  it("accepts optional magnifier timing and effective duration fields", () => {
+    const result = createMinimalResult();
+    result.magnifier = { use_count: 2, total_duration_ms: 20_000 };
+    result.effective_duration_ms = 80_000;
+
+    expect(resultSchema.parse(result)).toMatchObject({
+      magnifier: { use_count: 2, total_duration_ms: 20_000 },
+      effective_duration_ms: 80_000,
+    });
+  });
+
+  it("rejects negative or non-finite magnifier values", () => {
+    const negative = createMinimalResult();
+    negative.magnifier = { use_count: -1, total_duration_ms: 20_000 };
+    expect(() => resultSchema.parse(negative)).toThrow();
+
+    const nonFinite = createMinimalResult();
+    nonFinite.magnifier = { use_count: 1, total_duration_ms: Number.POSITIVE_INFINITY };
+    expect(() => resultSchema.parse(nonFinite)).toThrow();
   });
 });

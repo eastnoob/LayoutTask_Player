@@ -72,6 +72,23 @@ describe("LayoutTaskEncoder", () => {
       final_state_mode: "absolute",
     });
   });
+
+  it("preserves magnifier timing through final-only and full output", async () => {
+    const encoder = new LayoutTaskEncoder();
+    const result = {
+      ...createResult(),
+      magnifier: { use_count: 2, total_duration_ms: 200 },
+      effective_duration_ms: 800,
+    };
+
+    const finalOnly = await encoder.decode((await encoder.encode(result)).output);
+    expect(finalOnly.result.magnifier).toEqual({ use_count: 2, total_duration_ms: 200 });
+    expect(finalOnly.result.effective_duration_ms).toBe(800);
+
+    const full = await encoder.decode((await encoder.encode(result, { detail: "full" })).output);
+    expect(full.result.magnifier).toEqual({ use_count: 2, total_duration_ms: 200 });
+    expect(full.result.effective_duration_ms).toBe(800);
+  });
 });
 
 function createResult(): LayoutTaskResult {

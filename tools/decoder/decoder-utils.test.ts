@@ -15,6 +15,24 @@ describe("decoder validation", () => {
     expect(validation.errors).toEqual([]);
   });
 
+  it("validates Pause-adjusted and magnifier-adjusted durations separately", () => {
+    const decoded = createDecodedRecord();
+    decoded.result.pause = {
+      pause_used: true,
+      pause_count: 1,
+      pause_duration_ms: 200,
+      pause_events: [],
+    };
+    decoded.result.duration_ms = 800;
+    decoded.result.magnifier = { use_count: 2, total_duration_ms: 100 };
+    decoded.result.effective_duration_ms = 700;
+
+    const validation = validateDecodedResult(decoded);
+
+    expect(validation.valid).toBe(true);
+    expect(validation.errors).toEqual([]);
+  });
+
   it("flags relative final states that exceed configured limits", () => {
     const decoded = createDecodedRecord();
     if (!isRelativeFinalState(decoded.result.final_state)) {
@@ -68,6 +86,23 @@ describe("decoder validation", () => {
       display_changes_visual_viewport_resize_count: 1,
       display_changes_visual_viewport_scroll_count: 3,
       display_changes_orientation_change_count: 0,
+    });
+  });
+
+  it("exports magnifier and effective timing columns for trial CSV", () => {
+    const decoded = createDecodedRecord();
+    decoded.result.magnifier = { use_count: 2, total_duration_ms: 100 };
+    decoded.result.effective_duration_ms = 900;
+    decoded.result.page_timing!.effective_player_elapsed_ms = 900;
+
+    const rows = toTrialRows([{ sourceIndex: 0, decoded }]);
+
+    expect(rows[0]).toMatchObject({
+      effective_duration_ms: 900,
+      effective_player_elapsed_ms: 900,
+      magnifier_used: true,
+      magnifier_use_count: 2,
+      magnifier_duration_ms: 100,
     });
   });
 
