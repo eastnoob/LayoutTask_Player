@@ -668,12 +668,20 @@ export class LayoutTaskRenderer {
     button.title = this.options.locale === "zh-CN" ? "打开放大镜" : "Open magnifier";
     button.setAttribute("aria-pressed", "false");
     button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path></svg>';
+    const rememberFocus = (previous: HTMLElement | null) => {
+      if (!this.options.magnifier?.controller.isActive() && previous && previous !== button && this.options.root.contains(previous)) {
+        this.magnifierFocusElement = previous;
+      }
+    };
+    button.addEventListener("pointerdown", () => rememberFocus(document.activeElement as HTMLElement | null));
+    button.addEventListener("focus", (event) => rememberFocus(event.relatedTarget as HTMLElement | null));
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       if (!this.options.magnifier || this.options.magnifier.controller.isActive()) {
         return;
       }
-      this.magnifierFocusElement = event.currentTarget as HTMLElement;
+      rememberFocus(document.activeElement as HTMLElement | null);
+      this.magnifierFocusElement ??= button;
       const rect = this.magnifierStageElement?.getBoundingClientRect();
       const entered = this.options.magnifier.onEnter({
         clientX: rect ? rect.left + rect.width / 2 : 0,
@@ -712,8 +720,8 @@ export class LayoutTaskRenderer {
       return;
     }
     stage.addEventListener("pointermove", this.handleMagnifierPointerMove);
-    stage.addEventListener("wheel", this.handleMagnifierWheel, { passive: false });
     if (typeof window !== "undefined") {
+      window.addEventListener("wheel", this.handleMagnifierWheel, { capture: true, passive: false });
       window.addEventListener("keydown", this.handleMagnifierKeyDown, true);
     }
   }
@@ -732,6 +740,9 @@ export class LayoutTaskRenderer {
     }
     event.preventDefault();
     event.stopPropagation();
+    if (!event.target || !this.refs.svg?.contains(event.target as Node)) {
+      return;
+    }
     const direction = event.deltaY < 0 ? 1 : event.deltaY > 0 ? -1 : 0;
     const change = this.options.magnifier.onWheel(direction);
     if (change) {
@@ -1283,9 +1294,9 @@ export class LayoutTaskRenderer {
     this.unbindViewportWarning();
     if (this.magnifierStageElement) {
       this.magnifierStageElement.removeEventListener("pointermove", this.handleMagnifierPointerMove);
-      this.magnifierStageElement.removeEventListener("wheel", this.handleMagnifierWheel);
     }
     if (typeof window !== "undefined") {
+      window.removeEventListener("wheel", this.handleMagnifierWheel, true);
       window.removeEventListener("keydown", this.handleMagnifierKeyDown, true);
     }
     if (this.options.magnifier?.controller.isActive()) {

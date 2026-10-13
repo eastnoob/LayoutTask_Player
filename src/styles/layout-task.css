@@ -284,6 +284,10 @@ body {
   pointer-events: auto;
 }
 
+.layout-task-tutorial-interaction-locked .layout-task-stage-wrap.is-magnifier-active > .layout-task-stage {
+  pointer-events: auto;
+}
+
 .layout-task-flow-modal-dialog.is-tutorial-attention,
 .layout-task-display-image-frame.is-tutorial-attention,
 .layout-task-stage-wrap.is-tutorial-attention,
@@ -399,7 +403,7 @@ body {
   pointer-events: none;
 }
 
-.layout-task-magnifier-scene-svg {
+.layout-task-magnifier-scene > .layout-task-magnifier-scene-svg {
   position: absolute;
   left: 0;
   top: 0;

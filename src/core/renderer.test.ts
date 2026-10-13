@@ -29,6 +29,7 @@ import { StateStore } from "./state-store";
 import { ConfidenceController } from "./confidence-controller";
 import { InteractionController } from "./interaction-controller";
 import { TutorialController } from "./tutorial-controller";
+import { MagnifierController } from "./magnifier-controller";
 
 describe("LayoutTaskRenderer trial header", () => {
   it("uses a large trial label before the scene identifier", () => {
@@ -546,7 +547,8 @@ class TestElement {
   readonly children: Array<TestElement | string> = [];
   readonly attributes = new Map<string, string>();
   readonly dataset: Record<string, string> = {};
-  readonly style: Record<string, string> = {};
+  readonly style = { setProperty: (name: string, value: string) => { this.style[name] = value; } } as
+    Record<string, string> & { setProperty(name: string, value: string): void };
   readonly classList = new TestClassList(this);
   readonly listeners = new Map<string, TestListener[]>();
   readonly nodeType = 1;
@@ -647,7 +649,11 @@ class TestElement {
     if (!this.disabled) this.dispatch("click");
   }
 
-  focus(): void {}
+  focus(): void { (document as unknown as TestDocument).activeElement = this; }
+
+  contains(element: TestElement): boolean {
+    return this === element || this.children.some((child) => typeof child !== "string" && child.contains(element));
+  }
 
   setPointerCapture(pointerId: number): void {
     this.capturedPointerIds.add(pointerId);
@@ -661,8 +667,8 @@ class TestElement {
     this.capturedPointerIds.delete(pointerId);
   }
 
-  getBoundingClientRect(): { width: number; height: number; top: number; bottom: number } {
-    return { width: 800, height: 600, top: 0, bottom: 600 };
+  getBoundingClientRect(): { width: number; height: number; left: number; top: number; bottom: number } {
+    return { width: 800, height: 600, left: 0, top: 0, bottom: 600 };
   }
 
   getScreenCTM(): { a: number; inverse(): { a: number } } {
@@ -711,6 +717,7 @@ class TestElement {
 }
 
 class TestDocument {
+  activeElement: TestElement | undefined;
   createElement(tagName: string): TestElement {
     return new TestElement(tagName);
   }
@@ -798,6 +805,80 @@ describe("LayoutTaskRenderer object interactivity", () => {
 });
 
 describe("LayoutTaskRenderer control layout", () => {
+  function mountMagnifier() {
+    const dom = installRendererDom();
+    const config = createRuntimeConfig({ objects: [] });
+    const controller = new MagnifierController();
+    const renderer = new LayoutTaskRenderer({
+      root: new TestElement("main") as unknown as HTMLElement,
+      config,
+      store: new StateStore(config),
+      magnifier: {
+        controller,
+        onEnter: () => controller.enter(),
+        onWheel: (direction) => controller.wheel(direction),
+        onExit: () => controller.exit(),
+      },
+    });
+    const refs = renderer.mount();
+    const windowEvent = (type: string, event: Record<string, unknown>) => {
+      for (const [name, handler] of vi.mocked(window.addEventListener).mock.calls) {
+        if (name === type) (handler as (event: unknown) => void)(event);
+      }
+    };
+    return { renderer, refs, controller, windowEvent, cleanup: () => { renderer.destroy(); dom.restore(); } };
+  }
+
+  it("cancels outside-plan Ctrl+wheel without changing magnifier zoom and releases the listener on teardown", () => {
+    const fixture = mountMagnifier();
+    try {
+      fixture.refs.magnifierButton!.click();
+      const preventDefault = vi.fn();
+      fixture.windowEvent("wheel", { target: new TestElement("img"), ctrlKey: true, deltaY: -100,
+        preventDefault, stopPropagation: vi.fn() });
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(fixture.controller.getZoom()).toBe(2);
+      const binding = vi.mocked(window.addEventListener).mock.calls.find(([type]) => type === "wheel")!;
+      expect(binding[2]).toEqual({ capture: true, passive: false });
+      fixture.renderer.destroy();
+      expect(window.removeEventListener).toHaveBeenCalledWith("wheel", binding[1], true);
+    } finally { fixture.cleanup(); }
+  });
+
+  it("moves the mounted lens over the plan and applies each real wheel change once", () => {
+    const fixture = mountMagnifier();
+    try {
+      fixture.refs.magnifierButton!.click();
+      (fixture.refs.stageWrapElement as unknown as TestElement).dispatch("pointermove", { clientX: 790, clientY: 590 });
+      expect(fixture.refs.magnifierLensElement!.style.left).toBe("580px");
+      const preventDefault = vi.fn();
+      fixture.windowEvent("wheel", { target: fixture.refs.svg, deltaY: -100, preventDefault, stopPropagation: vi.fn() });
+      expect(fixture.controller.getZoom()).toBe(2.25);
+      expect(fixture.refs.magnifierSceneElement!.style.getPropertyValue?.("--magnifier-scene-left")
+        ?? (fixture.refs.magnifierSceneElement!.style as unknown as Record<string, string>)["--magnifier-scene-left"]).toBe("-1667.5px");
+      expect(preventDefault).toHaveBeenCalledOnce();
+      fixture.windowEvent("keydown", { key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
+      expect(fixture.refs.magnifierLensElement!.hidden).toBe(true);
+    } finally { fixture.cleanup(); }
+  });
+
+  it.each(["pointer", "keyboard"])("restores the previous editing focus after %s activation and Escape", (input) => {
+    const fixture = mountMagnifier();
+    try {
+      const previous = new TestElement("button");
+      previous.className = "layout-task-confidence-button";
+      (fixture.refs.root as unknown as TestElement).append(previous);
+      previous.focus();
+      const launcher = fixture.refs.magnifierButton as unknown as TestElement;
+      if (input === "pointer") launcher.dispatch("pointerdown");
+      launcher.dispatch("focus", { relatedTarget: previous });
+      launcher.focus();
+      launcher.click();
+      fixture.windowEvent("keydown", { key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
+      expect(document.activeElement === (previous as unknown as Element)).toBe(true);
+    } finally { fixture.cleanup(); }
+  });
+
   it("keeps the pointed floor-plan location at the clamped lens center", () => {
     const geometry = getMagnifierLensGeometry(
       { left: 10, top: 20, width: 800, height: 600 },
@@ -851,7 +932,6 @@ describe("LayoutTaskRenderer control layout", () => {
     expect(css).toContain(".layout-task-magnifier-hint {");
     expect(css).toContain('.layout-task-tutorial-bubble[data-anchor="viewport-tools"]');
     expect(css).toContain('left: 16px;');
-    expect(renderer).toContain("stage.addEventListener(\"wheel\"");
     expect(renderer).toContain('window.addEventListener("keydown"');
     expect(renderer).toContain("restoreMagnifierFocus");
   });
