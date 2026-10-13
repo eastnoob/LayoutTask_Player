@@ -25,6 +25,8 @@ import {
   getTrialHeaderContent,
 } from "./renderer";
 import { StateStore } from "./state-store";
+import { ConfidenceController } from "./confidence-controller";
+import { InteractionController } from "./interaction-controller";
 import { TutorialController } from "./tutorial-controller";
 
 describe("LayoutTaskRenderer trial header", () => {
@@ -55,6 +57,97 @@ describe("LayoutTaskRenderer trial header", () => {
 });
 
 describe("persistent reference display", () => {
+  it("keeps mounted variable objects pending through edits and clears them after the first successful Save", () => {
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({
+      objects: [{
+        ...base.objects[0],
+        role: "variable",
+        group_id: "chair_group",
+        behavior: {
+          ...base.objects[0].behavior,
+          movement: { ...base.objects[0].behavior.movement, mode: "drag" },
+          free_drag: { enabled: true, snap: true },
+        },
+        asset: { ...base.objects[0].asset, inlineSvgText: undefined },
+      }],
+    });
+    const dom = installRendererDom();
+    const root = new TestElement("main");
+    const store = new StateStore(config);
+    const confidenceController = new ConfidenceController({ config, required: true, scale: [1, 2] });
+    let controller: InteractionController;
+    const renderer = new LayoutTaskRenderer({
+      root: root as unknown as HTMLElement,
+      config,
+      store,
+      confidence: {
+        scale: [1, 2],
+        labels: { "1": "low", "2": "high" },
+        onChoose: (dimension, value) => confidenceController.choose(dimension, value),
+        onSave: () => controller.saveActiveConfidence(),
+      },
+      isObjectFirstSaveComplete: (objectId) => {
+        const groupId = config.objects.find((object) => object.id === objectId)?.group_id ?? objectId;
+        return confidenceController.getFinalConfidence()[groupId] !== undefined;
+      },
+      onObjectSelect: (objectId) => controller.selectObject(objectId),
+      onAction: (objectId, action) => controller.requestAction({ objectId, action }),
+      onDragStart: (objectId, pointer) => controller.requestDragStart({ objectId, pointer }),
+      onDragMove: (objectId, pointer) => controller.requestDragMove({ objectId, pointer }),
+      onDragEnd: (objectId, pointer) => controller.requestDragEnd({ objectId, pointer }),
+      onDragCancel: (objectId, pointer) => controller.requestDragCancel({ objectId, pointer }),
+    });
+    controller = new InteractionController({
+      config,
+      store,
+      renderer,
+      recorder: { recordEvent: vi.fn((event) => ({ ...event, i: 0, t: 0 })) },
+      confidence: {
+        canEnterObjectEdit: (objectId) => confidenceController.canEnterObjectEdit(objectId),
+        enterObjectEdit: (objectId) => confidenceController.enterObjectEdit(objectId),
+        canLeaveActiveGroup: () => confidenceController.canLeaveActiveGroup(),
+        saveActiveGroup: () => confidenceController.saveActiveGroup(),
+      },
+    });
+
+    try {
+      const refs = renderer.mount();
+      controller.bind();
+      const objectId = "chair_01";
+      const visual = refs.objectVisualElements.get(objectId)! as unknown as TestElement;
+      const object = refs.objectElements.get(objectId)! as unknown as TestElement;
+
+      expect(visual.classList.contains("is-pending")).toBe(true);
+      object.dispatch("click", { stopPropagation: vi.fn() });
+      expect(visual.classList.contains("is-pending")).toBe(true);
+
+      const rotateButton = refs.controlButtons.get(objectId)!.get("rotate_cw")! as unknown as TestElement;
+      rotateButton.dispatch("click", { stopPropagation: vi.fn() });
+      expect(visual.classList.contains("is-pending")).toBe(true);
+
+      object.dispatch("pointerdown", { pointerId: 1, clientX: 0, clientY: 0 });
+      object.dispatch("pointermove", { pointerId: 1, clientX: 25, clientY: 0 });
+      object.dispatch("pointerup", { pointerId: 1, clientX: 25, clientY: 0 });
+      expect(visual.classList.contains("is-pending")).toBe(true);
+
+      const confidence = refs.confidenceElement! as unknown as TestElement;
+      const confidenceButtons = confidence.querySelectorAll(".layout-task-confidence-button");
+      confidenceButtons[0].click();
+      confidenceButtons[2].click();
+      expect(visual.classList.contains("is-pending")).toBe(true);
+
+      confidence.querySelector(".layout-task-confidence-save")!.click();
+      expect(visual.classList.contains("is-pending")).toBe(false);
+
+      object.dispatch("click", { stopPropagation: vi.fn() });
+      expect(visual.classList.contains("is-pending")).toBe(false);
+    } finally {
+      renderer.destroy();
+      dom.restore();
+    }
+  });
+
   it("marks unsaved variable objects as pending without overriding selection highlight", () => {
     const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
     const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
@@ -394,6 +487,240 @@ describe("LayoutTaskRenderer stage fit", () => {
     expect(bounds.maxY).toBeCloseTo(200);
   });
 });
+
+type TestListener = (event: Record<string, unknown>) => void;
+
+class TestClassList {
+  constructor(private readonly element: TestElement) {}
+
+  add(...names: string[]): void {
+    const values = new Set(this.element.className.split(/\s+/).filter(Boolean));
+    names.forEach((name) => values.add(name));
+    this.element.className = Array.from(values).join(" ");
+  }
+
+  remove(...names: string[]): void {
+    const removed = new Set(names);
+    this.element.className = this.element.className
+      .split(/\s+/)
+      .filter((name) => name && !removed.has(name))
+      .join(" ");
+  }
+
+  toggle(name: string, force?: boolean): boolean {
+    const present = this.contains(name);
+    const next = force ?? !present;
+    if (next) this.add(name);
+    else this.remove(name);
+    return next;
+  }
+
+  contains(name: string): boolean {
+    return this.element.className.split(/\s+/).includes(name);
+  }
+}
+
+class TestElement {
+  readonly children: Array<TestElement | string> = [];
+  readonly attributes = new Map<string, string>();
+  readonly dataset: Record<string, string> = {};
+  readonly style: Record<string, string> = {};
+  readonly classList = new TestClassList(this);
+  readonly listeners = new Map<string, TestListener[]>();
+  readonly nodeType = 1;
+  readonly nodeName: string;
+  readonly tagName: string;
+  readonly viewBox = { baseVal: { width: 1000, height: 1000 } };
+  parentElement: TestElement | undefined;
+  hidden = false;
+  disabled = false;
+  readOnly = false;
+  value = "";
+  src = "";
+  alt = "";
+  type = "";
+  private ownText = "";
+  private classValue = "";
+  private capturedPointerIds = new Set<number>();
+
+  constructor(tagName: string) {
+    this.tagName = tagName;
+    this.nodeName = tagName;
+  }
+
+  get className(): string {
+    return this.classValue;
+  }
+
+  set className(value: string) {
+    this.classValue = value;
+  }
+
+  get textContent(): string {
+    return this.ownText + this.children.map((child) => typeof child === "string" ? child : child.textContent).join("");
+  }
+
+  set textContent(value: string | null) {
+    this.ownText = value ?? "";
+    this.children.length = 0;
+  }
+
+  set innerHTML(value: string) {
+    if (value === "") this.replaceChildren();
+  }
+
+  append(...children: Array<TestElement | string>): void {
+    for (const child of children) {
+      if (typeof child !== "string") child.parentElement = this;
+      this.children.push(child);
+    }
+  }
+
+  replaceChildren(...children: Array<TestElement | string>): void {
+    this.children.length = 0;
+    this.append(...children);
+  }
+
+  insertBefore(child: TestElement, reference: TestElement | null): void {
+    child.parentElement = this;
+    const index = reference ? this.children.indexOf(reference) : -1;
+    if (index < 0) this.children.push(child);
+    else this.children.splice(index, 0, child);
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value);
+    if (name === "class") this.className = value;
+    if (name.startsWith("data-")) {
+      const key = name.slice(5).replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+      this.dataset[key] = value;
+    }
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attributes.get(name) ?? null;
+  }
+
+  addEventListener(type: string, listener: TestListener): void {
+    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  removeEventListener(type: string, listener: TestListener): void {
+    this.listeners.set(type, (this.listeners.get(type) ?? []).filter((candidate) => candidate !== listener));
+  }
+
+  dispatch(type: string, event: Record<string, unknown> = {}): void {
+    const dispatched = {
+      ...event,
+      type,
+      target: this,
+      currentTarget: this,
+      stopPropagation: event.stopPropagation ?? (() => undefined),
+      preventDefault: event.preventDefault ?? (() => undefined),
+    };
+    for (const listener of [...(this.listeners.get(type) ?? [])]) listener(dispatched);
+  }
+
+  click(): void {
+    if (!this.disabled) this.dispatch("click");
+  }
+
+  focus(): void {}
+
+  setPointerCapture(pointerId: number): void {
+    this.capturedPointerIds.add(pointerId);
+  }
+
+  hasPointerCapture(pointerId: number): boolean {
+    return this.capturedPointerIds.has(pointerId);
+  }
+
+  releasePointerCapture(pointerId: number): void {
+    this.capturedPointerIds.delete(pointerId);
+  }
+
+  getBoundingClientRect(): { width: number; height: number; top: number; bottom: number } {
+    return { width: 800, height: 600, top: 0, bottom: 600 };
+  }
+
+  getScreenCTM(): { a: number; inverse(): { a: number } } {
+    const matrix = { a: 1, inverse: () => matrix };
+    return matrix;
+  }
+
+  createSVGPoint(): { x: number; y: number; matrixTransform(): { x: number; y: number } } {
+    const point = { x: 0, y: 0, matrixTransform: () => point };
+    return point;
+  }
+
+  querySelector<T extends TestElement = TestElement>(selector: string): T | null {
+    return this.querySelectorAll<T>(selector)[0] ?? null;
+  }
+
+  querySelectorAll<T extends TestElement = TestElement>(selector: string): T[] {
+    const matches: T[] = [];
+    for (const child of this.children) {
+      if (typeof child === "string") continue;
+      if (child.matches(selector)) matches.push(child as T);
+      matches.push(...child.querySelectorAll<T>(selector));
+    }
+    return matches;
+  }
+
+  matches(selector: string): boolean {
+    if (selector === "*") return true;
+    const tag = selector.match(/^[a-z]+/i)?.[0];
+    if (tag && this.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+    for (const className of selector.match(/\.[a-z0-9_-]+/gi) ?? []) {
+      if (!this.classList.contains(className.slice(1))) return false;
+    }
+    const attribute = selector.match(/^\[([^=\]]+)(?:="([^"]*)")?\]$/);
+    if (attribute) {
+      const value = this.getAttribute(attribute[1]);
+      if (value === null || (attribute[2] !== undefined && value !== attribute[2])) return false;
+    }
+    return Boolean(tag || selector.startsWith(".") || attribute);
+  }
+
+  remove(): void {
+    const index = this.parentElement?.children.indexOf(this) ?? -1;
+    if (index >= 0) this.parentElement?.children.splice(index, 1);
+  }
+}
+
+class TestDocument {
+  createElement(tagName: string): TestElement {
+    return new TestElement(tagName);
+  }
+
+  createElementNS(_namespace: string, tagName: string): TestElement {
+    return new TestElement(tagName);
+  }
+
+  createTextNode(value: string): string {
+    return value;
+  }
+}
+
+function installRendererDom(): { restore(): void } {
+  const documentRef = new TestDocument();
+  const windowRef = {
+    location: { href: "http://example.test/", search: "" },
+    innerWidth: 1200,
+    innerHeight: 800,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    requestAnimationFrame: (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    },
+    setTimeout,
+    clearTimeout,
+  };
+  vi.stubGlobal("document", documentRef);
+  vi.stubGlobal("window", windowRef);
+  return { restore: () => vi.unstubAllGlobals() };
+}
 
 describe("LayoutTaskRenderer object interactivity", () => {
   it("guards every interactive surface while the tutorial confirmation is pending", () => {
