@@ -1,6 +1,8 @@
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { verifyTutorialPackage } from "../../src/core/tutorial-package-lock";
+import { validateRuntimePackage } from "./validate-runtime-package";
 
 export interface ValidateWebReleasePackageOptions {
   distDir: string;
@@ -53,25 +55,105 @@ export async function validateWebReleasePackage(options: ValidateWebReleasePacka
     failures.push("index.html must redirect to /experiment/");
   }
 
-  const manifest = await readJson<{ tasks?: Array<{ file?: string }> }>(
-    path.join(distDir, "layout-task-run12-core23-persistent/manifest.json"),
-  );
-  for (const task of manifest?.tasks ?? []) {
-    if (task.file && !(await exists(path.join(distDir, "layout-task-run12-core23-persistent", task.file)))) {
-      failures.push(`layout-task-run12-core23-persistent/${task.file}`);
+  await validateAssetClosure(distDir, failures);
+  // Closure runs first so the existing file loaders cannot follow escaping references.
+  if (failures.length === 0) {
+    const formalRoot = path.join(distDir, "layout-task-run12-core23-persistent");
+    const tutorialRoot = path.join(formalRoot, "tutorial");
+    for (const baseDir of [formalRoot, tutorialRoot]) {
+      const report = await validateRuntimePackage({ baseDir, checkTargets: true });
+      for (const failure of report.failures) {
+        failures.push(`runtime ${path.relative(distDir, baseDir)}: ${JSON.stringify(failure)}`);
+      }
+    }
+    try {
+      verifyTutorialPackage(tutorialRoot, formalRoot);
+    } catch (error) {
+      failures.push(`tutorial: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  const tutorialManifest = await readJson<{ tasks?: Array<{ file?: string }> }>(
-    path.join(distDir, "layout-task-run12-core23-persistent/tutorial/manifest.json"),
-  );
-  for (const task of tutorialManifest?.tasks ?? []) {
-    if (task.file && !(await exists(path.join(distDir, "layout-task-run12-core23-persistent/tutorial", task.file)))) {
-      failures.push(`layout-task-run12-core23-persistent/tutorial/${task.file}`);
+  return { ok: failures.length === 0, failures: [...new Set(failures)] };
+}
+
+async function validateAssetClosure(distDir: string, failures: string[]): Promise<void> {
+  const visited = new Set<string>();
+  const referenceKeys = new Set([
+    "src", "file", "asset_library", "background_library", "behavior_library", "scoring_reference",
+    "schedule_path", "reference_path", "allSvg", "variableSvg", "allAnimation", "variableAnimation",
+  ]);
+  const inside = (root: string, target: string) => target === root || target.startsWith(`${root}${path.sep}`);
+  const label = (file: string) => path.relative(distDir, file).replaceAll(path.sep, "/");
+
+  const resolveReference = (reference: string, baseDir: string, boundary: string, source: string): string | undefined => {
+    try {
+      const base = new URL(`${label(baseDir)}/`, "https://release.invalid/");
+      const url = new URL(reference, base);
+      const target = path.resolve(distDir, `.${decodeURIComponent(url.pathname)}`);
+      if (url.origin !== base.origin || !inside(boundary, target)) throw new Error("outside package");
+      return target;
+    } catch {
+      failures.push(`outside package: ${source} -> ${reference}`);
+      return undefined;
+    }
+  };
+
+  const visitFile = async (file: string, baseDir: string, boundary: string): Promise<void> => {
+    if (visited.has(file)) return;
+    visited.add(file);
+    if (!(await isFile(file))) {
+      failures.push(`missing referenced file: ${label(file)}`);
+      return;
+    }
+    if (!file.endsWith(".json")) return;
+    let value: unknown;
+    try {
+      value = JSON.parse(await readFile(file, "utf8"));
+    } catch {
+      failures.push(`invalid JSON: ${label(file)}`);
+      return;
+    }
+    await visitValue(value, baseDir, boundary, label(file));
+  };
+
+  const visitValue = async (value: unknown, baseDir: string, boundary: string, source: string): Promise<void> => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      for (const entry of value) await visitValue(entry, baseDir, boundary, source);
+      return;
+    }
+    const record = value as Record<string, unknown>;
+    let boardRoot = baseDir;
+    if (typeof record.baseUrl === "string") {
+      const packageRoot = resolveReference(record.baseUrl, baseDir, boundary, source);
+      if (packageRoot) {
+        boardRoot = packageRoot;
+        await visitFile(path.join(packageRoot, "manifest.json"), packageRoot, packageRoot);
+      }
+    }
+    for (const [key, entry] of Object.entries(record)) {
+      if (typeof entry === "string" && (referenceKeys.has(key) || (key === "path" && record.sha256))) {
+        const target = resolveReference(entry, baseDir, boundary, source);
+        if (target) await visitFile(target, baseDir, boundary);
+      } else if (key === "referenceBoard") {
+        await visitValue(entry, boardRoot, boardRoot, source);
+      } else {
+        await visitValue(entry, baseDir, boundary, source);
+      }
+    }
+  };
+
+  const experimentDir = path.join(distDir, "experiment");
+  if (await exists(experimentDir)) {
+    for (const entry of await readdir(experimentDir)) {
+      if (entry.endsWith(".json")) await visitFile(path.join(experimentDir, entry), experimentDir, distDir);
     }
   }
-
-  return { ok: failures.length === 0, failures };
+  const formalRoot = path.join(distDir, "layout-task-run12-core23-persistent");
+  const tutorialRoot = path.join(formalRoot, "tutorial");
+  await visitFile(path.join(formalRoot, "manifest.json"), formalRoot, formalRoot);
+  await visitFile(path.join(tutorialRoot, "manifest.json"), tutorialRoot, tutorialRoot);
+  await visitFile(path.join(tutorialRoot, "tutorial-package.lock.json"), tutorialRoot, tutorialRoot);
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -94,16 +176,6 @@ async function isFile(filePath: string): Promise<boolean> {
 async function readText(filePath: string): Promise<string | undefined> {
   try {
     return await readFile(filePath, "utf8");
-  } catch {
-    return undefined;
-  }
-}
-
-async function readJson<T>(filePath: string): Promise<T | undefined> {
-  const text = await readText(filePath);
-  if (!text) return undefined;
-  try {
-    return JSON.parse(text) as T;
   } catch {
     return undefined;
   }

@@ -9,7 +9,7 @@
     <main id="board"></main>
     <div id="player"></div>
     <script type="module">
-      import { buildTutorialReferenceBoardPages } from "../../src/core/tutorial-reference-board.ts";
+      import { buildTutorialReferenceBoardPages, installTutorialReferenceBoardInteractions } from "../../src/core/tutorial-reference-board.ts";
       import { LayoutTaskRenderer } from "../../src/core/renderer.ts";
       import { TutorialController } from "../../src/core/tutorial-controller.ts";
       import { StateStore } from "../../src/core/state-store.ts";
@@ -18,12 +18,16 @@
       const experiment = await (await fetch("/experiment/experiment.json")).json();
       const assert = (condition, message) => { if (!condition) throw new Error(message); };
       const player = document.querySelector("#player");
+      let stopBoardInteractions = () => undefined;
+      const referenceFrames = new Map();
 
       window.showBoard = async (index = 3, baseUrl = "/layout-task-run12-core23-persistent/tutorial/") => {
         player.hidden = true;
+        stopBoardInteractions();
         document.querySelector("#board").innerHTML = buildTutorialReferenceBoardPages({
           baseUrl, board: experiment.tutorial.referenceBoard,
         })[index];
+        stopBoardInteractions = installTutorialReferenceBoardInteractions(document.querySelector("#board"), referenceFrames);
         const images = Array.from(document.querySelectorAll("#board img"));
         for (const element of document.querySelectorAll("#board .layout-task-tutorial-board-svg")) {
           const image = new Image();
@@ -39,6 +43,7 @@
           }
         })));
       };
+      window.resetReferenceBoardState = () => referenceFrames.clear();
 
       window.checkBoardFit = () => {
         for (const media of document.querySelectorAll(".layout-task-tutorial-board-svg")) {
@@ -52,15 +57,26 @@
         return true;
       };
 
+      window.checkReferenceBoardDrag = () => {
+        const frames = Array.from(document.querySelectorAll("#board .layout-task-tutorial-board-svg"));
+        assert(frames.length === 2, "A reference page must contain two draggable floor-plan frames");
+        const first = frames[0];
+        const second = frames[1];
+        const hand = first.querySelector(".layout-task-tutorial-board-hand");
+        assert(hand?.getAttribute("src")?.endsWith("/experiment/layout-task/assets/icons/hand.svg"), "Hand prompt must use the local asset");
+        return { firstKey: first.dataset.referenceFrameKey, secondKey: second.dataset.referenceFrameKey };
+      };
+
       window.checkArrow = () => {
         player.hidden = false;
         const results = [];
         for (const referenceMode of ["persistent", "preview_10s"]) {
           for (const locale of ["zh-CN", "en-US"]) {
             const config = createRuntimeConfig({ referenceMode });
-            const tutorial = new TutorialController(referenceMode, locale);
+            const tutorial = new TutorialController(referenceMode, locale, { referenceBoardRequired: true });
             const renderer = new LayoutTaskRenderer({
               root: player, config, store: new StateStore(config), tutorialMode: true, locale,
+              isInteractionBlocked: () => tutorial.isInteractionBlocked(),
               onTutorialAcknowledge: () => {
                 tutorial.handle("view_direction_acknowledged");
                 renderer.showTutorialStep(tutorial.getCurrentStep());
@@ -76,18 +92,11 @@
             assert(visible(), "Arrow must appear in viewing-direction guidance");
             assert(renderer.refs.confirmButton.disabled, "Task submit must be disabled before acknowledgment");
             renderer.refs.tutorialBubbleButtonElement.click();
-            assert(tutorial.getCurrentStep().id === "select_first", "OK must advance the tutorial");
+            assert(tutorial.getCurrentStep().id === "reference_board", "OK must advance to the required reference board");
             assert(!visible(), "Arrow must disappear immediately after OK");
             assert(getComputedStyle(renderer.refs.tutorialViewingDirectionElement).opacity === "0", "Arrow must disappear without a fade-out delay");
-            assert(!renderer.refs.confirmButton.disabled, "Acknowledgment must unlock interaction");
-            let laterSteps = 0;
-            while (!tutorial.isComplete()) {
-              tutorial.handle(tutorial.getCurrentStep().expectedEvent);
-              renderer.showTutorialStep(tutorial.getCurrentStep());
-              assert(!visible(), "Arrow must remain hidden in " + tutorial.getCurrentStep().id);
-              laterSteps++;
-            }
-            results.push({ referenceMode, locale, laterSteps });
+            assert(renderer.refs.confirmButton.disabled, "Reference-board practice must keep task submission disabled");
+            results.push({ referenceMode, locale, nextStep: tutorial.getCurrentStep().id });
           }
         }
         const config = createRuntimeConfig();
