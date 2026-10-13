@@ -24,6 +24,7 @@ import { createPauseSummary } from "./experiment-pause";
 import type { ExperimentPauseController } from "./experiment-pause";
 import { resolveMessages } from "./messages";
 import type { RewardConfig, RewardReferenceTask } from "../types/reward";
+import { MagnifierController, type MagnifierSnapshot, type MagnifierTaskWindow } from "./magnifier-controller";
 
 export interface LayoutTaskPlayerOptions {
   root: HTMLElement;
@@ -40,7 +41,8 @@ export interface LayoutTaskPlayerOptions {
   presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
-  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">
+    & Partial<Pick<ExperimentPauseController, "registerInputGuard">>;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
 }
@@ -54,6 +56,7 @@ export interface LayoutTaskPlayer {
   handleTutorialPractice(event: TutorialPracticeEvent, payload?: TutorialEventPayload): boolean;
   canStartMagnifier(): boolean;
   canStartPause(): boolean;
+  getMagnifierSnapshot(taskWindow?: MagnifierTaskWindow): MagnifierSnapshot;
 }
 
 // ===== Player lifecycle =====
@@ -118,8 +121,18 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let tutorial: TutorialController | undefined;
   let referenceBoard: ReturnType<typeof mountTutorialReferenceBoard> | undefined;
   let destroyed = false;
+  let unregisterPauseInputGuard: (() => void) | undefined;
+  const magnifier = new MagnifierController({
+    pauseIntervals: () => getPauseIntervals(options.pause?.snapshot()),
+  });
 
-  const isInteractionBlocked = () => tutorial?.isInteractionBlocked() ?? false;
+  const isPauseInputExcluded = () => options.pause?.isPaused()
+    || options.pause?.snapshot().status === "confirming";
+  const isInteractionBlocked = () => (tutorial?.isInteractionBlocked() ?? false)
+    || magnifier.isActive()
+    || isPauseInputExcluded();
+  const canStartMagnifier = () => !destroyed && !store.isLocked() && !isPauseInputExcluded()
+    && !magnifier.isActive() && (tutorial?.canStartMagnifier() ?? true);
 
   const showTutorial = () => {
     if (tutorial) {
@@ -195,7 +208,7 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     },
     developerMode: options.developerMode,
     onDeveloperShortcut: () => {
-      if (!options.developerMode || options.tutorialMode || !interaction || !confidence || options.pause?.isPaused() || store.isLocked()) {
+      if (!options.developerMode || options.tutorialMode || !interaction || !confidence || isInteractionBlocked() || store.isLocked()) {
         return;
       }
 
@@ -226,6 +239,29 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
     isInteractionBlocked,
     isPaused: () => options.pause?.isPaused() ?? false,
+      magnifier: {
+        controller: magnifier,
+        onEnter: (_position) => {
+          if (!canStartMagnifier() || !magnifier.enter()) return false;
+          if (tutorial && !advanceTutorial("magnifier_entered")) {
+            magnifier.exit();
+            return false;
+          }
+          return true;
+        },
+        onWheel: (direction) => {
+          const change = magnifier.wheel(direction);
+          if (change) {
+            if (tutorial) advanceTutorial("magnifier_zoom_changed", change);
+          }
+          return change;
+        },
+        onExit: (reason) => {
+          if (!magnifier.exit()) return false;
+          if (tutorial) advanceTutorial("magnifier_exited", { exitReason: reason });
+          return true;
+        },
+      },
     isObjectFirstSaveComplete: (objectId) => {
       const object = localizedConfig.objects.find((item) => item.id === objectId);
       if (object?.role !== "variable" || !localizedConfidence) {
@@ -328,12 +364,14 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
         // interrupt the tutorial flow and can appear as an unresponsive button.
         confirmImpl: options.tutorialMode ? () => true : undefined,
         pause: options.pause,
+        isInteractionBlocked,
         locale: options.locale,
         onComplete: (payload) => {
           advanceTutorial("submitted");
           options.onComplete?.(payload);
         },
       });
+      unregisterPauseInputGuard = options.pause?.registerInputGuard?.(() => !magnifier.isActive() && !store.isLocked());
 
       // Recorder owns page-level timing for the whole player session; flow adds
       // its own phase timestamps on top of that shared session record.
@@ -356,6 +394,12 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       destroyed = true;
+      unregisterPauseInputGuard?.();
+      unregisterPauseInputGuard = undefined;
+      if (magnifier.isActive()) {
+        magnifier.exit();
+        tutorial?.handle("magnifier_exited", { exitReason: "destroy" });
+      }
       referenceBoard?.destroy();
       interaction?.unbind();
       flow?.destroy();
@@ -375,8 +419,25 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     // Tasks 4/5 call these contracts from their actual controller/UI events.
     // There is no user-facing control that generates synthetic practice events.
     handleTutorialPractice(event, payload) { return advanceTutorial(event, payload); },
-    canStartMagnifier() { return !destroyed && !store.isLocked() && !options.pause?.isPaused()
-      && (tutorial?.canStartMagnifier() ?? true); },
-    canStartPause() { return !destroyed && !store.isLocked() && (tutorial?.canStartPause() ?? true); },
+    canStartMagnifier,
+    canStartPause() { return !destroyed && !store.isLocked() && !magnifier.isActive() && !isPauseInputExcluded()
+      && (tutorial?.canStartPause() ?? true); },
+    getMagnifierSnapshot(taskWindow) { return magnifier.snapshot(taskWindow); },
   };
+}
+
+function getPauseIntervals(snapshot: ReturnType<ExperimentPauseController["snapshot"]> | undefined): Array<{ start: number; end: number }> {
+  if (!snapshot) return [];
+  const intervals: Array<{ start: number; end: number }> = [];
+  let start: number | undefined;
+  for (const event of snapshot.events) {
+    if (event.type === "pause_confirmed") {
+      start = event.at;
+    } else if (start !== undefined && event.type === "pause_resumed") {
+      intervals.push({ start, end: event.at });
+      start = undefined;
+    }
+  }
+  if (start !== undefined) intervals.push({ start, end: Date.now() });
+  return intervals;
 }

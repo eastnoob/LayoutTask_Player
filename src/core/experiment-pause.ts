@@ -27,6 +27,8 @@ export interface ExperimentPauseControllerOptions {
   restore?: ExperimentPauseSnapshot;
 }
 
+type InputGuard = () => boolean;
+
 const FORMAL_PAUSE_LIMIT_MS = 15 * 60 * 1_000;
 const PRACTICE_PAUSE_LIMIT_MS = 10 * 1_000;
 
@@ -37,6 +39,7 @@ export class ExperimentPauseController {
   private current: ExperimentPauseSnapshot;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<(snapshot: ExperimentPauseSnapshot) => void>();
+  private inputGuards = new Set<InputGuard>();
 
   constructor(options: ExperimentPauseControllerOptions) {
     this.mode = options.mode;
@@ -69,7 +72,15 @@ export class ExperimentPauseController {
     return () => this.listeners.delete(listener);
   }
 
+  registerInputGuard(guard: InputGuard): () => void {
+    this.inputGuards.add(guard);
+    return () => this.inputGuards.delete(guard);
+  }
+
   requestPause(): void {
+    if (![...this.inputGuards].every((guard) => guard())) {
+      return;
+    }
     if (this.mode === "tutorial_practice") {
       if (this.current.status !== "practice_available") {
         throw new Error("tutorial pause is already consumed");
@@ -93,6 +104,9 @@ export class ExperimentPauseController {
   }
 
   confirmPause(): void {
+    if (![...this.inputGuards].every((guard) => guard())) {
+      return;
+    }
     if (this.mode === "tutorial_practice") {
       if (this.current.status === "practice_available") {
         this.startPause("practice_paused");

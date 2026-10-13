@@ -20,6 +20,7 @@ import {
   getStageUiMetrics,
   getViewportCameraTransform,
   clampViewportZoom,
+  getMagnifierLensGeometry,
   DEFAULT_VIEWPORT_ZOOM,
   isObjectInteractive,
   getTrialHeaderContent,
@@ -57,6 +58,27 @@ describe("LayoutTaskRenderer trial header", () => {
 });
 
 describe("persistent reference display", () => {
+  it("keeps the default camera transform when viewport controls are observation-only", () => {
+    const dom = installRendererDom();
+    const config = createRuntimeConfig({ objects: [] });
+    const renderer = new LayoutTaskRenderer({
+      root: new TestElement("main") as unknown as HTMLElement,
+      config,
+      store: new StateStore(config),
+    });
+
+    try {
+      const refs = renderer.mount();
+
+      expect(refs.cameraLayer?.getAttribute("transform")).toBe(
+        getViewportCameraTransform(config, DEFAULT_VIEWPORT_ZOOM, { x: 0, y: 0 }),
+      );
+    } finally {
+      renderer.destroy();
+      dom.restore();
+    }
+  });
+
   it("keeps mounted variable objects pending through edits and clears them after the first successful Save", () => {
     const base = createRuntimeConfig();
     const config = createRuntimeConfig({
@@ -776,6 +798,27 @@ describe("LayoutTaskRenderer object interactivity", () => {
 });
 
 describe("LayoutTaskRenderer control layout", () => {
+  it("keeps the pointed floor-plan location at the clamped lens center", () => {
+    const geometry = getMagnifierLensGeometry(
+      { left: 10, top: 20, width: 800, height: 600 },
+      { clientX: 810, clientY: 620 },
+      2,
+      { left: 0, top: 0, width: 900, height: 700 },
+    );
+
+    expect(geometry).toMatchObject({
+      lensSize: 220,
+      left: 590,
+      top: 400,
+      sceneWidth: 800,
+      sceneHeight: 600,
+      sceneLeft: -1490,
+      sceneTop: -1090,
+    });
+    expect(geometry.sceneLeft + geometry.zoom * geometry.focusX).toBe(110);
+    expect(geometry.sceneTop + geometry.zoom * geometry.focusY).toBe(110);
+  });
+
   it("keeps control hotzones inert until their object is active", () => {
     const css = readFileSync("src/styles/layout-task.css", "utf8").replace(/\r\n/g, "\n");
 
@@ -796,24 +839,21 @@ describe("LayoutTaskRenderer control layout", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
     const css = readFileSync("src/styles/layout-task.css", "utf8").replace(/\r\n/g, "\n");
 
-    expect(renderer).toContain('this.createViewportButton("+", "Zoom in"');
-    expect(renderer).toContain('this.createViewportButton("−", "Zoom out"');
-    expect(renderer).toContain('this.createViewportButton("↺", "Reset view"');
-    expect(renderer).toContain('this.createViewportButton("", "Pan view"');
-    expect(renderer).toContain('getPlayerIconUrl("move.svg")');
+    expect(renderer).toContain('className = "layout-task-magnifier-button"');
+    expect(renderer).toContain("Press ESC to exit");
+    expect(renderer).toContain("按 ESC 退出放大镜");
+    expect(renderer).not.toContain('this.createViewportButton("+", "Zoom in"');
+    expect(renderer).not.toContain('this.createViewportButton("−", "Zoom out"');
+    expect(renderer).not.toContain('this.createViewportButton("↺", "Reset view"');
+    expect(renderer).not.toContain('this.createViewportButton("", "Pan view"');
     expect(renderer).toContain('tools.dataset.layoutTaskAnchor = "viewport-tools";');
-    expect(css).toContain(".layout-task-viewport-tools {\n  position: absolute;\n  right: 16px;\n  top: 16px;\n  bottom: auto;");
+    expect(css).toContain(".layout-task-magnifier-lens {");
+    expect(css).toContain(".layout-task-magnifier-hint {");
     expect(css).toContain('.layout-task-tutorial-bubble[data-anchor="viewport-tools"]');
     expect(css).toContain('left: 16px;');
-    expect(renderer).toContain('pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);');
-    expect(renderer).toContain('pan.addEventListener("pointerup", this.handleViewportPointerUp);');
-    expect(renderer).toContain('pan.addEventListener("pointercancel", this.handleViewportPointerUp);');
-    expect(renderer).toContain("setPointerCapture(event.pointerId)");
-    expect(renderer).toContain("releasePointerCapture(event.pointerId)");
-    expect(renderer).toContain("this.options.isPaused?.()");
-    expect(renderer).not.toContain("event.button !== 2");
-    expect(renderer).not.toContain('svg.addEventListener("contextmenu"');
-    expect(renderer).toContain("preventDefault()");
+    expect(renderer).toContain("stage.addEventListener(\"wheel\"");
+    expect(renderer).toContain('window.addEventListener("keydown"');
+    expect(renderer).toContain("restoreMagnifierFocus");
   });
 
   it("keeps control geometry tied to compiled asset dimensions", () => {

@@ -9,6 +9,7 @@ import type { StateStore } from "./state-store";
 import type { MovementLimitFeedbackRect } from "../utils/geometry";
 import { getMovementLimitFeedbackRect } from "../utils/geometry";
 import { getViewportWarningState } from "./viewport-requirements";
+import type { MagnifierController, MagnifierZoomChange } from "./magnifier-controller";
 
 export interface RendererPointer {
   clientX: number;
@@ -55,6 +56,10 @@ export interface RendererRefs {
   tutorialViewingDirectionElement?: SVGGElement;
   savingBubbleElement?: HTMLElement;
   savingBubbleMessageElement?: HTMLElement;
+  magnifierButton?: HTMLButtonElement;
+  magnifierLensElement?: HTMLElement;
+  magnifierSceneElement?: HTMLElement;
+  magnifierHintElement?: HTMLElement;
 }
 
 interface LocalRect {
@@ -88,11 +93,9 @@ export class LayoutTaskRenderer {
   private hideControlsTimer: number | undefined;
   private feedbackTimer: number | undefined;
   private viewportListenerBound = false;
-  private viewportZoom = DEFAULT_VIEWPORT_ZOOM;
-  private viewportPan = { x: 0, y: 0 };
-  private viewportPanPointerId: number | undefined;
-  private viewportPanLast: { x: number; y: number } | undefined;
-  private viewportPanCaptureElement: HTMLElement | undefined;
+  private magnifierStageElement: HTMLElement | undefined;
+  private magnifierFocusElement: HTMLElement | undefined;
+  private magnifierPointer: { x: number; y: number } | undefined;
   private readonly debugShadowEnabled =
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug_shadow") === "1";
 
@@ -118,6 +121,12 @@ export class LayoutTaskRenderer {
       onTutorialAcknowledge?: () => void;
       isInteractionBlocked?: () => boolean;
       isPaused?: () => boolean;
+      magnifier?: {
+        controller: MagnifierController;
+        onEnter(position: { clientX: number; clientY: number }): boolean;
+        onWheel(direction: number): MagnifierZoomChange | undefined;
+        onExit(reason: "escape" | "destroy"): boolean;
+      };
       isObjectFirstSaveComplete?: (objectId: string) => boolean;
       confidence?: {
         scale: number[];
@@ -148,11 +157,6 @@ export class LayoutTaskRenderer {
     this.refs.controlElements.clear();
     this.refs.controlButtons.clear();
     this.clearLimitFeedback();
-    this.viewportZoom = DEFAULT_VIEWPORT_ZOOM;
-    this.viewportPan = { x: 0, y: 0 };
-    this.viewportPanPointerId = undefined;
-    this.viewportPanLast = undefined;
-    this.viewportPanCaptureElement = undefined;
 
     // The shell contains the SVG stage and a persistent side panel.
     // 右侧面板常驻，避免把确认/复制这类关键动作塞进易误触的画布区域。
@@ -349,7 +353,9 @@ export class LayoutTaskRenderer {
       this.refs.tutorialViewingDirectionElement = viewingDirection;
     }
     const viewportTools = this.createViewportTools();
-    stageWrap.append(svg, feedbackOverlay, viewportTools);
+    const magnifierLens = this.createMagnifierLens();
+    stageWrap.append(svg, feedbackOverlay, viewportTools, magnifierLens);
+    this.bindMagnifierStage(stageWrap);
 
     // The SVG must be attached before measuring screen scale. The first pass
     // above happens during construction and may use the coarse fallback scale,
@@ -495,7 +501,10 @@ export class LayoutTaskRenderer {
 
     this.refs.svg = svg;
     this.refs.cameraLayer = cameraLayer;
-    this.updateViewportTransform();
+    cameraLayer.setAttribute(
+      "transform",
+      getViewportCameraTransform(this.options.config, DEFAULT_VIEWPORT_ZOOM, { x: 0, y: 0 }),
+    );
     this.refs.workspaceElement = workspace;
     this.refs.stageWrapElement = stageWrap;
     this.refs.backgroundElement = background;
@@ -520,6 +529,8 @@ export class LayoutTaskRenderer {
     this.refs.resultOutput = output;
     this.refs.copyAgainButton = copyAgainButton;
     this.refs.viewportWarningElement = viewportWarning;
+    this.refs.magnifierLensElement = magnifierLens;
+    this.magnifierStageElement = stageWrap;
 
     this.scheduleControlsLayoutSync();
     this.updateViewportWarning();
@@ -650,40 +661,168 @@ export class LayoutTaskRenderer {
     tools.className = "layout-task-viewport-tools";
     tools.dataset.layoutTaskAnchor = "viewport-tools";
 
-    const zoomIn = this.createViewportButton("+", "Zoom in", () => this.adjustViewportZoom(1.25));
-    const zoomOut = this.createViewportButton("−", "Zoom out", () => this.adjustViewportZoom(0.8));
-    const reset = this.createViewportButton("↺", "Reset view", () => this.resetViewport());
-    const pan = this.createViewportButton("", "Pan view", () => undefined);
-    const panIcon = document.createElement("img");
-    panIcon.className = "layout-task-viewport-pan-icon";
-    panIcon.src = getPlayerIconUrl("move.svg");
-    panIcon.alt = "";
-    panIcon.setAttribute("aria-hidden", "true");
-    pan.append(panIcon);
-    pan.classList.add("layout-task-viewport-pan-button");
-    pan.setAttribute("aria-pressed", "false");
-    pan.addEventListener("pointerdown", this.handleViewportPanPointerDown);
-    pan.addEventListener("pointermove", this.handleViewportPointerMove);
-    pan.addEventListener("pointerup", this.handleViewportPointerUp);
-    pan.addEventListener("pointercancel", this.handleViewportPointerUp);
-    tools.append(zoomIn, zoomOut, reset, pan);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "layout-task-magnifier-button";
+    button.setAttribute("aria-label", this.options.locale === "zh-CN" ? "打开放大镜" : "Open magnifier");
+    button.title = this.options.locale === "zh-CN" ? "打开放大镜" : "Open magnifier";
+    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5"></path></svg>';
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (!this.options.magnifier || this.options.magnifier.controller.isActive()) {
+        return;
+      }
+      this.magnifierFocusElement = event.currentTarget as HTMLElement;
+      const rect = this.magnifierStageElement?.getBoundingClientRect();
+      const entered = this.options.magnifier.onEnter({
+        clientX: rect ? rect.left + rect.width / 2 : 0,
+        clientY: rect ? rect.top + rect.height / 2 : 0,
+      });
+      if (entered) {
+        this.setMagnifierActive(true);
+      }
+    });
+    this.refs.magnifierButton = button;
+    tools.append(button);
     return tools;
   }
 
-  private createViewportButton(label: string, ariaLabel: string, onClick: () => void): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "layout-task-viewport-button";
-    button.textContent = label;
-    button.setAttribute("aria-label", ariaLabel);
-    button.title = ariaLabel;
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (!this.options.isInteractionBlocked?.()) {
-        onClick();
+  private createMagnifierLens(): HTMLElement {
+    const lens = document.createElement("div");
+    lens.className = "layout-task-magnifier-lens";
+    lens.hidden = true;
+    lens.setAttribute("aria-hidden", "true");
+
+    const scene = document.createElement("div");
+    scene.className = "layout-task-magnifier-scene";
+    const hint = document.createElement("div");
+    hint.className = "layout-task-magnifier-hint";
+    hint.textContent = this.options.locale === "zh-CN"
+      ? "倍率 2×（最小 1.5×，最大 4×） · 按 ESC 退出放大镜"
+      : "2× (min 1.5×, max 4×) · Press ESC to exit";
+    lens.append(scene, hint);
+    this.refs.magnifierSceneElement = scene;
+    this.refs.magnifierHintElement = hint;
+    return lens;
+  }
+
+  private bindMagnifierStage(stage: HTMLElement): void {
+    if (!this.options.magnifier) {
+      return;
+    }
+    stage.addEventListener("pointermove", this.handleMagnifierPointerMove);
+    stage.addEventListener("wheel", this.handleMagnifierWheel, { passive: false });
+    if (typeof window !== "undefined") {
+      window.addEventListener("keydown", this.handleMagnifierKeyDown, true);
+    }
+  }
+
+  private readonly handleMagnifierPointerMove = (event: PointerEvent): void => {
+    if (!this.options.magnifier?.controller.isActive()) {
+      return;
+    }
+    this.magnifierPointer = { x: event.clientX, y: event.clientY };
+    this.positionMagnifierLens(event.clientX, event.clientY);
+  };
+
+  private readonly handleMagnifierWheel = (event: WheelEvent): void => {
+    if (!this.options.magnifier?.controller.isActive()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const direction = event.deltaY < 0 ? 1 : event.deltaY > 0 ? -1 : 0;
+    const change = this.options.magnifier.onWheel(direction);
+    if (change) {
+      this.updateMagnifierCopy(change.zoomAfter);
+      if (this.magnifierPointer) {
+        this.positionMagnifierLens(this.magnifierPointer.x, this.magnifierPointer.y);
       }
+    }
+  };
+
+  private readonly handleMagnifierKeyDown = (event: KeyboardEvent): void => {
+    if (!this.options.magnifier?.controller.isActive()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (this.options.magnifier.onExit("escape")) {
+      this.setMagnifierActive(false);
+      this.restoreMagnifierFocus();
+    }
+  };
+
+  private setMagnifierActive(active: boolean): void {
+    this.refs.magnifierLensElement && (this.refs.magnifierLensElement.hidden = !active);
+    this.refs.magnifierButton?.setAttribute("aria-pressed", String(active));
+    this.magnifierStageElement?.classList.toggle("is-magnifier-active", active);
+    if (active) {
+      this.renderMagnifierScene();
+      this.updateMagnifierCopy(this.options.magnifier?.controller.getZoom() ?? 2);
+      const rect = this.magnifierStageElement?.getBoundingClientRect();
+      if (rect) {
+        this.magnifierPointer = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        this.positionMagnifierLens(this.magnifierPointer.x, this.magnifierPointer.y);
+      }
+    }
+  }
+
+  private renderMagnifierScene(): void {
+    const scene = this.refs.magnifierSceneElement;
+    const svg = this.refs.svg;
+    if (!scene || !svg || typeof svg.cloneNode !== "function") {
+      return;
+    }
+    scene.replaceChildren(svg.cloneNode(true) as SVGSVGElement);
+    const copy = scene.firstElementChild as SVGSVGElement | null;
+    copy?.classList.add("layout-task-magnifier-scene-svg");
+  }
+
+  private updateMagnifierCopy(zoom: number): void {
+    if (!this.refs.magnifierHintElement) {
+      return;
+    }
+    this.refs.magnifierHintElement.textContent = this.options.locale === "zh-CN"
+      ? `倍率 ${zoom}×（最小 1.5×，最大 4×） · 按 ESC 退出放大镜`
+      : `${zoom}× (min 1.5×, max 4×) · Press ESC to exit`;
+  }
+
+  private positionMagnifierLens(clientX: number, clientY: number): void {
+    const stage = this.magnifierStageElement;
+    const lens = this.refs.magnifierLensElement;
+    if (!stage || !lens) {
+      return;
+    }
+    const containerRect = stage.getBoundingClientRect();
+    const canvasRect = this.refs.svg?.getBoundingClientRect() ?? containerRect;
+    const zoom = this.options.magnifier?.controller.getZoom() ?? 2;
+    const geometry = getMagnifierLensGeometry(canvasRect, { clientX, clientY }, zoom, {
+      ...containerRect,
+      left: containerRect.left + (stage.clientLeft ?? 0),
+      top: containerRect.top + (stage.clientTop ?? 0),
     });
-    return button;
+    lens.style.left = `${geometry.left}px`;
+    lens.style.top = `${geometry.top}px`;
+    lens.style.width = `${geometry.lensSize}px`;
+    lens.style.height = `${geometry.lensSize}px`;
+    const scene = this.refs.magnifierSceneElement;
+    scene?.style.setProperty("--magnifier-scene-left", `${geometry.sceneLeft}px`);
+    scene?.style.setProperty("--magnifier-scene-top", `${geometry.sceneTop}px`);
+    scene?.style.setProperty("--magnifier-scene-width", `${geometry.sceneWidth}px`);
+    scene?.style.setProperty("--magnifier-scene-height", `${geometry.sceneHeight}px`);
+    scene?.style.setProperty("--magnifier-zoom", String(geometry.zoom));
+  }
+
+  private restoreMagnifierFocus(): void {
+    const element = this.magnifierFocusElement;
+    this.magnifierFocusElement = undefined;
+    element?.focus();
   }
 
   focusConfidence(): void {
@@ -1137,90 +1276,24 @@ export class LayoutTaskRenderer {
     this.refs.savingBubbleElement.hidden = false;
   }
 
-  private adjustViewportZoom(factor: number): void {
-    this.viewportZoom = clampViewportZoom(this.viewportZoom * factor);
-    this.updateViewportTransform();
-  }
-
-  private resetViewport(): void {
-    this.viewportZoom = DEFAULT_VIEWPORT_ZOOM;
-    this.viewportPan = { x: 0, y: 0 };
-    this.updateViewportTransform();
-  }
-
-  private readonly handleViewportPanPointerDown = (event: PointerEvent): void => {
-    if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
-      return;
-    }
-    if (!this.refs.svg || !(event.currentTarget instanceof HTMLElement)) {
-      return;
-    }
-
-    event.preventDefault();
-    this.viewportPanPointerId = event.pointerId;
-    this.viewportPanLast = { x: event.clientX, y: event.clientY };
-    this.viewportPanCaptureElement = event.currentTarget;
-    this.viewportPanCaptureElement.setPointerCapture(event.pointerId);
-    this.viewportPanCaptureElement.setAttribute("aria-pressed", "true");
-    this.viewportPanCaptureElement.classList.add("is-active");
-    this.refs.stageWrapElement?.classList.add("is-viewport-panning");
-  };
-
-  private readonly handleViewportPointerMove = (event: PointerEvent): void => {
-    if (this.options.isPaused?.() || this.options.isInteractionBlocked?.()) {
-      return;
-    }
-    if (event.pointerId !== this.viewportPanPointerId || !this.viewportPanLast || !this.refs.svg) {
-      return;
-    }
-
-    event.preventDefault();
-    const scale = getSvgScreenScale(this.refs.svg);
-    const dx = (event.clientX - this.viewportPanLast.x) / (scale * this.viewportZoom);
-    const dy = (event.clientY - this.viewportPanLast.y) / (scale * this.viewportZoom);
-    this.viewportPan.x += dx;
-    this.viewportPan.y += dy;
-    this.viewportPanLast = { x: event.clientX, y: event.clientY };
-    this.updateViewportTransform();
-  };
-
-  private readonly handleViewportPointerUp = (event: PointerEvent): void => {
-    if (event.pointerId !== this.viewportPanPointerId) {
-      return;
-    }
-
-    event.preventDefault();
-    if (this.viewportPanCaptureElement?.hasPointerCapture(event.pointerId)) {
-      this.viewportPanCaptureElement.releasePointerCapture(event.pointerId);
-    }
-    this.viewportPanCaptureElement?.setAttribute("aria-pressed", "false");
-    this.viewportPanCaptureElement?.classList.remove("is-active");
-    this.viewportPanPointerId = undefined;
-    this.viewportPanLast = undefined;
-    this.viewportPanCaptureElement = undefined;
-    this.refs.stageWrapElement?.classList.remove("is-viewport-panning");
-  };
-
-  private updateViewportTransform(): void {
-    const cameraLayer = this.refs.cameraLayer;
-    if (!cameraLayer) {
-      return;
-    }
-
-    cameraLayer.setAttribute(
-      "transform",
-      getViewportCameraTransform(this.options.config, this.viewportZoom, this.viewportPan),
-    );
-    this.refs.stageWrapElement?.classList.toggle(
-      "is-viewport-transformed",
-      this.viewportZoom !== DEFAULT_VIEWPORT_ZOOM || this.viewportPan.x !== 0 || this.viewportPan.y !== 0,
-    );
-  }
 
   destroy(): void {
     this.clearHideTimer();
     this.clearLimitFeedback();
     this.unbindViewportWarning();
+    if (this.magnifierStageElement) {
+      this.magnifierStageElement.removeEventListener("pointermove", this.handleMagnifierPointerMove);
+      this.magnifierStageElement.removeEventListener("wheel", this.handleMagnifierWheel);
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("keydown", this.handleMagnifierKeyDown, true);
+    }
+    if (this.options.magnifier?.controller.isActive()) {
+      this.options.magnifier.onExit("destroy");
+    }
+    this.magnifierStageElement = undefined;
+    this.magnifierPointer = undefined;
+    this.magnifierFocusElement = undefined;
     this.options.root.innerHTML = "";
   }
 
@@ -1243,8 +1316,8 @@ export class LayoutTaskRenderer {
     const transformed = point.matrixTransform(matrix.inverse());
     const viewBox = this.options.config.world.viewBox;
     return {
-      x: viewBox.x + (transformed.x - viewBox.x - this.viewportPan.x) / this.viewportZoom,
-      y: viewBox.y + (transformed.y - viewBox.y - this.viewportPan.y) / this.viewportZoom,
+      x: viewBox.x + (transformed.x - viewBox.x) / DEFAULT_VIEWPORT_ZOOM,
+      y: viewBox.y + (transformed.y - viewBox.y) / DEFAULT_VIEWPORT_ZOOM,
     };
   }
 
@@ -2030,6 +2103,46 @@ export function getTutorialViewingDirectionGeometry(config: RuntimeTaskConfig): 
 
 export const DEFAULT_VIEWPORT_ZOOM = 1.3;
 
+export function getMagnifierLensGeometry(
+  rect: { left: number; top: number; width: number; height: number },
+  pointer: { clientX: number; clientY: number },
+  zoom: number,
+  containerRect: { left: number; top: number; width: number; height: number } = rect,
+): {
+  lensSize: number;
+  left: number;
+  top: number;
+  sceneWidth: number;
+  sceneHeight: number;
+  sceneLeft: number;
+  sceneTop: number;
+  focusX: number;
+  focusY: number;
+  zoom: number;
+} {
+  const lensSize = Math.max(0, Math.min(220, rect.width, rect.height));
+  const maxLeft = Math.max(0, rect.width - lensSize);
+  const maxTop = Math.max(0, rect.height - lensSize);
+  const pointerX = pointer.clientX - rect.left;
+  const pointerY = pointer.clientY - rect.top;
+  const left = Math.max(0, Math.min(maxLeft, pointerX - lensSize / 2));
+  const top = Math.max(0, Math.min(maxTop, pointerY - lensSize / 2));
+  const focusX = Math.max(0, Math.min(rect.width, pointerX));
+  const focusY = Math.max(0, Math.min(rect.height, pointerY));
+  return {
+    lensSize,
+    left: left + rect.left - containerRect.left,
+    top: top + rect.top - containerRect.top,
+    sceneWidth: rect.width,
+    sceneHeight: rect.height,
+    sceneLeft: lensSize / 2 - zoom * focusX,
+    sceneTop: lensSize / 2 - zoom * focusY,
+    focusX,
+    focusY,
+    zoom,
+  };
+}
+
 export function getViewportCameraTransform(
   config: RuntimeTaskConfig,
   zoom: number,
@@ -2039,16 +2152,6 @@ export function getViewportCameraTransform(
   const centerX = viewBox.x + viewBox.width / 2;
   const centerY = viewBox.y + viewBox.height / 2;
   return `translate(${centerX + pan.x} ${centerY + pan.y}) scale(${clampViewportZoom(zoom)}) translate(${-centerX} ${-centerY})`;
-}
-
-function getSvgScreenScale(svg: SVGSVGElement): number {
-  const screenScale = svg.getScreenCTM()?.a;
-  if (screenScale && Number.isFinite(screenScale) && screenScale > 0) {
-    return screenScale;
-  }
-
-  const bounds = svg.getBoundingClientRect();
-  return bounds.width / svg.viewBox.baseVal.width || 1;
 }
 
 export function getStageDisplayTransform(config: RuntimeTaskConfig): string | undefined {

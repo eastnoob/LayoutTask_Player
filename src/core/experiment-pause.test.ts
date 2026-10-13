@@ -5,6 +5,22 @@ import {
 } from "./experiment-pause";
 
 describe("ExperimentPauseController", () => {
+  it("guards direct requests and confirmations without consuming the formal allowance", () => {
+    const controller = new ExperimentPauseController({ mode: "formal", now: () => 1_000 });
+    let allowed = false;
+    const unregister = controller.registerInputGuard(() => allowed);
+    controller.requestPause();
+    expect(controller.snapshot()).toMatchObject({ status: "available", pauseUsed: false, events: [] });
+    allowed = true;
+    controller.requestPause();
+    allowed = false;
+    controller.confirmPause();
+    expect(controller.snapshot()).toMatchObject({ status: "confirming", pauseUsed: false, events: [] });
+    unregister();
+    controller.confirmPause();
+    expect(controller.isPaused()).toBe(true);
+    controller.resume("manual_resume");
+  });
   it("requires confirmation and consumes the one formal pause", () => {
     const controller = new ExperimentPauseController({ mode: "formal", now: () => 1_000 });
 

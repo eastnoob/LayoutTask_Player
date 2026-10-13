@@ -12,6 +12,21 @@ import { createRuntimeConfig } from "../test-support/runtime-config";
 describe("CompletionController", () => {
   const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
+  it("blocks direct formal completion before dialogs or freezing during magnifier input exclusion", async () => {
+    const config = createRuntimeConfig();
+    const store = new StateStore(config);
+    const confirm = vi.fn(() => true);
+    const recorder = { finish: vi.fn() };
+    const controller = new CompletionController({ config, store, renderer: createCompletionRendererStub(),
+      recorder: recorder as never, encoder: { encode: vi.fn() } as never,
+      clipboard: { copy: vi.fn() } as never, confirmImpl: confirm,
+      isInteractionBlocked: () => true });
+    await controller.requestComplete();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(store.isLocked()).toBe(false);
+    expect(recorder.finish).not.toHaveBeenCalled();
+  });
+
   it.each(["en-US", "zh-CN"] as const)("enforces the tutorial gate before freezing or encoding (%s)", async (locale) => {
     const config = createRuntimeConfig();
     const store = new StateStore(config);

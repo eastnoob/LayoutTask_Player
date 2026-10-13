@@ -280,6 +280,10 @@ body {
   pointer-events: none;
 }
 
+.layout-task-tutorial-interaction-locked .layout-task-magnifier-button {
+  pointer-events: auto;
+}
+
 .layout-task-flow-modal-dialog.is-tutorial-attention,
 .layout-task-display-image-frame.is-tutorial-attention,
 .layout-task-stage-wrap.is-tutorial-attention,
@@ -335,6 +339,91 @@ body {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.16);
+}
+
+.layout-task-magnifier-button {
+  width: 38px;
+  height: 38px;
+  padding: 7px;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.layout-task-magnifier-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.layout-task-magnifier-button[aria-pressed="true"] {
+  border-color: #0e7490;
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.layout-task-magnifier-lens {
+  position: absolute;
+  z-index: 5;
+  width: 220px;
+  height: 220px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+  pointer-events: none;
+}
+
+.layout-task-magnifier-lens::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px #0e7490;
+  pointer-events: none;
+}
+
+.layout-task-magnifier-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.layout-task-magnifier-scene-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--magnifier-scene-width, 100%);
+  height: var(--magnifier-scene-height, 100%);
+  transform: translate(var(--magnifier-scene-left, 0px), var(--magnifier-scene-top, 0px)) scale(var(--magnifier-zoom, 2));
+  transform-origin: 0 0;
+}
+
+.layout-task-magnifier-hint {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 8px;
+  width: max-content;
+  max-width: 196px;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .layout-task-viewport-button {

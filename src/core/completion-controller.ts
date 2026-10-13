@@ -36,6 +36,7 @@ export class CompletionController {
       onComplete?: (payload: CompletionPayload) => void;
       confirmImpl?: (message: string) => boolean;
       pause?: { isPaused(): boolean };
+      isInteractionBlocked?: () => boolean;
       locale?: "en-US" | "zh-CN";
     },
   ) {
@@ -43,6 +44,9 @@ export class CompletionController {
   }
 
   async requestComplete(): Promise<void> {
+    if (this.options.isInteractionBlocked?.()) {
+      return;
+    }
     if (this.options.pause?.isPaused()) {
       return;
     }
