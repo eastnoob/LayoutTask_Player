@@ -161,7 +161,7 @@ function buildTutorialReferenceBoardHtml(input: {
       <div class="layout-task-tutorial-board-title">
         <span>▶</span><span>${chinese ? "参考板" : "Reference board"}</span>${input.progress ? `<span class="layout-task-tutorial-board-progress">${escapeHtmlText(input.progress)}</span>` : ""}
       </div>
-      <p class="layout-task-tutorial-board-callout">${chinese ? "请仔细观察这些家具的默认摆放。正式实验中，可移动家具会标记为黄色。完成教程时，必须点击每一个黄色物体一次。" : "Study these default furniture arrangements carefully. In the formal experiment, movable furniture will be marked in yellow."}</p>
+      <p class="layout-task-tutorial-board-callout">${chinese ? "观察每组家具的摆放。按住并拖动平面图可查看细节；拖动不是必做项。正式实验中，可移动家具会标记为黄色。" : "Inspect each furniture arrangement. Hold and drag either floor-plan image to inspect it; dragging is optional. In the formal experiment, movable furniture is marked in yellow."}</p>
       <div class="layout-task-tutorial-board-grid${input.board.items.length === 1 ? " is-single" : ""}">${columns}</div>
     </section>
   `;

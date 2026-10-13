@@ -55,6 +55,26 @@ describe("LayoutTaskRenderer trial header", () => {
 });
 
 describe("persistent reference display", () => {
+  it("marks unsaved variable objects as pending without overriding selection highlight", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
+
+    expect(source).toContain("isObjectFirstSaveComplete?: (objectId: string) => boolean;");
+    expect(source).toContain('visual.classList.toggle("is-pending"');
+    expect(source).toContain('visual.classList.toggle("is-highlighted", highlighted);');
+    expect(css).toContain(".layout-task-object-visual.is-pending:not(.is-highlighted)");
+    expect(css).toContain("drop-shadow");
+  });
+
+  it("renders approved yellow-object emphasis and suppresses the generic edit instruction", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+
+    expect(source).toContain('renderTutorialMarkup(taskElement, task);');
+    expect(source).toContain("yellow objects?");
+    expect(source).toContain('instruction.hidden = true;');
+    expect(source).toContain('instruction.textContent = "";');
+  });
+
   it("keeps the reference frame visible during reconstruction", () => {
     const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
 

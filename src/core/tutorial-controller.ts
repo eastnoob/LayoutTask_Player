@@ -57,9 +57,15 @@ export class TutorialController {
   getCurrentStep(): TutorialStep {
     const [anchor, task, message, expectedEvent] = guidance[this.step];
     const chinese = this.locale === "zh-CN";
-    return { id: this.step, anchor, task: (chinese ? "你的任务：" : "Your task: ") + task[chinese ? 1 : 0],
-      message: this.step === "intro" && this.referenceMode === "persistent"
-        ? (chinese ? "你可以随时查看透视图。请注意每件标记家具的位置和方向。" : "You may refer to the perspective image at any time. Remember each marked item's position and orientation.")
+    const persistentIntro = this.step === "intro" && this.referenceMode === "persistent";
+    return { id: this.step, anchor,
+      task: (chinese ? "你的任务：" : "Your task: ") + (persistentIntro
+        ? (chinese ? "观察透视图，准备还原平面图。" : "Study the perspective image and prepare to reconstruct the floor plan.")
+        : task[chinese ? 1 : 0]),
+      message: persistentIntro
+        ? (chinese
+          ? "你可以随时查看透视图。请注意每件标记家具是否出现、位置和方向。"
+          : "You may refer to the image at any time. Remember each marked item's presence, position, and orientation.")
         : message[chinese ? 1 : 0],
       expectedEvent: this.step === "intro" && this.referenceMode === "persistent" ? "reconstruction_started" : expectedEvent };
   }
@@ -167,27 +173,27 @@ export class TutorialController {
 
 type Guidance = [string, [string, string], [string, string], TutorialEvent?];
 const guidance: Record<TutorialStep["id"], Guidance> = {
-  intro: ["flow-modal", ["Study the reference image and prepare to reconstruct the floor plan.", "观察参考图，准备还原平面图。"],
-    ["You have 10 seconds to remember the furniture positions and orientations.", "你有 10 秒记住家具的位置和方向。"], "preview_acknowledged"],
+  intro: ["flow-modal", ["Study the image and prepare to reconstruct the floor plan.", "观察参考图，准备还原平面图。"],
+    ["You have 10 seconds to remember each marked item's presence, position, and orientation.", "你有 10 秒记住每件标记家具是否出现、位置和方向。"], "preview_acknowledged"],
   preview: ["display-image", ["Remember the furniture before the image disappears.", "在图片消失前记住家具信息。"],
     ["Study the image until the countdown ends.", "请观察图片，直到倒计时结束。"], "reconstruction_started"],
   view_direction: ["viewport-tools", ["Confirm the viewing direction shown by the yellow arrow.", "确认黄色箭头所示的观察方向。"],
-    ["You are standing at the bottom of the floor plan. The yellow arrow shows your viewing direction throughout the experiment.", "你当前站在平面图的最下方。黄色箭头表示整个实验中的观察方向。"], "view_direction_acknowledged"],
-  reference_board: ["reference-board", ["Study the four furniture reference pages.", "观察四页家具参考板。"],
-    ["Each page becomes available to continue after 5 seconds.", "每页观察 5 秒后即可继续。"], "reference_board_completed"],
-  magnifier_practice: ["viewport-tools", ["Try the magnifier, change its zoom, then press ESC.", "使用放大镜，改变倍率后按 ESC 退出。"],
-    ["Enter the magnifier, use the wheel to change the zoom, and press ESC in the same use. You can retry after an early exit.", "进入放大镜，使用滚轮改变倍率，并在同一次使用中按 ESC 退出。提前退出后可以重试。"], "magnifier_exited"],
-  select_first: ["stage", ["Click an unsaved yellow object to begin editing.", "点击一个尚未保存的黄色物体，开始编辑。"],
-    ["Click one [[yellow]]yellow object[[/yellow]] to enter edit mode.", "点击一个尚未保存的[[yellow]]黄色物体[[/yellow]]进入编辑模式。"], "object_selected"],
-  confidence_first: ["confidence", ["Choose both position and rotation confidence ratings.", "选择位置与方向两项置信度。"],
-    ["Use the arrow and rotate buttons if needed, or keep the current pose. Choose both confidence ratings below.", "可使用箭头和旋转按钮调整，也可保持当前姿态。请在下方选择两项置信度。"], "confidence_chosen"],
-  save_first: ["confidence", ["Save both ratings for this object.", "保存这个物体的两项置信度。"],
-    ["Click **Save** to store both ratings and leave edit mode.", "点击**Save**保存两项置信度并退出编辑模式。"], "object_saved"],
-  pause_practice: ["pause", ["Try Pause, confirm, then resume.", "点击暂停并确认，然后恢复。"],
-    ["Confirm Pause, then select Resume or wait for the 10-second automatic resume. Cancelling confirmation allows another try.", "确认暂停后，点击恢复或等待 10 秒自动恢复。取消确认后可以重试。"], "pause_resumed"],
-  remaining_objects: ["stage", ["Save both ratings for every remaining yellow object.", "为每个剩余黄色物体保存两项置信度。"],
-    ["You may keep each pose or adjust it before choosing both ratings and clicking **Save**.", "可以保持或调整姿态，再选择两项置信度并点击**Save**。"], "object_saved"],
-  submit: ["confirm", ["Submit your saved furniture answers.", "提交已保存的家具回答。"],
-    ["Every required furniture group must have both ratings saved. Finish any current edit before selecting **Confirm**.", "每个必答家具组都必须保存两项置信度。完成当前编辑后选择**Confirm**。"], "submitted"],
+    ["The observer is at the bottom of the plan. This direction stays fixed throughout the experiment.", "观察者位于平面图下方；该方向在整个实验中保持不变。"], "view_direction_acknowledged"],
+  reference_board: ["reference-board", ["Inspect each furniture arrangement.", "观察每组家具的摆放。"],
+    ["Hold and drag either floor-plan image to inspect it. Dragging is optional.", "按住并拖动平面图可查看细节；拖动不是必做项。"], "reference_board_completed"],
+  magnifier_practice: ["viewport-tools", ["Open the magnifier, change its zoom with the wheel, then press ESC to exit.", "打开放大镜，滚轮调节倍率，再按 ESC 退出。"],
+    ["It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded.", "放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。"], "magnifier_exited"],
+  select_first: ["stage", ["Click a glowing yellow object to begin editing.", "点击发红光的黄色物体，开始编辑。"],
+    ["Red glow means its first edit has not been saved. Only yellow objects can be edited.", "红光表示尚未保存首次编辑。只有黄色物体可以编辑。"], "object_selected"],
+  confidence_first: ["confidence", ["Match this object's position and orientation to the perspective image.", "使物体位置和方向与透视图一致。"],
+    ["Use the move and rotate controls if needed; keeping the current pose is allowed. Move the pointer away to hide the controls and back to show them; you remain in edit mode. Rate your confidence in both position and orientation. Select a rating for each below.", "需要时用控件移动或旋转；也可保留当前姿态。移开鼠标隐藏控件，移回显示；仍处于编辑模式。评估你对位置和方向的把握程度。请分别选择两项置信度。"], "confidence_chosen"],
+  save_first: ["confidence", ["Save both ratings.", "保存两项置信度。"],
+    ["Select Save to finish this edit. The red glow disappears after the first save.", "点击 Save 完成本次编辑；首次保存后红光消失。"], "object_saved"],
+  pause_practice: ["pause", ["Complete the Pause practice.", "完成 Pause 练习。"],
+    ["Click the highlighted Pause button and confirm. Wait for automatic resume or choose Resume.", "点击高亮的 Pause 并确认；等待自动恢复，或点击 Resume。"], "pause_resumed"],
+  remaining_objects: ["stage", ["Edit and save each remaining yellow object.", "编辑并保存其余每个黄色物体。"],
+    ["Save both position and orientation confidence ratings for each one.", "每个都要保存位置和方向两项置信度。"], "object_saved"],
+  submit: ["confirm", ["Finish all remaining objects, then continue.", "完成所有剩余物体，然后继续。"],
+    ["Every yellow object must have both ratings saved at least once. You can reopen any saved object and edit it as often as you like. Select Confirm when all are saved.", "每个黄色物体都必须至少保存两项置信度一次；之后可无限次重新编辑。全部保存后选择 Confirm。"], "submitted"],
   complete: ["status", ["Tutorial complete.", "教程完成。"], ["Tutorial complete.", "教程完成。"]],
 };

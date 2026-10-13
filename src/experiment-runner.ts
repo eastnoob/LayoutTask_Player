@@ -85,11 +85,10 @@ export function buildExperimentTimeline(
           <header class="layout-task-header layout-task-tutorial-intro-header">
             <p class="layout-task-eyebrow">${chinese ? "教程" : "Tutorial"}</p>
             <h1>${chinese ? "恢复家具布局" : "Reconstruct the furniture layout"}</h1>
-            <p class="layout-task-meta">${chinese ? "图片显示在页面顶部。请观察图片，然后在下方平面图中恢复家具的摆放。" : "The picture is shown at the top of the page. Study it, then rebuild the furniture arrangement on the floor plan below."}</p>
           </header>
           <div class="layout-task-tutorial-intro-note">
-            <p><strong>${chinese ? "你的任务是观察页面顶部的每张图片，并尽可能在平面图中恢复家具布局。" : "Your task is to study each picture at the top of the page and reconstruct the furniture layout on the floor plan as closely as possible."}</strong></p>
-            <p>${chinese ? "你将练习正式实验中的相同流程：观察家具布局，打开每个黄色家具物体，必要时进行调整，选择位置和旋转的置信度，然后保存。" : "You will practice the same workflow used in the experiment: study the furniture arrangement, open each yellow furniture object, adjust it if needed, choose confidence for its position and rotation, and save it."}</p>
+            <p class="layout-task-tutorial-task">${chinese ? "观察透视图，尽可能在平面图中还原家具的位置和方向。" : "Study the perspective image and reconstruct the furniture positions and orientations on the floor plan."}</p>
+            <p class="layout-task-tutorial-intro-body">${chinese ? "教程将带你练习编辑、置信度评分、保存、放大镜和暂停。" : "The tutorial guides you through editing, confidence ratings, saving, the magnifier, and Pause."}</p>
           </div>
         </section>`,
       ],

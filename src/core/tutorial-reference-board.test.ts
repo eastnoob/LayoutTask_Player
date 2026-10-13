@@ -87,8 +87,9 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(html).not.toContain(">M01<");
     expect(html).not.toContain("Bedside Tables");
     expect(html).toContain("Reference board");
-    expect(html).toContain("Study these default furniture arrangements carefully");
-    expect(html).toContain("movable furniture will be marked in yellow");
+    expect(html).toContain("Inspect each furniture arrangement");
+    expect(html).toContain("dragging is optional");
+    expect(html).toContain("movable furniture is marked in yellow");
     expect(html).not.toContain("relation.svg");
     expect(html).not.toContain("<h1");
   });
@@ -116,8 +117,9 @@ describe("buildTutorialReferenceBoardPage", () => {
     });
 
     expect(html).toContain("参考板");
-    expect(html).toContain("请仔细观察这些家具的默认摆放");
-    expect(html).toContain("必须点击每一个黄色物体一次");
+    expect(html).toContain("观察每组家具的摆放");
+    expect(html).toContain("拖动不是必做项");
+    expect(html).not.toContain("必须点击每一个黄色物体一次");
     expect(html).not.toContain("Study these default furniture arrangements carefully");
   });
 

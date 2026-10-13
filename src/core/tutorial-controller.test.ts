@@ -145,6 +145,89 @@ describe("TutorialController confirmed gates", () => {
     observe(); expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
     magnify(); save("chair");
     expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
-    expect(tutorial.getCurrentStep().message).toContain("10");
+    expect(tutorial.getCurrentStep().message).toContain(locale === "zh-CN" ? "点击高亮的 Pause" : "Click the highlighted Pause");
+  });
+
+  it.each(["en-US", "zh-CN"] as const)("uses the approved tutorial copy (%s)", (locale) => {
+    const { tutorial, confidence, magnify, save } = fixture(locale);
+    const english = locale === "en-US";
+    const taskPrefix = english ? "Your task: " : "你的任务：";
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Study the perspective image and prepare to reconstruct the floor plan." : "观察透视图，准备还原平面图。"),
+      message: english
+        ? "You may refer to the image at any time. Remember each marked item's presence, position, and orientation."
+        : "你可以随时查看透视图。请注意每件标记家具是否出现、位置和方向。",
+    });
+
+    tutorial.handle("reconstruction_started");
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Confirm the viewing direction shown by the yellow arrow." : "确认黄色箭头所示的观察方向。"),
+      message: english
+        ? "The observer is at the bottom of the plan. This direction stays fixed throughout the experiment."
+        : "观察者位于平面图下方；该方向在整个实验中保持不变。",
+    });
+
+    tutorial.handle("view_direction_acknowledged");
+    tutorial.handle("reference_board_completed");
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Open the magnifier, change its zoom with the wheel, then press ESC to exit." : "打开放大镜，滚轮调节倍率，再按 ESC 退出。"),
+      message: english
+        ? "It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded."
+        : "放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。",
+    });
+
+    magnify();
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Click a glowing yellow object to begin editing." : "点击发红光的黄色物体，开始编辑。"),
+      message: english
+        ? "Red glow means its first edit has not been saved. Only yellow objects can be edited."
+        : "红光表示尚未保存首次编辑。只有黄色物体可以编辑。",
+    });
+
+    confidence.enterObjectEdit("chair");
+    tutorial.handle("object_selected", { objectId: "chair" });
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Match this object's position and orientation to the perspective image." : "使物体位置和方向与透视图一致。"),
+      message: english
+        ? "Use the move and rotate controls if needed; keeping the current pose is allowed. Move the pointer away to hide the controls and back to show them; you remain in edit mode. Rate your confidence in both position and orientation. Select a rating for each below."
+        : "需要时用控件移动或旋转；也可保留当前姿态。移开鼠标隐藏控件，移回显示；仍处于编辑模式。评估你对位置和方向的把握程度。请分别选择两项置信度。",
+    });
+    confidence.choose("position", 3); confidence.choose("rotation", 4);
+    tutorial.handle("confidence_chosen");
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Save both ratings." : "保存两项置信度。"),
+      message: english
+        ? "Select Save to finish this edit. The red glow disappears after the first save."
+        : "点击 Save 完成本次编辑；首次保存后红光消失。",
+    });
+    confidence.saveActiveGroup(); tutorial.handle("object_saved", { objectId: "chair" });
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Complete the Pause practice." : "完成 Pause 练习。"),
+      message: english
+        ? "Click the highlighted Pause button and confirm. Wait for automatic resume or choose Resume."
+        : "点击高亮的 Pause 并确认；等待自动恢复，或点击 Resume。",
+    });
+
+    tutorial.handle("pause_requested"); tutorial.handle("pause_confirmed");
+    tutorial.handle("pause_resumed", { resumeReason: "manual_resume" });
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Edit and save each remaining yellow object." : "编辑并保存其余每个黄色物体。"),
+      message: english
+        ? "Save both position and orientation confidence ratings for each one."
+        : "每个都要保存位置和方向两项置信度。",
+    });
+
+    save("table"); save("sofa");
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Finish all remaining objects, then continue." : "完成所有剩余物体，然后继续。"),
+      message: english
+        ? "Every yellow object must have both ratings saved at least once. You can reopen any saved object and edit it as often as you like. Select Confirm when all are saved."
+        : "每个黄色物体都必须至少保存两项置信度一次；之后可无限次重新编辑。全部保存后选择 Confirm。",
+    });
+    tutorial.handle("submitted");
+    expect(tutorial.getCurrentStep()).toMatchObject({
+      task: taskPrefix + (english ? "Tutorial complete." : "教程完成。"),
+      message: english ? "Tutorial complete." : "教程完成。",
+    });
   });
 });

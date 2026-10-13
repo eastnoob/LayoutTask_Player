@@ -36,6 +36,9 @@ describe("createLayoutTaskPlayer", () => {
       confidence: { required: true, scale: [1, 2, 3, 4, 5], labels: {} },
       tutorialReferenceBoard: { pages: ["1", "2", "3", "4"], continueLabel: "Continue" } });
     player.start();
+    expect(rendererOptions.isObjectFirstSaveComplete?.("chair")).toBe(false);
+    expect(rendererOptions.isObjectFirstSaveComplete?.("table")).toBe(false);
+    expect(rendererOptions.isObjectFirstSaveComplete?.("missing")).toBe(true);
     expect(boardMount).not.toHaveBeenCalled();
     rendererOptions.onObjectSelect?.("chair");
     rendererOptions.confidence?.onChoose("position", 3);
@@ -58,6 +61,8 @@ describe("createLayoutTaskPlayer", () => {
     rendererOptions.confidence?.onChoose("position", 3); rendererOptions.confidence?.onSave();
     expect(player.getTutorialStep()?.id).toBe("confidence_first");
     rendererOptions.confidence?.onChoose("rotation", 4); rendererOptions.confidence?.onSave();
+    expect(rendererOptions.isObjectFirstSaveComplete?.("chair")).toBe(true);
+    expect(rendererOptions.isObjectFirstSaveComplete?.("table")).toBe(false);
     expect(player.getTutorialStep()?.id).toBe("pause_practice");
     const savesAtPractice = save.mock.calls.length;
     rendererOptions.onDeveloperShortcut?.(); rendererOptions.onObjectSelect?.("table"); rendererOptions.confidence?.onSave();

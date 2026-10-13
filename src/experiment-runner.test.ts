@@ -241,7 +241,9 @@ describe("buildExperimentTimeline", () => {
     const chinese = { ...experimentConfig(), locale: "zh-CN" as const };
     const chineseTimeline = buildExperimentTimeline(chinese);
     const intro = String(chineseTimeline[0].pages[0]);
-    expect(intro).toContain("图片显示在页面顶部");
+    expect(intro).toContain("观察透视图，尽可能在平面图中还原家具的位置和方向。");
+    expect(intro).toContain("教程将带你练习编辑、置信度评分、保存、放大镜和暂停。");
+    expect(intro).not.toContain("图片显示在页面顶部");
     expect(chineseTimeline[0].button_label_next).toBe("开始教程");
     expect(String(chineseTimeline[2].pages[0])).toContain("这不是考试，而是实验");
     expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要20-45分钟");
@@ -255,6 +257,21 @@ describe("buildExperimentTimeline", () => {
 
     expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
     expect(createSavingPageHtml()).toContain("Saving your data");
+  });
+
+  it("uses one concise bilingual opening task and body without duplicate headers", () => {
+    const englishIntro = String(buildExperimentTimeline(experimentConfig())[0].pages[0]);
+    const chineseIntro = String(buildExperimentTimeline({ ...experimentConfig(), locale: "zh-CN" as const })[0].pages[0]);
+
+    for (const [intro, task, body] of [
+      [englishIntro, "Study the perspective image and reconstruct the furniture positions and orientations on the floor plan.", "The tutorial guides you through editing, confidence ratings, saving, the magnifier, and Pause."],
+      [chineseIntro, "观察透视图，尽可能在平面图中还原家具的位置和方向。", "教程将带你练习编辑、置信度评分、保存、放大镜和暂停。"],
+    ] as const) {
+      expect(intro).toContain(task);
+      expect(intro).toContain(body);
+      expect(intro).not.toContain("layout-task-meta");
+      expect(intro.match(/layout-task-tutorial-task/g)).toHaveLength(1);
+    }
   });
 
   it("uses the cross-language withdrawal and contact wording", () => {
@@ -381,7 +398,8 @@ describe("buildExperimentTimeline", () => {
       allow_backward: false,
       data: { tutorial_intro: true },
     });
-    expect(String(timeline[0].pages[0])).toContain("reconstruct the furniture layout");
+    expect(String(timeline[0].pages[0])).toContain("Study the perspective image and reconstruct the furniture positions and orientations on the floor plan.");
+    expect(String(timeline[0].pages[0])).toContain("The tutorial guides you through editing, confidence ratings, saving, the magnifier, and Pause.");
     expect(timeline[1]).toMatchObject({ type: LayoutTaskPlugin, taskId: "tutorial_room", tutorialMode: true });
     expect(timeline[2].pages[0]).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(timeline[2]).toMatchObject({
@@ -461,7 +479,8 @@ describe("buildExperimentTimeline", () => {
       reference_board_page: 4,
       reference_board_total: 4,
     });
-    expect(String(timeline[0].pages[0])).toContain("reconstruct the furniture layout");
+    expect(String(timeline[0].pages[0])).toContain("Study the perspective image and reconstruct the furniture positions and orientations on the floor plan.");
+    expect(String(timeline[0].pages[0])).toContain("The tutorial guides you through editing, confidence ratings, saving, the magnifier, and Pause.");
     expect(timeline[5]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001" });
   });
 

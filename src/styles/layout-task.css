@@ -450,6 +450,10 @@ body {
   display: block;
 }
 
+.layout-task-object-visual.is-pending:not(.is-highlighted) {
+  filter: drop-shadow(0 0 4px rgba(180, 35, 24, 0.78));
+}
+
 .layout-task-object.is-locked {
   cursor: default;
   opacity: 0.82;
@@ -954,9 +958,8 @@ body {
 }
 
 .layout-task-tutorial-yellow-emphasis {
-  color: #fffdbf;
-  -webkit-text-stroke: 0.45px #111827;
-  text-shadow: 0 1px 0 #111827;
+  color: #b42318;
+  font-weight: 800;
 }
 
 .layout-task-tutorial-board-shell {

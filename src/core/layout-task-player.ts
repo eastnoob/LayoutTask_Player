@@ -226,6 +226,17 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
     onTutorialAcknowledge: () => advanceTutorial("view_direction_acknowledged"),
     isInteractionBlocked,
     isPaused: () => options.pause?.isPaused() ?? false,
+    isObjectFirstSaveComplete: (objectId) => {
+      const object = localizedConfig.objects.find((item) => item.id === objectId);
+      if (object?.role !== "variable" || !localizedConfidence) {
+        return true;
+      }
+      if (!confidence) {
+        return false;
+      }
+      const groupId = object.group_id ?? object.id;
+      return confidence.getFinalConfidence()[groupId] !== undefined;
+    },
   });
 
   return {

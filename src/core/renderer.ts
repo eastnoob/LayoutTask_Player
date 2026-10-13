@@ -118,6 +118,7 @@ export class LayoutTaskRenderer {
       onTutorialAcknowledge?: () => void;
       isInteractionBlocked?: () => boolean;
       isPaused?: () => boolean;
+      isObjectFirstSaveComplete?: (objectId: string) => boolean;
       confidence?: {
         scale: number[];
         labels: Record<string, string>;
@@ -365,7 +366,8 @@ export class LayoutTaskRenderer {
     panelTitle.textContent = "Object Controls";
 
     const instruction = document.createElement("p");
-    instruction.textContent = this.options.config.messages.instruction_edit_mode;
+    instruction.hidden = true;
+    instruction.textContent = "";
 
     const reconstructionHint = this.createReconstructionHint();
     const confidenceControl = this.createConfidenceControl();
@@ -1629,6 +1631,12 @@ export class LayoutTaskRenderer {
       return;
     }
     const shadowLayer = visual.querySelector<SVGElement>(".layout-task-object-selected-shadow");
+    const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
+    const pending = objectConfig?.role === "variable"
+      && !!this.options.isObjectFirstSaveComplete
+      && !this.options.isObjectFirstSaveComplete(objectId);
+    visual.classList.toggle("is-pending", pending);
+    visual.classList.toggle("is-highlighted", highlighted);
 
     if (highlighted) {
       shadowLayer?.classList.add("is-visible");
@@ -1638,7 +1646,6 @@ export class LayoutTaskRenderer {
 
     if (this.debugShadowEnabled) {
       const element = this.refs.objectElements.get(objectId);
-      const objectConfig = this.options.config.objects.find((item) => item.id === objectId);
       const bbox = getSvgBBoxSafe(visual);
       const visualTransform = visual.getAttribute("transform");
       const elementTransform = element?.getAttribute("transform");
@@ -2071,7 +2078,7 @@ function renderTutorialMessage(messageContainer: HTMLElement, task: string, sour
   messageContainer.replaceChildren();
   const taskElement = document.createElement("p");
   taskElement.className = "layout-task-tutorial-task";
-  taskElement.textContent = task;
+  renderTutorialMarkup(taskElement, task);
   const body = document.createElement("div");
   body.className = "layout-task-tutorial-body";
   renderTutorialMarkup(body, source);
@@ -2079,7 +2086,7 @@ function renderTutorialMessage(messageContainer: HTMLElement, task: string, sour
 }
 
 function renderTutorialMarkup(container: HTMLElement, source: string): void {
-  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\])/g;
+  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\]|yellow objects?|黄色物体)/g;
   let cursor = 0;
 
   for (const match of source.matchAll(tokenPattern)) {
@@ -2102,6 +2109,9 @@ function renderTutorialMarkup(container: HTMLElement, source: string): void {
     if (token.startsWith("[[yellow]]")) {
       strong.className = "layout-task-tutorial-yellow-emphasis";
       strong.textContent = token.slice("[[yellow]]".length, -"[[/yellow]]".length);
+    } else if (token === "yellow object" || token === "yellow objects" || token === "黄色物体") {
+      strong.className = "layout-task-tutorial-yellow-emphasis";
+      strong.textContent = token;
     } else {
       strong.textContent = token.slice(2, -2);
     }
