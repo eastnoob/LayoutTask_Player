@@ -10,7 +10,12 @@ import {
   type ExperimentAssignmentMetadata,
 } from "./core/experiment-data";
 import { getParticipantId } from "./core/participant-session";
-import { buildTutorialReferenceBoardPages, startReferenceBoardContinueCountdown } from "./core/tutorial-reference-board";
+import {
+  buildTutorialReferenceBoardPages,
+  installTutorialReferenceBoardInteractions,
+  startReferenceBoardContinueCountdown,
+  type TutorialReferenceBoardState,
+} from "./core/tutorial-reference-board";
 export { startReferenceBoardContinueCountdown } from "./core/tutorial-reference-board";
 import LayoutTaskPlugin from "./plugins/jspsych-layout-task";
 import type { ExperimentConfig, ExperimentDataSaveConfig } from "./types/experiment";
@@ -104,6 +109,9 @@ export function buildExperimentTimeline(
       const board = config.tutorial.referenceBoard;
       const pages = buildTutorialReferenceBoardPages({ baseUrl: tutorialBaseUrl, board, locale: config.locale });
       const continueLabel = chinese ? "继续" : board.continueLabel ?? "Continue";
+      const frames: TutorialReferenceBoardState = new Map();
+      let stopCountdown: (() => void) | undefined;
+      let stopInteractions: (() => void) | undefined;
       for (const [index, page] of pages.entries()) {
         const item = board.items[index];
         timeline.push({
@@ -114,7 +122,15 @@ export function buildExperimentTimeline(
           allow_backward: false,
           button_label_next: continueLabel,
           on_load: () => {
-            startReferenceBoardContinueCountdown({ label: continueLabel });
+            stopCountdown?.();
+            stopInteractions?.();
+            stopCountdown = startReferenceBoardContinueCountdown({ label: continueLabel });
+            stopInteractions = installTutorialReferenceBoardInteractions(document, frames);
+          },
+          on_finish: () => {
+            stopCountdown?.();
+            stopInteractions?.();
+            if (index === pages.length - 1) frames.clear();
           },
           data: {
             tutorial_reference_board: true,

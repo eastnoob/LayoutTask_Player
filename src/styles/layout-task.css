@@ -1413,9 +1413,56 @@ body {
 
 /* Older WebKit clips percentage-sized SVGs in <img> even with object-fit: contain. */
 .layout-task-tutorial-board-svg {
+  position: relative;
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
+  cursor: grab;
+  touch-action: none;
+}
+
+.layout-task-tutorial-board-svg.is-dragging {
+  cursor: grabbing;
+}
+
+.layout-task-tutorial-board-hand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  color: #0f172a;
+  opacity: 0.68;
+  transform: translate(-50%, -62%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 120ms ease;
+}
+
+.layout-task-tutorial-board-hand.is-hidden,
+.layout-task-tutorial-board-hand-label.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.layout-task-tutorial-board-hand-label {
+  position: absolute;
+  top: calc(50% + 24px);
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 12px);
+  padding: 3px 6px;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .layout-task-output {

@@ -5,6 +5,92 @@ export interface TutorialReferenceBoard {
   continueLabel: string;
 }
 
+const HAND_ASSET_PATH = "../../experiment/layout-task/assets/icons/hand.svg";
+
+export type TutorialReferenceBoardState = Map<string, { x: number; y: number; dragged: boolean }>;
+
+export function installTutorialReferenceBoardInteractions(
+  root: ParentNode, frames: TutorialReferenceBoardState = new Map(),
+): () => void {
+  if (typeof root.querySelectorAll !== "function") return () => undefined;
+  const cleanups = Array.from(root.querySelectorAll<HTMLElement>(".layout-task-tutorial-board-svg"), (frame) => {
+    const hand = frame.querySelector<HTMLElement>(".layout-task-tutorial-board-hand");
+    const label = frame.querySelector<HTMLElement>(".layout-task-tutorial-board-hand-label");
+    const key = frame.dataset.referenceFrameKey;
+    const state = (key && frames.get(key)) || { x: 0, y: 0, dragged: false };
+    if (key) frames.set(key, state);
+    const drag = { startX: 0, startY: 0, baseX: 0, baseY: 0, active: false };
+    const hidePrompt = (hidden: boolean) => {
+      hand?.classList.toggle("is-hidden", hidden);
+      label?.classList.toggle("is-hidden", hidden);
+    };
+    const updatePosition = () => {
+      frame.dataset.referenceDragged = "true";
+      frame.style.backgroundPosition = `calc(50% + ${state.x}px) calc(50% + ${state.y}px)`;
+    };
+    if (state.dragged) { updatePosition(); hidePrompt(true); }
+    const maxPan = () => ({
+      x: Math.max(0, Math.round(frame.clientWidth * 0.25)),
+      y: Math.max(0, Math.round(frame.clientHeight * 0.25)),
+    });
+    const updatePrompt = (event: PointerEvent) => {
+      if (!state.dragged) return;
+      const rect = frame.getBoundingClientRect?.();
+      const width = rect?.width || frame.clientWidth || 1;
+      const height = rect?.height || frame.clientHeight || 1;
+      const left = rect?.left ?? 0;
+      const top = rect?.top ?? 0;
+      const central = Math.abs((event.clientX - left) / width - 0.5) < 0.2
+        && Math.abs((event.clientY - top) / height - 0.5) < 0.2;
+      hidePrompt(!central);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      drag.active = true;
+      drag.startX = event.clientX;
+      drag.startY = event.clientY;
+      drag.baseX = state.x;
+      drag.baseY = state.y;
+      frame.classList.add("is-dragging");
+      frame.setPointerCapture?.(event.pointerId);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!drag.active) { updatePrompt(event); return; }
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      if (deltaX === 0 && deltaY === 0) return;
+      const limit = maxPan();
+      state.x = clamp(drag.baseX + deltaX, -limit.x, limit.x);
+      state.y = clamp(drag.baseY + deltaY, -limit.y, limit.y);
+      state.dragged = true;
+      updatePosition();
+      hidePrompt(true);
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (!drag.active) return;
+      drag.active = false;
+      frame.classList.remove("is-dragging");
+      frame.releasePointerCapture?.(event.pointerId);
+    };
+    const onPointerLeave = () => {
+      if (state.dragged) hidePrompt(true);
+    };
+    frame.addEventListener("pointerdown", onPointerDown);
+    frame.addEventListener("pointermove", onPointerMove);
+    frame.addEventListener("pointerup", onPointerUp);
+    frame.addEventListener("pointercancel", onPointerUp);
+    frame.addEventListener("pointerleave", onPointerLeave);
+    return () => {
+      frame.removeEventListener("pointerdown", onPointerDown);
+      frame.removeEventListener("pointermove", onPointerMove);
+      frame.removeEventListener("pointerup", onPointerUp);
+      frame.removeEventListener("pointercancel", onPointerUp);
+      frame.removeEventListener("pointerleave", onPointerLeave);
+    };
+  });
+  return () => cleanups.forEach((cleanup) => cleanup());
+}
+
 // Reused by the board-only jsPsych trials and the board inside a live player.
 export function startReferenceBoardContinueCountdown(input: {
   documentRef?: Document | HTMLElement;
@@ -58,28 +144,36 @@ export function mountTutorialReferenceBoard(input: TutorialReferenceBoard & {
   let destroyed = false;
   let readyAt = 0;
   let stopCountdown: (() => void) | undefined;
+  let stopInteractions: (() => void) | undefined;
+  const frames: TutorialReferenceBoardState = new Map();
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
     stopCountdown?.();
+    stopInteractions?.();
+    frames.clear();
+    nextButton.removeEventListener("click", onNext);
     host.remove();
     playerChildren.forEach(({ element, display }) => { element.style.display = display; });
   };
   const showPage = () => {
     stopCountdown?.();
+    stopInteractions?.();
     content.innerHTML = input.pages[index];
+    stopInteractions = installTutorialReferenceBoardInteractions(content, frames);
     readyAt = Date.now() + 5_000;
     stopCountdown = startReferenceBoardContinueCountdown({
       documentRef: input.root, windowRef: globalThis as unknown as Window, label: input.continueLabel,
     });
     nextButton.focus();
   };
-  nextButton.addEventListener("click", () => {
+  const onNext = () => {
     if (destroyed || Date.now() < readyAt) return;
     index += 1;
     if (index < input.pages.length) showPage();
     else { destroy(); input.onComplete(); }
-  });
+  };
+  nextButton.addEventListener("click", onNext);
   showPage();
   return { destroy };
 }
@@ -120,8 +214,11 @@ function buildTutorialReferenceBoardHtml(input: {
     const url = new URL(path, absoluteBaseUrl);
     return isAbsoluteUrl(input.baseUrl) ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
   };
-  const svgImage = (path: string, label: string) =>
-    `<div class="layout-task-tutorial-board-svg" role="img" aria-label="${escapeHtmlAttribute(label)}" style="background-image: ${escapeHtmlAttribute(`url(${JSON.stringify(assetUrl(path))})`)}"></div>`;
+  const svgImage = (path: string, label: string, frameKey: string) => `
+    <div class="layout-task-tutorial-board-svg" data-reference-frame-key="${escapeHtmlAttribute(frameKey)}" role="img" aria-label="${escapeHtmlAttribute(label)}" style="background-image: ${escapeHtmlAttribute(`url(${JSON.stringify(assetUrl(path))})`)}">
+      <img class="layout-task-tutorial-board-hand" src="${escapeHtmlAttribute(assetUrl(HAND_ASSET_PATH))}" alt="" aria-hidden="true" draggable="false" />
+      <span class="layout-task-tutorial-board-hand-label">${chinese ? "按住拖动观察" : "Click and hold to drag"}</span>
+    </div>`;
   const columns = input.board.items
     .map(
       (item) => `
@@ -134,11 +231,11 @@ function buildTutorialReferenceBoardHtml(input: {
             <div class="layout-task-tutorial-board-svg-grid">
               <figure class="layout-task-tutorial-board-media-frame">
                 <figcaption>${chinese ? "全部家具" : "All Furniture"}</figcaption>
-                ${svgImage(item.allSvg, chinese ? "全部家具的俯视摆放" : "All furniture top-down arrangement")}
+                ${svgImage(item.allSvg, chinese ? "全部家具的俯视摆放" : "All furniture top-down arrangement", `${item.id}:all`)}
               </figure>
               <figure class="layout-task-tutorial-board-media-frame">
                 <figcaption>${chinese ? "可移动家具" : "Movable Item"}</figcaption>
-                ${svgImage(item.variableSvg, chinese ? "可移动家具的俯视摆放" : "Movable furniture item top-down arrangement")}
+                ${svgImage(item.variableSvg, chinese ? "可移动家具的俯视摆放" : "Movable furniture item top-down arrangement", `${item.id}:variable`)}
               </figure>
             </div>
             <div class="layout-task-tutorial-board-gif-grid">
@@ -169,6 +266,10 @@ function buildTutorialReferenceBoardHtml(input: {
 
 function isAbsoluteUrl(value: string): boolean {
   return /^[a-z][a-z\d+.-]*:/i.test(value);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function escapeHtmlAttribute(value: string): string {
