@@ -410,6 +410,49 @@ function readCsvColumn(text: string, column: string): SourceRecord[] {
     .filter((record) => record.raw.length > 0);
 }
 
+function getPauseOverlapMs(pause: LayoutTaskResult["pause"], startAt: number, endAt: number): number | undefined {
+  if (!pause) return 0;
+
+  const intervals: Array<{ start: number; end: number }> = [];
+  let start: number | undefined;
+  for (const event of pause.pause_events) {
+    if (event.type === "pause_confirmed") {
+      if (start !== undefined || event.at < (intervals.at(-1)?.end ?? -Infinity)) return undefined;
+      start = event.at;
+    } else {
+      if (start === undefined || event.at < start) return undefined;
+      intervals.push({ start, end: event.at });
+      start = undefined;
+    }
+  }
+  if (start !== undefined) return undefined;
+
+  if (intervals.length === 0) {
+    if (pause.pause_started_at !== undefined && pause.pause_ended_at !== undefined
+      && pause.pause_ended_at >= pause.pause_started_at && pause.pause_count <= 1) {
+      intervals.push({ start: pause.pause_started_at, end: pause.pause_ended_at });
+    } else if (!pause.pause_used && pause.pause_count === 0 && pause.pause_duration_ms === 0
+      && pause.pause_started_at === undefined && pause.pause_ended_at === undefined) {
+      return 0;
+    } else {
+      return undefined;
+    }
+  }
+
+  // A session aggregate can establish completeness, but cannot locate pauses in a task.
+  const knownDuration = intervals.reduce((total, interval) => total + interval.end - interval.start, 0);
+  const isTutorialPracticeRepresentation = pause.tutorial_pause_practice === true
+    && !pause.pause_used
+    && pause.pause_count === 0
+    && pause.pause_events.length > 0
+    && pause.pause_events.every((event) => event.mode === "tutorial_practice");
+  if ((!isTutorialPracticeRepresentation && pause.pause_count !== intervals.length)
+    || Math.abs(knownDuration - pause.pause_duration_ms) > TIME_TOLERANCE_MS) return undefined;
+
+  return intervals.reduce((total, interval) => total
+    + Math.max(0, Math.min(endAt, interval.end) - Math.max(startAt, interval.start)), 0);
+}
+
 function validateTiming(result: LayoutTaskResult, errors: string[], warnings: string[]): void {
   // Keep timing validation conservative.
   // 这里只抓明显不可能的时间关系，不在 decoder 里过度推断被试行为。
@@ -417,26 +460,45 @@ function validateTiming(result: LayoutTaskResult, errors: string[], warnings: st
     errors.push("start_time_after_end_time");
   }
 
-  const expectedDuration = Math.max(0, result.end_time - result.start_time - (result.pause?.pause_duration_ms ?? 0));
-  if (result.duration_ms !== expectedDuration) {
-    errors.push("duration_mismatch");
+  const pausedMs = getPauseOverlapMs(result.pause, result.start_time, result.end_time);
+  if (pausedMs === undefined) {
+    warnings.push("pause_timing_unverifiable");
+  } else {
+    const expectedDuration = Math.max(0, result.end_time - result.start_time - pausedMs);
+    if (Math.abs(result.duration_ms - expectedDuration) > TIME_TOLERANCE_MS) {
+      errors.push("duration_mismatch");
+    }
   }
 
-  if (result.effective_duration_ms !== undefined) {
-    const expectedEffectiveDuration = Math.max(0, result.duration_ms - (result.magnifier?.total_duration_ms ?? 0));
-    if (result.effective_duration_ms !== expectedEffectiveDuration) {
+  const magnifierMs = result.magnifier?.total_duration_ms;
+  if (magnifierMs === undefined && (result.effective_duration_ms !== undefined
+    || result.page_timing?.effective_player_elapsed_ms !== undefined)) {
+    warnings.push("magnifier_timing_unverifiable");
+  }
+  if (magnifierMs !== undefined && magnifierMs > result.duration_ms + TIME_TOLERANCE_MS) {
+    errors.push("magnifier_duration_exceeds_duration");
+  }
+  if (result.effective_duration_ms !== undefined && magnifierMs !== undefined) {
+    const expectedEffectiveDuration = result.duration_ms - magnifierMs;
+    if (Math.abs(result.effective_duration_ms - expectedEffectiveDuration) > TIME_TOLERANCE_MS) {
       errors.push("effective_duration_mismatch");
     }
   }
 
-  if (result.page_timing?.effective_player_elapsed_ms !== undefined) {
-    const activePlayerElapsed = result.page_timing.active_player_elapsed_ms ?? result.page_timing.player_elapsed_ms;
+  if (result.page_timing?.effective_player_elapsed_ms !== undefined && magnifierMs !== undefined) {
+    const pageTiming = result.page_timing;
+    let activePlayerElapsed = pageTiming.active_player_elapsed_ms;
+    if (activePlayerElapsed === undefined && pageTiming.player_elapsed_ms !== undefined) {
+      const pagePausedMs = getPauseOverlapMs(result.pause,
+        pageTiming.player_start_time ?? pageTiming.submit_time - pageTiming.player_elapsed_ms,
+        pageTiming.submit_time);
+      if (pagePausedMs !== undefined) {
+        activePlayerElapsed = Math.max(0, pageTiming.player_elapsed_ms - pagePausedMs);
+      }
+    }
     if (activePlayerElapsed !== undefined) {
-      const expectedEffectivePlayerElapsed = Math.max(
-        0,
-        activePlayerElapsed - (result.magnifier?.total_duration_ms ?? 0),
-      );
-      if (result.page_timing.effective_player_elapsed_ms !== expectedEffectivePlayerElapsed) {
+      const expectedEffectivePlayerElapsed = activePlayerElapsed - magnifierMs;
+      if (Math.abs(pageTiming.effective_player_elapsed_ms! - expectedEffectivePlayerElapsed) > TIME_TOLERANCE_MS) {
         errors.push("effective_player_duration_mismatch");
       }
     }
