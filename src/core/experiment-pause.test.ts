@@ -67,22 +67,52 @@ describe("ExperimentPauseController", () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  it("uses a separate ten-second tutorial practice pause", () => {
+  it("uses a separate ten-second tutorial practice pause with retryable confirmation", () => {
     let now = 2_000;
     const formal = new ExperimentPauseController({ mode: "formal", now: () => now });
     const practice = new ExperimentPauseController({ mode: "tutorial_practice", now: () => now });
 
     practice.requestPause();
+    expect(practice.snapshot().status).toBe("confirming");
+    practice.cancelConfirmation();
+    expect(practice.snapshot()).toMatchObject({ status: "practice_available", pauseUsed: false });
+    practice.requestPause();
+    practice.confirmPause();
     expect(practice.snapshot().status).toBe("practice_paused");
-    now += 10_000;
-    practice.advance();
+    practice.resume("manual_resume");
     expect(practice.snapshot()).toMatchObject({
+      status: "practice_consumed",
+      pauseEndReason: "manual_resume",
+      pauseDurationMs: 0,
+    });
+    expect(() => practice.requestPause()).toThrow("already consumed");
+
+    const automatic = new ExperimentPauseController({ mode: "tutorial_practice", now: () => now });
+    automatic.requestPause();
+    automatic.confirmPause();
+    now += 10_000;
+    automatic.advance();
+    expect(automatic.snapshot()).toMatchObject({
       status: "practice_consumed",
       pauseDurationMs: 10_000,
       pauseEndReason: "auto_resume_10s",
     });
-    expect(practice.snapshot().pauseUsed).toBe(false);
+    expect(automatic.snapshot().pauseUsed).toBe(false);
     expect(formal.snapshot().pauseUsed).toBe(false);
+  });
+
+  it("guards tutorial practice confirmation and resume while magnifier input is active", () => {
+    const practice = new ExperimentPauseController({ mode: "tutorial_practice", now: () => 1_000 });
+    let magnifierActive = true;
+    practice.registerInputGuard(() => !magnifierActive);
+
+    practice.requestPause();
+    expect(practice.snapshot().status).toBe("practice_available");
+    magnifierActive = false;
+    practice.requestPause();
+    magnifierActive = true;
+    practice.confirmPause();
+    expect(practice.snapshot().status).toBe("confirming");
   });
 
   it("subtracts closed and active pauses from active elapsed time", () => {

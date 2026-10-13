@@ -54,6 +54,40 @@ describe("ExperimentPauseUi", () => {
     expect(pauseButton?.disabled).toBe(false);
     ui.destroy();
   });
+
+  it("localizes the tutorial practice confirmation, countdown, and highlight lifecycle", () => {
+    const documentRef = new FakeDocument();
+    let now = 1_000;
+    const controller = new ExperimentPauseController({ mode: "tutorial_practice", now: () => now });
+    const ui = createExperimentPauseUi({
+      controller,
+      documentRef: documentRef as unknown as Document,
+      now: () => now,
+      locale: "zh-CN",
+    });
+    ui.mount();
+
+    const root = documentRef.querySelector<FakeElement>("[data-layout-task-pause-root]");
+    const pauseButton = documentRef.querySelector<FakeElement>("[data-layout-task-pause]");
+    ui.setPauseEnabled(true);
+    expect(root?.className).toContain("is-tutorial-pause-practice");
+    pauseButton?.click();
+    expect(documentRef.body.textContent).toContain("最长 10 秒");
+    expect(documentRef.body.textContent).toContain("不会消耗正式实验的暂停机会");
+
+    documentRef.querySelector<FakeElement>("[data-layout-task-pause-cancel]")?.click();
+    expect(controller.snapshot().status).toBe("practice_available");
+    expect(root?.className).toContain("is-tutorial-pause-practice");
+
+    pauseButton?.click();
+    documentRef.querySelector<FakeElement>("[data-layout-task-pause-confirm]")?.click();
+    expect(documentRef.body.textContent).toContain("00:10");
+    expect(root?.className).not.toContain("is-tutorial-pause-practice");
+    documentRef.querySelector<FakeElement>("[data-layout-task-pause-resume]")?.click();
+    expect(controller.snapshot().status).toBe("practice_consumed");
+    expect(root?.className).not.toContain("is-tutorial-pause-practice");
+    ui.destroy();
+  });
 });
 
 class FakeElement {
@@ -63,6 +97,23 @@ class FakeElement {
   hidden = false;
   disabled = false;
   className = "";
+  readonly classList = {
+    contains: (name: string) => this.className.split(/\s+/).includes(name),
+    add: (...names: string[]) => {
+      const values = new Set(this.className.split(/\s+/).filter(Boolean));
+      names.forEach((name) => values.add(name));
+      this.className = Array.from(values).join(" ");
+    },
+    remove: (...names: string[]) => {
+      const removed = new Set(names);
+      this.className = this.className.split(/\s+/).filter((name) => name && !removed.has(name)).join(" ");
+    },
+    toggle: (name: string, force?: boolean) => {
+      const next = force ?? !this.classList.contains(name);
+      if (next) this.classList.add(name); else this.classList.remove(name);
+      return next;
+    },
+  };
   parent: FakeElement | undefined;
   private ownText = "";
   private listeners = new Map<string, () => void>();

@@ -70,6 +70,9 @@ export function buildExperimentTimeline(
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
   const chinese = config.locale === "zh-CN";
+  const tutorialPause = config.tutorial.enabled && config.tutorial.taskId
+    ? new ExperimentPauseController({ mode: "tutorial_practice" })
+    : undefined;
   const taskDataSave = toRuntimeTaskDataSave(
     config.dataSave, options.participantId, options.sessionId,
     options.developerMode ? undefined : assignmentMetadata(options.assignment),
@@ -144,7 +147,7 @@ export function buildExperimentTimeline(
         writeHeaderToData: true,
         dataSave: taskDataSave,
         localBackup: options.localBackup,
-        pause: options.pause,
+        pause: tutorialPause,
         onReady: options.onTaskReady,
         data: { tutorial: true },
       });
@@ -734,7 +737,12 @@ export function createRunnableExperiment(
       requireAssignment: options.requireAssignment,
       localBackup,
       pause,
-      onTaskReady: () => pauseUi.setPageActive(true),
+      onTaskReady: () => {
+        const currentTrial = (jsPsych as unknown as {
+          getCurrentTrial?: () => { tutorialMode?: boolean; data?: Record<string, unknown> };
+        }).getCurrentTrial?.();
+        pauseUi.setPageActive(!isTutorialTrial(currentTrial));
+      },
     }),
   };
 }

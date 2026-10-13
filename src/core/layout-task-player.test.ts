@@ -33,9 +33,10 @@ describe("createLayoutTaskPlayer", () => {
     const save = vi.spyOn(ConfidenceController.prototype, "saveActiveGroup");
     const boardDestroy = vi.fn();
     const boardMount = vi.spyOn(board, "mountTutorialReferenceBoard").mockReturnValue({ destroy: boardDestroy });
+    const tutorialPause = new ExperimentPauseController({ mode: "tutorial_practice" });
     const player = createLayoutTaskPlayer({ root: {} as HTMLElement, config, tutorialMode: true, developerMode: true,
       confidence: { required: true, scale: [1, 2, 3, 4, 5], labels: {} },
-      tutorialReferenceBoard: { pages: ["1", "2", "3", "4"], continueLabel: "Continue" } });
+      tutorialReferenceBoard: { pages: ["1", "2", "3", "4"], continueLabel: "Continue" }, pause: tutorialPause });
     player.start();
     expect(rendererOptions.isObjectFirstSaveComplete?.("chair")).toBe(false);
     expect(rendererOptions.isObjectFirstSaveComplete?.("table")).toBe(false);
@@ -55,9 +56,9 @@ describe("createLayoutTaskPlayer", () => {
     rendererOptions.onObjectSelect?.("table"); rendererOptions.confidence?.onSave();
     expect(save).not.toHaveBeenCalled();
     expect(player.handleTutorialPractice("pause_requested")).toBe(false);
-    player.handleTutorialPractice("magnifier_entered");
-    player.handleTutorialPractice("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
-    player.handleTutorialPractice("magnifier_exited", { exitReason: "escape" });
+    expect(rendererOptions.magnifier!.onEnter({ clientX: 10, clientY: 20 })).toBe(true);
+    expect(rendererOptions.magnifier!.onWheel(1)).toEqual({ zoomBefore: 2, zoomAfter: 2.25 });
+    expect(rendererOptions.magnifier!.onExit("escape")).toBe(true);
     rendererOptions.onObjectSelect?.("chair");
     rendererOptions.confidence?.onChoose("position", 3); rendererOptions.confidence?.onSave();
     expect(player.getTutorialStep()?.id).toBe("confidence_first");
@@ -74,7 +75,7 @@ describe("createLayoutTaskPlayer", () => {
       expect(player.getTutorialStep()?.id).toBe("confidence_first");
       expect(player.getState()).toEqual(editState);
     }
-    expect(player.getMagnifierSnapshot().use_count).toBe(2);
+    expect(player.getMagnifierSnapshot().use_count).toBe(3);
     rendererOptions.confidence?.onChoose("rotation", 4); rendererOptions.confidence?.onSave();
     expect(rendererOptions.isObjectFirstSaveComplete?.("chair")).toBe(true);
     expect(rendererOptions.isObjectFirstSaveComplete?.("table")).toBe(false);
@@ -82,10 +83,9 @@ describe("createLayoutTaskPlayer", () => {
     const savesAtPractice = save.mock.calls.length;
     rendererOptions.onDeveloperShortcut?.(); rendererOptions.onObjectSelect?.("table"); rendererOptions.confidence?.onSave();
     expect(save).toHaveBeenCalledTimes(savesAtPractice);
-    player.handleTutorialPractice("pause_requested"); player.handleTutorialPractice("pause_cancelled");
+    tutorialPause.requestPause(); tutorialPause.cancelConfirmation();
     expect(player.getTutorialStep()?.id).toBe("pause_practice");
-    player.handleTutorialPractice("pause_requested"); player.handleTutorialPractice("pause_confirmed");
-    player.handleTutorialPractice("pause_resumed", { resumeReason: "auto_resume_10s" });
+    tutorialPause.requestPause(); tutorialPause.confirmPause(); tutorialPause.resume("manual_resume");
     rendererOptions.onDeveloperShortcut?.();
     expect(save).toHaveBeenCalledTimes(savesAtPractice);
     for (const id of ["table", "sofa"]) {

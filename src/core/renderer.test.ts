@@ -275,6 +275,16 @@ describe("LayoutTaskRenderer stage fit", () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
+  it("keeps the Pause highlight separate from the direction arrow lifecycle", () => {
+    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
+
+    expect(source).toContain('this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "view_direction");');
+    expect(source).toContain("this.setTutorialAttention(step.anchor);");
+    expect(css).toContain(".layout-task-pause-button.is-tutorial-attention");
+    expect(css).toContain(".layout-task-pause-button.is-tutorial-attention::after");
+  });
+
   it("waits for layout before centering the floor plan during the viewing-direction tutorial step", () => {
     const scrollBy = vi.fn();
     const root = {

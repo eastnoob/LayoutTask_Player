@@ -53,7 +53,7 @@ export class ExperimentPauseController {
       events: [],
     };
 
-    if (this.current.status === "paused") {
+    if (this.current.status === "paused" || this.current.status === "practice_paused") {
       this.scheduleAutoResume();
       this.advance();
     }
@@ -85,7 +85,8 @@ export class ExperimentPauseController {
       if (this.current.status !== "practice_available") {
         throw new Error("tutorial pause is already consumed");
       }
-      this.startPause("practice_paused");
+      this.current.status = "confirming";
+      this.emit();
       return;
     }
     if (this.current.status !== "available") {
@@ -99,7 +100,7 @@ export class ExperimentPauseController {
     if (this.current.status !== "confirming") {
       return;
     }
-    this.current.status = "available";
+    this.current.status = this.mode === "formal" ? "available" : "practice_available";
     this.emit();
   }
 
@@ -108,9 +109,10 @@ export class ExperimentPauseController {
       return;
     }
     if (this.mode === "tutorial_practice") {
-      if (this.current.status === "practice_available") {
-        this.startPause("practice_paused");
+      if (this.current.status !== "confirming") {
+        throw new Error("tutorial pause is not awaiting confirmation");
       }
+      this.startPause("practice_paused");
       return;
     }
     if (this.current.status !== "confirming") {

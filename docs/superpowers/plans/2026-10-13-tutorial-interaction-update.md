@@ -39,15 +39,15 @@
 - New consent records use `consent_version: "informed-consent-2026-10-13-v2"`, contain the four displayed confirmations, and omit `notice_version` and `data_protection_statement_confirmed`.
 - `instruction_edit_mode` must no longer contain the repeated picture/reconstruction/confidence paragraph in either locale.
 
-- [ ] **Step 1: Add failing consent tests.** Assert that the English and Chinese consent HTML contain the first informed-consent content, age/eyewear flow remains available, the GDPR data-protection section and fifth checkbox are absent, and exactly four displayed confirmations gate continuation.
+- [x] **Step 1: Add failing consent tests.** Assert that the English and Chinese consent HTML contain the first informed-consent content, age/eyewear flow remains available, the GDPR data-protection section and fifth checkbox are absent, and exactly four displayed confirmations gate continuation.
 
-- [ ] **Step 2: Add failing record/export tests.** Assert that a new v2 consent record omits the removed-document fields, while a supplied v1 record remains readable and exports its historical fields unchanged.
+- [x] **Step 2: Add failing record/export tests.** Assert that a new v2 consent record omits the removed-document fields, while a supplied v1 record remains readable and exports its historical fields unchanged.
 
-- [ ] **Step 3: Add failing copy tests.** Replace the current `messages.test.ts` expectation for the repeated `instruction_edit_mode` text with an expectation that the string is absent while confidence labels, reconstruction hints, and no-information copy remain present.
+- [x] **Step 3: Add failing copy tests.** Replace the current `messages.test.ts` expectation for the repeated `instruction_edit_mode` text with an expectation that the string is absent while confidence labels, reconstruction hints, and no-information copy remain present.
 
-- [ ] **Step 4: Implement the smallest copy and consent changes.** Delete only the second document's HTML and checkbox, update the completion/signature wording to one document, update the record factory, replace the tutorial completion withdrawal sentence with `You may not receive payment as a result of this.` / `您可能因此无法获得报酬。`, and remove the repeated edit-page instruction. Do not change reward calculation.
+- [x] **Step 4: Implement the smallest copy and consent changes.** Delete only the second document's HTML and checkbox, update the completion/signature wording to one document, update the record factory, replace the tutorial completion withdrawal sentence with `You may not receive payment as a result of this.` / `您可能因此无法获得报酬。`, and remove the repeated edit-page instruction. Do not change reward calculation.
 
-- [ ] **Step 5: Run focused tests.**
+- [x] **Step 5: Run focused tests.**
 
   ```powershell
   npx vitest run src/core/experiment-consent.test.ts src/core/bilingual-consent-config.test.ts src/core/messages.test.ts
@@ -55,7 +55,7 @@
 
   Expected: PASS, with no assertion requiring the removed paragraph or removed data-protection confirmation.
 
-- [ ] **Step 6: Commit only this task's files.**
+- [x] **Step 6: Commit only this task's files.**
 
   ```powershell
   git add src/core/experiment-consent.ts src/core/experiment-consent.test.ts src/core/bilingual-consent-config.test.ts src/core/messages.ts src/core/messages.test.ts src/experiment-runner.ts
@@ -79,21 +79,21 @@
 - `TutorialController.isInteractionBlocked()` must block all actions except the current mandatory practice and its allowed exit/confirmation actions.
 - Tutorial completion must require: magnifier practice complete, Pause practice complete, every required group saved at least once, no unsaved confidence, no pending Pause confirmation/active Pause, no active magnifier.
 
-- [ ] **Step 1: Add failing controller tests for the exact sequence.** Cover intro, viewing-direction acknowledgement clearing the arrow, reference-board pages before player interaction, magnifier practice, first object selection, zero-movement confidence selection, first Save, Pause practice, remaining objects, and final submission.
+- [x] **Step 1: Add failing controller tests for the exact sequence.** Cover intro, viewing-direction acknowledgement clearing the arrow, reference-board pages before player interaction, magnifier practice, first object selection, zero-movement confidence selection, first Save, Pause practice, remaining objects, and final submission.
 
-- [ ] **Step 2: Add failing tests for completion facts.** Verify that selecting or opening an object does not clear its pending state; choosing only one confidence does not complete it; Save with both ratings does; re-editing does not restore pending state; the tutorial cannot jump to a later object or submit before mandatory practices.
+- [x] **Step 2: Add failing tests for completion facts.** Verify that selecting or opening an object does not clear its pending state; choosing only one confidence does not complete it; Save with both ratings does; re-editing does not restore pending state; the tutorial cannot jump to a later object or submit before mandatory practices.
 
-- [ ] **Step 3: Implement the minimal state/event changes.** Keep the controller as a small ordered state machine. Add persistent per-group first-save state only for tutorial guidance, and obtain the actual saved answer from `ConfidenceController`/existing interaction state rather than duplicating formal answer data.
+- [x] **Step 3: Implement the minimal state/event changes.** Keep the controller as a small ordered state machine. Add persistent per-group first-save state only for tutorial guidance, and obtain the actual saved answer from `ConfidenceController`/existing interaction state rather than duplicating formal answer data.
 
-- [ ] **Step 4: Wire player and completion checks.** Route Save, Pause, magnifier, and submit events through `advanceTutorial`; ensure developer shortcuts cannot bypass tutorial gates; retain the formal task's existing save and completion behavior.
+- [x] **Step 4: Wire player and completion checks.** Route Save, Pause, magnifier, and submit events through `advanceTutorial`; ensure developer shortcuts cannot bypass tutorial gates; retain the formal task's existing save and completion behavior.
 
-- [ ] **Step 5: Run focused tests.**
+- [x] **Step 5: Run focused tests.**
 
   ```powershell
   npx vitest run src/core/tutorial-controller.test.ts src/core/layout-task-player.test.ts src/core/completion-controller.test.ts
   ```
 
-- [ ] **Step 6: Commit the tutorial gate changes.**
+- [x] **Step 6: Commit the tutorial gate changes.**
 
   ```powershell
   git add src/core/tutorial-controller.ts src/core/tutorial-controller.test.ts src/core/layout-task-player.ts src/core/completion-controller.ts src/core/confidence-controller.ts src/core/interaction-controller.ts src/core/layout-task-player.test.ts
@@ -114,35 +114,35 @@
 - Renderer receives a read-only `isObjectFirstSaveComplete(objectId)` or equivalent query; it must not maintain a second answer-completion store.
 - Pending red feedback applies independently to tutorial and formal tasks, starts when the task starts, disappears only after the first successful Save for that furniture group, and never changes click areas, collisions, scoring, or yellow fill.
 
-- [ ] **Step 1: Add failing renderer tests for pending state.** Assert that every required variable object is marked pending at start, a click/drag/rotation/confidence selection leaves it pending, first Save removes it, and re-editing does not restore it.
+- [x] **Step 1: Add failing renderer tests for pending state.** Assert that every required variable object is marked pending at start, a click/drag/rotation/confidence selection leaves it pending, first Save removes it, and re-editing does not restore it.
 
-- [ ] **Step 2: Add failing copy assertions.** Assert every tutorial bubble begins with a separate `Your task:` / `你的任务：` paragraph, only `yellow object(s)` / `黄色物体` is red and bold, and the removed generic edit-page sentence is absent from all scenes.
+- [x] **Step 2: Add failing copy assertions.** Assert every tutorial bubble begins with a separate `Your task:` / `你的任务：` paragraph, only `yellow object(s)` / `黄色物体` is red and bold, and the removed generic edit-page sentence is absent from all scenes.
 
-- [ ] **Step 3: Implement the visual state.** Add a quiet non-flashing red outline/glow class to pending editable objects, preserve existing selected/collision feedback precedence, and update it after Save through the existing renderer refresh path.
+- [x] **Step 3: Implement the visual state.** Add a quiet non-flashing red outline/glow class to pending editable objects, preserve existing selected/collision feedback precedence, and update it after Save through the existing renderer refresh path.
 
-- [ ] **Step 4: Replace the verbose tutorial messages with the approved table in spec section 8.** Keep the persistent-mode distinction, direction-arrow lifecycle, optional reference-board dragging, unlimited re-editing, and Save wording.
+- [x] **Step 4: Replace the verbose tutorial messages with the approved table in spec section 8.** Keep the persistent-mode distinction, direction-arrow lifecycle, optional reference-board dragging, unlimited re-editing, and Save wording.
 
-- [ ] **Step 5: Run focused tests and inspect computed classes.**
+- [x] **Step 5: Run focused tests and inspect computed classes.**
 
   ```powershell
   npx vitest run src/core/renderer.test.ts src/core/tutorial-controller.test.ts
   ```
 
-- [ ] **Step 6: Commit.**
+- [x] **Step 6: Commit.**
 
   ```powershell
   git add src/core/renderer.ts src/styles/layout-task.css src/core/tutorial-controller.ts src/core/tutorial-reference-board.ts src/core/renderer.test.ts src/core/tutorial-controller.test.ts
   git commit -m "feat: show pending furniture and concise tutorial tasks"
   ```
 
-### Task 4: Implement Observation-Only Magnifier Mode
+### Task 4: Implement Observation-Only Magnifier Mode [complete: df7d017]
 
 **Files:**
 - Create: `src/core/magnifier-controller.ts`
 - Test: `src/core/magnifier-controller.test.ts`
 - Modify: `src/core/renderer.ts`
 - Modify: `src/core/layout-task-player.ts`
-- Modify: `src/core/tutorial-controller.ts`
+- Verify/reuse: `src/core/tutorial-controller.ts` (existing practice state machine already satisfies the brief; no no-op edit)
 - Modify: `src/styles/layout-task.css`
 - Test: `src/core/renderer.test.ts`
 - Test: `src/core/layout-task-player.test.ts`
@@ -152,23 +152,23 @@
 - Default zoom is `2`; wheel changes by `0.25`; clamp to `1.5..4`; one successful entry increments count; duration includes immediate exits and incomplete tutorial practice.
 - While active, only pointer movement over the floor plan, wheel, and `Escape` are accepted. Furniture, confidence, Save, Confirm, Pause, browser-style shortcuts, and direct callbacks are blocked.
 
-- [ ] **Step 1: Add failing controller tests.** Cover default/boundary zoom, actual wheel changes, repeated wheel clamping, one count per entry, immediate ESC, duration accumulation, and no overlap with Pause intervals.
+- [x] **Step 1: Add failing controller tests.** Cover default/boundary zoom, actual wheel changes, repeated wheel clamping, one count per entry, immediate ESC, duration accumulation, and no overlap with Pause intervals.
 
-- [ ] **Step 2: Add failing player/renderer tests.** Assert that entering while editing preserves pose, selection, and unsaved confidence; ESC exits only the magnifier; focus returns to the prior control; the main zoom/pan/reset tools are absent or hidden as specified.
+- [x] **Step 2: Add failing player/renderer tests.** Assert that entering while editing preserves pose, selection, and unsaved confidence; ESC exits only the magnifier; focus returns to the prior control; the main zoom/pan/reset tools are absent or hidden as specified.
 
-- [ ] **Step 3: Implement the controller.** Use monotonic timestamps already used by the runtime. Clamp intervals to the current task window before exposing the snapshot. Do not log pointer paths or zoom steps.
+- [x] **Step 3: Implement the controller.** Use the runtime's epoch-millisecond clock, crop intervals to the task window, and do not log pointer paths or zoom steps.
 
-- [ ] **Step 4: Implement the renderer mode.** Add one magnifier icon button for the floor plan, a circular lens following the pointer, visible current/min/max multiplier, and a persistent bilingual ESC instruction. Keep the lens inside the canvas edge without changing the pointed world position. Freeze all other input and restore the prior editing context on ESC.
+- [x] **Step 4: Implement the renderer mode.** Add one magnifier icon button for the floor plan, a circular lens following the pointer, visible current/min/max multiplier, and a persistent bilingual ESC instruction. Keep the lens inside the canvas edge without changing the pointed world position. Freeze all other input and restore the prior editing context on ESC.
 
-- [ ] **Step 5: Wire tutorial practice.** Require entry, at least one real wheel change, and ESC in the same session; early ESC or entry without a zoom change leaves the practice incomplete and retryable. Make magnifier and Pause mutually exclusive.
+- [x] **Step 5: Wire tutorial practice.** Require entry, at least one real wheel change, and ESC in the same session; early ESC or entry without a zoom change leaves the practice incomplete and retryable. Make magnifier and Pause mutually exclusive.
 
-- [ ] **Step 6: Run focused tests.**
+- [x] **Step 6: Run focused tests.**
 
   ```powershell
   npx vitest run src/core/magnifier-controller.test.ts src/core/renderer.test.ts src/core/layout-task-player.test.ts src/core/tutorial-controller.test.ts
   ```
 
-- [ ] **Step 7: Commit.**
+- [x] **Step 7: Commit.**
 
   ```powershell
   git add src/core/magnifier-controller.ts src/core/magnifier-controller.test.ts src/core/renderer.ts src/core/layout-task-player.ts src/core/tutorial-controller.ts src/styles/layout-task.css src/core/renderer.test.ts src/core/layout-task-player.test.ts src/core/tutorial-controller.test.ts

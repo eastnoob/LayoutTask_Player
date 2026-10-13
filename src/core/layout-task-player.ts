@@ -22,6 +22,7 @@ import { UploadState } from "./upload-state";
 import type { LocalBackupStore } from "./local-backup-store";
 import { createPauseSummary } from "./experiment-pause";
 import type { ExperimentPauseController } from "./experiment-pause";
+import { createExperimentPauseUi } from "./experiment-pause-ui";
 import { resolveMessages } from "./messages";
 import type { RewardConfig, RewardReferenceTask } from "../types/reward";
 import { MagnifierController, type MagnifierSnapshot, type MagnifierTaskWindow } from "./magnifier-controller";
@@ -41,8 +42,7 @@ export interface LayoutTaskPlayerOptions {
   presentation?: ReferencePresentation;
   onComplete?: (payload: CompletionPayload) => void;
   localBackup?: LocalBackupStore;
-  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">
-    & Partial<Pick<ExperimentPauseController, "registerInputGuard">>;
+  pause?: ExperimentPauseController;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
 }
@@ -120,6 +120,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let confidence: ConfidenceController | undefined;
   let tutorial: TutorialController | undefined;
   let referenceBoard: ReturnType<typeof mountTutorialReferenceBoard> | undefined;
+  let tutorialPauseUi: ReturnType<typeof createExperimentPauseUi> | undefined;
+  let unsubscribeTutorialPause: (() => void) | undefined;
   let destroyed = false;
   let unregisterPauseInputGuard: (() => void) | undefined;
   const magnifier = new MagnifierController({
@@ -136,7 +138,9 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
 
   const showTutorial = () => {
     if (tutorial) {
-      renderer.showTutorialStep(tutorial.getCurrentStep());
+      const step = tutorial.getCurrentStep();
+      renderer.showTutorialStep(step);
+      tutorialPauseUi?.setPauseEnabled(step.id === "pause_practice");
     }
   };
 
@@ -280,6 +284,15 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Mount before measuring or binding. Display metadata should describe the
       // layout the participant actually saw, and controllers need real refs.
       const refs = renderer.mount();
+      if (options.tutorialMode && options.pause?.snapshot().mode === "tutorial_practice"
+        && typeof document !== "undefined" && typeof options.root.append === "function") {
+        tutorialPauseUi = createExperimentPauseUi({
+          controller: options.pause,
+          locale: options.locale,
+          mountRoot: options.root,
+        });
+        tutorialPauseUi.mount();
+      }
       // Browser-only observer: in Node unit tests there is no window, so skip it.
       // GitHub Pages / normal browser 里会正常开启；非浏览器环境只是不记录 display changes。
       displayChangeRecorder =
@@ -331,6 +344,22 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
           },
           referenceBoardRequired: !!options.tutorialReferenceBoard?.pages.length,
         });
+        const pauseController = options.pause;
+        if (pauseController?.snapshot().mode === "tutorial_practice") {
+          let previous = pauseController.snapshot();
+          unsubscribeTutorialPause = pauseController.subscribe((snapshot) => {
+            if (snapshot.status === "confirming" && previous.status !== "confirming") {
+              advanceTutorial("pause_requested");
+            } else if (snapshot.status === "practice_available" && previous.status === "confirming") {
+              advanceTutorial("pause_cancelled");
+            } else if (snapshot.status === "practice_paused" && previous.status === "confirming") {
+              advanceTutorial("pause_confirmed");
+            } else if (snapshot.status === "practice_consumed" && previous.status === "practice_paused") {
+              advanceTutorial("pause_resumed", { resumeReason: snapshot.pauseEndReason });
+            }
+            previous = snapshot;
+          });
+        }
         showTutorial();
       }
       interaction = new InteractionController({
@@ -394,6 +423,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       destroyed = true;
+      unsubscribeTutorialPause?.();
+      unsubscribeTutorialPause = undefined;
       unregisterPauseInputGuard?.();
       unregisterPauseInputGuard = undefined;
       if (magnifier.isActive()) {
@@ -405,6 +436,8 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       flow?.destroy();
       displayChangeRecorder?.stop();
       referenceAssistanceRecorder?.stop();
+      tutorialPauseUi?.destroy();
+      tutorialPauseUi = undefined;
       renderer.destroy();
     },
 
@@ -416,9 +449,26 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       return store.isLocked();
     },
     getTutorialStep() { return tutorial?.getCurrentStep(); },
-    // Tasks 4/5 call these contracts from their actual controller/UI events.
-    // There is no user-facing control that generates synthetic practice events.
-    handleTutorialPractice(event, payload) { return advanceTutorial(event, payload); },
+    // Practice events are accepted only after the real controller has changed
+    // state, so a direct callback cannot skip the visible interaction.
+    handleTutorialPractice(event, payload) {
+      if (event === "magnifier_entered" && !magnifier.isActive()) return false;
+      if (event === "magnifier_zoom_changed" && !magnifier.isActive()) return false;
+      if (event === "magnifier_exited" && magnifier.isActive()) return false;
+      if (event.startsWith("pause_")) {
+        const snapshot = options.pause?.snapshot();
+        if (!snapshot || snapshot.mode !== "tutorial_practice") return false;
+        const allowed = event === "pause_requested"
+          ? snapshot.status === "confirming"
+          : event === "pause_cancelled"
+            ? snapshot.status === "practice_available"
+            : event === "pause_confirmed"
+              ? snapshot.status === "practice_paused"
+              : snapshot.status === "practice_consumed";
+        if (!allowed) return false;
+      }
+      return advanceTutorial(event, payload);
+    },
     canStartMagnifier,
     canStartPause() { return !destroyed && !store.isLocked() && !magnifier.isActive() && !isPauseInputExcluded()
       && (tutorial?.canStartPause() ?? true); },

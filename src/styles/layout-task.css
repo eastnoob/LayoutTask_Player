@@ -1472,6 +1472,26 @@ body {
   opacity: 0.52;
 }
 
+.layout-task-pause-button.is-tutorial-attention {
+  position: relative;
+  border-color: #eab308;
+  background: #fefce8;
+  color: #854d0e;
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.22), 0 10px 24px rgba(133, 77, 14, 0.16);
+}
+
+.layout-task-pause-button.is-tutorial-attention::after {
+  content: "↓";
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 8px);
+  color: #ca8a04;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateX(50%);
+}
+
 .layout-task-pause-dialog,
 .layout-task-pause-overlay {
   max-width: min(420px, calc(100vw - 36px));

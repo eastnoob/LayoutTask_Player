@@ -43,7 +43,7 @@ export interface LayoutTaskPluginParams {
   presentation?: ReferencePresentation;
   dataSave?: RuntimeDataSaveConfig;
   localBackup?: LocalBackupStore;
-  pause?: Pick<ExperimentPauseController, "isPaused" | "getActiveElapsedMs" | "subscribe" | "snapshot">;
+  pause?: ExperimentPauseController;
   reward?: RewardConfig;
   rewardReference?: RewardReferenceTask;
   onReady?: () => void;
