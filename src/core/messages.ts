@@ -7,8 +7,7 @@ export const DEFAULT_MESSAGES: LayoutTaskMessages = {
   status_ready: "Ready",
   status_copy_again_ok: "Encoded result copied.",
   status_copy_again_fail: "Copy failed. Please copy the encoded result manually.",
-  instruction_edit_mode:
-    "The picture is shown at the top of the page. Reconstruct the floor plan as closely as possible to the picture, then choose confidence ratings for both position and rotation.",
+  instruction_edit_mode: "",
   reconstruction_hint_title: "Reconstruct the floor plan based on the picture you just studied.",
   reconstruction_hint_drag: "Drag movable objects to place them.",
   reconstruction_hint_button: "Use the arrow buttons to move selected objects.",
@@ -25,7 +24,7 @@ const CHINESE_MESSAGES: LayoutTaskMessages = {
   status_ready: "准备就绪",
   status_copy_again_ok: "已再次复制编码结果。",
   status_copy_again_fail: "复制失败。请手动复制编码结果。",
-  instruction_edit_mode: "图片显示在页面顶部。请尽可能根据图片恢复下方平面图，然后分别选择位置和旋转的置信度。",
+  instruction_edit_mode: "",
   reconstruction_hint_title: "请根据刚才看到的图片还原场景平面图。",
   reconstruction_hint_drag: "拖动可移动物体进行摆放。",
   reconstruction_hint_button: "使用箭头按钮移动选中的物体。",

@@ -12,8 +12,8 @@ export const KONAMI_CODE = [
 ] as const;
 
 export interface ConsentRecord {
-  consent_version: "informed-consent-2026-10-03-v1";
-  notice_version: "data-protection-2026-10-03-v1";
+  consent_version: "informed-consent-2026-10-03-v1" | "informed-consent-2026-10-13-v2";
+  notice_version?: "data-protection-2026-10-03-v1";
   locale: "en-US" | "zh-CN";
   consented_at: string;
   signature_method: "checkbox_confirmation";
@@ -21,7 +21,7 @@ export interface ConsentRecord {
   questions_answered_confirmed: true;
   prestudy_document_confirmed: true;
   withdrawal_right_understood_confirmed: true;
-  data_protection_statement_confirmed: true;
+  data_protection_statement_confirmed?: true;
   developer_mode: boolean;
 }
 
@@ -41,8 +41,7 @@ export function createConsentRecord(options: {
   consentedAt?: string;
 }): ConsentRecord {
   return {
-    consent_version: "informed-consent-2026-10-03-v1",
-    notice_version: "data-protection-2026-10-03-v1",
+    consent_version: "informed-consent-2026-10-13-v2",
     locale: options.locale,
     consented_at: options.consentedAt ?? new Date().toISOString(),
     signature_method: "checkbox_confirmation",
@@ -50,7 +49,6 @@ export function createConsentRecord(options: {
     questions_answered_confirmed: true,
     prestudy_document_confirmed: true,
     withdrawal_right_understood_confirmed: true,
-    data_protection_statement_confirmed: true,
     developer_mode: options.mode === "developer",
   };
 }
@@ -60,7 +58,7 @@ export interface ConsentPageCopy {
   title: string;
   fullDocumentHtml: string;
   signatureNotice: string;
-  confirmations: [string, string, string, string, string];
+  confirmations: [string, string, string, string];
   buttonLabel: string;
 }
 
@@ -88,38 +86,6 @@ const ENGLISH_DOCUMENT_HTML = `
     <p>The compensation for this study is a <strong>£4 base payment plus task-performance bonuses</strong>. Each correctly reconstructed position or rotation earns an additional <strong>£0.04</strong>, so that the participant can earn maximum <strong>£12 in total</strong>. Payment is administered directly through the third-party recruitment platform.</p>
     <p>You are free to stop, quit the study and retract your data at any time during the study with no further consequences. If you have any questions, please ask them now.</p>
     <p>For further questions, complains or issues, please contact the institute's Ethics-Committee: <a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>.</p>
-    <h2>Data protection policy in accordance with Art. 13 GDPR</h2>
-    <p><strong>Project/reason:</strong> Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph<br /><strong>Revision:</strong> 1</p>
-    <h3>1. Name and address of the responsible controller</h3>
-    <p>The responsible controller as defined in the EU General Data Protection Regulation (GDPR) and other national data protection laws of the EU member states as well as other data protection-related provisions is:</p>
-    <p>Universität Münster / University of Münster represented by its Rector Schlossplatz 2, 48149 Münster, Germany<br />tel.: + 49 251 83-0<br />email: <a href="mailto:mailbox@uni-muenster.de">mailbox@uni-muenster.de</a></p>
-    <p>If you have any questions about the project, please contact the responsible staff member:<br />Fengxu Tian <a href="mailto:ftian@uni-muenster.de">&lt;ftian@uni-muenster.de&gt;</a> (SPARC Lab) Jun.-Prof. Dr. Jakub Krukar <a href="mailto:krukar@uni-muenster.de">&lt;krukar@uni-muenster.de&gt;</a> (SPARC Lab)</p>
-    <h3>2. Contact data of the Data Protection Officer</h3>
-    <p>You can contact the Data Protection Officer at:<br />Data Protection Office<br />Schlossplatz 2, 48149 Münster<br />tel.: + 49 251 83-22446<br />email: <a href="mailto:datenschutz@uni-muenster.de">datenschutz@uni-muenster.de</a></p>
-    <h3>3. Data processing in connection with Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph</h3>
-    <p>This study aims to understand how people perceive spatial layout based on a single indoor image. You will view images of indoor scenes and, based on your interpretation, move yellow furniture on a floor plan to the approximate locations and orientations where you perceive them to be in the images. Your responses will help us better understand how people extract spatial information from images.</p>
-    <h4>a) Scope of data processing</h4>
-    <p>The following personal data is processed in connection with Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph:</p>
-    <p>(1) first and last name</p>
-    <p>(2) date of birth</p>
-    <p>(3) email address and phone number</p>
-    <h4>b) Purposes of data processing</h4>
-    <p>The personal data listed above is processed for the purpose of carrying out the project Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph. The personal data listed above will be used to draw scientific conclusions about groups, not about individual participants. Anonymised data might be published in academic journals, presentations, open science data repositories, or other media, but not in a way that would allow individual identification. One week after the completion of the study it might no longer be possible to retract your data from such aggregated analyses.</p>
-    <h4>c) Legal basis for processing personal data</h4>
-    <p>Your consent serves as the legal basis for processing your personal data listed above by the University of Münster, as stipulated by Art. 6 (1, 1a) GDPR and, if applicable, Art. 9 (2a) GDPR.</p>
-    <h4>d) Further recipients of your personal data</h4>
-    <p>Your personal data will neither be shared with other recipients within the University of Münster nor with recipients outside the University.</p>
-    <h4>e) Duration of storage of personal data</h4>
-    <p>The personal data listed above is stored for as long as necessary for carrying out the project Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph but shall not exceed 12 years. Upon withdrawing your consent, we shall delete your personal data.</p>
-    <h3>4. Your rights as a data subject</h3>
-    <p>You have the right to information about your personal data processed by the University of Münster (Art. 15 GDPR), the right to rectification (Art. 16 GDPR), erasure (Art. 17 GDPR), restriction of processing (Art. 18 GDPR) and the right to withdraw prior consent to such processing (Art. 7 (3) GDPR). You may withdraw your consent in writing or by email from the contact persons listed under nos. 1 and 2 (see above) of this data protection statement. You also have the right to lodge a complaint with the supervisory authority. The responsible supervisory authority is the Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Postfach 20 04 44, 40102 Düsseldorf, tel: +49 211 / 38424-0, email: <a href="mailto:poststelle@ldi.nrw.de">poststelle@ldi.nrw.de</a></p>
-    <h3>Declaration of consent</h3>
-    <p><strong>Subject/reason:</strong> Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph</p>
-    <p>With your consent, you hereby grant permission to the University of Münster to collect and process the personal data listed above under (3a) for the purposes indicated in (3b).</p>
-    <p>You have the right to withdraw your consent from the responsible party at any time. The legality of all data processing from the time of consent until withdrawal of consent remains unaffected.</p>
-    <p>With your signature, you indicate confirmation of the following:</p>
-    <p>“I have read the data protection statement for the project Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph. I hereby voluntarily consent to having my personal data collected and processed. I have been informed of the scope and purpose of data collection and processing, as well as the right to withdraw consent. I have received a copy of the data protection policy and the declaration of consent.”</p>
-    <p>(if applicable) I confirm that I hold sole custody of the underage person named above – or in the case of joint custody – that I am permitted to grant consent on behalf of the other legal guardian or custodial parent.</p>
   </article>
 `;
 
@@ -147,38 +113,6 @@ const CHINESE_DOCUMENT_HTML = `
     <p>本研究报酬为 <strong>£4 基础奖金，另加任务表现奖金</strong>。每个正确的位置或旋转答案均可获得额外 <strong>£0.04</strong>，因此参与者最多可获得 <strong>£12</strong>。奖金由第三方招募平台直接发放。</p>
     <p>您可以在研究期间随时停止、退出研究并撤回您的数据，不会产生进一步后果。如果您有任何问题，请现在提出。</p>
     <p>如有进一步问题、投诉或其他事项，请联系研究伦理委员会：<a href="mailto:ifgi-ethics@listserv.uni-muenster.de">&lt;ifgi-ethics@listserv.uni-muenster.de&gt;</a>。</p>
-    <h2>依据《通用数据保护条例》第 13 条的数据保护声明</h2>
-    <p><strong>项目/研究名称：</strong>根据单张室内照片感知家具的位置与朝向<br /><strong>修订版本：</strong>1</p>
-    <h3>1. 负责数据控制者的名称和地址</h3>
-    <p>根据欧盟《通用数据保护条例》（GDPR）、欧盟成员国其他国家数据保护法律以及其他数据保护相关规定，负责数据控制者为：</p>
-    <p>明斯特大学（Universität Münster / University of Münster），由校长代表，Schlossplatz 2, 48149 Münster, Germany<br />电话：+ 49 251 83-0<br />邮箱：<a href="mailto:mailbox@uni-muenster.de">mailbox@uni-muenster.de</a></p>
-    <p>如果您对项目有任何问题，请联系负责工作人员：<br />Fengxu Tian <a href="mailto:ftian@uni-muenster.de">&lt;ftian@uni-muenster.de&gt;</a>（SPARC 实验室） Jun.-Prof. Dr. Jakub Krukar <a href="mailto:krukar@uni-muenster.de">&lt;krukar@uni-muenster.de&gt;</a>（SPARC 实验室）</p>
-    <h3>2. 数据保护官联系方式</h3>
-    <p>您可以通过以下方式联系数据保护官：<br />数据保护办公室<br />Schlossplatz 2, 48149 Münster<br />电话：+ 49 251 83-22446<br />邮箱：<a href="mailto:datenschutz@uni-muenster.de">datenschutz@uni-muenster.de</a></p>
-    <h3>3. 与《根据单张室内照片感知家具的位置与朝向》相关的数据处理</h3>
-    <p>本研究旨在了解人们如何根据单张室内图像感知空间布局。您将查看室内场景图，并根据您的理解，在平面图上把黄色家具移动到您认为与图像中相符的大致位置和朝向。您的回答将帮助我们了解人们如何从图像中提取空间信息。</p>
-    <h4>a）数据处理范围</h4>
-    <p>与《根据单张室内照片感知家具的位置与朝向》相关的数据处理中会处理以下个人数据：</p>
-    <p>（1）姓名</p>
-    <p>（2）出生日期</p>
-    <p>（3）电子邮箱和电话号码</p>
-    <h4>b）数据处理目的</h4>
-    <p>上述个人数据用于开展《根据单张室内照片感知家具的位置与朝向》项目。上述个人数据将用于得出关于群体而非个人参与者的科学结论。匿名化数据可能会发表在学术期刊、报告、开放科学数据存储库或其他媒体中，但不会以能够识别个人身份的方式发表。研究完成一周后，您可能无法再从此类汇总分析中撤回您的数据。</p>
-    <h4>c）处理个人数据的法律依据</h4>
-    <p>您同意明斯特大学处理上述个人数据，是该处理的法律依据，依据为 GDPR 第 6 条第 1 款第 1a 项，以及（如适用）第 9 条第 2 款第 a 项。</p>
-    <h4>d）个人数据的其他接收方</h4>
-    <p>您的个人数据不会与明斯特大学内部的其他接收方共享，也不会与大学外部的接收方共享。</p>
-    <h4>e）个人数据的保存期限</h4>
-    <p>上述个人数据保存至开展《根据单张室内照片感知家具的位置与朝向》项目所需的期限，但最长不超过 12 年。撤回同意后，我们将删除您的个人数据。</p>
-    <h3>4. 数据主体的权利</h3>
-    <p>您有权了解明斯特大学处理的个人数据（GDPR 第 15 条）、更正权（GDPR 第 16 条）、删除权（GDPR 第 17 条）、限制处理权（GDPR 第 18 条）以及撤回此前同意的权利（GDPR 第 7 条第 3 款）。您可以通过书面或电子邮件向本数据保护声明第 1、2 项所列的联系人撤回同意。您还有权向监管机构投诉。负责的监管机构是北莱茵-威斯特法伦州数据保护与信息自由专员，Postfach 20 04 44, 40102 Düsseldorf；电话：+49 211 / 38424-0；邮箱：<a href="mailto:poststelle@ldi.nrw.de">poststelle@ldi.nrw.de</a>。</p>
-    <h3>同意声明</h3>
-    <p><strong>主题/事由：</strong>根据单张室内照片感知家具的位置与朝向</p>
-    <p>您同意后，即表示您允许明斯特大学为第 3a 项所述目的处理上面列出的个人数据。</p>
-    <p>您有权随时向负责方撤回同意。从同意作出到撤回同意期间进行的数据处理，其合法性不受影响。</p>
-    <p>您签名即表示确认以下内容：</p>
-    <p>“我已阅读《根据单张室内照片感知家具的位置与朝向》项目的数据保护声明。我自愿同意收集和处理我的个人数据。我已获知数据收集和处理的范围与目的，以及撤回同意的权利。我已收到数据保护政策和同意声明的副本。”</p>
-    <p>（如适用）我确认自己对上述未成年人拥有单独监护权；或者在共同监护的情况下，我有权代表另一位法定监护人或监护父母作出同意。</p>
   </article>
 `;
 
@@ -188,13 +122,12 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "知情同意",
       title: "开始实验前请阅读并确认",
       fullDocumentHtml: CHINESE_DOCUMENT_HTML,
-      signatureNotice: "勾选全部确认项并点击“我同意并开始”即表示您同意上面的两份文件；此操作将作为您对两份文件的电子确认和电子签署，不会生成手写签名。",
+      signatureNotice: "勾选全部确认项并点击“我同意并开始”即表示您同意上面的知情同意书；此操作将作为您对该文件的电子确认和电子签署，不会生成手写签名。",
       confirmations: [
         "我确认自己自愿参加本研究。",
         "我确认自己有机会提问，并且已获得相应答复。",
         "我确认自己在研究开始前已看到本文件。",
         "我确认自己理解可以随时退出本研究。",
-        "我已阅读《根据单张室内照片感知家具的位置与朝向》项目的数据保护声明，并自愿同意收集和处理我的个人数据。我已获知随时撤回同意且无需说明理由的权利。",
       ],
       buttonLabel: "我同意并开始",
     }
@@ -202,20 +135,19 @@ export function getConsentPageCopy(locale: "en-US" | "zh-CN"): ConsentPageCopy {
       eyebrow: "Informed consent",
       title: "Read and confirm before you begin",
       fullDocumentHtml: ENGLISH_DOCUMENT_HTML,
-      signatureNotice: "Checking all confirmations below and selecting “I agree and begin” means that you consent to both documents above; this acts as your electronic confirmation and electronic signature for both documents and does not create a handwritten signature.",
+      signatureNotice: "Checking all confirmations below and selecting “I agree and begin” means that you consent to the informed consent document above; this acts as your electronic confirmation and electronic signature and does not create a handwritten signature.",
       confirmations: [
         "I confirm I volunteered to participate in this study.",
         "I confirm I was allowed to ask questions and that I was provided with responses.",
         "I confirm I was presented with this document prior to the beginning of the study.",
         "I confirm and I understood my right to quit the study at any time.",
-        "I have read the data protection statement for Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph and hereby voluntarily consent to having my personal data collected and processed as described in the statement. I have been informed of the right to withdraw my consent at any time without giving reasons.",
       ],
       buttonLabel: "I agree and begin",
     };
 }
 
 export function isConsentComplete(values: boolean[]): boolean {
-  return values.length === 5 && values.every(Boolean);
+  return values.length === 4 && values.every(Boolean);
 }
 
 export function parseProlificIdInput(value: string): string | undefined {
@@ -332,7 +264,7 @@ export function waitForExperimentConsent(options: {
           <p class="layout-task-eyebrow">${copy.eyebrow}</p>
           <h1>${copy.title}</h1>
         </header>
-        <div class="layout-task-consent-document" tabindex="0" aria-label="${chinese ? "完整知情同意和数据保护声明" : "Complete informed consent and data protection statement"}">
+        <div class="layout-task-consent-document" tabindex="0" aria-label="${chinese ? "完整知情同意书" : "Complete informed consent document"}">
           ${copy.fullDocumentHtml}
         </div>
         <div class="layout-task-consent-copy">

@@ -39,37 +39,35 @@ describe("bilingual consent configuration", () => {
     expect(chinese).toContain("£12");
   });
 
-  it("keeps the consent and data-protection documents aligned with the supplied PDFs", () => {
+  it("keeps the first informed-consent document aligned with the supplied PDFs", () => {
     const english = getConsentPageCopy("en-US");
     const chinese = getConsentPageCopy("zh-CN");
 
     expect(english.fullDocumentHtml).toContain("This study is expected to take approximately <strong>20-45 minutes</strong>");
     expect(english.fullDocumentHtml).not.toContain("typically no more than around 30 minutes");
     expect(english.fullDocumentHtml).toContain("One week after the completion of the study it might no longer be possible to retract your data");
-    expect(english.fullDocumentHtml).toContain("(1) first and last name");
     expect(english.fullDocumentHtml).not.toContain("Full name:");
-    expect(english.fullDocumentHtml).toContain("With your signature, you indicate confirmation of the following:");
+    expect(english.fullDocumentHtml).not.toContain("Data Protection Officer");
+    expect(english.fullDocumentHtml).not.toContain("With your signature, you indicate confirmation of the following:");
     expect(english.confirmations).toEqual([
       "I confirm I volunteered to participate in this study.",
       "I confirm I was allowed to ask questions and that I was provided with responses.",
       "I confirm I was presented with this document prior to the beginning of the study.",
       "I confirm and I understood my right to quit the study at any time.",
-      "I have read the data protection statement for Spatial Perception of Furniture Position and Orientation from a Single Indoor Photograph and hereby voluntarily consent to having my personal data collected and processed as described in the statement. I have been informed of the right to withdraw my consent at any time without giving reasons.",
     ]);
     expect(english.fullDocumentHtml).not.toContain("There may be no direct personal benefit from taking part");
 
     expect(chinese.fullDocumentHtml).toContain("本研究预计需要约 <strong>20-45 分钟</strong>");
     expect(chinese.fullDocumentHtml).not.toContain("通常不超过约 30 分钟");
     expect(chinese.fullDocumentHtml).toContain("研究完成一周后，您可能无法再从此类汇总分析中撤回您的数据");
-    expect(chinese.fullDocumentHtml).toContain("（1）姓名");
     expect(chinese.fullDocumentHtml).not.toContain("姓名：");
-    expect(chinese.fullDocumentHtml).toContain("您签名即表示确认以下内容");
+    expect(chinese.fullDocumentHtml).not.toContain("数据保护官");
+    expect(chinese.fullDocumentHtml).not.toContain("您签名即表示确认以下内容");
     expect(chinese.confirmations).toEqual([
       "我确认自己自愿参加本研究。",
       "我确认自己有机会提问，并且已获得相应答复。",
       "我确认自己在研究开始前已看到本文件。",
       "我确认自己理解可以随时退出本研究。",
-      "我已阅读《根据单张室内照片感知家具的位置与朝向》项目的数据保护声明，并自愿同意收集和处理我的个人数据。我已获知随时撤回同意且无需说明理由的权利。",
     ]);
   });
 

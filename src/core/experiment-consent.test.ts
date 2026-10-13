@@ -46,18 +46,16 @@ describe("experiment consent", () => {
     expect(createConsentRecord({
       locale: "en-US",
       mode: "agreed",
-      consentedAt: "2026-10-03T12:00:00.000Z",
+      consentedAt: "2026-10-13T12:00:00.000Z",
     })).toEqual({
-      consent_version: "informed-consent-2026-10-03-v1",
-      notice_version: "data-protection-2026-10-03-v1",
+      consent_version: "informed-consent-2026-10-13-v2",
       locale: "en-US",
-      consented_at: "2026-10-03T12:00:00.000Z",
+      consented_at: "2026-10-13T12:00:00.000Z",
       signature_method: "checkbox_confirmation",
       voluntary_participation_confirmed: true,
       questions_answered_confirmed: true,
       prestudy_document_confirmed: true,
       withdrawal_right_understood_confirmed: true,
-      data_protection_statement_confirmed: true,
       developer_mode: false,
     });
   });
@@ -70,17 +68,22 @@ describe("experiment consent", () => {
     }).developer_mode).toBe(true);
   });
 
-  it("requires all five consent confirmations", () => {
-    expect(isConsentComplete([true, true, true, true, false])).toBe(false);
-    expect(isConsentComplete([true, true, true, true, true])).toBe(true);
+  it("requires all four consent confirmations", () => {
+    for (let index = 0; index < 4; index++) {
+      expect(isConsentComplete([0, 1, 2, 3].map((item) => item !== index))).toBe(false);
+    }
+    expect(isConsentComplete([])).toBe(false);
+    expect(isConsentComplete([true, true, true])).toBe(false);
+    expect(isConsentComplete([true, true, true, true])).toBe(true);
+    expect(isConsentComplete([true, true, true, true, true])).toBe(false);
   });
 
   it("keeps the four consent statements equivalent in English and Chinese", () => {
     const english = getConsentPageCopy("en-US");
     const chinese = getConsentPageCopy("zh-CN");
 
-    expect(english.confirmations).toHaveLength(5);
-    expect(chinese.confirmations).toHaveLength(5);
+    expect(english.confirmations).toHaveLength(4);
+    expect(chinese.confirmations).toHaveLength(4);
     expect(english.confirmations.join(" ")).toContain("volunteered to participate");
     expect(english.confirmations.join(" ")).toContain("allowed to ask questions");
     expect(english.confirmations.join(" ")).toContain("presented with this document");
@@ -89,20 +92,23 @@ describe("experiment consent", () => {
     expect(chinese.confirmations.join(" ")).toContain("提问");
     expect(chinese.confirmations.join(" ")).toContain("研究开始前");
     expect(chinese.confirmations.join(" ")).toContain("随时退出");
-    expect(english.signatureNotice).toContain("electronic confirmation");
-    expect(chinese.signatureNotice).toContain("电子确认");
+    expect(english.signatureNotice).toContain("the informed consent document above");
+    expect(chinese.signatureNotice).toContain("上面的知情同意书");
+    expect(english.signatureNotice).not.toContain("both documents");
+    expect(chinese.signatureNotice).not.toContain("两份文件");
   });
 
-  it("provides the complete consent and data-protection document for both locales", () => {
+  it("provides the first informed-consent document for both locales", () => {
     const english = getConsentPageCopy("en-US");
     const chinese = getConsentPageCopy("zh-CN");
 
-    expect(english.confirmations).toHaveLength(5);
-    expect(chinese.confirmations).toHaveLength(5);
+    expect(english.confirmations).toHaveLength(4);
+    expect(chinese.confirmations).toHaveLength(4);
     expect(english.fullDocumentHtml).toContain("Potential risks");
-    expect(english.fullDocumentHtml).toContain("Data Protection Officer");
     expect(english.fullDocumentHtml).toContain("£4 base payment");
     expect(english.fullDocumentHtml).toContain("20-45 minutes");
+    expect(english.fullDocumentHtml).not.toContain("Data Protection Officer");
+    expect(english.fullDocumentHtml).not.toContain("Data protection policy in accordance with Art. 13 GDPR");
     expect(english.fullDocumentHtml).not.toContain("Consent confirmations");
     expect(english.fullDocumentHtml).not.toContain("Signature of researcher");
     expect(english.fullDocumentHtml).not.toContain("Email address (optional)");
@@ -111,19 +117,24 @@ describe("experiment consent", () => {
     expect(english.fullDocumentHtml).not.toContain("City, Date:");
     expect(english.fullDocumentHtml).not.toContain("consenting party");
     expect(chinese.fullDocumentHtml).toContain("潜在风险");
-    expect(chinese.fullDocumentHtml).toContain("数据保护官");
     expect(chinese.fullDocumentHtml).toContain("£4 基础奖金");
     expect(chinese.fullDocumentHtml).toContain("20-45 分钟");
+    expect(chinese.fullDocumentHtml).not.toContain("数据保护官");
+    expect(chinese.fullDocumentHtml).not.toContain("依据《通用数据保护条例》第 13 条的数据保护声明");
     expect(chinese.fullDocumentHtml).not.toContain("同意确认");
     expect(chinese.fullDocumentHtml).not.toContain("研究人员签名");
     expect(chinese.fullDocumentHtml).not.toContain("电子邮箱（可选）");
     expect(chinese.fullDocumentHtml).not.toContain("<strong>姓名：</strong> _");
     expect(chinese.fullDocumentHtml).not.toContain("地点、日期");
     expect(chinese.fullDocumentHtml).not.toContain("（同意方）");
-    expect(english.signatureNotice).toContain("both documents");
+    expect(english.signatureNotice).toContain("the informed consent document above");
     expect(english.signatureNotice).toContain("electronic signature");
-    expect(chinese.signatureNotice).toContain("两份文件");
+    expect(chinese.signatureNotice).toContain("上面的知情同意书");
     expect(chinese.signatureNotice).toContain("电子签署");
+    const source = readFileSync(new URL("./experiment-consent.ts", import.meta.url), "utf8");
+    expect(source).toContain("layout-task-participant-age");
+    expect(source).toContain("layout-task-corrective-eyewear");
+    expect(source).toContain('"完整知情同意书" : "Complete informed consent document"');
     expect(readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8"))
       .toContain(".layout-task-consent-document");
   });

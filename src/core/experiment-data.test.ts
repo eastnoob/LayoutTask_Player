@@ -10,6 +10,7 @@ import type { ReferencePresentation } from "../types/schedule";
 import { createSessionId, formatTimestampForId, getParticipantId } from "./participant-session";
 import type { PauseSummary } from "../types/result";
 import type { ConsentRecord } from "./experiment-consent";
+import { createConsentRecord } from "./experiment-consent";
 import type { ParticipantProfile } from "./experiment-consent";
 
 describe("participant/session ids", () => {
@@ -274,6 +275,41 @@ describe("experiment data export", () => {
       participant_profile: rowInput.participantProfile,
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
+  });
+
+  it.each(["v1", "v2"] as const)("exports %s consent compatibly in session CSV and JSON files", (version) => {
+    const consent = version === "v1" ? rowInput.consent! : createConsentRecord({
+      locale: "zh-CN",
+      mode: "agreed",
+      consentedAt: "2026-10-13T12:00:00.000Z",
+    });
+    const files = createExperimentCsvFiles({ ...rowInput, consent });
+    const [headers, row] = parseCsvRecords(files[0].data);
+    expect(row).toHaveLength(headers.length);
+    const values = Object.fromEntries(headers.map((header, index) => [header, row[index]]));
+
+    expect(values).toMatchObject({
+      consent_version: version === "v1" ? "informed-consent-2026-10-03-v1" : "informed-consent-2026-10-13-v2",
+      notice_version: version === "v1" ? "data-protection-2026-10-03-v1" : "",
+      data_protection_statement_confirmed: version === "v1" ? "true" : "",
+      consented_at: consent.consented_at,
+      signature_method: "checkbox_confirmation",
+      voluntary_participation_confirmed: "true",
+      questions_answered_confirmed: "true",
+      prestudy_document_confirmed: "true",
+      withdrawal_right_understood_confirmed: "true",
+      developer_mode: "false",
+      participant_age: "31",
+      requires_corrective_eyewear: "true",
+    });
+    for (const file of files.filter((file) => file.contentType === "application/json")) {
+      const exported = JSON.parse(file.data).consent;
+      expect(exported).toEqual(consent);
+      if (version === "v2") {
+        expect(exported).not.toHaveProperty("notice_version");
+        expect(exported).not.toHaveProperty("data_protection_statement_confirmed");
+      }
+    }
   });
 
   it("persists the exact completion code in every final output", () => {

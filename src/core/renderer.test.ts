@@ -467,14 +467,11 @@ describe("LayoutTaskRenderer control layout", () => {
 
   it("uses an explicit confidence save action and a concise confirm label", () => {
     const renderer = readFileSync("src/core/renderer.ts", "utf8");
-    const messages = readFileSync("src/core/messages.ts", "utf8");
 
     expect(renderer).toContain('confirmButton.textContent = "Confirm";');
     expect(renderer).toContain('saveButton.textContent = "Save";');
     expect(renderer).toContain("saveButton.disabled = true;");
     expect(renderer).toContain("confidence.onSave();");
-    expect(messages).toContain("picture is shown at the top of the page");
-    expect(messages).toContain("confidence ratings for both position and rotation");
   });
 
   it("places every control button on one circle around the object center", () => {

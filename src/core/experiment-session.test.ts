@@ -6,6 +6,7 @@ import {
 } from "./experiment-session";
 import type { ExperimentPauseSnapshot } from "./experiment-pause";
 import type { ConsentRecord } from "./experiment-consent";
+import { createConsentRecord } from "./experiment-consent";
 import type { ParticipantProfile } from "./experiment-consent";
 
 function memoryStorage(): ExperimentSessionStorage {
@@ -54,7 +55,7 @@ describe("experiment session persistence", () => {
     expect(reloaded.prolificId).toBe(" 5f2a-original ");
   });
 
-  it("persists the accepted informed-consent record with the active session", () => {
+  it("preserves the historical v1 informed-consent record with the active session", () => {
     const storage = memoryStorage();
     const consent: ConsentRecord = {
       consent_version: "informed-consent-2026-10-03-v1",
@@ -80,6 +81,27 @@ describe("experiment session persistence", () => {
 
     expect(session.consent).toEqual(consent);
     expect(reloaded.consent).toEqual(consent);
+  });
+
+  it.each(["en-US", "zh-CN"] as const)("persists and reloads v2 consent without removed-document fields in %s", (locale) => {
+    const storage = memoryStorage();
+    const consent = createConsentRecord({ locale, mode: "agreed", consentedAt: "2026-10-13T12:00:00.000Z" });
+    const session = bootstrapExperimentSession({
+      experimentId: "exp",
+      participantId: "P1",
+      consent,
+      storage,
+      createSessionId: () => "S1",
+    });
+    const reloaded = bootstrapExperimentSession({ experimentId: "exp", participantId: "P1", storage, createSessionId: () => "S2" });
+
+    expect(reloaded.sessionId).toBe("S1");
+    for (const record of [session.consent, reloaded.consent]) {
+      expect(record).toEqual(consent);
+      expect(record?.consent_version).toBe("informed-consent-2026-10-13-v2");
+      expect(record).not.toHaveProperty("notice_version");
+      expect(record).not.toHaveProperty("data_protection_statement_confirmed");
+    }
   });
 
   it("persists the pre-study participant profile with the active session", () => {

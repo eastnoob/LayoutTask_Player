@@ -248,6 +248,9 @@ describe("buildExperimentTimeline", () => {
     expect(String(chineseTimeline[2].pages[0])).toContain("最多可获得 £12");
     expect(String(chineseTimeline[2].pages[0])).toContain("正式实验期间可暂停一次，最长15分钟");
     expect(String(chineseTimeline[2].pages[0])).toContain("ftian@uni-muenster.de");
+    expect(String(chineseTimeline[2].pages[0])).toContain("通过关闭页面来退出实验");
+    expect(String(chineseTimeline[2].pages[0])).toContain("您可能因此无法获得报酬。");
+    expect(String(chineseTimeline[2].pages[0])).not.toContain("您将无法获得承诺报酬");
     expect(String(chineseTimeline[2].pages[0])).not.toContain("floorplanrestoration.deluxe999@passmail.com");
 
     expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
@@ -259,6 +262,8 @@ describe("buildExperimentTimeline", () => {
     const complete = String(english[2].pages[0]);
     expect(complete).toContain("approximately 20-45 minutes");
     expect(complete).toContain("simply close the page to withdraw");
+    expect(complete).toContain("You may not receive payment as a result of this.");
+    expect(complete).not.toContain("you will not receive the promised compensation");
     expect(complete).toContain("maximum £12 in total");
     expect(complete).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
     expect(complete).toContain("ftian@uni-muenster.de");
