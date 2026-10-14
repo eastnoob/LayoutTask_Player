@@ -7,7 +7,7 @@ export interface TutorialReferenceBoard {
 
 const HAND_ASSET_PATH = "../../experiment/layout-task/assets/icons/hand.svg";
 
-export type TutorialReferenceBoardState = Map<string, { x: number; y: number; dragged: boolean }>;
+export type TutorialReferenceBoardState = Map<string, { x: number; y: number; zoom: number; dragged: boolean }>;
 
 export function installTutorialReferenceBoardInteractions(
   root: ParentNode, frames: TutorialReferenceBoardState = new Map(),
@@ -16,22 +16,24 @@ export function installTutorialReferenceBoardInteractions(
   const cleanups = Array.from(root.querySelectorAll<HTMLElement>(".layout-task-tutorial-board-svg"), (frame) => {
     const hand = frame.querySelector<HTMLElement>(".layout-task-tutorial-board-hand");
     const label = frame.querySelector<HTMLElement>(".layout-task-tutorial-board-hand-label");
+    const image = frame.querySelector<HTMLElement>(".layout-task-tutorial-board-image");
     const key = frame.dataset.referenceFrameKey;
-    const state = (key && frames.get(key)) || { x: 0, y: 0, dragged: false };
+    const state = (key && frames.get(key)) || { x: 0, y: 0, zoom: 1, dragged: false };
     if (key) frames.set(key, state);
-    const drag = { startX: 0, startY: 0, baseX: 0, baseY: 0, active: false };
+    const drag = { x: 0, y: 0, active: false };
     const hidePrompt = (hidden: boolean) => {
       hand?.classList.toggle("is-hidden", hidden);
       label?.classList.toggle("is-hidden", hidden);
     };
     const updatePosition = () => {
-      frame.dataset.referenceDragged = "true";
-      frame.style.backgroundPosition = `calc(50% + ${state.x}px) calc(50% + ${state.y}px)`;
+      if (state.dragged) frame.dataset.referenceDragged = "true";
+      if (image) image.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
     };
-    if (state.dragged) { updatePosition(); hidePrompt(true); }
+    if (state.dragged || state.zoom !== 1) updatePosition();
+    if (state.dragged) hidePrompt(true);
     const maxPan = () => ({
-      x: Math.max(0, Math.round(frame.clientWidth * 0.25)),
-      y: Math.max(0, Math.round(frame.clientHeight * 0.25)),
+      x: Math.max(0, Math.round(frame.clientWidth * (state.zoom / 2 - 0.25))),
+      y: Math.max(0, Math.round(frame.clientHeight * (state.zoom / 2 - 0.25))),
     });
     const updatePrompt = (event: PointerEvent) => {
       if (!state.dragged) return;
@@ -47,21 +49,22 @@ export function installTutorialReferenceBoardInteractions(
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return;
       drag.active = true;
-      drag.startX = event.clientX;
-      drag.startY = event.clientY;
-      drag.baseX = state.x;
-      drag.baseY = state.y;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
       frame.classList.add("is-dragging");
       frame.setPointerCapture?.(event.pointerId);
     };
     const onPointerMove = (event: PointerEvent) => {
+      if (drag.active && (event.buttons & 1) === 0) onPointerUp(event);
       if (!drag.active) { updatePrompt(event); return; }
-      const deltaX = event.clientX - drag.startX;
-      const deltaY = event.clientY - drag.startY;
+      const deltaX = event.clientX - drag.x;
+      const deltaY = event.clientY - drag.y;
+      drag.x = event.clientX;
+      drag.y = event.clientY;
       if (deltaX === 0 && deltaY === 0) return;
       const limit = maxPan();
-      state.x = clamp(drag.baseX + deltaX, -limit.x, limit.x);
-      state.y = clamp(drag.baseY + deltaY, -limit.y, limit.y);
+      state.x = clamp(state.x + deltaX, -limit.x, limit.x);
+      state.y = clamp(state.y + deltaY, -limit.y, limit.y);
       state.dragged = true;
       updatePosition();
       hidePrompt(true);
@@ -75,17 +78,28 @@ export function installTutorialReferenceBoardInteractions(
     const onPointerLeave = () => {
       if (state.dragged) hidePrompt(true);
     };
+    const onWheel = (event: WheelEvent) => {
+      if (!drag.active) return;
+      event.preventDefault();
+      state.zoom = clamp(state.zoom + (event.deltaY < 0 ? 0.25 : event.deltaY > 0 ? -0.25 : 0), 1, 4);
+      const limit = maxPan();
+      state.x = clamp(state.x, -limit.x, limit.x);
+      state.y = clamp(state.y, -limit.y, limit.y);
+      updatePosition();
+    };
     frame.addEventListener("pointerdown", onPointerDown);
     frame.addEventListener("pointermove", onPointerMove);
     frame.addEventListener("pointerup", onPointerUp);
     frame.addEventListener("pointercancel", onPointerUp);
     frame.addEventListener("pointerleave", onPointerLeave);
+    frame.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       frame.removeEventListener("pointerdown", onPointerDown);
       frame.removeEventListener("pointermove", onPointerMove);
       frame.removeEventListener("pointerup", onPointerUp);
       frame.removeEventListener("pointercancel", onPointerUp);
       frame.removeEventListener("pointerleave", onPointerLeave);
+      frame.removeEventListener("wheel", onWheel);
     };
   });
   return () => cleanups.forEach((cleanup) => cleanup());
@@ -215,7 +229,8 @@ function buildTutorialReferenceBoardHtml(input: {
     return isAbsoluteUrl(input.baseUrl) ? url.toString() : `${url.pathname}${url.search}${url.hash}`;
   };
   const svgImage = (path: string, label: string, frameKey: string) => `
-    <div class="layout-task-tutorial-board-svg" data-reference-frame-key="${escapeHtmlAttribute(frameKey)}" role="img" aria-label="${escapeHtmlAttribute(label)}" style="background-image: ${escapeHtmlAttribute(`url(${JSON.stringify(assetUrl(path))})`)}">
+    <div class="layout-task-tutorial-board-svg" data-reference-frame-key="${escapeHtmlAttribute(frameKey)}" role="img" aria-label="${escapeHtmlAttribute(label)}">
+      <div class="layout-task-tutorial-board-image" style="background-image: ${escapeHtmlAttribute(`url(${JSON.stringify(assetUrl(path))})`)}"></div>
       <img class="layout-task-tutorial-board-hand" src="${escapeHtmlAttribute(assetUrl(HAND_ASSET_PATH))}" alt="" aria-hidden="true" draggable="false" />
       <span class="layout-task-tutorial-board-hand-label">${chinese ? "按住拖动观察" : "Click and hold to drag"}</span>
     </div>`;
@@ -258,7 +273,7 @@ function buildTutorialReferenceBoardHtml(input: {
       <div class="layout-task-tutorial-board-title">
         <span>▶</span><span>${chinese ? "参考板" : "Reference board"}</span>${input.progress ? `<span class="layout-task-tutorial-board-progress">${escapeHtmlText(input.progress)}</span>` : ""}
       </div>
-      <p class="layout-task-tutorial-board-callout">${chinese ? "观察每组家具的摆放。按住并拖动平面图可查看细节；拖动不是必做项。正式实验中，可移动家具会标记为黄色。" : "Inspect each furniture arrangement. Hold and drag either floor-plan image to inspect it; dragging is optional. In the formal experiment, movable furniture is marked in yellow."}</p>
+      <p class="layout-task-tutorial-board-callout">${chinese ? "观察每组家具的摆放。按住并拖动平面图，按住时可用滚轮缩放；拖动不是必做项。正式实验中，可移动家具会标记为黄色。" : "Inspect each furniture arrangement. Click and hold either floor plan to drag; use the wheel while holding to zoom. Dragging is optional. In the formal experiment, movable furniture is marked in yellow."}</p>
       <div class="layout-task-tutorial-board-grid${input.board.items.length === 1 ? " is-single" : ""}">${columns}</div>
     </section>
   `;

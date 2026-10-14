@@ -241,7 +241,7 @@ describe("persistent reference display", () => {
 });
 
 describe("LayoutTaskRenderer stage fit", () => {
-  it("clears the direction arrow immediately while retaining the board and practice interaction locks", () => {
+  it("shows the direction arrow after the board, then clears it immediately while retaining the practice lock", () => {
     const config = createRuntimeConfig();
     const tutorial = new TutorialController("persistent", "en-US", { referenceBoardRequired: true });
     const direction = { classList: { toggle: vi.fn() } };
@@ -258,14 +258,15 @@ describe("LayoutTaskRenderer stage fit", () => {
     vi.stubGlobal("requestAnimationFrame", vi.fn());
     try {
       tutorial.handle("reconstruction_started"); renderer.showTutorialStep(tutorial.getCurrentStep());
+      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
+      expect(acknowledge.toggleAttribute).toHaveBeenLastCalledWith("hidden", true);
+      expect(confirm.disabled).toBe(true);
+      tutorial.handle("reference_board_completed"); renderer.showTutorialStep(tutorial.getCurrentStep());
       expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", true);
       expect(acknowledge.toggleAttribute).toHaveBeenLastCalledWith("hidden", false);
       tutorial.handle("view_direction_acknowledged"); renderer.showTutorialStep(tutorial.getCurrentStep());
       expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
       expect(acknowledge.toggleAttribute).toHaveBeenLastCalledWith("hidden", true);
-      expect(confirm.disabled).toBe(true);
-      tutorial.handle("reference_board_completed"); renderer.showTutorialStep(tutorial.getCurrentStep());
-      expect(direction.classList.toggle).toHaveBeenLastCalledWith("is-visible", false);
       expect(confirm.disabled).toBe(true);
       tutorial.handle("magnifier_entered");
       tutorial.handle("magnifier_zoom_changed", { zoomBefore: 2, zoomAfter: 2.25 });
@@ -839,7 +840,7 @@ describe("LayoutTaskRenderer control layout", () => {
     return { renderer, refs, controller, windowEvent, cleanup: () => { renderer.destroy(); dom.restore(); } };
   }
 
-  it("cancels outside-plan Ctrl+wheel without changing magnifier zoom and releases the listener on teardown", () => {
+  it("uses outside-plan Ctrl+wheel for the magnifier and releases the listener on teardown", () => {
     const fixture = mountMagnifier();
     try {
       fixture.refs.magnifierButton!.click();
@@ -847,11 +848,31 @@ describe("LayoutTaskRenderer control layout", () => {
       fixture.windowEvent("wheel", { target: new TestElement("img"), ctrlKey: true, deltaY: -100,
         preventDefault, stopPropagation: vi.fn() });
       expect(preventDefault).toHaveBeenCalledOnce();
-      expect(fixture.controller.getZoom()).toBe(2);
+      expect(fixture.controller.getZoom()).toBe(2.25);
       const binding = vi.mocked(window.addEventListener).mock.calls.find(([type]) => type === "wheel")!;
       expect(binding[2]).toEqual({ capture: true, passive: false });
       fixture.renderer.destroy();
       expect(window.removeEventListener).toHaveBeenCalledWith("wheel", binding[1], true);
+    } finally { fixture.cleanup(); }
+  });
+
+  it.each(["g", "div", "img", "button"])("zooms over %s without a held button only while the magnifier is active", (tag) => {
+    const fixture = mountMagnifier();
+    const event = { target: new TestElement(tag), buttons: 0, deltaY: -100,
+      preventDefault: vi.fn(), stopPropagation: vi.fn() };
+    try {
+      fixture.windowEvent("wheel", event);
+      expect(fixture.controller.getZoom()).toBe(2);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      fixture.refs.magnifierButton!.click();
+      fixture.windowEvent("wheel", event);
+      expect(fixture.controller.getZoom()).toBe(2.25);
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      fixture.windowEvent("keydown", { key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
+      fixture.windowEvent("wheel", event);
+      expect(fixture.controller.getZoom()).toBe(2.25);
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(fixture.refs.magnifierLensElement!.hidden).toBe(true);
     } finally { fixture.cleanup(); }
   });
 
@@ -869,6 +890,19 @@ describe("LayoutTaskRenderer control layout", () => {
       expect(preventDefault).toHaveBeenCalledOnce();
       fixture.windowEvent("keydown", { key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
       expect(fixture.refs.magnifierLensElement!.hidden).toBe(true);
+    } finally { fixture.cleanup(); }
+  });
+
+  it("keeps the external hint inside the viewport without changing the pointed scene", () => {
+    const fixture = mountMagnifier();
+    try {
+      window.innerHeight = 600;
+      Object.defineProperty(fixture.refs.magnifierHintElement!, "offsetHeight", { value: 48 });
+      fixture.refs.magnifierButton!.click();
+      (fixture.refs.stageWrapElement as unknown as TestElement).dispatch("pointermove", { clientX: 400, clientY: 590 });
+      expect(fixture.refs.magnifierLensElement!.style.top).toBe("324px");
+      expect(fixture.refs.magnifierSceneElement!.style.getPropertyValue?.("--magnifier-scene-top")
+        ?? (fixture.refs.magnifierSceneElement!.style as unknown as Record<string, string>)["--magnifier-scene-top"]).toBe("-1070px");
     } finally { fixture.cleanup(); }
   });
 

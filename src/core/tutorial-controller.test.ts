@@ -11,8 +11,8 @@ function fixture(locale: "en-US" | "zh-CN" = "en-US", mode: "persistent" | "prev
   const observe = () => {
     if (mode === "preview_10s") tutorial.handle("preview_acknowledged");
     tutorial.handle("reconstruction_started");
-    tutorial.handle("view_direction_acknowledged");
     tutorial.handle("reference_board_completed");
+    tutorial.handle("view_direction_acknowledged");
   };
   const magnify = () => {
     tutorial.handle("magnifier_entered");
@@ -40,13 +40,15 @@ describe("TutorialController confirmed gates", () => {
       expect(tutorial.getCurrentStep().id).toBe("preview");
     }
     tutorial.handle("reconstruction_started");
-    expect(tutorial.getCurrentStep().id).toBe("view_direction");
-    expect(tutorial.isInteractionBlocked()).toBe(true);
-    tutorial.handle("view_direction_acknowledged");
     expect(tutorial.getCurrentStep().id).toBe("reference_board");
     expect(tutorial.isInteractionBlocked()).toBe(true);
     expect(tutorial.handle("magnifier_entered")).toBe(false);
+    expect(tutorial.handle("view_direction_acknowledged")).toBe(false);
     tutorial.handle("reference_board_completed");
+    expect(tutorial.getCurrentStep().id).toBe("view_direction");
+    expect(tutorial.isInteractionBlocked()).toBe(true);
+    expect(tutorial.handle("magnifier_entered")).toBe(false);
+    tutorial.handle("view_direction_acknowledged");
     expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
     expect(tutorial.isInteractionBlocked()).toBe(true);
     magnify();
@@ -160,6 +162,8 @@ describe("TutorialController confirmed gates", () => {
     });
 
     tutorial.handle("reconstruction_started");
+    expect(tutorial.getCurrentStep().id).toBe("reference_board");
+    tutorial.handle("reference_board_completed");
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Confirm the viewing direction shown by the yellow arrow." : "确认黄色箭头所示的观察方向。"),
       message: english
@@ -168,7 +172,6 @@ describe("TutorialController confirmed gates", () => {
     });
 
     tutorial.handle("view_direction_acknowledged");
-    tutorial.handle("reference_board_completed");
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Open the magnifier, change its zoom with the wheel, then press ESC to exit." : "打开放大镜，滚轮调节倍率，再按 ESC 退出。"),
       message: english
@@ -229,5 +232,14 @@ describe("TutorialController confirmed gates", () => {
       task: taskPrefix + (english ? "Tutorial complete." : "教程完成。"),
       message: english ? "Tutorial complete." : "教程完成。",
     });
+  });
+
+  it.each(["persistent", "preview_10s"] as const)("keeps the direction step when no reference board is configured (%s)", (mode) => {
+    const tutorial = new TutorialController(mode);
+    if (mode === "preview_10s") tutorial.handle("preview_acknowledged");
+    tutorial.handle("reconstruction_started");
+    expect(tutorial.getCurrentStep().id).toBe("view_direction");
+    tutorial.handle("view_direction_acknowledged");
+    expect(tutorial.getCurrentStep().id).toBe("magnifier_practice");
   });
 });

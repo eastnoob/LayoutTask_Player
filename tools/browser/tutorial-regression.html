@@ -29,7 +29,7 @@
         })[index];
         stopBoardInteractions = installTutorialReferenceBoardInteractions(document.querySelector("#board"), referenceFrames);
         const images = Array.from(document.querySelectorAll("#board img"));
-        for (const element of document.querySelectorAll("#board .layout-task-tutorial-board-svg")) {
+        for (const element of document.querySelectorAll("#board .layout-task-tutorial-board-image")) {
           const image = new Image();
           image.src = JSON.parse(element.style.backgroundImage.slice(4, -1));
           images.push(image);
@@ -47,7 +47,7 @@
 
       window.checkBoardFit = () => {
         for (const media of document.querySelectorAll(".layout-task-tutorial-board-svg")) {
-          const style = getComputedStyle(media);
+          const style = getComputedStyle(media.querySelector(".layout-task-tutorial-board-image"));
           assert(style.backgroundImage !== "none", "SVG must use the Safari-compatible background rendering path");
           assert(style.backgroundSize === "contain", "SVG must fit without cropping");
           assert(style.backgroundPosition === "50% 50%", "SVG must be centered");
@@ -89,13 +89,17 @@
             if (referenceMode === "preview_10s") tutorial.handle("preview_acknowledged");
             tutorial.handle("reconstruction_started");
             renderer.showTutorialStep(tutorial.getCurrentStep());
+            assert(tutorial.getCurrentStep().id === "reference_board", "Furniture must be shown before the direction arrow");
+            assert(!visible(), "Arrow must remain hidden during the reference board");
+            tutorial.handle("reference_board_completed");
+            renderer.showTutorialStep(tutorial.getCurrentStep());
             assert(visible(), "Arrow must appear in viewing-direction guidance");
             assert(renderer.refs.confirmButton.disabled, "Task submit must be disabled before acknowledgment");
             renderer.refs.tutorialBubbleButtonElement.click();
-            assert(tutorial.getCurrentStep().id === "reference_board", "OK must advance to the required reference board");
+            assert(tutorial.getCurrentStep().id === "magnifier_practice", "OK must advance to the required magnifier practice");
             assert(!visible(), "Arrow must disappear immediately after OK");
             assert(getComputedStyle(renderer.refs.tutorialViewingDirectionElement).opacity === "0", "Arrow must disappear without a fade-out delay");
-            assert(renderer.refs.confirmButton.disabled, "Reference-board practice must keep task submission disabled");
+            assert(renderer.refs.confirmButton.disabled, "Magnifier practice must keep task submission disabled");
             results.push({ referenceMode, locale, nextStep: tutorial.getCurrentStep().id });
           }
         }

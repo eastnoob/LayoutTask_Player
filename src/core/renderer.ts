@@ -707,8 +707,8 @@ export class LayoutTaskRenderer {
     const hint = document.createElement("div");
     hint.className = "layout-task-magnifier-hint";
     hint.textContent = this.options.locale === "zh-CN"
-      ? "倍率 2×（最小 1.5×，最大 4×） · 按 ESC 退出放大镜"
-      : "2× (min 1.5×, max 4×) · Press ESC to exit";
+      ? "倍率 2×（最小 1.5×，最大 4×）\n按 ESC 退出放大镜"
+      : "2× (min 1.5×, max 4×)\nPress ESC to exit";
     lens.append(scene, hint);
     this.refs.magnifierSceneElement = scene;
     this.refs.magnifierHintElement = hint;
@@ -740,9 +740,6 @@ export class LayoutTaskRenderer {
     }
     event.preventDefault();
     event.stopPropagation();
-    if (!event.target || !this.refs.svg?.contains(event.target as Node)) {
-      return;
-    }
     const direction = event.deltaY < 0 ? 1 : event.deltaY > 0 ? -1 : 0;
     const change = this.options.magnifier.onWheel(direction);
     if (change) {
@@ -800,8 +797,8 @@ export class LayoutTaskRenderer {
       return;
     }
     this.refs.magnifierHintElement.textContent = this.options.locale === "zh-CN"
-      ? `倍率 ${zoom}×（最小 1.5×，最大 4×） · 按 ESC 退出放大镜`
-      : `${zoom}× (min 1.5×, max 4×) · Press ESC to exit`;
+      ? `倍率 ${zoom}×（最小 1.5×，最大 4×）\n按 ESC 退出放大镜`
+      : `${zoom}× (min 1.5×, max 4×)\nPress ESC to exit`;
   }
 
   private positionMagnifierLens(clientX: number, clientY: number): void {
@@ -819,9 +816,11 @@ export class LayoutTaskRenderer {
       top: containerRect.top + (stage.clientTop ?? 0),
     });
     lens.style.left = `${geometry.left}px`;
-    lens.style.top = `${geometry.top}px`;
     lens.style.width = `${geometry.lensSize}px`;
     lens.style.height = `${geometry.lensSize}px`;
+    const stageTop = containerRect.top + (stage.clientTop ?? 0);
+    const maxTop = Math.max(0, window.innerHeight - geometry.lensSize - (this.refs.magnifierHintElement?.offsetHeight ?? 0) - 8);
+    lens.style.top = `${Math.max(0, Math.min(maxTop, geometry.top + stageTop)) - stageTop}px`;
     const scene = this.refs.magnifierSceneElement;
     scene?.style.setProperty("--magnifier-scene-left", `${geometry.sceneLeft}px`);
     scene?.style.setProperty("--magnifier-scene-top", `${geometry.sceneTop}px`);

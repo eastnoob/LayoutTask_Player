@@ -378,7 +378,7 @@ body {
   z-index: 5;
   width: 220px;
   height: 220px;
-  overflow: hidden;
+  overflow: visible;
   border: 0;
   border-radius: 50%;
   background: #ffffff;
@@ -400,6 +400,7 @@ body {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  border-radius: inherit;
   pointer-events: none;
 }
 
@@ -417,16 +418,18 @@ body {
   position: absolute;
   z-index: 3;
   left: 50%;
-  bottom: 8px;
+  top: calc(100% + 8px);
   width: max-content;
-  max-width: 196px;
+  max-width: 100%;
   transform: translateX(-50%);
-  padding: 3px 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.9);
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
   color: #0f172a;
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-line;
   text-align: center;
 }
 
@@ -1414,11 +1417,17 @@ body {
 /* Older WebKit clips percentage-sized SVGs in <img> even with object-fit: contain. */
 .layout-task-tutorial-board-svg {
   position: relative;
+  cursor: grab;
+  touch-action: none;
+}
+
+.layout-task-tutorial-board-image {
+  position: absolute;
+  inset: 0;
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
-  cursor: grab;
-  touch-action: none;
+  pointer-events: none;
 }
 
 .layout-task-tutorial-board-svg.is-dragging {

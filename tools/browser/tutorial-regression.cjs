@@ -54,11 +54,11 @@ const { guardLocalContext, assertCleanNetwork, runEntryAcceptance } = require('.
     assert.equal(await firstFrame.getAttribute('data-reference-dragged'), 'true', 'Real drag must mark only the first frame');
     assert.equal(await secondFrame.getAttribute('data-reference-dragged'), null, 'Dragging one frame must not mark the other');
     assert.equal(await firstFrame.locator('.layout-task-tutorial-board-hand').evaluate(element => element.classList.contains('is-hidden')), true, 'Real drag must hide the hand prompt');
-    const position = await firstFrame.evaluate(element => element.style.backgroundPosition);
+    const position = await firstFrame.locator('.layout-task-tutorial-board-image').evaluate(element => element.style.transform);
     await page.evaluate(() => window.showBoard(2));
     await page.evaluate(() => window.showBoard(3));
     assert.equal(await firstFrame.getAttribute('data-reference-dragged'), 'true', 'Revisited frame must retain dragged state');
-    assert.equal(await firstFrame.evaluate(element => element.style.backgroundPosition), position, 'Revisited frame must retain pan position');
+    assert.equal(await firstFrame.locator('.layout-task-tutorial-board-image').evaluate(element => element.style.transform), position, 'Revisited frame must retain pan position');
     assert.equal(await secondFrame.getAttribute('data-reference-dragged'), null, 'Revisit must preserve frame independence');
     await page.mouse.move(firstCenter.x, firstCenter.y);
     assert.equal(await firstFrame.locator('.layout-task-tutorial-board-hand').evaluate(element => element.classList.contains('is-hidden')), false, 'Central hover must restore the hand prompt');
@@ -69,7 +69,7 @@ const { guardLocalContext, assertCleanNetwork, runEntryAcceptance } = require('.
         await Promise.all(elements.map(element => {
           const image = document.createElement('img');
           image.className = element.className;
-          image.src = JSON.parse(element.style.backgroundImage.slice(4, -1));
+          image.src = JSON.parse(element.querySelector('.layout-task-tutorial-board-image').style.backgroundImage.slice(4, -1));
           element.replaceWith(image);
           return image.decode();
         }));

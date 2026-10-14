@@ -190,29 +190,19 @@ async function runEntryAcceptance(browser, options) {
     });
     if (!profileOnly) {
       await page.locator('#jspsych-instructions-next').click();
-      await anchor('viewport-tools');
-      await check('direction gate blocks editing and submission', async () => {
-        assert(await stage.locator('.layout-task-tutorial-viewing-direction').evaluate(e => e.classList.contains('is-visible')));
-        assert(await confirm.isDisabled());
-        const editable = stage.locator('.layout-task-object[role="button"]').first();
-        await editable.click();
-        assert.deepEqual(await activeIds(), []);
-        assert.match(await bubble.innerText(), chinese ? /观察方向/ : /viewing direction/);
-        await shot('direction');
-        await page.locator('.layout-task-tutorial-button').click();
-        assert.equal(await stage.locator('.layout-task-tutorial-viewing-direction').evaluate(e => getComputedStyle(e).opacity), '0');
-      });
       for (let index = 0; index < 4; index++) {
-        await check(`reference page ${index + 1}: real read gate and independent drags`, async () => {
+        await check(`reference page ${index + 1}: before direction, real read gate, independent drag and held-wheel zoom`, async () => {
           const frames = page.locator('.layout-task-reference-board-mounted .layout-task-tutorial-board-svg');
           await frames.first().waitFor();
           assert.equal(await frames.count(), 2);
+          assert.equal(await stage.locator('.layout-task-tutorial-viewing-direction').evaluate(e => e.classList.contains('is-visible')), false);
           assert.equal(await page.locator('.layout-task-tutorial-board-progress').innerText(), `${index + 1} / 4`);
           const next = page.locator('#jspsych-instructions-next');
           assert(await next.isDisabled());
           const startedAt = Date.now();
           for (let frameIndex = 0; frameIndex < 2; frameIndex++) {
             const frame = frames.nth(frameIndex);
+            const drawing = frame.locator('.layout-task-tutorial-board-image');
             const box = await frame.boundingBox();
             assert(box);
             const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -223,9 +213,19 @@ async function runEntryAcceptance(browser, options) {
             await page.mouse.move(center.x + 8, center.y + 5, { steps: 3 });
             assert(await frame.locator('.layout-task-tutorial-board-hand').evaluate(e => e.classList.contains('is-hidden')), 'Short central drag must hide its hand while held');
             assert(await frame.locator('.layout-task-tutorial-board-hand-label').evaluate(e => e.classList.contains('is-hidden')));
+            await page.mouse.wheel(0, -100);
+            await page.waitForFunction(image => new DOMMatrix(getComputedStyle(image).transform).a === 1.25, await drawing.elementHandle());
+            await page.mouse.move(center.x + 10, center.y + 6);
+            const heldTransform = await drawing.evaluate(e => e.style.transform);
             await page.mouse.up();
+            await page.mouse.wheel(0, -100);
+            await page.screenshot();
+            assert.equal(await drawing.evaluate(e => e.style.transform), heldTransform, 'Released wheel must not zoom the reference frame');
             assert.equal(await frame.getAttribute('data-reference-dragged'), 'true');
-            if (frameIndex === 0) assert.equal(await frames.nth(1).getAttribute('data-reference-dragged'), null);
+            if (frameIndex === 0) {
+              assert.equal(await frames.nth(1).getAttribute('data-reference-dragged'), null);
+              assert.equal(await frames.nth(1).locator('.layout-task-tutorial-board-image').evaluate(e => e.style.transform), '', 'Frame zoom must be independent');
+            }
             await page.mouse.move(box.x + box.width * .92, box.y + box.height * .92);
             assert(await frame.locator('.layout-task-tutorial-board-hand').evaluate(e => e.classList.contains('is-hidden')));
             await page.mouse.move(center.x, center.y);
@@ -238,6 +238,18 @@ async function runEntryAcceptance(browser, options) {
         });
       }
       await anchor('viewport-tools');
+      await check('direction appears after all four furniture pages and clears after confirmation', async () => {
+        assert(await stage.locator('.layout-task-tutorial-viewing-direction').evaluate(e => e.classList.contains('is-visible')));
+        assert(await confirm.isDisabled());
+        const editable = stage.locator('.layout-task-object[role="button"]').first();
+        await editable.click();
+        assert.deepEqual(await activeIds(), []);
+        assert.match(await bubble.innerText(), chinese ? /观察方向/ : /viewing direction/);
+        await shot('direction');
+        await page.locator('.layout-task-tutorial-button').click();
+        assert.equal(await stage.locator('.layout-task-tutorial-viewing-direction').evaluate(e => getComputedStyle(e).opacity), '0');
+        assert.match(await bubble.innerText(), chinese ? /滚轮调节倍率/ : /change its zoom with the wheel/);
+      });
       const magnifier = page.locator('.layout-task-magnifier-button');
       const lens = page.locator('.layout-task-magnifier-lens');
       const ids = await stage.locator('.layout-task-object[role="button"]').evaluateAll(elements => elements.map(e => e.parentElement.dataset.objectId));
@@ -252,6 +264,18 @@ async function runEntryAcceptance(browser, options) {
         await moveWithinStage();
         assert(await lens.isVisible());
         assert.match(await page.locator('.layout-task-magnifier-hint').innerText(), /ESC/);
+        const checkHint = async () => {
+          const lensBox = await lens.boundingBox();
+          const hint = page.locator('.layout-task-magnifier-hint');
+          const hintBox = await hint.boundingBox();
+          assert(lensBox && hintBox && hintBox.y >= lensBox.y + lensBox.height + 7, 'Magnifier information must be below the circular lens');
+          assert(hintBox.x >= 0 && hintBox.x + hintBox.width <= viewport.width, 'Magnifier information must fit horizontally');
+          assert(hintBox.y >= 0 && hintBox.y + hintBox.height <= viewport.height, 'Magnifier information must fit vertically');
+          assert.equal(await hint.evaluate(e => e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth), true, 'Magnifier information must not clip its text');
+          assert.equal(await lens.evaluate(e => getComputedStyle(e).overflow), 'visible', 'Lens must not clip the external information');
+          assert.equal(await page.locator('.layout-task-magnifier-scene').evaluate(e => getComputedStyle(e).borderRadius), '50%', 'Magnified scene must retain its circular clip');
+        };
+        await checkHint();
         const before = await transforms();
         const blockedObjectBox = await object(ids[0]).boundingBox();
         assert(blockedObjectBox, 'Magnifier test object must be rendered');
@@ -266,10 +290,35 @@ async function runEntryAcceptance(browser, options) {
         assert.deepEqual(await transforms(), before);
         assert.deepEqual(await activeIds(), []);
         assert(await page.locator('[data-layout-task-pause]:visible').isDisabled());
+        for (const [name, target] of [
+          ['SVG furniture', object(ids[0])],
+          ['perspective image', page.locator('.layout-task-display-image')],
+          ['tutorial bubble', bubble],
+          ['magnifier button', magnifier],
+        ]) {
+          await target.scrollIntoViewIfNeeded();
+          const targetBox = await target.boundingBox();
+          assert(targetBox, `${name} must be visible for wheel testing`);
+          await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2);
+          await page.mouse.up();
+          const scrollBefore = await page.evaluate(() => window.scrollY);
+          await page.mouse.wheel(0, -100);
+          await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 2.25);
+          assert.equal(await page.evaluate(() => window.scrollY), scrollBefore, `Wheel over ${name} must zoom, not scroll the page`);
+          await page.mouse.wheel(0, 100);
+          await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 2);
+        }
+        await page.mouse.move(2, 2);
+        await page.mouse.wheel(0, -100);
+        await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 2.25);
+        await page.mouse.wheel(0, 100);
+        await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 2);
+        await stage.scrollIntoViewIfNeeded();
         await moveWithinStage();
         for (let index = 0; index < 10; index++) await page.mouse.wheel(0, -100);
         await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 4);
         assert.equal(await zoom(), 4);
+        await checkHint();
         await shot('magnifier-max');
         for (let index = 0; index < 12; index++) await page.mouse.wheel(0, 100);
         await page.waitForFunction(() => Number(document.querySelector('.layout-task-magnifier-scene').style.getPropertyValue('--magnifier-zoom')) === 1.5);
@@ -278,6 +327,15 @@ async function runEntryAcceptance(browser, options) {
         await page.mouse.move(box.x + 2, box.y + 2);
         const edge = await lens.boundingBox();
         assert(edge.x >= box.x - 2 && edge.y >= box.y - 2, 'Lens must remain clamped at canvas edges');
+        await checkHint();
+        await page.evaluate(() => {
+          const rect = document.querySelector('.layout-task-stage-wrap > svg').getBoundingClientRect();
+          window.scrollBy(0, rect.bottom - window.innerHeight);
+        });
+        const bottomBox = await stage.boundingBox();
+        await page.mouse.move(bottomBox.x + bottomBox.width / 2, bottomBox.y + bottomBox.height - 2);
+        await checkHint();
+        await shot('magnifier-bottom-edge');
         await page.mouse.move(2, 2);
         assert.equal(await magnifier.getAttribute('aria-pressed'), 'true', 'Leaving canvas does not exit magnifier');
         await shot('magnifier-min-edge');

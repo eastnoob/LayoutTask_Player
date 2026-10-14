@@ -7,6 +7,7 @@ import {
   buildTutorialReferenceBoardPages,
   installTutorialReferenceBoardInteractions,
   mountTutorialReferenceBoard,
+  type TutorialReferenceBoardState,
 } from "./tutorial-reference-board";
 import type { ExperimentTutorialReferenceBoardConfig } from "../types/experiment";
 import { buildExperimentTimeline } from "../experiment-runner";
@@ -101,7 +102,8 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(html).not.toContain("Bedside Tables");
     expect(html).toContain("Reference board");
     expect(html).toContain("Inspect each furniture arrangement");
-    expect(html).toContain("dragging is optional");
+    expect(html).toContain("Dragging is optional");
+    expect(html).toContain("use the wheel while holding to zoom");
     expect(html).toContain("movable furniture is marked in yellow");
     expect(html).not.toContain("relation.svg");
     expect(html).not.toContain("<h1");
@@ -139,14 +141,78 @@ describe("buildTutorialReferenceBoardPage", () => {
     first.dispatch("pointermove", { pointerId: 1, clientX: 1_000, clientY: 1_000 });
     first.dispatch("pointerup", { pointerId: 1, clientX: 1_000, clientY: 1_000 });
 
-    expect(first.style.backgroundPosition).toBe("calc(50% + 25px) calc(50% + 20px)");
+    expect(first.image.style.transform).toBe("translate(25px, 20px) scale(1)");
     expect(first.dataset.referenceDragged).toBe("true");
     expect(first.hand.classList.contains("is-hidden")).toBe(true);
-    expect(second.style.backgroundPosition).toBe("");
+    expect(second.image.style.transform).toBe("");
     expect(second.dataset.referenceDragged).toBeUndefined();
 
     first.dispatch("pointermove", { pointerId: 1, clientX: 50, clientY: 40 });
     expect(first.hand.classList.contains("is-hidden")).toBe(false);
+  });
+
+  it("zooms only while held, clamps zoom and pan, and continues dragging without a jump", () => {
+    const frame = new DragFrame("m01:all");
+    const other = new DragFrame("m01:variable");
+    const frames: TutorialReferenceBoardState = new Map();
+    const stop = installTutorialReferenceBoardInteractions({ querySelectorAll: () => [frame, other] } as unknown as ParentNode, frames);
+    const wheel = (deltaY: number) => {
+      const event = { deltaY, preventDefault: vi.fn() };
+      frame.listeners.get("wheel")?.(event as never);
+      return event.preventDefault;
+    };
+    try {
+      expect(wheel(-100)).not.toHaveBeenCalled();
+      frame.dispatch("pointerdown", { button: 0, pointerId: 1, clientX: 50, clientY: 40 });
+      expect(wheel(-100)).toHaveBeenCalledOnce();
+      expect(frames.get("m01:all")).toMatchObject({ zoom: 1.25, dragged: false });
+      for (let i = 0; i < 20; i++) wheel(-100);
+      expect(frames.get("m01:all")?.zoom).toBe(4);
+      frame.dispatch("pointermove", { pointerId: 1, clientX: 150, clientY: 120 });
+      for (let i = 0; i < 20; i++) wheel(100);
+      expect(frames.get("m01:all")).toEqual({ x: 25, y: 20, zoom: 1, dragged: true });
+      frame.dispatch("pointermove", { pointerId: 1, clientX: 145, clientY: 115 });
+      expect(frames.get("m01:all")).toMatchObject({ x: 20, y: 15 });
+      frame.dispatch("pointerup", { pointerId: 1 });
+      expect(wheel(-100)).not.toHaveBeenCalled();
+      frame.dispatch("pointerdown", { button: 0, pointerId: 2, clientX: 50, clientY: 40 });
+      frame.dispatch("pointercancel", { pointerId: 2 });
+      expect(wheel(-100)).not.toHaveBeenCalled();
+      expect(frames.get("m01:variable")).toEqual({ x: 0, y: 0, zoom: 1, dragged: false });
+    } finally { stop(); }
+    expect(frame.listeners.size).toBe(0);
+  });
+
+  it("restores each frame's zoom together with its position on a revisit", () => {
+    const frames: TutorialReferenceBoardState = new Map();
+    const first = new DragFrame("m01:all");
+    const stop = installTutorialReferenceBoardInteractions({ querySelectorAll: () => [first] } as unknown as ParentNode, frames);
+    drag(first, 15, 10);
+    first.dispatch("pointerdown", { button: 0, pointerId: 1, clientX: 50, clientY: 40 });
+    first.listeners.get("wheel")?.({ deltaY: -100, preventDefault: vi.fn() } as never);
+    first.dispatch("pointerup", { pointerId: 1 });
+    stop();
+    const restored = new DragFrame("m01:all");
+    const clean = installTutorialReferenceBoardInteractions({ querySelectorAll: () => [restored] } as unknown as ParentNode, frames);
+    try {
+      expect(restored.image.style.transform).toBe("translate(15px, 10px) scale(1.25)");
+      expect(restored.hand.classList.contains("is-hidden")).toBe(true);
+    } finally { clean(); }
+  });
+
+  it("stops held-wheel zoom when left is released while right remains pressed", () => {
+    const frame = new DragFrame("m01:all");
+    const frames: TutorialReferenceBoardState = new Map();
+    const stop = installTutorialReferenceBoardInteractions({ querySelectorAll: () => [frame] } as unknown as ParentNode, frames);
+    try {
+      frame.dispatch("pointerdown", { button: 0, buttons: 1, pointerId: 1, clientX: 50, clientY: 40 });
+      frame.dispatch("pointermove", { buttons: 2, pointerId: 1, clientX: 50, clientY: 40 });
+      const preventDefault = vi.fn();
+      frame.listeners.get("wheel")?.({ deltaY: -100, preventDefault } as never);
+      expect(frames.get("m01:all")?.zoom).toBe(1);
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(frame.classList.contains("is-dragging")).toBe(false);
+    } finally { stop(); }
   });
 
   it("restores each frame on a mounted page revisit and resets on a new board", () => {
@@ -167,15 +233,15 @@ describe("buildTutorialReferenceBoardPage", () => {
       expect(otherPage[0].dataset.referenceDragged).toBeUndefined();
       vi.advanceTimersByTime(5_000); button.click();
       const [restoredAll, restoredVariable] = content.frames;
-      expect(restoredAll.style.backgroundPosition).toBe("calc(50% + 20px) calc(50% + 10px)");
-      expect(restoredVariable.style.backgroundPosition).toBe("calc(50% + -10px) calc(50% + -5px)");
+      expect(restoredAll.image.style.transform).toBe("translate(20px, 10px) scale(1)");
+      expect(restoredVariable.image.style.transform).toBe("translate(-10px, -5px) scale(1)");
       expect(restoredAll.dataset.referenceDragged).toBe("true");
       expect(restoredVariable.dataset.referenceDragged).toBe("true");
       expect(restoredAll.hand.classList.contains("is-hidden")).toBe(true);
       expect(restoredAll.label.classList.contains("is-hidden")).toBe(true);
       drag(restoredAll, 5, 0);
-      expect(restoredAll.style.backgroundPosition).toBe("calc(50% + 25px) calc(50% + 10px)");
-      expect(restoredVariable.style.backgroundPosition).toBe("calc(50% + -10px) calc(50% + -5px)");
+      expect(restoredAll.image.style.transform).toBe("translate(25px, 10px) scale(1)");
+      expect(restoredVariable.image.style.transform).toBe("translate(-10px, -5px) scale(1)");
       mounted.destroy();
       for (const frame of [all, variable, ...otherPage, restoredAll, restoredVariable]) {
         expect(frame.listeners.size).toBe(0);
@@ -185,7 +251,7 @@ describe("buildTutorialReferenceBoardPage", () => {
       const fresh = mountTutorialReferenceBoard(input);
       try {
         const freshAll = root.children[0].children[0].frames[0];
-        expect(freshAll.style.backgroundPosition).toBe("");
+        expect(freshAll.image.style.transform).toBe("");
         expect(freshAll.dataset.referenceDragged).toBeUndefined();
         expect(freshAll.hand.classList.contains("is-hidden")).toBe(false);
         expect(freshAll.label.classList.contains("is-hidden")).toBe(false);
@@ -220,15 +286,15 @@ describe("buildTutorialReferenceBoardPage", () => {
       drag(all, 20, 10);
       drag(variable, -10, -5);
       const remounted = load(0);
-      expect(remounted[0].style.backgroundPosition).toBe("calc(50% + 20px) calc(50% + 10px)");
-      expect(remounted[1].style.backgroundPosition).toBe("calc(50% + -10px) calc(50% + -5px)");
+      expect(remounted[0].image.style.transform).toBe("translate(20px, 10px) scale(1)");
+      expect(remounted[1].image.style.transform).toBe("translate(-10px, -5px) scale(1)");
       trials[0].on_finish?.();
       const otherPage = load(1);
       expect(otherPage[0].dataset.referenceDragged).toBeUndefined();
       trials[1].on_finish?.();
       const [restoredAll, restoredVariable] = load(2);
-      expect(restoredAll.style.backgroundPosition).toBe("calc(50% + 20px) calc(50% + 10px)");
-      expect(restoredVariable.style.backgroundPosition).toBe("calc(50% + -10px) calc(50% + -5px)");
+      expect(restoredAll.image.style.transform).toBe("translate(20px, 10px) scale(1)");
+      expect(restoredVariable.image.style.transform).toBe("translate(-10px, -5px) scale(1)");
       expect(restoredAll.dataset.referenceDragged).toBe("true");
       expect(restoredAll.hand.classList.contains("is-hidden")).toBe(true);
       expect(restoredAll.label.classList.contains("is-hidden")).toBe(true);
@@ -238,7 +304,7 @@ describe("buildTutorialReferenceBoardPage", () => {
       }
       expect(vi.getTimerCount()).toBe(0);
       const [freshAll] = load(0);
-      expect(freshAll.style.backgroundPosition).toBe("");
+      expect(freshAll.image.style.transform).toBe("");
       expect(freshAll.dataset.referenceDragged).toBeUndefined();
       trials[0].on_finish?.();
     } finally { vi.unstubAllGlobals(); vi.useRealTimers(); }
@@ -250,7 +316,7 @@ describe("buildTutorialReferenceBoardPage", () => {
     try {
       frame.dispatch("pointerdown", { button: 0, pointerId: 1, clientX: 50, clientY: 40 });
       frame.dispatch("pointermove", { pointerId: 1, clientX: 55, clientY: 40 });
-      expect(frame.style.backgroundPosition).toBe("calc(50% + 5px) calc(50% + 0px)");
+      expect(frame.image.style.transform).toBe("translate(5px, 0px) scale(1)");
       expect(frame.hand.classList.contains("is-hidden")).toBe(true);
       expect(frame.label.classList.contains("is-hidden")).toBe(true);
       frame.dispatch("pointermove", { pointerId: 1, clientX: 56, clientY: 40 });
@@ -273,7 +339,7 @@ describe("buildTutorialReferenceBoardPage", () => {
       frame.dispatch("pointerdown", { button: 0, pointerId: 1, clientX: 50, clientY: 40 });
       frame.dispatch("pointermove", { pointerId: 1, clientX: 50, clientY: 40 });
       frame.dispatch("pointerup", { pointerId: 1, clientX: 50, clientY: 40 });
-      expect(frame.style.backgroundPosition).toBe("");
+      expect(frame.image.style.transform).toBe("");
       expect(frame.dataset.referenceDragged).toBeUndefined();
       expect(frame.hand.classList.contains("is-hidden")).toBe(false);
       expect(frame.label.classList.contains("is-hidden")).toBe(false);
@@ -315,6 +381,7 @@ describe("buildTutorialReferenceBoardPage", () => {
     expect(html).toContain("参考板");
     expect(html).toContain("观察每组家具的摆放");
     expect(html).toContain("拖动不是必做项");
+    expect(html).toContain("按住时可用滚轮缩放");
     expect(html).not.toContain("必须点击每一个黄色物体一次");
     expect(html).not.toContain("Study these default furniture arrangements carefully");
   });
@@ -392,7 +459,7 @@ class BoardElement {
 
 class DragFrame {
   readonly dataset: Record<string, string> = {};
-  readonly style = { backgroundPosition: "" };
+  readonly image = { style: { transform: "" } };
   readonly classList = new FakeClassList();
   readonly hand = { classList: new FakeClassList() };
   readonly label = { classList: new FakeClassList() };
@@ -402,6 +469,7 @@ class DragFrame {
 
   constructor(key?: string) { if (key) this.dataset.referenceFrameKey = key; }
   querySelector(selector: string) {
+    if (selector === ".layout-task-tutorial-board-image") return this.image;
     if (selector === ".layout-task-tutorial-board-hand") return this.hand;
     if (selector === ".layout-task-tutorial-board-hand-label") return this.label;
     return null;
@@ -412,7 +480,9 @@ class DragFrame {
   }
   setPointerCapture() {}
   releasePointerCapture() {}
-  dispatch(type: string, event: Record<string, number>) { this.listeners.get(type)?.(event); }
+  dispatch(type: string, event: Record<string, number>) {
+    this.listeners.get(type)?.({ buttons: type === "pointerup" || type === "pointercancel" ? 0 : 1, ...event });
+  }
 }
 
 function drag(frame: DragFrame, x: number, y: number) {

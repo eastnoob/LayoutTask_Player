@@ -137,13 +137,16 @@ export class TutorialController {
     }
     if (this.magnifierActive || this.pauseState === "confirming" || this.pauseState === "paused") return false;
     if (this.step === "intro" && event === this.getCurrentStep().expectedEvent) {
-      this.step = this.referenceMode === "persistent" ? "view_direction" : "preview"; return true;
+      this.step = this.referenceMode === "persistent"
+        ? (this.facts.referenceBoardRequired ? "reference_board" : "view_direction") : "preview"; return true;
     }
-    if (this.step === "preview" && event === "reconstruction_started") { this.step = "view_direction"; return true; }
+    if (this.step === "preview" && event === "reconstruction_started") {
+      this.step = this.facts.referenceBoardRequired ? "reference_board" : "view_direction"; return true;
+    }
+    if (this.step === "reference_board" && event === "reference_board_completed") { this.step = "view_direction"; return true; }
     if (this.step === "view_direction" && event === "view_direction_acknowledged") {
-      this.step = this.facts.referenceBoardRequired ? "reference_board" : "magnifier_practice"; return true;
+      this.step = "magnifier_practice"; return true;
     }
-    if (this.step === "reference_board" && event === "reference_board_completed") { this.step = "magnifier_practice"; return true; }
     if (this.step === "select_first" && event === "object_selected" && payload.objectId && this.canSelectObject(payload.objectId)) {
       this.firstGroupId = this.facts.getGroupId?.(payload.objectId); this.step = "confidence_first"; return true;
     }
@@ -180,7 +183,7 @@ const guidance: Record<TutorialStep["id"], Guidance> = {
   view_direction: ["viewport-tools", ["Confirm the viewing direction shown by the yellow arrow.", "确认黄色箭头所示的观察方向。"],
     ["The observer is at the bottom of the plan. This direction stays fixed throughout the experiment.", "观察者位于平面图下方；该方向在整个实验中保持不变。"], "view_direction_acknowledged"],
   reference_board: ["reference-board", ["Inspect each furniture arrangement.", "观察每组家具的摆放。"],
-    ["Hold and drag either floor-plan image to inspect it. Dragging is optional.", "按住并拖动平面图可查看细节；拖动不是必做项。"], "reference_board_completed"],
+    ["Click and hold either floor plan to drag; use the wheel while holding to zoom. Dragging is optional.", "按住并拖动平面图，按住时可用滚轮缩放；拖动不是必做项。"], "reference_board_completed"],
   magnifier_practice: ["viewport-tools", ["Open the magnifier, change its zoom with the wheel, then press ESC to exit.", "打开放大镜，滚轮调节倍率，再按 ESC 退出。"],
     ["It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded.", "放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。"], "magnifier_exited"],
   select_first: ["stage", ["Click a glowing yellow object to begin editing.", "点击发红光的黄色物体，开始编辑。"],

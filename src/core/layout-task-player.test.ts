@@ -14,7 +14,7 @@ describe("createLayoutTaskPlayer", () => {
     vi.restoreAllMocks();
   });
 
-  it("mounts the board after direction acknowledgement and enforces practices through real player callbacks", async () => {
+  it("mounts the board before direction acknowledgement and enforces practices through real player callbacks", async () => {
     const base = createRuntimeConfig();
     const config = { ...base, referenceMode: "persistent" as const,
       objects: ["chair", "table", "sofa"].map((id) => ({ ...base.objects[0], id, group_id: id, role: "variable" as const })) };
@@ -41,17 +41,21 @@ describe("createLayoutTaskPlayer", () => {
     expect(rendererOptions.isObjectFirstSaveComplete?.("chair")).toBe(false);
     expect(rendererOptions.isObjectFirstSaveComplete?.("table")).toBe(false);
     expect(rendererOptions.isObjectFirstSaveComplete?.("missing")).toBe(true);
-    expect(boardMount).not.toHaveBeenCalled();
+    expect(boardMount).toHaveBeenCalledOnce();
+    expect(player.getTutorialStep()?.id).toBe("reference_board");
     rendererOptions.onObjectSelect?.("chair");
     rendererOptions.confidence?.onChoose("position", 3);
     rendererOptions.onDeveloperShortcut?.();
     expect(choose).not.toHaveBeenCalled();
-    rendererOptions.onTutorialAcknowledge?.();
-    expect(boardMount).toHaveBeenCalledOnce();
-    expect(player.getTutorialStep()?.id).toBe("reference_board");
     rendererOptions.onConfirm?.(); await Promise.resolve();
     expect(finish).not.toHaveBeenCalled();
     boardMount.mock.calls[0][0].onComplete();
+    expect(player.getTutorialStep()?.id).toBe("view_direction");
+    rendererOptions.onObjectSelect?.("chair");
+    rendererOptions.confidence?.onChoose("position", 3);
+    expect(choose).not.toHaveBeenCalled();
+    rendererOptions.onTutorialAcknowledge?.();
+    expect(boardMount).toHaveBeenCalledOnce();
     expect(player.getTutorialStep()?.id).toBe("magnifier_practice");
     rendererOptions.onObjectSelect?.("table"); rendererOptions.confidence?.onSave();
     expect(save).not.toHaveBeenCalled();
