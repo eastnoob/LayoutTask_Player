@@ -228,3 +228,32 @@ Chromium 使用本机 Edge；自动化 WebKit 2336 已通过完整的本地双�
 实现/测试本地提交 `33414e6`（`fix: restore persistent glow and count remaining saves`），仅六个明确路径；本节证据、spec、讨论和计划另作文档提交。源码交付目标为 `origin/release/zh-CN`，采用正常快进推送，完成状态以最终远端 ref 查询为准。已检查 Pages workflow 只对 `feature/flow-preview-reconstruct` 的 push 自动触发，本轮源分支推送不触发该部署；未推送 `web-release`，不部署静态仓库、不创建 PR。
 
 实体 Safari 尚未测试；浏览器只进入并真实保存首个正式场景，未完整作答全部 23 个正式场景。23 场景及 92 对象素材由发布闭包/runtime 校验覆盖，不能等同于完整 23 题浏览器实验。
+
+## 2026-10-14：提示强调与桌椅碰撞修复
+
+用户反馈椅子可移到桌面上。本轮修改现有二维网页碰撞检测，不操作 Blender、不修改实验素材或评分答案。源码沿用已授权的 `origin/release/zh-CN` 交付目标；静态网页暂不部署。
+
+- 中英文泡泡将“页面右侧灰色框 / the gray box on the right”、浏览器缩放和 Ctrl+滚轮警示加粗标红；Pause 练习明确指向页面右下角。
+- 椅子碰撞 SVG 含重复首尾点；SAT 将其零长度边当作分离轴，从而把实际重叠判为无碰撞。`src/core/collision-geometry.ts` 跳过零长度边，保持边缘接触允许的规则。
+- 回归覆盖重复点及近似重复点、两个实际教程包中撞桌方向被拒绝且不改变状态，以及合法移动和旋转。此前已通过移除/恢复修复确认回归先失败再通过。
+- 发布预检补传 `stage.display_flip_y`，与 StateStore 运行时使用相同的物体翻转；新增翻转场景测试，避免预检在另一套坐标规则下判断碰撞。
+
+### 当前验证
+
+- `npm test`：67 文件、750 项通过，退出 0。第一次重跑因终端的 `python3` 指向 Windows 商店占位入口而有一项失败；仅为测试进程设置 `PYTHON=C:/Users/tianf/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe` 后重跑全量通过，没有修改系统配置或跳过测试。
+- `npm run build`：退出 0，100 模块；`git diff --check`：退出 0。
+- Chromium 与 WebKit 各有中英文真实入口流程通过记录，每语言 18 组检查；见 `output/playwright/dining-collision-20261014/final-browser/{chromium,webkit}/entries.json`。覆盖入口表单、教程、红光、剩余计数、Pause、放大镜和首个正式场景；各流程无同源 HTTP 错误或页面异常。外部请求被测试拦截，不产生生产分配或上传。
+- 中英文独立本地包由当前源码构建；通过直接比较字节确认所服务 JS 与最新 `dist` 构建一致。5189/5190 两入口均返回 HTTP 200。检查页 `http://127.0.0.1:5190/experiment/collision-review.html` 的实际椅子 `Move left` 为禁用，其他移动方向及两种旋转可用。
+- 独立只读审查覆盖五个碰撞修复及测试文件，未发现需处理的 Critical/Important 问题；另有 98 条内存断言覆盖重复点、重叠、接触、分离、旋转与翻转，全部通过。审查没有重跑上述全量测试，也未改动素材或 Blender。
+
+### 发布阻塞：两道既有标准答案发生重叠
+
+`npm run validate:web-release` 退出 1，仅报告 `scene_8902bfd7b7e4` 和 `scene_af8fab999cae` 的 `m03_variable` 目标姿态与 `m03_group` 碰撞。两题的多边形存在实际边交叉，证据为 `output/playwright/dining-collision-20261014/target-collision-evidence.json` 及同目录两张 `*-target.svg`。本轮没有调整碰撞容差、关闭碰撞或改写素材/评分答案来通过发布校验。
+
+这两题的评分目标或素材需要用户确定后另行修正；当前包仅用于本地检查，不能表述为发布校验通过。实体 Safari 和完整 23 题作答仍未测试。
+
+### 分批源码提交
+
+- `3df8804`：中英文提示强调与 Pause 按钮位置文案。
+- `df9a323`：重复顶点碰撞修复、实际教程回归及预检坐标对齐。
+- 本证据另作独立文档提交；源码正常推送到 `origin/release/zh-CN`，以远端 ref 查询为交付依据。静态仓库和 VPS 不在本轮发布范围。
