@@ -2260,7 +2260,7 @@ function renderTutorialMessage(messageContainer: HTMLElement, task: string, sour
 }
 
 function renderTutorialMarkup(container: HTMLElement, source: string): void {
-  const tokenPattern = /(\*\*[^*]+\*\*|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\]|yellow objects?|黄色物体)/g;
+  const tokenPattern = /(\*\*[^*]+\*\*|\[\[warning\]\][^[]+\[\[\/warning\]\]|\[\[yellow\]\][^[]+\[\[\/yellow\]\]|\[\[block\]\][\s\S]*?\[\[\/block\]\]|yellow objects?|黄色物体)/g;
   let cursor = 0;
 
   for (const match of source.matchAll(tokenPattern)) {
@@ -2280,7 +2280,10 @@ function renderTutorialMarkup(container: HTMLElement, source: string): void {
     }
 
     const strong = document.createElement("strong");
-    if (token.startsWith("[[yellow]]")) {
+    if (token.startsWith("[[warning]]")) {
+      strong.className = "layout-task-tutorial-warning";
+      strong.textContent = token.slice("[[warning]]".length, -"[[/warning]]".length);
+    } else if (token.startsWith("[[yellow]]")) {
       strong.className = "layout-task-tutorial-yellow-emphasis";
       strong.textContent = token.slice("[[yellow]]".length, -"[[/yellow]]".length);
     } else if (token === "yellow object" || token === "yellow objects" || token === "黄色物体") {

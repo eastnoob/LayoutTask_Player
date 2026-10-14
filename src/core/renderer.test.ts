@@ -269,6 +269,8 @@ describe("persistent reference display", () => {
 
     expect(source).toContain('renderTutorialMarkup(taskElement, task);');
     expect(source).toContain("yellow objects?");
+    expect(source).toContain("[[warning]]");
+    expect(source).toContain("layout-task-tutorial-warning");
     expect(source).toContain('instruction.hidden = true;');
     expect(source).toContain('instruction.textContent = "";');
   });
@@ -293,6 +295,7 @@ describe("persistent reference display", () => {
     const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
 
     expect(css).toContain(".layout-task-tutorial-task {");
+    expect(css).toContain(".layout-task-tutorial-warning {");
     expect(css).toContain("-webkit-overflow-scrolling: touch;");
     expect(css).toContain("@media (max-width: 560px)");
     expect(css).toContain(".layout-task-tutorial-task {");

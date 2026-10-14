@@ -1058,6 +1058,11 @@ body {
   font-weight: 800;
 }
 
+.layout-task-tutorial-warning {
+  color: #b42318;
+  font-weight: 800;
+}
+
 .layout-task-tutorial-board-shell {
   min-height: 0;
   height: calc(100vh - 86px);

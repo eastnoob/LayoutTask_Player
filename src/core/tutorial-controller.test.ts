@@ -147,7 +147,7 @@ describe("TutorialController confirmed gates", () => {
     observe(); expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
     magnify(); save("chair");
     expect(tutorial.getCurrentStep().task.startsWith(prefix)).toBe(true);
-    expect(tutorial.getCurrentStep().message).toContain(locale === "zh-CN" ? "点击高亮的 Pause" : "Click the highlighted Pause");
+    expect(tutorial.getCurrentStep().message).toContain(locale === "zh-CN" ? "页面右下角高亮的 Pause" : "highlighted Pause button at the bottom-right of the page");
   });
 
   it.each(["en-US", "zh-CN"] as const)("uses the approved tutorial copy (%s)", (locale) => {
@@ -175,8 +175,8 @@ describe("TutorialController confirmed gates", () => {
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Open the magnifier, change its zoom with the wheel, then press ESC to exit." : "打开放大镜，滚轮调节倍率，再按 ESC 退出。"),
       message: english
-        ? "It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded."
-        : "放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。",
+        ? "It magnifies only the floor plan. Do not enlarge the perspective image with [[warning]]browser zoom[[/warning]], [[warning]]Ctrl+scroll[[/warning]], or another tool; these actions may be recorded."
+        : "放大镜仅用于平面图。请勿用[[warning]]浏览器缩放[[/warning]]、[[warning]]Ctrl+滚轮[[/warning]]或其他工具放大透视图；这些行为可能会被记录。",
     });
 
     magnify();
@@ -192,8 +192,8 @@ describe("TutorialController confirmed gates", () => {
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Match this object's position and orientation to the perspective image." : "根据透视图，还原所选家具的位置和方向。"),
       message: english
-        ? "Refer to the control tips in the gray box on the right, then rate your confidence in position and orientation at the bottom left."
-        : "参考页面右侧灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。",
+        ? "Refer to the control tips in [[warning]]the gray box on the right[[/warning]], then rate your confidence in position and orientation at the bottom left."
+        : "参考[[warning]]页面右侧灰色框[[/warning]]中的操作提示，完成调整后在左下方填写位置和方向置信度。",
     });
     confidence.choose("position", 3); confidence.choose("rotation", 4);
     tutorial.handle("confidence_chosen");
@@ -207,8 +207,8 @@ describe("TutorialController confirmed gates", () => {
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Complete the Pause practice." : "完成 Pause 练习。"),
       message: english
-        ? "Click the highlighted Pause button and confirm. Wait for automatic resume or choose Resume."
-        : "点击高亮的 Pause 并确认；等待自动恢复，或点击 Resume。",
+        ? "Click the highlighted Pause button at the bottom-right of the page and confirm. Wait for automatic resume or choose Resume."
+        : "点击页面右下角高亮的 Pause 按钮并确认；等待自动恢复，或点击 Resume。",
     });
 
     tutorial.handle("pause_requested"); tutorial.handle("pause_confirmed");
