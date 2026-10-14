@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Europe/Berlin）
 
-状态：本地实施与验证完成，等待用户验收双语网页。2026-10-14 按用户补充要求调整参考板缩放、教程顺序及放大镜提示位置；人工验收通过前不推送或部署静态网页仓库。各项测试及提交以实施证据和 Git 记录为准。
+状态：本地网页继续供用户验收。2026-10-14 补充常驻红光的跨引擎修复、编辑泡泡精简和 Confirm 剩余计数；用户已授权完成验证、本地提交并推送源码 Git 仓库，静态网页仓库仍不部署。各项测试及提交以实施证据和 Git 记录为准。
 
 源码观察基准：`release/zh-CN`，`297174d808a42bfc82abdf540f5c5ccc5d6be9bc`。
 
@@ -62,6 +62,10 @@
 - 只将 `yellow object(s)` / `黄色物体` 词组设为红色加粗，包括任务段中出现的词组；其余文字不整句染红，删除原浅黄描边。
 
 完成状态以 `ConfidenceController` 保存事实为依据，renderer 和教程不各自维护另一份答案完成状态。
+
+Confirm 在教程和正式场景显示尚未首次保存的家具组数：英文 `Confirm · 4/4 left`，中文 `Confirm · 剩余 4/4`；分母来自当前场景必须回答的组，不硬编码为 4。首次成功保存两项置信度后才减一；点开、操作、选评分和重复保存不重复扣减。全部保存后显示 `Confirm ★`，无数字；无障碍名称说明所有家具已保存。固定物体不计数，同组不重复计数；不新增结果字段，不改变提交门槛。
+
+红光采用原生 SVG `feDropShadow`，强度以屏幕像素计算，约 4 CSS 像素；使用实际 camera 图层的屏幕变换换算到 SVG 单位，并在隐藏的参考板结束、教程阶段显示及窗口尺寸变化后重测。按物体尺寸及 blur 设置滤镜区域，避免裁切。画布尺寸为零时不绑定滤镜引用，等画布可见、参数完整后再绑定，避免提前绑定时观察到的错误绘制。放大镜副本在插入前复用现有 SVG ID 隔离函数，同时改写滤镜与 fragment 引用，禁止原图与副本共享资源 ID。WebKit 在本次流程中未绘制 CSS drop-shadow 光晕，不继续使用该路径；其内部缓存机制不作为已观察事实。不能只验证 `is-pending` 类存在，浏览器需比较真实家具保存前后的红色像素。
 
 ## 4. Pause 教程
 
@@ -152,8 +156,7 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 | 观察方向 | **Task:** Confirm the viewing direction shown by the yellow arrow. **Body:** The observer is at the bottom of the plan. This direction stays fixed throughout the experiment. | **任务：**确认黄色箭头所示的观察方向。**正文：**观察者位于平面图下方；该方向在整个实验中保持不变。 |
 | 放大镜练习 | **Task:** Open the magnifier, change its zoom with the wheel, then press ESC to exit. **Body:** It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded. | **任务：**打开放大镜，滚轮调节倍率，再按 ESC 退出。**正文：**放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。 |
 | 首次选择 | **Task:** Click a glowing yellow object to begin editing. **Body:** Red glow means its first edit has not been saved. Only yellow objects can be edited. | **任务：**点击发红光的黄色物体，开始编辑。**正文：**红光表示尚未保存首次编辑。只有黄色物体可以编辑。 |
-| 位置与方向 | **Task:** Match this object's position and orientation to the perspective image. **Body:** Use the move and rotate controls if needed; keeping the current pose is allowed. Move the pointer away to hide the controls and back to show them; you remain in edit mode. | **任务：**使物体位置和方向与透视图一致。**正文：**需要时用控件移动或旋转；也可保留当前姿态。移开鼠标隐藏控件，移回显示；仍处于编辑模式。 |
-| 置信度 | **Task:** Rate your confidence in both position and orientation. **Body:** Select a rating for each below. | **任务：**评估你对位置和方向的把握程度。**正文：**请分别选择两项置信度。 |
+| 位置、方向与置信度（同一泡泡） | **Task:** Match this object's position and orientation to the perspective image. **Body:** Refer to the control tips in the gray box on the right, then rate your confidence in position and orientation at the bottom left. | **任务：**根据透视图，还原所选家具的位置和方向。**正文：**参考页面右侧灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。 |
 | 保存 | **Task:** Save both ratings. **Body:** Select Save to finish this edit. The red glow disappears after the first save. | **任务：**保存两项置信度。**正文：**点击 Save 完成本次编辑；首次保存后红光消失。 |
 | Pause 练习 | **Task:** Complete the Pause practice. **Body:** Click the highlighted Pause button and confirm. Wait for automatic resume or choose Resume. | **任务：**完成 Pause 练习。**正文：**点击高亮的 Pause 并确认；等待自动恢复，或点击 Resume。 |
 | 其余物体 | **Task:** Edit and save each remaining yellow object. **Body:** Save both position and orientation confidence ratings for each one. | **任务：**编辑并保存其余每个黄色物体。**正文：**每个都要保存位置和方向两项置信度。 |
@@ -168,7 +171,7 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 - 教程暂停中：`可等待 {秒数} 秒后自动恢复，或点击 Resume。` / `Wait {seconds} seconds for automatic resume, or select Resume.`
 - 练习缺失的提交提示分别指出尚需完成放大镜或 Pause，不只显示笼统错误。通过正常步骤完成即可消除提示。
 
-以上为已确认文案基准及新增开场去重要求的合并稿：保留现有模式差异、悬浮隐藏控件信息和强制练习提示。入口文档仅按第 1.1 节删除第二份数据保护文件的网页内容及对应确认；第一份知情同意书、人口信息和奖励/退出说明保留。
+以上为已确认文案基准及新增开场去重要求的合并稿：保留现有模式差异和强制练习提示。编辑泡泡仅保留任务段及指向右侧灰色操作框和左下置信度的一句正文；删除原多句控件、保留姿态、悬浮与选评分说明，但行为不变。入口文档仅按第 1.1 节删除第二份数据保护文件的网页内容及对应确认；第一份知情同意书、人口信息和奖励/退出说明保留。
 
 ## 9. 文件与职责范围
 
@@ -217,7 +220,7 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 
 重点检查：仅第一份知情同意内容、四项确认及适用的阅读/滚动门槛、年龄/眼镜、教程开场去重、reference mode 文案、既定教程顺序、Pause 强制练习、放大镜强制练习、物体编辑保存、有效时长及所有模式阻断。保留显示方向箭头与 Pause 箭头的不同生命周期。
 
-视觉证据包含：待完成/已保存红光、编辑中镜片与退出恢复、镜片边缘/离开画布/最小最大倍率、镜片外下方 ESC 提示、四页先于方向箭头、两个参考框独立拖动/按住时缩放及手势悬浮、Safari 曾裁切的家具完整轮廓、两种语言 task 及词组强调。记录失败请求、404 和控制台错误。
+视觉证据包含：实际家具待完成/已保存红色像素及 3–5 屏幕像素的 blur、Confirm 从 4/4 逐项减至星号且重复保存不减、新正式题重置计数、两段精简编辑泡泡、编辑中镜片与退出恢复、镜片边缘/离开画布/最小最大倍率、镜片外下方 ESC 提示、四页先于方向箭头、两个参考框独立拖动/按住时缩放及手势悬浮、Safari 曾裁切的家具完整轮廓、两种语言 task 及词组强调。记录失败请求、404 和控制台错误。
 
 WebKit 自动化用于相关显示与交互回归，不能冒充用户设备上的 Safari 测试；若实际 Safari 未测，最终报告须明确。
 

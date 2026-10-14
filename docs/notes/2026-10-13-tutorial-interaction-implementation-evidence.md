@@ -179,3 +179,52 @@ Chromium 使用本机 Edge；自动化 WebKit 2336 已通过完整的本地双�
 实现与测试本地提交：`662b5d4`（`fix: refine tutorial order and magnifier controls`），只含 11 个明确的源码/测试/浏览器工具路径。设计、讨论、计划和最终证据另作本地文档提交，用户无关未跟踪文件未纳入。
 
 两种语言预览仍使用 5187/5188，已切换为最终包；刷新现有页面即可加载最新 JS。保留当前 `release/zh-CN` 分支，不合并、不推送、不创建 PR、不部署；下一步仅为用户验收本地网页。实体 Safari 与完整 23 题浏览器流程仍未测试。
+
+## 2026-10-14：常驻红光、精简编辑提示与 Confirm 剩余计数
+
+本次在 `a6cdd48` 上继续，用户最终明确授权修改、测试、本地预览、分批提交并推送源码 Git；暂不部署静态网页。之前的只读拒绝未计为已执行。本轮没有修改 VPS、receiver、WebDAV、历史数据、素材锁、原始资料、生产配置或 Blender，也没有纳入用户无关未跟踪文件。
+
+### 实现及诊断事实
+
+1. 编辑泡泡只保留独立 Task 段和一句指向右侧灰色操作框/左下两项置信度的正文。中英文按用户确认文案执行，删除原多句控件、保留姿态、悬浮和评分提示。零位移 Save、两项评分、无限次重新编辑及提交门槛不变。
+2. Confirm 按当前必要家具组动态显示 `Confirm · 4/4 left` / `Confirm · 剩余 4/4`，成功首次 Save 后才减一，全部保存显示 `Confirm ★`。重复组、重复保存不重复扣减，固定物体不计入；无障碍名称说明首次保存状态。不新增结果字段或第二份完成状态。
+3. 原红光已有 pending 状态逻辑，但 4 SVG 单位经世界/camera 缩放后约为 0.1087 屏幕像素；此前类名检查不能证明可见。本轮换算实际 camera 图层的比例，约保持 4 屏幕像素，在参考板结束及 resize 后重测，画布没有可见尺寸时不绑定滤镜。
+4. WebKit 的 CSS filter 数值正确仍可能没有实际光晕。页面快照原生 SVG `feDropShadow` 得到 89 个红色变化像素；实际流程同 ID 重绑、清除镜片副本仍为零，新配置滤镜换新 ID 得到 89。原图/镜片有 8 个 pending filter ID 却只有 4 个唯一值；复用现有 `namespaceInlineSvgIds` 在复制图插入前隔离所有 ID/引用后，真实流程通过。该现象支持资源身份/缓存问题，但不证明 WebKit 内部机制。
+5. 新的首个正式题原生 Save 检查发现共享 jsPsych root 的教程锁残留会阻断置信度点击。renderer 在 mount/destroy 时只清理自己拥有的两种锁类；不改写插件生命周期或数据。已以挂载回归和实际正式题两项评分/Save 验证。
+
+影响路径：`src/core/renderer.ts`、`src/styles/layout-task.css`、`src/core/tutorial-controller.ts`、对应两个 test 文件及 `tools/browser/tutorial-entry-acceptance.cjs`。无新依赖或图标：星号为文字；浏览器像素分析沿用已有 Playwright/pngjs 运行时。
+
+### 验证与失败记录
+
+先观察四个预期失败（旧双语提示、无 Confirm 数字），再实现。隐藏参考板回归先失败于 blur 4 而非约 153.846；原生滤镜回归与真实 WebKit 像素检查也先失败。第一轮构建发现新增测试 fixture 的 role 被 TypeScript 推断为 string，修正 literal 类型后重新运行全套。未把这些失败或被拒绝的命令称为通过。
+
+中间包及日志（`packages`、`packages-verified`、`packages-native`、`packages-ready`）是诊断阶段，WebKit 曾分别失败于约 0.11 屏幕像素或实际红色变化像素为零；这些包不是最终交付包。忽略目录中的两份 probe 脚本只用于局部复现，不提交、不作为完整实验验收。
+
+最终状态重新运行：
+
+- `npm test`：退出 0，67 文件、745 项通过。日志 `output/playwright/pending-confirm-20261014/npm-test-delivery.log`。
+- `npm run build`：退出 0，100 模块；`npm run validate:web-release`：退出 0，`ok: true`、无失败。日志 `npm-build-delivery.log`、`npm-validate-delivery.log`。
+- 独立中文、英文包各 151 文件、无 `.git`，各语言闭包/runtime/tutorial-lock 校验退出 0。最终目录为 `output/playwright/pending-confirm-20261014/packages-delivery/{zh,en}-package`，索引和每语言校验在 `packages-delivery/`；构建日志 `packages-build-delivery.log`。
+- Chromium 与 WebKit 两条完整命令均退出 0；每引擎 2 个真实入口流程、36 组入口检查、12 个实际参考框尺寸检查、6 个宽高比像素检查。最终日志 `browser-chromium-delivery.log`、`browser-webkit-delivery.log`。
+- 浏览器通过原生输入核对两段精简提示、4/4→3/4→2/4→1/4→★、重复保存不减、新正式题重置 4/4、零位移保存、强制 Pause、放大镜全页面无按键滚轮/ESC、ID 隔离、箭头/参考板顺序、同意及年龄/眼镜。所有必要同源素材请求成功，无 404、应用控制台错误或未捕获异常；外部源与非读取请求被阻断，没有生产分配/上传。
+
+真实家具保存前后红色像素变化如下；所有 screenBlur 约为 4，仍要求至少 10 个变化像素，未降低阈值：
+
+| 引擎/语言 | 教程 | 首个正式场景 |
+| --- | ---: | ---: |
+| Chromium 中文 | 89 | 92 |
+| Chromium English | 39 | 31 |
+| WebKit 中文 | 89 | 99 |
+| WebKit English | 26 | 25 |
+
+最终截图与 `acceptance.json` 在 `output/playwright/pending-confirm-20261014/delivery-browser/{chromium,webkit}/{zh,en}/`。已查看 WebKit English 的 `tutorial-glow-before.png` 与 `tutorial-glow-after.png`，以及英文精简编辑泡泡截图。固定位置、黄色填色不变；红光在 Save 后消失，选中蓝色反馈仍优先。
+
+有限独立复审结论：clone ID/引用隔离、Confirm 计数和双语文案无新的 Critical/Important 问题。审查者未认证浏览器通过；上述通过来自主执行者对最终两条命令的退出值和输出确认，不能用复审替代运行证据。
+
+### 预览、Git 与边界
+
+最新中文预览为 `http://127.0.0.1:5189/?debug=1`，English 为 `http://127.0.0.1:5190/experiment/?debug=1`，都来自最终独立本地 copy-mode 包。旧 5187/5188 服务保留原诊断版本；不要用旧 URL 验收本次效果。最终预览进程由本轮启动并保持运行。
+
+实现/测试本地提交 `33414e6`（`fix: restore persistent glow and count remaining saves`），仅六个明确路径；本节证据、spec、讨论和计划另作文档提交。源码交付目标为 `origin/release/zh-CN`，采用正常快进推送，完成状态以最终远端 ref 查询为准。已检查 Pages workflow 只对 `feature/flow-preview-reconstruct` 的 push 自动触发，本轮源分支推送不触发该部署；未推送 `web-release`，不部署静态仓库、不创建 PR。
+
+实体 Safari 尚未测试；浏览器只进入并真实保存首个正式场景，未完整作答全部 23 个正式场景。23 场景及 92 对象素材由发布闭包/runtime 校验覆盖，不能等同于完整 23 题浏览器实验。

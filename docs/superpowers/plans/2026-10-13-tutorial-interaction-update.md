@@ -365,6 +365,23 @@ Scope: the user's three local-page corrections, subsequent global non-held magni
 
 Independent review, local commit identifiers and evidence are recorded in `docs/notes/2026-10-13-tutorial-interaction-implementation-evidence.md`. Physical Safari and the complete 23-scene browser run remain untested. Push/deployment still requires the user's local-page approval.
 
+## 2026-10-14 Persistent Glow and Remaining-Save Follow-up
+
+User-approved bounded change: concise bilingual editing bubble, remaining first-save count on Confirm, complete the pending-glow repair, refresh local previews, commit in batches and push source Git only. Static deployment remains explicitly excluded.
+
+- [x] Add failing bilingual copy/count checks, including unsuccessful Save, ratings without Save, repeat Save, dynamic group totals and fixed-object exclusion; implement from existing saved-confidence state without new data fields.
+- [x] Replace the visually ineffective SVG-scaled CSS shadow with native `feDropShadow`; measure the camera scale and configure filter bounds after positive visible SVG size. Add a failing hidden-board/resize regression before the timing correction.
+- [x] Resolve demonstrated original/lens SVG ID collisions by reusing the existing namespacing helper before clone insertion; assert original/lens resource IDs are unique during real magnifier practice.
+- [x] Clear only renderer-owned root lock classes on mount and teardown; verify native confidence Save in the first formal scene rather than assuming tutorial Save covers it.
+- [x] Obtain a limited independent continuation assessment: no new Critical/Important findings in clone isolation, Confirm count or copy. Verify actual engine success separately; reviewer did not certify engine runs.
+- [x] Fresh `npm test`: 67 files/745 checks pass; build and recursive release validation exit 0. Independent bilingual packages each contain 151 files and validate successfully.
+- [x] Chromium and WebKit each finish both local entry flows, 36 entry check groups, 12 board fits and 6 pixel aspect fits. Actual tutorial/formal red halos disappear after native Save; counts descend 4/4 to a star and repeat Save cannot decrement twice.
+- [x] Serve the latest self-contained copy-mode packages on 5189 (Chinese) and 5190 (English); preserve earlier package evidence and old 5187/5188 previews. No production allocation or upload.
+- [x] Commit the six explicit implementation/test/tool paths as `33414e6`; record spec, discussion and final evidence in a separate documentation commit. Source delivery target is `origin/release/zh-CN`, using a normal fast-forward push; remote ref confirmation determines push completion.
+- [ ] Deploy the static Chinese/English branches only after the user approves the local pages and authorizes that separate release.
+
+Final evidence: `docs/notes/2026-10-13-tutorial-interaction-implementation-evidence.md`, section “2026-10-14：常驻红光、精简编辑提示与 Confirm 剩余计数”. Physical Safari and a complete 23-formal-scene browser execution remain untested.
+
 ## Self-Review
 
 - Consent scope, age/eyewear preservation, and the corrected payment wording are covered by Task 1.
