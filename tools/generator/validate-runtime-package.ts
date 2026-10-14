@@ -111,6 +111,7 @@ function evaluateObjectPose(config: RuntimeTaskConfig, object: RuntimeTaskObject
     objects: config.objects,
     areas: config.collision.areas,
     worldViewBox: config.world.viewBox,
+    objectVisualFlipY: config.stage.display_flip_y,
   });
 }
 

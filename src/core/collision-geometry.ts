@@ -218,6 +218,10 @@ function hasSeparatingAxis(a: CollisionPolygon, b: CollisionPolygon): boolean {
   for (let index = 0; index < a.length; index += 1) {
     const p1 = a[index];
     const p2 = a[(index + 1) % a.length];
+    // Repeated SVG closing points cannot define a separating axis.
+    if (Math.abs(p2.x - p1.x) <= EPSILON && Math.abs(p2.y - p1.y) <= EPSILON) {
+      continue;
+    }
     const axis = { x: -(p2.y - p1.y), y: p2.x - p1.x };
     const projectionA = projectPolygon(a, axis);
     const projectionB = projectPolygon(b, axis);

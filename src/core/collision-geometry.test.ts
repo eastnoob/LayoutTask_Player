@@ -239,6 +239,26 @@ describe("collision geometry", () => {
     expect(doPolygonsIntersect(a, overlapping)).toBe(true);
   });
 
+  it.each([0, 1e-12])("detects overlap with a repeated closing point offset by %s", (offset) => {
+    const table = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+      { x: 0, y: 0 },
+    ];
+    const chair = [
+      { x: 40, y: 40 },
+      { x: 60, y: 40 },
+      { x: 60, y: 60 },
+      { x: 40, y: 60 },
+      { x: 40 + offset, y: 40 + offset },
+    ];
+
+    expect(doPolygonsIntersect(table, chair)).toBe(true);
+    expect(doPolygonsIntersect(chair, table)).toBe(true);
+  });
+
   it("checks that object vertices stay inside a contain polygon", () => {
     const room = [
       { x: 0, y: 0 },

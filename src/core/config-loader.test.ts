@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { compileBatch } from "./batch-compiler";
 import { ConfigLoader, resolveRuntimeConfig } from "./config-loader";
 import { evaluateCollision } from "./collision-geometry";
+import { StateStore } from "./state-store";
 import type { BatchConfig } from "../types/batch";
 import type { TaskCollisionConfig } from "../types/config";
 
@@ -1425,6 +1426,34 @@ describe("ConfigLoader generated package metadata", () => {
       }),
     ).toEqual({ ok: true });
   });
+});
+
+describe("ConfigLoader shipped tutorial chair collision", () => {
+  it.each(["layout-task-tutorial", "layout-task-run12-core23-persistent/tutorial"])(
+    "blocks movement into the table and preserves legal controls in %s",
+    async (packagePath) => {
+      const loader = new ConfigLoader({
+        baseUrl: "http://example.test/layout-task-generated-sg-output-2-collider-preserve-size/",
+        fetchImpl: createGeneratedPackageFetch(join(process.cwd(), "public", packagePath)),
+      });
+      const config = await loader.loadRuntimeConfig({ taskId: "scene_edc634ac7856" });
+      const chairId = "scene_edc634ac7856_m03_variable";
+      const store = new StateStore(config);
+      const before = store.getObjectState(chairId);
+
+      expect(store.canApplyAction(chairId, "move_left")).toEqual({ ok: false, reason: "collision" });
+      expect(() => store.applyAction(chairId, "move_left")).toThrow("collision");
+      expect(store.getObjectState(chairId)).toEqual(before);
+      expect(store.hasEdits()).toBe(false);
+
+      for (const action of ["move_right", "move_up", "move_down", "rotate_cw", "rotate_ccw"] as const) {
+        const legalStore = new StateStore(config);
+        expect(legalStore.canApplyAction(chairId, action)).toEqual({ ok: true });
+        const transition = legalStore.applyAction(chairId, action);
+        expect(transition.after).not.toEqual(transition.before);
+      }
+    },
+  );
 });
 
 describe("resolveRuntimeConfig object behavior", () => {

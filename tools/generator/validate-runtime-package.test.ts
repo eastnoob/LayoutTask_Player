@@ -15,7 +15,12 @@ async function writeText(filePath: string, value: string): Promise<void> {
   await writeFile(filePath, value, "utf8");
 }
 
-async function createPackage(root: string, collisionSource: string, variableRotation = 0): Promise<void> {
+async function createPackage(
+  root: string,
+  collisionSource: string,
+  variableRotation = 0,
+  options: { displayFlipY?: boolean; variableX?: number; variableY?: number } = {},
+): Promise<void> {
   await writeJson(join(root, "manifest.json"), {
     schema: "layouttask.manifest.v1",
     experiment_id: "preflight_test",
@@ -58,6 +63,7 @@ async function createPackage(root: string, collisionSource: string, variableRota
       grid: { size: 10, visible: true, snap: true },
     },
     background: { asset: "room", x: 0, y: 0, width: 500, height: 500 },
+    stage: { display_flip_y: options.displayFlipY ?? false },
     collision: { enabled: true, mode: "discrete", areas: [] },
     objects: [
       {
@@ -73,8 +79,8 @@ async function createPackage(root: string, collisionSource: string, variableRota
         id: "variable_01",
         role: "variable",
         asset: "variable_asset",
-        x: 100,
-        y: 100,
+        x: options.variableX ?? 100,
+        y: options.variableY ?? 100,
         rotation: variableRotation,
         behavior: { template: "button10" },
         collision: { enabled: true, shape: "box", padding: 0 },
@@ -172,6 +178,24 @@ describe("validateRuntimePackage", () => {
     );
 
     const report = await validateRuntimePackage({ baseDir: packageRoot, checkTargets: true });
+
+    expect(report.ok).toBe(true);
+    expect(report.failures).toEqual([]);
+  });
+
+  it("uses the task display flip when checking initial collisions", async ({ task }) => {
+    const packageRoot = join(tmpRoot, task.id, "flipped-stage");
+    await createPackage(packageRoot, "assets/collision/objects/context_COLLISION.svg", 0, {
+      displayFlipY: true,
+      variableX: 60,
+      variableY: 60,
+    });
+    await writeText(
+      join(packageRoot, "assets/collision/objects/context_COLLISION.svg"),
+      '<svg viewBox="0 0 100 100"><rect x="0" y="0" width="20" height="20"/></svg>',
+    );
+
+    const report = await validateRuntimePackage({ baseDir: packageRoot, checkTargets: false });
 
     expect(report.ok).toBe(true);
     expect(report.failures).toEqual([]);
