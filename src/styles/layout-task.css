@@ -547,7 +547,7 @@ body {
 }
 
 .layout-task-object-visual.is-pending:not(.is-highlighted) {
-  filter: drop-shadow(0 0 4px rgba(180, 35, 24, 0.78));
+  filter: var(--layout-task-pending-glow-filter, none);
 }
 
 .layout-task-object.is-locked {

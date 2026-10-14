@@ -24,7 +24,7 @@ export interface RendererPointer {
 export interface RendererRefs {
   root: HTMLElement;
   svg?: SVGSVGElement;
-  cameraLayer?: SVGElement;
+  cameraLayer?: SVGGElement;
   stageWrapElement?: HTMLElement;
   backgroundElement?: SVGElement;
   displayImageFrameElement?: HTMLElement;
@@ -146,6 +146,7 @@ export class LayoutTaskRenderer {
   }
 
   mount(): RendererRefs {
+    this.options.root.classList.remove("layout-task-locked", "layout-task-tutorial-interaction-locked");
     this.renderAll();
     return this.refs;
   }
@@ -512,6 +513,7 @@ export class LayoutTaskRenderer {
     this.refs.feedbackOverlayElement = feedbackOverlay;
     this.refs.controlsLayer = controlsLayer;
     this.refs.confirmButton = confirmButton;
+    this.updateConfirmProgress();
     this.refs.reconstructionHintElement = reconstructionHint;
     this.refs.panelInstructionElement = instruction;
     this.refs.statusElement = status;
@@ -535,6 +537,28 @@ export class LayoutTaskRenderer {
     this.scheduleControlsLayoutSync();
     this.updateViewportWarning();
     this.bindViewportWarning();
+  }
+
+  private updateConfirmProgress(): void {
+    const button = this.refs.confirmButton;
+    const isComplete = this.options.isObjectFirstSaveComplete;
+    if (!button || !this.options.confidence || !isComplete) {
+      return;
+    }
+    const groups = new Map(this.options.config.objects
+      .filter((object) => object.role === "variable")
+      .map((object) => [object.group_id ?? object.id, object.id]));
+    if (groups.size === 0) {
+      return;
+    }
+    const remaining = [...groups.values()].filter((id) => !isComplete(id)).length;
+    const chinese = this.options.locale === "zh-CN";
+    button.textContent = remaining > 0
+      ? chinese ? `Confirm · 剩余 ${remaining}/${groups.size}` : `Confirm · ${remaining}/${groups.size} left`
+      : "Confirm ★";
+    button.setAttribute("aria-label", remaining > 0
+      ? chinese ? `Confirm：还有 ${remaining}/${groups.size} 组家具尚未首次保存` : `Confirm: ${remaining} of ${groups.size} furniture groups still need their first save`
+      : chinese ? "Confirm：所有家具已首次保存" : "Confirm: all furniture groups have been saved");
   }
 
   private createDisplayImageFrame(): HTMLElement | undefined {
@@ -787,9 +811,10 @@ export class LayoutTaskRenderer {
     if (!scene || !svg || typeof svg.cloneNode !== "function") {
       return;
     }
-    scene.replaceChildren(svg.cloneNode(true) as SVGSVGElement);
-    const copy = scene.firstElementChild as SVGSVGElement | null;
-    copy?.classList.add("layout-task-magnifier-scene-svg");
+    const copy = svg.cloneNode(true) as SVGSVGElement;
+    namespaceInlineSvgIds(copy, `magnifier-${nextInlineSvgNamespaceId()}`);
+    copy.classList.add("layout-task-magnifier-scene-svg");
+    scene.replaceChildren(copy);
   }
 
   private updateMagnifierCopy(zoom: number): void {
@@ -881,6 +906,7 @@ export class LayoutTaskRenderer {
     this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
     this.setTutorialAttention(step.anchor);
     scrollTutorialStageIntoView(this.options.root, step.id);
+    this.scheduleControlsLayoutSync();
   }
 
   hideTutorialStep(): void {
@@ -1304,6 +1330,7 @@ export class LayoutTaskRenderer {
     this.magnifierStageElement = undefined;
     this.magnifierPointer = undefined;
     this.magnifierFocusElement = undefined;
+    this.options.root.classList.remove("layout-task-locked", "layout-task-tutorial-interaction-locked");
     this.options.root.innerHTML = "";
   }
 
@@ -1539,6 +1566,21 @@ export class LayoutTaskRenderer {
   ): SVGElement {
     const visual = document.createElementNS("http://www.w3.org/2000/svg", "g");
     visual.classList.add("layout-task-object-visual");
+    if (defs && this.options.isObjectFirstSaveComplete
+      && this.options.config.objects.find((object) => object.id === objectId)?.role === "variable") {
+      const filterId = `layout-task-pending-glow-${escapeSvgId(objectId)}`;
+      const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+      filter.classList.add("layout-task-pending-glow-filter");
+      filter.dataset.objectId = objectId;
+      filter.setAttribute("id", filterId);
+      filter.setAttribute("filterUnits", "userSpaceOnUse");
+      filter.setAttribute("color-interpolation-filters", "sRGB");
+      const shadow = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
+      shadow.setAttribute("dx", "0"); shadow.setAttribute("dy", "0");
+      shadow.setAttribute("flood-color", "#b42318"); shadow.setAttribute("flood-opacity", "0.78");
+      filter.append(shadow); defs.append(filter);
+      visual.dataset.pendingGlowFilter = filterId;
+    }
     const shadowLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
     shadowLayer.classList.add("layout-task-object-selected-shadow");
     if (defs && inlineSvgText) {
@@ -1785,6 +1827,7 @@ export class LayoutTaskRenderer {
       controlElement.classList.remove("is-active");
       controlElement.classList.remove("is-controls-hidden");
     }
+    this.updateConfirmProgress();
   }
 
   private setActiveControlsVisible(objectId: string, visible: boolean): void {
@@ -1901,6 +1944,7 @@ export class LayoutTaskRenderer {
 
     element.hidden = !warning.show;
     element.textContent = warning.message;
+    this.scheduleControlsLayoutSync();
   };
 
   private clearHideTimer(): void {
@@ -1912,6 +1956,23 @@ export class LayoutTaskRenderer {
 
   private scheduleControlsLayoutSync(): void {
     const update = () => {
+      const bounds = this.refs.svg?.getBoundingClientRect();
+      if (!bounds?.width || !bounds.height) return;
+      const screenScale = this.refs.cameraLayer?.getScreenCTM()?.a;
+      const blur = screenScale && screenScale > 0 ? 4 / screenScale
+        : 4 * getStageUiMetrics(this.options.config, this.refs.svg).scale / DEFAULT_VIEWPORT_ZOOM;
+      // WebKit reports CSS drop-shadow but does not paint it on these SVG groups.
+      for (const filter of this.refs.svg?.querySelectorAll<SVGFilterElement>(".layout-task-pending-glow-filter") ?? []) {
+        const object = this.options.config.objects.find((item) => item.id === filter.dataset.objectId)!;
+        const margin = 4 * blur;
+        filter.setAttribute("x", String((object.anchor === "center" ? -object.width / 2 : 0) - margin));
+        filter.setAttribute("y", String((object.anchor === "center" ? -object.height / 2 : 0) - margin));
+        filter.setAttribute("width", String(object.width + margin * 2));
+        filter.setAttribute("height", String(object.height + margin * 2));
+        filter.querySelector("feDropShadow")?.setAttribute("stdDeviation", String(blur));
+        // WebKit caches an unconfigured filter if bound before the stage is visible.
+        this.refs.objectVisualElements.get(object.id)?.style.setProperty("--layout-task-pending-glow-filter", `url(#${filter.getAttribute("id")})`);
+      }
       for (const objectConfig of this.options.config.objects) {
         this.updateControlsLayout(objectConfig.id);
       }

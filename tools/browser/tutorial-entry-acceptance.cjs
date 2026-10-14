@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const { mkdirSync, writeFileSync } = require('node:fs');
 const path = require('node:path');
+const { PNG } = require('pngjs');
 
 async function guardLocalContext(context, baseUrl) {
   const origin = new URL(baseUrl).origin;
@@ -80,6 +81,7 @@ async function runEntryAcceptance(browser, options) {
   page.setDefaultTimeout(10000);
   const chinese = locale === 'zh';
   const checks = [];
+  const glowChecks = [];
   const check = async (name, action) => { await action(); checks.push(name); console.log(`PASS ${locale}: ${name}`); };
   const shot = name => page.screenshot({ path: path.join(outputDir, `${name}.png`), fullPage: true });
   const bubble = page.locator('.layout-task-tutorial-bubble');
@@ -99,6 +101,49 @@ async function runEntryAcceptance(browser, options) {
   const session = () => page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('layouttask:session:')).map(key => JSON.parse(sessionStorage.getItem(key))));
   const zoom = () => page.locator('.layout-task-magnifier-scene').evaluate(e => Number(e.style.getPropertyValue('--magnifier-zoom')));
   const enabled = locator => page.waitForFunction(selector => !document.querySelector(selector)?.disabled, locator);
+  const glowSample = async (id, name) => {
+    const image = object(id).locator('.layout-task-object-image');
+    await image.scrollIntoViewIfNeeded();
+    await page.mouse.move(2, 2);
+    const box = await image.boundingBox();
+    assert(box, 'Furniture must be rendered for red-glow sampling');
+    const clip = { x: Math.max(0, Math.floor(box.x) - 8), y: Math.max(0, Math.floor(box.y) - 8),
+      width: Math.ceil(box.width) + 16, height: Math.ceil(box.height) + 16 };
+    const bytes = await page.screenshot({ clip, path: path.join(outputDir, `${name}.png`) });
+    const visual = object(id).locator('.layout-task-object-visual');
+    const metrics = await visual.evaluate(e => {
+      const matrix = e.getScreenCTM();
+      const filter = getComputedStyle(e).filter;
+      const nativeFilter = e.ownerSVGElement.querySelector(`[id="${e.dataset.pendingGlowFilter}"]`);
+      const blur = Number(nativeFilter?.querySelector('feDropShadow')?.getAttribute('stdDeviation'));
+      const screenScale = Math.hypot(matrix.a, matrix.b);
+      return { filter, screenScale, screenBlur: blur * screenScale,
+        rootScale: e.ownerSVGElement.getScreenCTM()?.a,
+        cameraScale: e.closest('.layout-task-camera-layer').getScreenCTM()?.a };
+    });
+    if (name.endsWith('before')) {
+      console.log(`Pending screen blur ${locale}/${name}:`, JSON.stringify(metrics));
+      assert(metrics.screenBlur >= 3 && metrics.screenBlur <= 5, 'Pending glow must remain visibly 3–5 screen pixels at the current SVG scale');
+    }
+    return { png: PNG.sync.read(bytes), metrics };
+  };
+  const checkGlowPixels = (pendingSample, savedSample, name) => {
+    const before = pendingSample.png, after = savedSample.png;
+    assert.equal(before.width, after.width, 'Furniture crop width must stay unchanged');
+    assert.equal(before.height, after.height, 'Furniture crop height must stay unchanged');
+    let changedRedPixels = 0;
+    for (let y = 0; y < before.height; y++) for (let x = 0; x < before.width; x++) {
+      const offset = (y * before.width + x) * 4;
+      // Rotated furniture leaves floor pixels inside its rectangular bounds.
+      if (before.data[offset] - before.data[offset + 1] > 15
+        && after.data[offset + 1] >= after.data[offset]
+        && after.data[offset + 1] - before.data[offset + 1] > 8
+        && after.data[offset + 2] - before.data[offset + 2] > 8) changedRedPixels++;
+    }
+    glowChecks.push({ name, changedRedPixels, metrics: pendingSample.metrics });
+    console.log(`Red glow ${locale}/${name}:`, JSON.stringify(glowChecks.at(-1)));
+    assert(changedRedPixels >= 10, `${name}: visible red halo must surround the actual furniture and disappear after Save (found ${changedRedPixels} changed pixels)`);
+  };
   let result;
   try {
     const query = defaultConfig ? '?debug=1' : `?config=experiment-local-review-${locale}.json&debug=1`;
@@ -261,6 +306,8 @@ async function runEntryAcceptance(browser, options) {
         await page.keyboard.press('Escape');
         assert.match(await bubble.innerText(), chinese ? /滚轮调节倍率/ : /change its zoom with the wheel/);
         await magnifier.click();
+        const svgIds = await page.locator('.layout-task-stage-wrap > svg [id], .layout-task-magnifier-scene-svg [id]').evaluateAll(elements => elements.map(element => element.id));
+        assert.equal(new Set(svgIds).size, svgIds.length, 'Magnifier SVG resources must not share IDs with the original scene');
         await moveWithinStage();
         assert(await lens.isVisible());
         assert.match(await page.locator('.layout-task-magnifier-hint').innerText(), /ESC/);
@@ -353,9 +400,19 @@ async function runEntryAcceptance(browser, options) {
       };
       await check('first zero-movement edit, lens restores edit, confidence emphasis', async () => {
         assert.equal(await pending().count(), 4);
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 4/4' : 'Confirm · 4/4 left');
+        const pendingSample = await glowSample(ids[0], 'tutorial-glow-before');
         await shot('pending-glow');
         await object(ids[0]).click();
         await anchor('confidence');
+        assert.deepEqual(await bubble.locator('.layout-task-tutorial-task, .layout-task-tutorial-body').allTextContents(), chinese ? [
+          '你的任务：根据透视图，还原所选家具的位置和方向。',
+          '参考页面右侧灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。',
+        ] : [
+          "Your task: Match this object's position and orientation to the perspective image.",
+          'Refer to the control tips in the gray box on the right, then rate your confidence in position and orientation at the bottom left.',
+        ]);
+        await shot('concise-edit-task');
         const before = await transforms();
         assert.deepEqual(await activeIds(), [ids[0]]);
         assert.deepEqual(await page.locator('.layout-task-confidence-dimension').allTextContents(), chinese ? ['位置', '旋转'] : ['position', 'rotation']);
@@ -368,12 +425,15 @@ async function runEntryAcceptance(browser, options) {
         assert.deepEqual(await activeIds(), [ids[0]]);
         assert(await page.locator('.layout-task-confidence').isVisible());
         await chooseRatings();
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 4/4' : 'Confirm · 4/4 left');
         await shot('confidence-before-save');
         await page.locator('.layout-task-confidence-save').click();
         await anchor('pause');
         assert.deepEqual(await transforms(), before, 'First Save must accept no movement or rotation');
         assert.equal(await pending().count(), 3);
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 3/4' : 'Confirm · 3/4 left');
         assert.equal(await object(ids[0]).locator('.is-pending').count(), 0);
+        checkGlowPixels(pendingSample, await glowSample(ids[0], 'tutorial-glow-after'), 'tutorial');
         await shot('first-save-glow-removed');
       });
       await check('Pause cancel retains gate, confirm blocks input, resume advances', async () => {
@@ -409,14 +469,20 @@ async function runEntryAcceptance(browser, options) {
         await object(ids[0]).click();
         await chooseRatings();
         await page.locator('.layout-task-confidence-save').click();
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 3/4' : 'Confirm · 3/4 left', 'Re-saving cannot decrement twice');
         for (const id of ids.slice(1)) {
           await object(id).click();
           assert.deepEqual(await activeIds(), [id]);
           await chooseRatings();
           await page.locator('.layout-task-confidence-save').click();
+          const remaining = ids.length - ids.indexOf(id) - 1;
+          assert.equal(await confirm.innerText(), remaining > 0
+            ? chinese ? `Confirm · 剩余 ${remaining}/4` : `Confirm · ${remaining}/4 left`
+            : 'Confirm ★');
         }
         await anchor('confirm');
         assert.equal(await pending().count(), 0);
+        assert.equal(await confirm.innerText(), 'Confirm ★');
         assert.deepEqual(await activeIds(), []);
         await shot('all-saved');
         await confirm.click();
@@ -460,17 +526,27 @@ async function runEntryAcceptance(browser, options) {
         assert.equal(records[0].pause_count, undefined);
         assert.equal(records[0].pause_snapshot, undefined, 'The tutorial practice must not write a formal pause snapshot');
         await shot('formal');
+        const formalId = (await activeIds())[0] || await stage.locator('.layout-task-object[role="button"]').first().evaluate(e => e.parentElement.dataset.objectId);
+        assert.equal(await pending().count(), 4, 'Formal tasks must start with all four targets pending');
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 4/4' : 'Confirm · 4/4 left');
+        const formalPending = await glowSample(formalId, 'formal-glow-before');
+        await object(formalId).click();
+        await chooseRatings();
+        await page.locator('.layout-task-confidence-save').click();
+        assert.equal(await pending().count(), 3);
+        assert.equal(await confirm.innerText(), chinese ? 'Confirm · 剩余 3/4' : 'Confirm · 3/4 left');
+        checkGlowPixels(formalPending, await glowSample(formalId, 'formal-glow-after'), 'formal');
       });
     }
     await probeRedirectCancellations(page, network);
     await check('all asset requests successful; entire outside origin excluded', async () => assertCleanNetwork(network));
-    return { status: 'passed', locale, viewport, profileOnly, checks, count: checks.length, network };
+    return { status: 'passed', locale, viewport, profileOnly, checks, count: checks.length, glowChecks, network };
   } catch (error) {
     await shot('failure').catch(() => {});
     writeFileSync(path.join(outputDir, 'failure.html'), await page.content().catch(() => ''));
     throw error;
   } finally {
-    writeFileSync(path.join(outputDir, 'acceptance.json'), JSON.stringify({ locale, viewport, profileOnly, checks, count: checks.length, network, result }, null, 2));
+    writeFileSync(path.join(outputDir, 'acceptance.json'), JSON.stringify({ locale, viewport, profileOnly, checks, count: checks.length, glowChecks, network, result }, null, 2));
     await context.close();
   }
 }

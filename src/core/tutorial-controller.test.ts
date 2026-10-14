@@ -190,10 +190,10 @@ describe("TutorialController confirmed gates", () => {
     confidence.enterObjectEdit("chair");
     tutorial.handle("object_selected", { objectId: "chair" });
     expect(tutorial.getCurrentStep()).toMatchObject({
-      task: taskPrefix + (english ? "Match this object's position and orientation to the perspective image." : "使物体位置和方向与透视图一致。"),
+      task: taskPrefix + (english ? "Match this object's position and orientation to the perspective image." : "根据透视图，还原所选家具的位置和方向。"),
       message: english
-        ? "Use the move and rotate controls if needed; keeping the current pose is allowed. Move the pointer away to hide the controls and back to show them; you remain in edit mode. Rate your confidence in both position and orientation. Select a rating for each below."
-        : "需要时用控件移动或旋转；也可保留当前姿态。移开鼠标隐藏控件，移回显示；仍处于编辑模式。评估你对位置和方向的把握程度。请分别选择两项置信度。",
+        ? "Refer to the control tips in the gray box on the right, then rate your confidence in position and orientation at the bottom left."
+        : "参考页面右侧灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。",
     });
     confidence.choose("position", 3); confidence.choose("rotation", 4);
     tutorial.handle("confidence_chosen");

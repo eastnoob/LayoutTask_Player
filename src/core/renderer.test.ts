@@ -80,7 +80,7 @@ describe("persistent reference display", () => {
     }
   });
 
-  it("keeps mounted variable objects pending through edits and clears them after the first successful Save", () => {
+  it.each(["en-US", "zh-CN"] as const)("counts pending objects through edits and clears their glow after the first successful Save (%s)", (locale) => {
     const base = createRuntimeConfig();
     const config = createRuntimeConfig({
       objects: [{
@@ -104,6 +104,7 @@ describe("persistent reference display", () => {
       root: root as unknown as HTMLElement,
       config,
       store,
+      locale,
       confidence: {
         scale: [1, 2],
         labels: { "1": "low", "2": "high" },
@@ -141,8 +142,11 @@ describe("persistent reference display", () => {
       const visual = refs.objectVisualElements.get(objectId)! as unknown as TestElement;
       const object = refs.objectElements.get(objectId)! as unknown as TestElement;
 
+      expect(refs.confirmButton?.textContent).toBe(locale === "zh-CN" ? "Confirm · 剩余 1/1" : "Confirm · 1/1 left");
       expect(visual.classList.contains("is-pending")).toBe(true);
       object.dispatch("click", { stopPropagation: vi.fn() });
+      controller.saveActiveConfidence();
+      expect(refs.confirmButton?.textContent).toBe(locale === "zh-CN" ? "Confirm · 剩余 1/1" : "Confirm · 1/1 left");
       expect(visual.classList.contains("is-pending")).toBe(true);
 
       const rotateButton = refs.controlButtons.get(objectId)!.get("rotate_cw")! as unknown as TestElement;
@@ -159,27 +163,105 @@ describe("persistent reference display", () => {
       confidenceButtons[0].click();
       confidenceButtons[2].click();
       expect(visual.classList.contains("is-pending")).toBe(true);
+      expect(refs.confirmButton?.textContent).toBe(locale === "zh-CN" ? "Confirm · 剩余 1/1" : "Confirm · 1/1 left");
 
       confidence.querySelector(".layout-task-confidence-save")!.click();
       expect(visual.classList.contains("is-pending")).toBe(false);
+      expect(refs.confirmButton?.textContent).toBe("Confirm ★");
 
       object.dispatch("click", { stopPropagation: vi.fn() });
       expect(visual.classList.contains("is-pending")).toBe(false);
+      expect(refs.confirmButton?.textContent).toBe("Confirm ★");
     } finally {
       renderer.destroy();
       dom.restore();
     }
   });
 
-  it("marks unsaved variable objects as pending without overriding selection highlight", () => {
-    const source = readFileSync(new URL("./renderer.ts", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
+  it("counts required furniture groups once and ignores fixed objects", () => {
+    const base = createRuntimeConfig().objects[0];
+    const config = createRuntimeConfig({ objects: [
+      { ...base, id: "chair", group_id: "chairs", role: "variable" as const },
+      { ...base, id: "second_chair", group_id: "chairs", role: "variable" as const },
+      { ...base, id: "table", group_id: "table", role: "variable" as const },
+      { ...base, id: "fixed_chair", group_id: "fixed", role: "fixed" as const },
+    ].map((object) => ({ ...object, asset: { ...object.asset, inlineSvgText: undefined } })) });
+    const dom = installRendererDom();
+    const confidence = new ConfidenceController({ config, required: true, scale: [1, 2] });
+    const renderer = new LayoutTaskRenderer({ root: new TestElement("main") as unknown as HTMLElement,
+      config, store: new StateStore(config),
+      confidence: { scale: [1, 2], labels: {}, onChoose: (dimension, value) => confidence.choose(dimension, value), onSave: () => confidence.saveActiveGroup() },
+      isObjectFirstSaveComplete: (id) => confidence.getFinalConfidence()[config.objects.find((object) => object.id === id)!.group_id!] !== undefined });
+    try {
+      const refs = renderer.mount();
+      expect(refs.confirmButton?.textContent).toBe("Confirm · 2/2 left");
+      for (const [id, expected] of [["chair", "Confirm · 1/2 left"], ["second_chair", "Confirm · 1/2 left"], ["table", "Confirm ★"]]) {
+        confidence.enterObjectEdit(id);
+        confidence.choose("position", 1); confidence.choose("rotation", 2);
+        confidence.saveActiveGroup();
+        renderer.clearActiveObject();
+        expect(refs.confirmButton?.textContent).toBe(expected);
+      }
+      expect(refs.confirmButton?.getAttribute("aria-label")).toBe("Confirm: all furniture groups have been saved");
+    } finally { renderer.destroy(); dom.restore(); }
+  });
 
-    expect(source).toContain("isObjectFirstSaveComplete?: (objectId: string) => boolean;");
-    expect(source).toContain('visual.classList.toggle("is-pending"');
-    expect(source).toContain('visual.classList.toggle("is-highlighted", highlighted);');
-    expect(css).toContain(".layout-task-object-visual.is-pending:not(.is-highlighted)");
-    expect(css).toContain("drop-shadow");
+  it("remeasures pending glow when the tutorial returns from a hidden board and after resize", () => {
+    const dom = installRendererDom();
+    const bounds = vi.spyOn(TestElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 0, height: 0, left: 0, top: 0, bottom: 0 });
+    const base = createRuntimeConfig();
+    const config = createRuntimeConfig({ objects: base.objects.map(object => ({ ...object, role: "variable" as const, asset: { ...object.asset, inlineSvgText: undefined } })) });
+    const renderer = new LayoutTaskRenderer({ root: new TestElement("main") as unknown as HTMLElement,
+      config, store: new StateStore(config), isObjectFirstSaveComplete: () => false });
+    try {
+      const refs = renderer.mount();
+      const svg = refs.svg as unknown as TestElement;
+      const camera = refs.cameraLayer as unknown as TestElement;
+      const filter = svg.querySelector(".layout-task-pending-glow-filter")!;
+      expect(filter).not.toBeNull();
+      const blur = () => Number(filter.querySelector("feDropShadow")!.getAttribute("stdDeviation"));
+      const resize = vi.mocked(window.addEventListener).mock.calls.find(([name]) => name === "resize")![1] as () => void;
+      vi.spyOn(svg, "getScreenCTM").mockReturnValue({ a: 1, inverse: () => ({ a: 1 }) });
+      vi.spyOn(camera, "getScreenCTM").mockReturnValue({ a: 0.026, inverse: () => ({ a: 1 / 0.026 }) });
+      expect(blur()).toBe(0);
+      expect((refs.objectVisualElements.get("chair_01")! as unknown as TestElement).style["--layout-task-pending-glow-filter"]).toBeUndefined();
+      bounds.mockReturnValue({ width: 800, height: 600, left: 0, top: 0, bottom: 600 });
+      renderer.showTutorialStep({ id: "view_direction", anchor: "viewport-tools", task: "Confirm the viewing direction.", message: "The board is now closed." });
+      expect(blur()).toBeCloseTo(153.8461538);
+      expect((refs.objectVisualElements.get("chair_01")! as unknown as TestElement).style["--layout-task-pending-glow-filter"]).toBe("url(#layout-task-pending-glow-chair_01)");
+      vi.mocked(camera.getScreenCTM).mockReturnValue({ a: 0.013, inverse: () => ({ a: 1 / 0.013 }) });
+      resize();
+      expect(blur()).toBeCloseTo(307.6923077);
+      expect(Number(filter.getAttribute("width"))).toBeGreaterThan(config.objects[0].width + 2000);
+    } finally { bounds.mockRestore(); renderer.destroy(); dom.restore(); }
+  });
+
+  it("clears the previous task's root locks on teardown", () => {
+    const dom = installRendererDom();
+    const root = new TestElement("main");
+    root.classList.add("layout-task-locked", "layout-task-tutorial-interaction-locked", "jspsych-content");
+    const renderer = new LayoutTaskRenderer({ root: root as unknown as HTMLElement,
+      config: createRuntimeConfig(), store: new StateStore(createRuntimeConfig()) });
+    try {
+      renderer.destroy();
+      expect(root.classList.contains("layout-task-locked")).toBe(false);
+      expect(root.classList.contains("layout-task-tutorial-interaction-locked")).toBe(false);
+      expect(root.classList.contains("jspsych-content")).toBe(true);
+    } finally { dom.restore(); }
+  });
+
+  it("starts a new trial on a reused root without inherited tutorial locks", () => {
+    const dom = installRendererDom();
+    const root = new TestElement("main");
+    root.classList.add("layout-task-locked", "layout-task-tutorial-interaction-locked", "jspsych-content");
+    const config = createRuntimeConfig({ objects: [] });
+    const renderer = new LayoutTaskRenderer({ root: root as unknown as HTMLElement, config, store: new StateStore(config) });
+    try {
+      renderer.mount();
+      expect(root.classList.contains("layout-task-locked")).toBe(false);
+      expect(root.classList.contains("layout-task-tutorial-interaction-locked")).toBe(false);
+      expect(root.classList.contains("jspsych-content")).toBe(true);
+    } finally { renderer.destroy(); dom.restore(); }
   });
 
   it("renders approved yellow-object emphasis and suppresses the generic edit instruction", () => {
@@ -636,6 +718,13 @@ class TestElement {
     return this.attributes.get(name) ?? null;
   }
 
+  toggleAttribute(name: string, force = this.getAttribute(name) === null): boolean {
+    if (force) this.setAttribute(name, "");
+    else this.attributes.delete(name);
+    if (name === "hidden") this.hidden = force;
+    return force;
+  }
+
   addEventListener(type: string, listener: TestListener): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
   }
@@ -759,6 +848,7 @@ function installRendererDom(): { restore(): void } {
   };
   vi.stubGlobal("document", documentRef);
   vi.stubGlobal("window", windowRef);
+  vi.stubGlobal("requestAnimationFrame", windowRef.requestAnimationFrame);
   return { restore: () => vi.unstubAllGlobals() };
 }
 
