@@ -119,3 +119,63 @@ Chromium 使用本机 Edge；自动化 WebKit 2336 已通过完整的本地双�
 - 尚未在实体 Safari 上测试；WebKit 结果是 Safari 引擎近似覆盖，不能替代实体 Safari。
 - 浏览器流程只进入首个正式 R12 场景，未在浏览器中完整执行 23 个正式场景；23 个场景及 92 个对象已由发布包和运行时校验器检查，结果链路由全套解码器/集成测试覆盖。
 - 当前只等待用户验收上面两个本地页面。用户确认页面无问题后，才执行静态网页仓库的中文 `main` 和英文 `en-US` 发布步骤。
+
+## 2026-10-14：本地预览反馈修正
+
+本次从 `794df79` 后的本地工作树继续实施，包含用户的三项预览修正和随后明确的全页面放大镜滚轮要求：
+
+1. 家具参考板两框可按住左键拖动并同时滚轮缩放，默认 1×、范围 1×–4×、每次 0.25×；松开后不再缩放框内素材。每页/每框位置和倍率独立保留，缩小时限制平移边界，继续拖动不跳变。沿用背景 SVG `contain` 与本地手形图标，不新增素材依赖。
+2. 四页家具参考板先于观察方向箭头。箭头仅在参考板完成后显示，确认后立即消失；两种 reference mode 和不配置参考板的回退均有测试。
+3. 放大镜倍率及 ESC 提示位于圆形镜片外正下方，两行显示；内部放大场景仍保持圆形裁切。
+4. 主放大镜启用后，无需按住鼠标左键，鼠标位于页面任何位置时滚轮都调节平面图镜片倍率。删除 renderer 的事件目标必须属于主 SVG 的限制，保留启用状态检查、阻止页面同时滚动及 ESC 退出。退出后恢复原滚轮行为，不改变其他内容的缩放或编辑状态。
+
+修改路径：`src/core/tutorial-reference-board.ts`、`src/core/tutorial-controller.ts`、`src/core/renderer.ts`、`src/styles/layout-task.css`；对应 controller/board/renderer/player 测试和现有浏览器回归工具同步修改。当前 spec、计划与讨论笔记已更新；历史批次记录不改写。
+
+### 测试与发布包证据
+
+先对顺序和参考板缩放新增失败测试，再实现；全页面滚轮修复前，renderer 回归中五个检查确实失败（预期倍率 2.25，实际 2）。删除目标限制后，renderer 和 magnifier 相关 64/64 检查通过。
+
+初次三项修正的独立证据保留于 `output/playwright/tutorial-followup-20261014/`：67 文件/735 测试、构建、闭包校验及双语 Chromium/WebKit 检查均通过。
+
+全页面滚轮修复第一轮重新验证，未沿用旧通过结果（尚未包含后续审查的两个边缘修正）：
+
+- `npm test`：退出 0，67 文件、739 测试通过。process-local `PYTHON` 指向现有运行时，不改系统配置。
+- `npm run build`：退出 0，100 模块构建完成；`npm run validate:web-release`：退出 0，`ok: true`、无失败。
+- 从当前源码重新构建的中文/英文独立静态包各 151 文件、无 `.git`，两种语言包的递归素材闭包、runtime 和教程锁校验均退出 0。
+- `node tools/browser/tutorial-regression.cjs chromium` 与 `webkit`：各自退出 0；每个引擎均完成两种语言真实入口流程、36 组入口检查、12 个参考板尺寸检查和 6 个宽高比像素检查。
+- 新增浏览器交互覆盖：放大镜模式中松开所有鼠标按钮，分别悬停 SVG 家具、透视参考图、教程泡泡、放大镜按钮及页面空白处，实际滚轮均改变镜片倍率；各元素上的滚轮不同时滚动页面，ESC 后正常退出。仍检查家具/保存输入冻结、教程门槛、两种箭头生命周期、同意/年龄/眼镜和首个正式场景。
+- 所有必要的同源素材请求成功，无 404、应用控制台错误或未捕获异常。外部源及非读取请求被阻断，不产生生产编号分配或上传。
+
+该轮证据目录：`output/playwright/tutorial-wheel-global-20261014/`。
+
+- 全量测试：`npm-test.log`；构建：`npm-build.log`；发布校验：`npm-validate.log`。
+- 静态包构建：`packages-build.log`；包索引：`packages/packages.json`；各语言校验：`packages/zh-validate.log`、`packages/en-validate.log`。
+- 浏览器日志：`browser-chromium.log`、`browser-webkit.log`；截图/入口结果：`packages-browser/{chromium,webkit}/{zh,en}/`。
+- 已人工查看 Chromium English 的 `magnifier-max.png`，确认两行提示位于镜片外下方。
+
+### 本地验收与发布边界
+
+新包预览继续使用中文 `http://127.0.0.1:5187/?debug=1` 和英文 `http://127.0.0.1:5188/?debug=1`；现有已加载页面需刷新才能载入新 JS。两个入口使用本地 copy-mode，不连接生产 receiver。未推送源分支、静态网页仓库或修改 VPS/WebDAV/历史数据，等待用户本地验收。
+
+实体 Safari 尚未测试；浏览器流程仍只进入第一个正式场景，没有逐一完成全部 23 个正式场景。23 场景素材由发布包校验覆盖；不能将此表述为完整的 23 题浏览器实验。
+
+### 独立审查、修复及最终验证
+
+独立审查发现外部倍率/ESC 提示在视口底部可能不可见，以及参考框同时按左右键后先松左键时可能残留拖动状态。两项均以失败测试复现：镜片 top 为 380px、预期 324px；左键释放后的参考框倍率为 1.25×、预期保持 1×。按实际提示高度及 8px 间距约束镜片显示位置，不改变场景采样；参考框在左键位消失时结束拖动并释放指针捕获。修复后 renderer/board 相关 78 项检查通过，限定独立复审结论为两项已关闭、无新的 Critical/Important/Minor 问题。
+
+只读模式曾阻断最终构建，未将该次拒绝计为已执行；用户随后明确授权继续 change，并要求仅更新本地预览和本地提交，不部署。
+
+最终树重新验证结果：
+
+- `npm test`：退出 0，67 文件、741 测试通过。
+- `npm run build`、`npm run validate:web-release`：退出 0，100 模块构建，素材闭包无失败。
+- 最新中文/英文独立包各 151 文件、无 `.git`，各语言校验退出 0。
+- Chromium 与 WebKit 浏览器回归分别退出 0；每个引擎均完成 2 个真实双语入口、36 组入口检查、12 个参考板尺寸检查和 6 个宽高比像素检查。全页面无按键滚轮、ESC、教程顺序和旧功能门槛全部保留。
+- 新增垂直视口断言及将平面图底边对齐窗口底部的真实操作；倍率/ESC 提示在圆圈外下方且不出屏，采样仍保持原鼠标所指的场景位置。已查看 Chromium English 的 `magnifier-bottom-edge.png`。
+- 没有必要素材请求失败、404、应用控制台错误或未捕获异常；外部源/非读取请求继续阻断，没有生产分配或上传。
+
+最终证据目录：`output/playwright/tutorial-wheel-final-20261014/`。全量测试/构建/校验分别为 `npm-test.log`、`npm-build.log`、`npm-validate.log`；浏览器日志为 `browser-chromium.log`、`browser-webkit.log`；最终包位于 `packages/{zh,en}-package`，包索引及每语言校验均在 `packages/`；浏览器截图和结果位于 `packages-browser/{chromium,webkit}/{zh,en}/`。
+
+实现与测试本地提交：`662b5d4`（`fix: refine tutorial order and magnifier controls`），只含 11 个明确的源码/测试/浏览器工具路径。设计、讨论、计划和最终证据另作本地文档提交，用户无关未跟踪文件未纳入。
+
+两种语言预览仍使用 5187/5188，已切换为最终包；刷新现有页面即可加载最新 JS。保留当前 `release/zh-CN` 分支，不合并、不推送、不创建 PR、不部署；下一步仅为用户验收本地网页。实体 Safari 与完整 23 题浏览器流程仍未测试。

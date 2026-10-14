@@ -349,6 +349,22 @@
 
 - [ ] **Step 5: Use `superpowers:finishing-a-development-branch` for the final integration choice.** Pending the user's local-page approval; only then choose the authorized push/deployment action.
 
+## 2026-10-14 Local Preview Follow-up
+
+Scope: the user's three local-page corrections, subsequent global non-held magnifier wheel clarification, and two concrete review fixes; no receiver, result-schema, asset, production or deployment changes.
+
+- [x] Add failing tests for reference-board-before-direction ordering, held-wheel zoom limits and independent/restored frame state.
+- [x] Implement left-button-held drag plus wheel zoom (1×–4×, 0.25× steps), preserve the background SVG containment workaround and clamp pan after zoom-out.
+- [x] Show all four reference pages before the direction arrow in both reference modes; retain the no-board fallback and existing practice/save gates.
+- [x] Move bilingual magnifier zoom/ESC hints outside and below the circular lens; keep the magnified scene circularly clipped.
+- [x] Apply the user's later correction: active main magnifier wheel zoom works anywhere on the page without a held mouse button; ESC restores normal wheel behavior. Add failing outside-plan tests before removing the renderer event-target guard.
+- [x] Close the review's bottom-edge hint clipping and left/right-button chord findings with failing mounted/frame tests and minimal fixes; add a real browser bottom-edge viewport assertion.
+- [x] Run fresh full tests (initial follow-up: 67 files/735 tests; global-wheel fix: 67 files/739 tests; review fixes: 67 files/741 tests), build, recursive release validation and independent bilingual package validation.
+- [x] Run both packaged language entry flows in Chromium and WebKit, covering the three corrections and existing consent/profile/tutorial/first-formal-scene behavior.
+- [x] Refresh local copy-mode previews on ports 5187 (Chinese) and 5188 (English), without production allocation or upload.
+
+Independent review, local commit identifiers and evidence are recorded in `docs/notes/2026-10-13-tutorial-interaction-implementation-evidence.md`. Physical Safari and the complete 23-scene browser run remain untested. Push/deployment still requires the user's local-page approval.
+
 ## Self-Review
 
 - Consent scope, age/eyewear preservation, and the corrected payment wording are covered by Task 1.

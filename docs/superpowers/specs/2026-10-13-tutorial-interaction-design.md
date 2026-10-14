@@ -2,7 +2,7 @@
 
 日期：2026-10-13（Europe/Berlin）
 
-状态：用户已确认完整设计及实施计划，实施进行中。按用户最新要求分批测试、提交；完成后先展示本地双语网页，人工验收通过前不推送或部署静态网页仓库。各项测试及提交以实施证据和 Git 记录为准。
+状态：本地实施与验证完成，等待用户验收双语网页。2026-10-14 按用户补充要求调整参考板缩放、教程顺序及放大镜提示位置；人工验收通过前不推送或部署静态网页仓库。各项测试及提交以实施证据和 Git 记录为准。
 
 源码观察基准：`release/zh-CN`，`297174d808a42bfc82abdf540f5c5ccc5d6be9bc`。
 
@@ -33,8 +33,8 @@
 | 顺序 | 阶段 | 继续条件 |
 | --- | --- | --- |
 | 1 | 知情同意、人口信息、精简教程开场与参考图说明 | 第一份知情同意书的四项确认及适用的阅读门槛；年龄/眼镜流程保留；按当前 reference mode 显示说明 |
-| 2 | 确认观察方向 | 点击确认；黄色方向大箭头立即消失 |
-| 3 | 四件家具参考板 | 原有每页 5 秒继续倒计时；拖动仅提示，不强制 |
+| 2 | 四件家具参考板 | 原有每页 5 秒继续倒计时；拖动及按住时滚轮缩放仅提示，不强制；此阶段不显示方向箭头 |
+| 3 | 确认观察方向 | 四页家具参考板完成后显示黄色方向大箭头；点击确认后立即消失 |
 | 4 | 放大镜练习 | 同一次使用中进入、滚轮实际改变倍率、ESC 退出 |
 | 5 | 选择第一个物体 | 进入一个尚未保存物体的编辑模式 |
 | 6 | 位置/方向与两项置信度 | 可调整或保持姿态；两项置信度均选择 |
@@ -48,9 +48,9 @@
 
 处于放大镜练习阶段时只放行该练习的进入、变倍和退出；处于 Pause 练习阶段时只放行点击 Pause、确认/取消及恢复。相应阶段完成前，家具选择、编辑、保存和最终提交均被阻断，不能先继续编辑下一件家具再补做练习。取消或提前退出仍停留在当前练习阶段，允许重试。
 
-源码目前将参考板作为独立 InstructionsPlugin 页面放在 player 前。实施时将参考板观察阶段衔接到教程内的方向确认之后，复用页面生成和阅读倒计时；通过 runner/plugin/player 的装配传递所需参考板信息，不重复初始化或提交教程任务。参考板观察期间锁住家具和最终提交。
+原源码将参考板作为独立 InstructionsPlugin 页面放在 player 前。实施后参考板成为教程内的观察阶段，位于观察方向确认之前，复用页面生成和阅读倒计时；通过 runner/plugin/player 的装配传递所需参考板信息，不重复初始化或提交教程任务。参考板观察期间锁住家具和最终提交。未配置参考板时直接进入观察方向确认；persistent 与 preview 两种模式均沿用这个顺序。
 
-每框拖动状态保留到离开教程或刷新；如发生页面重渲染/返回应恢复该框的位置。现有页面不提供向后导航，本设计不为此新增导航。
+每框拖动状态和缩放倍率保留到离开教程或刷新；如发生页面重渲染/返回应恢复该框的位置和倍率。现有页面不提供向后导航，本设计不为此新增导航。
 
 ## 3. 红光、编辑与文字强调
 
@@ -79,11 +79,13 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 
 主平面图隐藏 Zoom in、Zoom out、Reset view、Pan view 四个控件及对应旧教程；原工具位置只显示单个放大镜按钮，使用内嵌 SVG 图标。家具参考板的拖动是独立观察功能。
 
-放大镜仅显示当前下方平面图场景；不放大透视参考图、页面工具或泡泡。圆形镜片跟随鼠标，初始倍率 2×，范围 1.5×–4×，滚轮每次调节 0.25×。模式内滚轮用于变倍，不能同时滚动页面或改变家具。
+放大镜仅显示当前下方平面图场景；不放大透视参考图、页面工具或泡泡。圆形镜片跟随平面图内鼠标，初始倍率 2×，范围 1.5×–4×，滚轮每次调节 0.25×。进入模式后，无需按住鼠标左键，鼠标位于页面任何位置（包括 SVG 家具、参考图、工具、提示及空白处）时滚轮都调节该平面图镜片倍率，不能同时滚动页面或改变家具。ESC 退出后滚轮恢复原行为；页面上其他内容不会被镜片放大。
 
 镜片默认直径约 220 CSS 像素，小画布自适应缩小。进入时先置于平面图中心；鼠标进入画布后跟随。接近边缘时镜片显示位置向内调整，放大目标仍是鼠标指向的场景位置，不能因位置限制改看另一区域。
 
-倍率和“按 ESC 退出放大镜 / Press ESC to exit”显示在镜片下缘清晰提示条中，整个模式持续可见。到达上下限显示“最小 / 最大 / Min / Max”。镜片和提示均不得被画布边缘裁切。
+倍率和“按 ESC 退出放大镜 / Press ESC to exit”显示在圆形镜片外、正下方的清晰提示条中，两行分别显示倍率/范围和 ESC 说明，整个模式持续可见。到达上下限显示“最小 / 最大 / Min / Max”。圆形场景保持裁切；外部提示不受圆形遮罩裁切，也不得被画布边缘裁切。
+
+镜片显示位置同时预留提示高度和下方间距，确保提示不落到视口底部之外；只调整显示位置，不改变鼠标所指的场景采样位置。
 
 鼠标离开平面图时，镜片停在最后有效位置；模式、输入冻结与使用计时持续，直到 ESC 退出。没有退出按钮。
 
@@ -99,15 +101,15 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 
 最小 `MagnifierController` 管理模式、倍率、输入与使用区间，renderer 管理镜片视觉。任务销毁时清除事件与镜片，不把状态带到下一题。
 
-## 6. 家具参考板拖动
+## 6. 家具参考板拖动与按住缩放
 
-每件家具的“全部家具”和“可移动家具”两个 SVG 框分别支持按住拖动观察。只平移框内图像，不改变素材、家具状态或三维动画。
+每件家具的“全部家具”和“可移动家具”两个 SVG 框分别支持按住鼠标左键拖动观察；按住时可同时使用滚轮缩放，默认 1×，范围 1×–4×，每次 0.25×。松开后滚轮恢复页面滚动，不继续缩放。只变换框内图像，不改变素材、家具状态或三维动画。
 
-保持当前 SVG 背景图的 `contain` 适配，平移内部图像层；不要改回已发生旧 WebKit 裁切的百分比 `<img>`。容器裁切溢出，图像中心不能被拖到框外。拖动后保留位置，不自动复位、不增加缩放或复位按钮。
+保持当前 SVG 背景图的 `contain` 适配，平移并缩放内部图像层；不要改回已发生旧 WebKit 裁切的百分比 `<img>`。容器裁切溢出，平移边界随倍率调整；缩小时将位置夹回新边界，继续拖动不跳变。拖动后保留位置及倍率，不自动复位、不增加缩放或复位按钮。
 
 复用现有本地 `hand.svg`，半透明居中，不拦截拖动。各框未拖动时默认显示；中央悬浮显示、离开中央隐藏。首次实际拖动后默认隐藏，再次中央悬浮仍显示。中央提示区域以图标及其提示容器为准，不把全框悬浮当作中央悬浮。单击或按住未移动不算拖动。
 
-各框分别维护拖动状态和位置，在教程内按参考页/家具及框类型关联。拖动状态不写入实验答案，不额外采集拖动轨迹。固定提示为“按住拖动观察 / Click and hold to drag”。
+各框分别维护拖动状态、位置和倍率，在教程内按参考页/家具及框类型关联；两框及四页互不影响。观察状态不写入实验答案，不额外采集拖动轨迹或倍率日志。中央固定提示为“按住拖动观察 / Click and hold to drag”；参考板正文同时说明按住时滚轮缩放。
 
 ## 7. 时间与结果数据
 
@@ -146,8 +148,8 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 | 常驻图入口 | **Task:** Study the perspective image and prepare to reconstruct the floor plan. **Body:** You may refer to the image at any time. Remember each marked item's presence, position, and orientation. | **任务：**观察透视图，准备还原平面图。**正文：**你可以随时查看透视图。请注意每件标记家具是否出现、位置和方向。 |
 | 10 秒预览入口（仅该模式） | **Task:** Study the image and prepare to reconstruct the floor plan. **Body:** You have 10 seconds to remember each marked item's presence, position, and orientation. | **任务：**观察参考图，准备还原平面图。**正文：**你有 10 秒记住每件标记家具是否出现、位置和方向。 |
 | 预览（仅该模式） | **Task:** Remember the furniture before the image disappears. **Body:** Study the image until the countdown ends. | **任务：**在图片消失前记住家具信息。**正文：**请观察图片，直到倒计时结束。 |
+| 家具参考板 | **Task:** Inspect each furniture arrangement. **Body:** Click and hold either floor plan to drag; use the wheel while holding to zoom. Dragging is optional. | **任务：**观察每组家具的摆放。**正文：**按住并拖动平面图，按住时可用滚轮缩放；拖动不是必做项。 |
 | 观察方向 | **Task:** Confirm the viewing direction shown by the yellow arrow. **Body:** The observer is at the bottom of the plan. This direction stays fixed throughout the experiment. | **任务：**确认黄色箭头所示的观察方向。**正文：**观察者位于平面图下方；该方向在整个实验中保持不变。 |
-| 家具参考板 | **Task:** Inspect each furniture arrangement. **Body:** Hold and drag either floor-plan image to inspect it. Dragging is optional. | **任务：**观察每组家具的摆放。**正文：**按住并拖动平面图可查看细节；拖动不是必做项。 |
 | 放大镜练习 | **Task:** Open the magnifier, change its zoom with the wheel, then press ESC to exit. **Body:** It magnifies only the floor plan. Do not enlarge the perspective image with browser zoom, Ctrl+scroll, or another tool; these actions may be recorded. | **任务：**打开放大镜，滚轮调节倍率，再按 ESC 退出。**正文：**放大镜仅用于平面图。请勿用浏览器缩放、Ctrl+滚轮或其他工具放大透视图；这些行为可能会被记录。 |
 | 首次选择 | **Task:** Click a glowing yellow object to begin editing. **Body:** Red glow means its first edit has not been saved. Only yellow objects can be edited. | **任务：**点击发红光的黄色物体，开始编辑。**正文：**红光表示尚未保存首次编辑。只有黄色物体可以编辑。 |
 | 位置与方向 | **Task:** Match this object's position and orientation to the perspective image. **Body:** Use the move and rotate controls if needed; keeping the current pose is allowed. Move the pointer away to hide the controls and back to show them; you remain in edit mode. | **任务：**使物体位置和方向与透视图一致。**正文：**需要时用控件移动或旋转；也可保留当前姿态。移开鼠标隐藏控件，移回显示；仍处于编辑模式。 |
@@ -161,7 +163,7 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 页面与模式界面补充文案：
 
 - 退出/未完成的报酬说明：已定位 `src/experiment-runner.ts` 的教程完成页退出说明，当前英文为 `In that case, you will not receive the promised compensation`，中文为“在这种情况下，您将无法获得承诺报酬”。按用户指定，英文改为独立句 `You may not receive payment as a result of this.`，中文对应“您可能因此无法获得报酬。”；其后关于无处罚、无额外费用和联系研究人员的信息保留。中英文同步，实际奖励计算沿用现有规则。
-- 放大镜固定提示：`仅可观察 · {倍率} · 按 ESC 退出放大镜` / `Observation only · {zoom} · Press ESC to exit`。倍率边界增加 Min/Max。
+- 放大镜固定提示位于圆形外正下方，第一行显示 `{倍率}（最小 1.5×，最大 4×）` / `{zoom} (min 1.5×, max 4×)`，第二行显示 `按 ESC 退出放大镜` / `Press ESC to exit`。倍率边界增加 Min/Max。
 - 教程 Pause 确认：`暂停练习将持续最多 10 秒，不消耗正式暂停机会。确认开始？` / `This practice pause lasts up to 10 seconds and does not use your formal pause. Start?`
 - 教程暂停中：`可等待 {秒数} 秒后自动恢复，或点击 Resume。` / `Wait {seconds} seconds for automatic resume, or select Resume.`
 - 练习缺失的提交提示分别指出尚需完成放大镜或 Pause，不只显示笼统错误。通过正常步骤完成即可消除提示。
@@ -215,7 +217,7 @@ Pause 确认或暂停期间不能启动放大镜；放大镜中不能启动 Paus
 
 重点检查：仅第一份知情同意内容、四项确认及适用的阅读/滚动门槛、年龄/眼镜、教程开场去重、reference mode 文案、既定教程顺序、Pause 强制练习、放大镜强制练习、物体编辑保存、有效时长及所有模式阻断。保留显示方向箭头与 Pause 箭头的不同生命周期。
 
-视觉证据包含：待完成/已保存红光、编辑中镜片与退出恢复、镜片边缘/离开画布/最小最大倍率、ESC 提示、两个参考框独立拖动及手势悬浮、Safari 曾裁切的家具完整轮廓、两种语言 task 及词组强调。记录失败请求、404 和控制台错误。
+视觉证据包含：待完成/已保存红光、编辑中镜片与退出恢复、镜片边缘/离开画布/最小最大倍率、镜片外下方 ESC 提示、四页先于方向箭头、两个参考框独立拖动/按住时缩放及手势悬浮、Safari 曾裁切的家具完整轮廓、两种语言 task 及词组强调。记录失败请求、404 和控制台错误。
 
 WebKit 自动化用于相关显示与交互回归，不能冒充用户设备上的 Safari 测试；若实际 Safari 未测，最终报告须明确。
 
