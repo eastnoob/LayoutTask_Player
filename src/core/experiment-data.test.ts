@@ -212,7 +212,7 @@ describe("experiment data export", () => {
     expect(files[0].data).toContain("prolific_id");
     expect(files[0].data).toContain("participant_age");
     expect(files[0].data).toContain("requires_corrective_eyewear");
-    expect(files[0].data).toContain(",31,true,");
+    expect(files[0].data).toContain(",31,,true,");
     expect(files[0].data).toContain(" 5f2a-original ");
     expect(files[0].data).toContain("consent_version");
     expect(files[0].data).toContain("data-protection-2026-10-03-v1");
@@ -279,6 +279,37 @@ describe("experiment data export", () => {
       participant_profile: rowInput.participantProfile,
     });
     expect(createTutorialResultFile(rowInput).filename).toBe("layout_tutorial_result_P001_S001.json");
+  });
+
+  it.each(["male", "female"] as const)("exports %s sex assigned at birth beside the other demographics", (sex) => {
+    const participantProfile = {
+      ...rowInput.participantProfile!,
+      participant_sex_assigned_at_birth: sex,
+    };
+    const files = createExperimentCsvFiles({ ...rowInput, participantProfile });
+    const [headers, row] = parseCsvRecords(files[0].data);
+    expect(row).toHaveLength(headers.length);
+    const values = Object.fromEntries(headers.map((header, index) => [header, row[index]]));
+    expect(values).toMatchObject({
+      participant_age: "31",
+      participant_sex_assigned_at_birth: sex,
+      requires_corrective_eyewear: "true",
+    });
+    for (const file of files.filter((file) => file.contentType === "application/json")) {
+      expect(JSON.parse(file.data).participant_profile).toEqual(participantProfile);
+    }
+    const payloads = createExperimentDataPipePayloads({ experimentId: rowInput.experimentId, files, participantProfile });
+    expect(payloads.every((payload) => payload.participant_profile?.participant_sex_assigned_at_birth === sex)).toBe(true);
+  });
+
+  it("leaves sex assigned at birth blank for historical profiles without that field", () => {
+    const [headers, row] = parseCsvRecords(createExperimentCsvFiles(rowInput)[0].data);
+    const values = Object.fromEntries(headers.map((header, index) => [header, row[index]]));
+    expect(values).toMatchObject({
+      participant_age: "31",
+      participant_sex_assigned_at_birth: "",
+      requires_corrective_eyewear: "true",
+    });
   });
 
   it("exports magnifier timing in trial CSV and leaves legacy results blank", () => {

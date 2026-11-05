@@ -27,6 +27,7 @@ export interface ConsentRecord {
 
 export interface ParticipantProfile {
   participant_age: number;
+  participant_sex_assigned_at_birth?: "male" | "female";
   requires_corrective_eyewear: boolean;
 }
 
@@ -74,7 +75,7 @@ const ENGLISH_DOCUMENT_HTML = `
     <h3>Purpose of the study</h3>
     <p>This study aims to understand how people perceive spatial layout based on a single indoor image. You will view images of indoor scenes and, based on your interpretation, move yellow furniture on a floor plan to the approximate locations and orientations where you perceive them to be in the images. Your responses will help us better understand how people extract spatial information from images.</p>
     <h3>Procedure</h3>
-    <p>If you agree to participate in this study, you will complete the following steps: 1. Read the study instructions and confirm your informed consent. 2. Before the tutorial, read the experiment instructions and provide your age and daily corrective-eyewear information. 3. For each task, the picture will be displayed at the top of the page and the floor plan below it. Reconstruct the scene by moving the yellow furniture objects on the floor plan to the positions and orientations that match the picture as closely as possible. 4. Open every yellow furniture object once, even if its initial position is already correct. Use the pop-up move and rotate tools; only yellow objects can be moved. 5. Choose your confidence for the position and rotation of each yellow object, then select Save before submitting. Please note: yellow highlighting appears only on the floor plan. In the 3D scene images, furniture retains its original colors and may look similar to other items. Your reconstruction results, response times, certainty ratings, and task-related actions will be recorded. You may withdraw from the study at any time without giving a reason. All data will be stored anonymously or in a de-identified format and used solely for scientific research purposes.</p>
+    <p>If you agree to participate in this study, you will complete the following steps: 1. Read the study instructions and confirm your informed consent. 2. Before the tutorial, read the experiment instructions and provide your age, sex assigned at birth, and daily corrective-eyewear information. 3. For each task, the picture will be displayed at the top of the page and the floor plan below it. Reconstruct the scene by moving the yellow furniture objects on the floor plan to the positions and orientations that match the picture as closely as possible. 4. Open every yellow furniture object once, even if its initial position is already correct. Use the pop-up move and rotate tools; only yellow objects can be moved. 5. Choose your confidence for the position and rotation of each yellow object, then select Save before submitting. Please note: yellow highlighting appears only on the floor plan. In the 3D scene images, furniture retains its original colors and may look similar to other items. Your reconstruction results, response times, certainty ratings, and task-related actions will be recorded. You may withdraw from the study at any time without giving a reason. All data will be stored anonymously or in a de-identified format and used solely for scientific research purposes.</p>
     <h3>Duration</h3>
     <p>This study is expected to take approximately <strong>20-45 minutes</strong>.</p>
     <h3>Potential risks</h3>
@@ -101,7 +102,7 @@ const CHINESE_DOCUMENT_HTML = `
     <h3>研究目的</h3>
     <p>本研究旨在了解人们如何根据单张室内图像感知空间布局。您将查看室内场景图，并根据您的理解，在平面图上把黄色家具移动到您认为与图像中相符的大致位置和朝向。您的回答将帮助我们了解人们如何从图像中提取空间信息。</p>
     <h3>研究流程</h3>
-    <p>如果您同意参加本研究，您将完成以下步骤：1. 阅读研究说明并确认知情同意。2. 在教程开始前，阅读实验说明并填写年龄和日常视力矫正设备使用情况。3. 在每个任务中，图片显示在页面顶部，平面图显示在下方。请根据图片，将平面图中的黄色家具物体移动到与图片尽可能一致的位置和朝向，以还原场景。4. 每个黄色家具物体都必须打开一次，即使其初始位置已经正确。请使用弹出的移动和旋转工具；只有黄色物体可以移动。5. 为每个黄色物体选择位置和旋转的置信度，然后在提交前选择“保存”。请注意：黄色标记只出现在平面图中；三维场景图片中的家具保留原有颜色，可能与其他家具相似。系统会记录您的还原结果、反应时间、置信度和任务相关操作。您可以随时退出研究，无需说明理由。所有数据都会以匿名或去标识化形式保存，仅用于科学研究。</p>
+    <p>如果您同意参加本研究，您将完成以下步骤：1. 阅读研究说明并确认知情同意。2. 在教程开始前，阅读实验说明并填写年龄、出生时登记的性别和日常视力矫正设备使用情况。3. 在每个任务中，图片显示在页面顶部，平面图显示在下方。请根据图片，将平面图中的黄色家具物体移动到与图片尽可能一致的位置和朝向，以还原场景。4. 每个黄色家具物体都必须打开一次，即使其初始位置已经正确。请使用弹出的移动和旋转工具；只有黄色物体可以移动。5. 为每个黄色物体选择位置和旋转的置信度，然后在提交前选择“保存”。请注意：黄色标记只出现在平面图中；三维场景图片中的家具保留原有颜色，可能与其他家具相似。系统会记录您的还原结果、反应时间、置信度和任务相关操作。您可以随时退出研究，无需说明理由。所有数据都会以匿名或去标识化形式保存，仅用于科学研究。</p>
     <h3>研究时长</h3>
     <p>本研究预计需要约 <strong>20-45 分钟</strong>。</p>
     <h3>潜在风险</h3>
@@ -158,6 +159,10 @@ export function parseParticipantAgeInput(value: number): number | undefined {
   return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
+export function parseParticipantSexAssignedAtBirthInput(value: string): ParticipantProfile["participant_sex_assigned_at_birth"] {
+  return value === "male" || value === "female" ? value : undefined;
+}
+
 export function waitForParticipantProfile(options: {
   root: HTMLElement;
   locale?: "en-US" | "zh-CN";
@@ -165,14 +170,16 @@ export function waitForParticipantProfile(options: {
 }): Promise<ParticipantProfile> {
   const documentRef = options.documentRef ?? document;
   const chinese = options.locale === "zh-CN";
+  const sexField = `<label for="layout-task-participant-sex">${chinese ? "生理性别（出生时登记）" : "Sex assigned at birth"}</label><select id="layout-task-participant-sex" required><option value="" disabled selected>${chinese ? "请选择" : "Select an option"}</option><option value="male">${chinese ? "男" : "Male"}</option><option value="female">${chinese ? "女" : "Female"}</option></select>`;
   return new Promise((resolve) => {
     const section = documentRef.createElement("section");
     section.className = "layout-task-shell layout-task-profile-shell";
     section.innerHTML = chinese
-      ? `<header class="layout-task-header"><p class="layout-task-eyebrow">实验说明</p><h1>这是实验，不是考试</h1></header><p>犯错和不确定是正常的，请按您的真实判断作答。</p><p class="layout-task-profile-notice"><strong>视力提示：</strong>如果您日常需要使用眼镜、隐形眼镜或其他视力矫正设备，请在整个实验过程中佩戴，以便清楚查看实验材料。</p><p class="layout-task-profile-warning"><strong>重要：</strong>实验期间请勿缩放页面、最小化浏览器或刷新页面，否则可能导致记分失效，您将无法获得报酬。</p><p>正式实验期间可暂停一次，最长 15 分钟，之后将自动恢复。</p><label for="layout-task-participant-age">年龄</label><input id="layout-task-participant-age" type="number" min="1" step="1" required /><label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />我在日常生活中需要佩戴眼镜。</label><p class="layout-task-form-error" role="alert" hidden>请输入有效年龄后继续。</p><button type="button" class="layout-task-primary-button">继续</button>`
-      : `<header class="layout-task-header"><p class="layout-task-eyebrow">Study instructions</p><h1>This is an experiment, not a test</h1></header><p>Mistakes and uncertainty are normal. Please respond according to your honest judgment.</p><p class="layout-task-profile-notice"><strong>Vision:</strong> If you normally use glasses, contact lenses, or another vision-correction aid, please wear it throughout the experiment so you can clearly view the study materials.</p><p class="layout-task-profile-warning"><strong>Important:</strong> Do not zoom the page, minimise the browser, or refresh during the experiment. Doing so may invalidate your score and make you ineligible for payment.</p><p>During the formal experiment, you may pause once for up to 15 minutes, after which it will automatically resume.</p><label for="layout-task-participant-age">Age</label><input id="layout-task-participant-age" type="number" min="1" step="1" required /><label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />I need to wear glasses in daily life.</label><p class="layout-task-form-error" role="alert" hidden>Please enter a valid age before continuing.</p><button type="button" class="layout-task-primary-button">Continue</button>`;
+      ? `<header class="layout-task-header"><p class="layout-task-eyebrow">实验说明</p><h1>这是实验，不是考试</h1></header><p>犯错和不确定是正常的，请按您的真实判断作答。</p><p class="layout-task-profile-notice"><strong>视力提示：</strong>如果您日常需要使用眼镜、隐形眼镜或其他视力矫正设备，请在整个实验过程中佩戴，以便清楚查看实验材料。</p><p class="layout-task-profile-warning"><strong>重要：</strong>实验期间请勿缩放页面、最小化浏览器或刷新页面，否则可能导致记分失效，您将无法获得报酬。</p><p>正式实验期间可暂停一次，最长 15 分钟，之后将自动恢复。</p><label for="layout-task-participant-age">年龄</label><input id="layout-task-participant-age" type="number" min="1" step="1" required />${sexField}<label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />我在日常生活中需要佩戴眼镜。</label><p class="layout-task-form-error" role="alert" hidden>请输入有效年龄并选择出生时登记的性别后继续。</p><button type="button" class="layout-task-primary-button">继续</button>`
+      : `<header class="layout-task-header"><p class="layout-task-eyebrow">Study instructions</p><h1>This is an experiment, not a test</h1></header><p>Mistakes and uncertainty are normal. Please respond according to your honest judgment.</p><p class="layout-task-profile-notice"><strong>Vision:</strong> If you normally use glasses, contact lenses, or another vision-correction aid, please wear it throughout the experiment so you can clearly view the study materials.</p><p class="layout-task-profile-warning"><strong>Important:</strong> Do not zoom the page, minimise the browser, or refresh during the experiment. Doing so may invalidate your score and make you ineligible for payment.</p><p>During the formal experiment, you may pause once for up to 15 minutes, after which it will automatically resume.</p><label for="layout-task-participant-age">Age</label><input id="layout-task-participant-age" type="number" min="1" step="1" required />${sexField}<label class="layout-task-profile-checkbox"><input id="layout-task-corrective-eyewear" type="checkbox" />I need to wear glasses in daily life.</label><p class="layout-task-form-error" role="alert" hidden>Please enter a valid age and select your sex assigned at birth before continuing.</p><button type="button" class="layout-task-primary-button">Continue</button>`;
     options.root.replaceChildren(section);
     const ageInput = section.querySelector<HTMLInputElement>("#layout-task-participant-age")!;
+    const sexInput = section.querySelector<HTMLSelectElement>("#layout-task-participant-sex")!;
     const eyewearInput = section.querySelector<HTMLInputElement>("#layout-task-corrective-eyewear")!;
     const error = section.querySelector<HTMLElement>(".layout-task-form-error")!;
     const button = section.querySelector<HTMLButtonElement>("button")!;
@@ -183,8 +190,14 @@ export function waitForParticipantProfile(options: {
         ageInput.focus();
         return;
       }
+      const sex = parseParticipantSexAssignedAtBirthInput(sexInput.value);
+      if (sex === undefined) {
+        error.hidden = false;
+        sexInput.focus();
+        return;
+      }
       section.remove();
-      resolve({ participant_age: age, requires_corrective_eyewear: eyewearInput.checked });
+      resolve({ participant_age: age, participant_sex_assigned_at_birth: sex, requires_corrective_eyewear: eyewearInput.checked });
     };
     button.addEventListener("click", submit);
     ageInput.addEventListener("keydown", (event) => {

@@ -172,13 +172,18 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           const requestCount = requests.length;
           const submissionCount = submissions.length;
           const archiveCount = archives.length;
+          const participantProfile = {
+            participant_age: 31,
+            participant_sex_assigned_at_birth: mode === "automatic" ? "male" as const : "female" as const,
+            requires_corrective_eyewear: true,
+          };
           const trialResults: ExperimentTrialResultItem[] = trials.map((payload) => ({
             trialType: "formal", taskId: payload.result.task_id, qid: payload.result.qid,
             encoded: payload.encoded.output, hash8: payload.encoded.hash8,
             result: payload.result, presentation: payload.result.presentation,
           }));
           const files = createExperimentCsvFiles({
-            participantId, sessionId, experimentId, assignment, referenceMode: "persistent",
+            participantId, sessionId, experimentId, assignment, participantProfile, referenceMode: "persistent",
             startTime: 1000, endTime: 2000, tutorialCompleted: true, tutorialDurationMs: 1000,
             trialOrder: trialResults.map((trial) => trial.taskId), trialResults,
             tutorialResult: { trialType: "tutorial", taskId: tutorial.result.task_id, qid: tutorial.result.qid,
@@ -186,7 +191,7 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           });
           const saved = await saveExperimentFiles({
             dataSave: { mode: "receiver", experimentId, endpoint: "https://receiver.invalid/submit", filenamePrefix: "layout" },
-            files, participantId, sessionId, fetchImpl,
+            files, participantId, sessionId, participantProfile, fetchImpl,
             assignment: {
               assignmentId: record.assignment_id, participantNumber: record.participant_number,
               sequenceId: record.sequence_id, scheduleVersion: record.schedule_version, assignmentMode: record.assignment_mode,
@@ -212,6 +217,14 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
             ...assignment, experiment_id: experimentId, participant_id: participantId, session_id: sessionId });
           expect(archived.reply, JSON.stringify(archived.reply)).toMatchObject({ ok: true, archive_status: "archived" });
           expect(archived.status).toBe(archived.reply.already_archived ? 200 : 201);
+          const archivedDir = join(archive, experimentId, participantId, sessionId, submitted.reply.id);
+          const sessionCsv = readdirSync(archivedDir).find((name) => name.includes("_session_") && name.endsWith(".csv"))!;
+          const [demographics] = parse(readFileSync(join(archivedDir, sessionCsv), "utf8"), { columns: true });
+          expect(demographics).toMatchObject({
+            participant_age: "31",
+            participant_sex_assigned_at_birth: participantProfile.participant_sex_assigned_at_birth,
+            requires_corrective_eyewear: "true",
+          });
           const raw = files.find((file) => file.filename.includes("_raw_results_"))!;
           const rows = parse(raw.data, { columns: true }) as Record<string, string>[];
           expect(rows).toHaveLength(trials.length + 1);

@@ -106,7 +106,7 @@ describe("experiment session persistence", () => {
 
   it("persists the pre-study participant profile with the active session", () => {
     const storage = memoryStorage();
-    const profile: ParticipantProfile = { participant_age: 31, requires_corrective_eyewear: true };
+    const profile: ParticipantProfile = { participant_age: 31, participant_sex_assigned_at_birth: "male", requires_corrective_eyewear: true };
     const session = bootstrapExperimentSession({
       experimentId: "exp",
       participantId: "P1",

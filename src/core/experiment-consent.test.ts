@@ -8,6 +8,7 @@ import {
   isConsentComplete,
   parseProlificIdInput,
   parseParticipantAgeInput,
+  parseParticipantSexAssignedAtBirthInput,
 } from "./experiment-consent";
 
 describe("experiment consent", () => {
@@ -40,6 +41,14 @@ describe("experiment consent", () => {
     expect(parseParticipantAgeInput(29.5)).toBeUndefined();
     expect(parseParticipantAgeInput(Number.NaN)).toBeUndefined();
     expect(parseParticipantAgeInput(29)).toBe(29);
+  });
+
+  it("requires an explicit male or female response for sex assigned at birth", () => {
+    expect(parseParticipantSexAssignedAtBirthInput("")).toBeUndefined();
+    expect(parseParticipantSexAssignedAtBirthInput("other")).toBeUndefined();
+    expect(parseParticipantSexAssignedAtBirthInput("Male")).toBeUndefined();
+    expect(parseParticipantSexAssignedAtBirthInput("male")).toBe("male");
+    expect(parseParticipantSexAssignedAtBirthInput("female")).toBe("female");
   });
 
   it("creates a signed consent record with all required confirmations", () => {
@@ -107,6 +116,7 @@ describe("experiment consent", () => {
     expect(english.fullDocumentHtml).toContain("Potential risks");
     expect(english.fullDocumentHtml).toContain("£4 base payment");
     expect(english.fullDocumentHtml).toContain("20-45 minutes");
+    expect(english.fullDocumentHtml).toContain("age, sex assigned at birth, and daily corrective-eyewear information");
     expect(english.fullDocumentHtml).not.toContain("Data Protection Officer");
     expect(english.fullDocumentHtml).not.toContain("Data protection policy in accordance with Art. 13 GDPR");
     expect(english.fullDocumentHtml).not.toContain("Consent confirmations");
@@ -119,6 +129,7 @@ describe("experiment consent", () => {
     expect(chinese.fullDocumentHtml).toContain("潜在风险");
     expect(chinese.fullDocumentHtml).toContain("£4 基础奖金");
     expect(chinese.fullDocumentHtml).toContain("20-45 分钟");
+    expect(chinese.fullDocumentHtml).toContain("年龄、出生时登记的性别和日常视力矫正设备使用情况");
     expect(chinese.fullDocumentHtml).not.toContain("数据保护官");
     expect(chinese.fullDocumentHtml).not.toContain("依据《通用数据保护条例》第 13 条的数据保护声明");
     expect(chinese.fullDocumentHtml).not.toContain("同意确认");

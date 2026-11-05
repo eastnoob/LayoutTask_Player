@@ -80,6 +80,11 @@ body {
   margin: 1rem 0;
 }
 
+.layout-task-profile-shell select {
+  font: inherit;
+  padding: 8px 12px;
+}
+
 .layout-task-consent-document {
   max-height: min(62vh, 720px);
   overflow-y: auto;
