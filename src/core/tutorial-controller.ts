@@ -189,7 +189,7 @@ const guidance: Record<TutorialStep["id"], Guidance> = {
   select_first: ["stage", ["Click a glowing yellow object to begin editing.", "点击发红光的黄色物体，开始编辑。"],
     ["Red glow means its first edit has not been saved. Only yellow objects can be edited.", "红光表示尚未保存首次编辑。只有黄色物体可以编辑。"], "object_selected"],
   confidence_first: ["confidence", ["Match this object's position and orientation to the perspective image.", "根据透视图，还原所选家具的位置和方向。"],
-    ["Refer to the control tips in [[warning]]the gray box on the right[[/warning]], then rate your confidence in position and orientation at the bottom left.", "参考[[warning]]页面右侧灰色框[[/warning]]中的操作提示，完成调整后在左下方填写位置和方向置信度。"], "confidence_chosen"],
+    ["Refer to the control tips in the gray box labeled [[warning]]Object Controls[[/warning]] on the right, then rate your confidence in position and orientation at the bottom left.", "参考页面右侧标有[[warning]]Object Controls[[/warning]]的灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。"], "confidence_chosen"],
   save_first: ["confidence", ["Save both ratings.", "保存两项置信度。"],
     ["Select Save to finish this edit. The red glow disappears after the first save.", "点击 Save 完成本次编辑；首次保存后红光消失。"], "object_saved"],
   pause_practice: ["pause", ["Complete the Pause practice.", "完成 Pause 练习。"],

@@ -192,8 +192,8 @@ describe("TutorialController confirmed gates", () => {
     expect(tutorial.getCurrentStep()).toMatchObject({
       task: taskPrefix + (english ? "Match this object's position and orientation to the perspective image." : "根据透视图，还原所选家具的位置和方向。"),
       message: english
-        ? "Refer to the control tips in [[warning]]the gray box on the right[[/warning]], then rate your confidence in position and orientation at the bottom left."
-        : "参考[[warning]]页面右侧灰色框[[/warning]]中的操作提示，完成调整后在左下方填写位置和方向置信度。",
+        ? "Refer to the control tips in the gray box labeled [[warning]]Object Controls[[/warning]] on the right, then rate your confidence in position and orientation at the bottom left."
+        : "参考页面右侧标有[[warning]]Object Controls[[/warning]]的灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。",
     });
     confidence.choose("position", 3); confidence.choose("rotation", 4);
     tutorial.handle("confidence_chosen");

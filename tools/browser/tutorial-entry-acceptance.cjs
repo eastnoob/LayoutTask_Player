@@ -407,10 +407,10 @@ async function runEntryAcceptance(browser, options) {
         await anchor('confidence');
         assert.deepEqual(await bubble.locator('.layout-task-tutorial-task, .layout-task-tutorial-body').allTextContents(), chinese ? [
           '你的任务：根据透视图，还原所选家具的位置和方向。',
-          '参考页面右侧灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。',
+          '参考页面右侧标有Object Controls的灰色框中的操作提示，完成调整后在左下方填写位置和方向置信度。',
         ] : [
           "Your task: Match this object's position and orientation to the perspective image.",
-          'Refer to the control tips in the gray box on the right, then rate your confidence in position and orientation at the bottom left.',
+          'Refer to the control tips in the gray box labeled Object Controls on the right, then rate your confidence in position and orientation at the bottom left.',
         ]);
         await shot('concise-edit-task');
         const before = await transforms();
