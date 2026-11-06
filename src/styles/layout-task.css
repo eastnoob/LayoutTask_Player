@@ -1538,12 +1538,14 @@ body {
   opacity: 0.52;
 }
 
+.layout-task-magnifier-button.is-tutorial-attention,
+.layout-task-pause-button.is-tutorial-attention {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18), 0 0 14px rgba(220, 38, 38, 0.35);
+}
+
 .layout-task-pause-button.is-tutorial-attention {
   position: relative;
-  border-color: #eab308;
-  background: #fefce8;
-  color: #854d0e;
-  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.22), 0 10px 24px rgba(133, 77, 14, 0.16);
 }
 
 .layout-task-pause-button.is-tutorial-attention::after {

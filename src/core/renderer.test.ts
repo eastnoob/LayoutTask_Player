@@ -366,9 +366,41 @@ describe("LayoutTaskRenderer stage fit", () => {
     const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
 
     expect(source).toContain('this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "view_direction");');
-    expect(source).toContain("this.setTutorialAttention(step.anchor);");
+    expect(source).toContain('this.setTutorialAttention(step.id === "magnifier_practice" ? "magnifier" : step.anchor);');
     expect(css).toContain(".layout-task-pause-button.is-tutorial-attention");
     expect(css).toContain(".layout-task-pause-button.is-tutorial-attention::after");
+  });
+
+  it("highlights only the magnifier button in its tutorial step and clears it afterwards", () => {
+    const config = createRuntimeConfig();
+    const attention = new Set<string>();
+    const magnifier = { classList: { add: (name: string) => attention.add(name), remove: (name: string) => attention.delete(name) } };
+    const root = {
+      classList: { toggle: vi.fn(), remove: vi.fn() },
+      querySelector: vi.fn((selector: string) => selector === '[data-layout-task-anchor="magnifier"]' ? magnifier : null),
+      querySelectorAll: () => attention.has("is-tutorial-attention") ? [magnifier] : [],
+    };
+    const renderer = new LayoutTaskRenderer({ root: root as unknown as HTMLElement, config, store: new StateStore(config) });
+    Object.assign(renderer.refs, { tutorialBubbleElement: { hidden: true, dataset: {} }, tutorialBubbleMessageElement: { replaceChildren: vi.fn(), append: vi.fn() } });
+    vi.stubGlobal("document", { createElement: () => ({ append: vi.fn() }), createTextNode: (text: string) => text });
+    vi.stubGlobal("requestAnimationFrame", vi.fn());
+    try {
+      renderer.showTutorialStep({ id: "view_direction", anchor: "viewport-tools", task: "", message: "" });
+      expect(attention.has("is-tutorial-attention")).toBe(false);
+      renderer.showTutorialStep({ id: "magnifier_practice", anchor: "viewport-tools", task: "", message: "" });
+      expect(attention.has("is-tutorial-attention")).toBe(true);
+      renderer.showTutorialStep({ id: "select_first", anchor: "stage", task: "", message: "" });
+      expect(attention.has("is-tutorial-attention")).toBe(false);
+      renderer.showTutorialStep({ id: "magnifier_practice", anchor: "viewport-tools", task: "", message: "" });
+      renderer.hideTutorialStep();
+      expect(attention.has("is-tutorial-attention")).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("uses the same red border and glow for the tutorial magnifier and pause buttons", () => {
+    const css = readFileSync(new URL("../styles/layout-task.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.layout-task-magnifier-button\.is-tutorial-attention,\s*\.layout-task-pause-button\.is-tutorial-attention\s*\{[^}]*border-color:\s*#dc2626;[^}]*box-shadow:[^}]*220,\s*38,\s*38/s);
+    expect(css).not.toMatch(/\.layout-task-pause-button\.is-tutorial-attention\s*\{[^}]*(?:#eab308|#fefce8)/s);
   });
 
   it("waits for layout before centering the floor plan during the viewing-direction tutorial step", () => {
@@ -1058,6 +1090,7 @@ describe("LayoutTaskRenderer control layout", () => {
     const css = readFileSync("src/styles/layout-task.css", "utf8").replace(/\r\n/g, "\n");
 
     expect(renderer).toContain('className = "layout-task-magnifier-button"');
+    expect(renderer).toContain('button.dataset.layoutTaskAnchor = "magnifier";');
     expect(renderer).toContain("Press ESC to exit");
     expect(renderer).toContain("按 ESC 退出放大镜");
     expect(renderer).not.toContain('this.createViewportButton("+", "Zoom in"');

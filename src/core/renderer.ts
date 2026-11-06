@@ -688,6 +688,7 @@ export class LayoutTaskRenderer {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "layout-task-magnifier-button";
+    button.dataset.layoutTaskAnchor = "magnifier";
     button.setAttribute("aria-label", this.options.locale === "zh-CN" ? "打开放大镜" : "Open magnifier");
     button.title = this.options.locale === "zh-CN" ? "打开放大镜" : "Open magnifier";
     button.setAttribute("aria-pressed", "false");
@@ -904,7 +905,7 @@ export class LayoutTaskRenderer {
     }
     this.refs.tutorialViewingDirectionElement?.classList.toggle("is-visible", step.id === "view_direction");
     this.refs.tutorialBubbleButtonElement?.toggleAttribute("hidden", step.id !== "view_direction");
-    this.setTutorialAttention(step.anchor);
+    this.setTutorialAttention(step.id === "magnifier_practice" ? "magnifier" : step.anchor);
     scrollTutorialStageIntoView(this.options.root, step.id);
     this.scheduleControlsLayoutSync();
   }
