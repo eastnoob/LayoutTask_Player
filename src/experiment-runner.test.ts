@@ -249,9 +249,12 @@ describe("buildExperimentTimeline", () => {
     expect(String(chineseTimeline[2].pages[0])).toContain("整个研究大约需要20-45分钟");
     expect(String(chineseTimeline[2].pages[0])).toContain("最多可获得 £12");
     expect(String(chineseTimeline[2].pages[0])).toContain("正式实验期间可暂停一次，最长15分钟");
-    expect(String(chineseTimeline[2].pages[0])).toContain("ftian@uni-muenster.de");
-    expect(String(chineseTimeline[2].pages[0])).toContain("通过关闭页面来退出实验");
-    expect(String(chineseTimeline[2].pages[0])).toContain("您可能因此无法获得报酬。");
+    expect(String(chineseTimeline[2].pages[0])).not.toContain("ftian@uni-muenster.de");
+    expect(String(chineseTimeline[2].pages[0])).toContain("通过 Prolific 的消息系统联系研究者");
+    expect(String(chineseTimeline[2].pages[0])).toContain("您可以随时关闭本页面并停止参与。");
+    expect(String(chineseTimeline[2].pages[0])).toContain("我们可能会请您在 Prolific 上退回本次提交。退回提交不会对您的 Prolific 账户产生不良影响。");
+    expect(String(chineseTimeline[2].pages[0])).not.toContain("您可能因此无法获得报酬。");
+    expect(String(chineseTimeline[2].pages[0])).not.toContain("您也不需要为此付出任何代价。");
     expect(String(chineseTimeline[2].pages[0])).not.toContain("您将无法获得承诺报酬");
     expect(String(chineseTimeline[2].pages[0])).not.toContain("floorplanrestoration.deluxe999@passmail.com");
 
@@ -278,12 +281,15 @@ describe("buildExperimentTimeline", () => {
     const english = buildExperimentTimeline(experimentConfig());
     const complete = String(english[2].pages[0]);
     expect(complete).toContain("approximately 20-45 minutes");
-    expect(complete).toContain("simply close the page to withdraw");
-    expect(complete).toContain("You may not receive payment as a result of this.");
+    expect(complete).toContain("you may stop participating at any time by closing this page.");
+    expect(complete).toContain("We may ask you to return your submission on Prolific. Returning a submission will not negatively affect your Prolific account.");
+    expect(complete).not.toContain("You may not receive payment as a result of this.");
+    expect(complete).not.toContain("You will not be penalized or incur any cost.");
     expect(complete).not.toContain("you will not receive the promised compensation");
     expect(complete).toContain("maximum £12 in total");
     expect(complete).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
-    expect(complete).toContain("ftian@uni-muenster.de");
+    expect(complete).not.toContain("ftian@uni-muenster.de");
+    expect(complete).toContain("contact the researcher through Prolific's messaging system");
     expect(complete).not.toContain("floorplanrestoration.deluxe999@passmail.com");
   });
 
@@ -411,7 +417,7 @@ describe("buildExperimentTimeline", () => {
     expect(String(timeline[2].pages[0])).toContain("Study image -> Reconstruct scene -> Rate confidence -> Submit");
     expect(String(timeline[2].pages[0])).toContain("This is an experiment, not a test");
     expect(String(timeline[2].pages[0])).toContain("During the formal experiment, you may pause once for up to 15 minutes.");
-    expect(String(timeline[2].pages[0])).toContain("simply close the page to withdraw");
+    expect(String(timeline[2].pages[0])).toContain("stop participating at any time by closing this page");
     expect(String(timeline[2].pages[0])).toContain("truthfully");
     expect(timeline[3]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_001", qid: "Q001" });
     expect(timeline[4]).toMatchObject({ type: LayoutTaskPlugin, taskId: "scene_002", qid: "Q002" });
