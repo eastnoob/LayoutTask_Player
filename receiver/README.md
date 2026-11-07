@@ -16,6 +16,7 @@ ASSIGNMENT_SCHEDULE_VERSION=run12-williams-v1
 ASSIGNMENT_SEQUENCE_IDS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46
 ARCHIVE_MODE=local
 ARCHIVE_DELETE_LOCAL_AFTER_SUCCESS=true
+ARCHIVE_RETRY_INTERVAL_SECONDS=30
 METADATA_ARCHIVE_LOCAL_KEEP=3
 ```
 
@@ -69,7 +70,7 @@ Raw CSV and debug JSON files are canonical in the external archive after success
 `POST /submit` still accepts `layouttask.receiver.submission.v1`. Formal client saves use
 `layouttask.receiver.submission.v2` with flat snake_case fields:
 
-- Both kinds require `submission_kind` (`trial` or `final`), `experiment_id`,
+- All kinds require `submission_kind` (`trial`, `final` or `metadata`), `experiment_id`,
   `participant_id`, the experiment-level `session_id`, and all `/assign` fields:
   `assignment_id`, `participant_number`, `sequence_id`, `schedule_version`,
   `assignment_mode`, `requested_sequence_id`, `replacement_attempt`, and
@@ -83,6 +84,23 @@ Raw CSV and debug JSON files are canonical in the external archive after success
   `raw_results.csv`, and has no trial-only fields. Identity columns in both
   CSVs must match the request. `/archive` continues to use
   `layouttask.receiver.archive.v1` and the experiment-level session ID.
+- Metadata sends one `layouttask.session-metadata.v1` JSON file containing the
+  same flat identity, `prolific_id`, `participant_profile` and `consent`. It is
+  saved invisibly after profile collection and assignment, before the first
+  trial. It shares the experiment session without changing any trial or final
+  file. Same-session identical metadata is idempotent; changed content is 409.
+  Metadata, trials and finals in that session must match every assignment field.
+  `prolific_id` must be a nonempty string. `participant_profile` requires
+  `participant_age` (integer, not boolean), `participant_sex_assigned_at_birth`
+  (`male` or `female`) and `requires_corrective_eyewear` (boolean).
+  `consent` follows `ConsentRecord` in `src/core/experiment-consent.ts`: required
+  `consent_version` (`informed-consent-2026-10-03-v1` or `informed-consent-2026-10-13-v2`),
+  `locale` (`en-US` or `zh-CN`), nonempty `consented_at`,
+  `signature_method: checkbox_confirmation`, boolean `developer_mode`, and literal
+  `true` for `voluntary_participation_confirmed`, `questions_answered_confirmed`,
+  `prestudy_document_confirmed` and `withdrawal_right_understood_confirmed`.
+  Missing or invalid collected content returns 400 before acceptance, so a
+  complete retry can use the same metadata identity.
 
 The receiver checks the assignment row and binds its first accepted v2
 `participant_id` to that assignment. A different participant on the same
@@ -103,11 +121,27 @@ The data directory also contains `.publication-lock.sqlite`,
 `.jsonl-lock.sqlite`, and `.session-*.lock.sqlite`; these coordinate
 concurrent receiver and retry processes and should remain on the shared
 data volume while the service runs. Long archive copies lock only their
-experiment session; unrelated submissions can still be published. After archive
-I/O, the receiver checks the current session again. A same-session submission
-accepted during that I/O remains pending and makes `/archive` return HTTP 503
-with a non-success result and retry guidance. Retrying archives that submission
-and skips targets already successfully archived.
+experiment session; unrelated submissions can still be published.
+
+`/submit` acknowledges only after file/manifest sync and SQLite commit. `/archive`
+does no cloud I/O and does not acquire the session archive lock: it returns HTTP
+202 with `archive_status: queued` for accepted pending work, or HTTP 200 with
+`archive_status: archived` when every row is already archived. Queued means safe
+on the VPS, not yet copied to both clouds. An absent session or disabled archive
+backend is not a successful archive request.
+
+One worker starts with `python -m app.server`, scans the persistent pending,
+failed and partial rows immediately, and scans again after
+`ARCHIVE_RETRY_INTERVAL_SECONDS` (default 30). A restart resumes those rows.
+Late trials are picked up by a later scan. Each cloud's successes persist;
+only incomplete copies are retried. A failed target is attempted once per
+session per scan so it does not repeatedly delay the healthy target. Each
+rclone subprocess is limited to 90 seconds, and successful directory creation
+is reused. Spool is deleted only after every configured target succeeds.
+
+Adding a target applies to pending work whose spool still exists. Already
+archived historical rows are not rewritten or given a new target obligation.
+The worker never invokes `archive_metadata` or clears assignment counters.
 
 ## Replacement Participants
 

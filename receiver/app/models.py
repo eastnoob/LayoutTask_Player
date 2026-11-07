@@ -102,8 +102,8 @@ def validate_submission(payload: Any, max_files: int, max_file_bytes: int) -> Su
     metadata = {}
     if v2:
         kind = payload.get("submission_kind")
-        if kind not in ("trial", "final"):
-            raise ValidationError("invalid_submission", "submission_kind must be trial or final")
+        if kind not in ("trial", "final", "metadata"):
+            raise ValidationError("invalid_submission", "submission_kind must be trial, final or metadata")
         for field in ASSIGNMENT_FIELDS:
             if field not in payload:
                 raise ValidationError("invalid_submission", f"{field} is required")
@@ -137,7 +137,7 @@ def validate_submission(payload: Any, max_files: int, max_file_bytes: int) -> Su
                     raise ValidationError("invalid_submission", "presentation_id must be a string")
                 metadata[field] = value
         elif any(field in payload for field in TRIAL_FIELDS):
-            raise ValidationError("invalid_submission", "final submissions cannot contain trial fields")
+            raise ValidationError("invalid_submission", "non-trial submissions cannot contain trial fields")
 
     experiment_id = safe_path_segment(payload.get("experiment_id"), "experiment_id")
     participant_id = safe_path_segment(payload.get("participant_id"), "participant_id")

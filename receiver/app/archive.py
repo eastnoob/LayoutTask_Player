@@ -43,23 +43,35 @@ class RcloneArchiveBackend:
     def __init__(self, remote: str, run_impl=subprocess.run):
         self.remote = remote.rstrip("/")
         self.run_impl = run_impl
+        self._created_directories: set[str] = set()
 
     def archive(self, spool_dir: Path, archive_key: str) -> ArchiveResult:
         target = f"{self.remote}/{archive_key}"
-        for directory in _rclone_directory_chain(target):
-            mkdir = self.run_impl(
-                ["rclone", "mkdir", directory],
+        try:
+            for directory in _rclone_directory_chain(target):
+                if directory in self._created_directories:
+                    continue
+                mkdir = self.run_impl(
+                    ["rclone", "mkdir", directory],
+                    text=True,
+                    capture_output=True,
+                    timeout=90,
+                )
+                if mkdir.returncode != 0:
+                    self._created_directories.clear()
+                    return ArchiveResult(ok=False, error=mkdir.stderr or mkdir.stdout or "rclone mkdir failed")
+                self._created_directories.add(directory)
+            completed = self.run_impl(
+                ["rclone", "copy", str(spool_dir), target],
                 text=True,
                 capture_output=True,
+                timeout=90,
             )
-            if mkdir.returncode != 0:
-                return ArchiveResult(ok=False, error=mkdir.stderr or mkdir.stdout or "rclone mkdir failed")
-        completed = self.run_impl(
-            ["rclone", "copy", str(spool_dir), target],
-            text=True,
-            capture_output=True,
-        )
+        except (subprocess.TimeoutExpired, OSError) as error:
+            self._created_directories.clear()
+            return ArchiveResult(ok=False, error=str(error))
         if completed.returncode != 0:
+            self._created_directories.clear()
             return ArchiveResult(ok=False, error=completed.stderr or completed.stdout or "rclone failed")
         return ArchiveResult(ok=True, archive_uri=f"rclone://{target}")
 

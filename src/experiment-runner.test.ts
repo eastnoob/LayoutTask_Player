@@ -22,6 +22,8 @@ import { parseExperimentConfig } from "./schemas/experiment.schema";
 import { initJsPsych } from "jspsych";
 import { createPresentationSchedule, generateWilliamsBaseSequences } from "./core/schedule-generator";
 import { createMemoryLocalBackupStore } from "./core/local-backup-store";
+import { DataSaveService } from "./core/data-save-service";
+import { createConsentRecord } from "./core/experiment-consent";
 
 vi.mock("jspsych", () => ({
   initJsPsych: vi.fn(() => ({ data: { get: () => ({ values: () => [] }) } })),
@@ -555,6 +557,87 @@ describe("requestAssignment", () => {
 });
 
 describe("createRunnableExperiment", () => {
+  it("does not send incomplete metadata before participant fields are available", async () => {
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchImpl);
+    try {
+      createRunnableExperiment(receiverExperimentConfig(), undefined, {
+        participantId: "P047", localBackup: createMemoryLocalBackupStore("incomplete"),
+        assignment: { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "v1" },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("starts one immutable metadata upload after bootstrap without waiting or adding timeline steps", async () => {
+    const values = new Map<string, string>();
+    const backup = createMemoryLocalBackupStore("metadata-start");
+    const consent = createConsentRecord({ locale: "en-US", mode: "agreed", consentedAt: "2026-11-07T12:00:00.000Z" });
+    const participantProfile = { participant_age: 31, participant_sex_assigned_at_birth: "female" as const, requires_corrective_eyewear: true };
+    let finishUpload!: (response: Response) => void;
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      const stored = JSON.parse(values.get("layouttask:session:layout_task_v1:P047")!);
+      expect(body.session_id).toBe(stored.session_id);
+      expect(await backup.listFiles()).toEqual([{
+        filename: `layouttask_session_metadata_${stored.session_id}.json`,
+        contentType: "application/json",
+        data: body.files[0].data,
+      }]);
+      return new Promise<Response>((resolve) => { finishUpload = resolve; });
+    });
+    vi.stubGlobal("sessionStorage", { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) });
+    vi.stubGlobal("fetch", fetchImpl);
+    const assignment = { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "v1", assignmentMode: "replacement" as const, requestedSequenceId: "6", replacementAttempt: 2, rotationIndex: null };
+    try {
+      const { timeline } = createRunnableExperiment(receiverExperimentConfig(), undefined, {
+        participantId: "P047", assignment, localBackup: backup, prolificId: " original-id ", consent, participantProfile,
+      });
+      expect(timeline).toHaveLength(buildExperimentTimeline(receiverExperimentConfig(), { assignment }).length);
+      expect(initJsPsych).toHaveBeenCalledWith(expect.objectContaining({ on_trial_start: expect.any(Function), on_finish: expect.any(Function) }));
+      await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1));
+      const body = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+      expect(fetchImpl.mock.calls[0][0]).toBe("https://data.example.com/submit");
+      expect(body).toEqual({
+        schema: "layouttask.receiver.submission.v2", submission_kind: "metadata",
+        experiment_id: "layout_task_v1", participant_id: "P047", session_id: expect.any(String),
+        assignment_id: "assign-47", participant_number: 47, sequence_id: "6", schedule_version: "v1",
+        assignment_mode: "replacement", requested_sequence_id: "6", replacement_attempt: 2, rotation_index: null,
+        files: [{ filename: `layouttask_session_metadata_${body.session_id}.json`, content_type: "application/json", data: expect.any(String) }],
+      });
+      const { files: _files, schema: _schema, submission_kind: _kind, ...identity } = body;
+      expect(JSON.parse(body.files[0].data)).toEqual({ schema: "layouttask.session-metadata.v1", ...identity, prolific_id: " original-id ", participant_profile: participantProfile, consent });
+      const pause = timeline.find((trial) => trial.type === LayoutTaskPlugin && !trial.tutorialMode)!.pause;
+      pause.requestPause();
+      createRunnableExperiment(receiverExperimentConfig(), undefined, { participantId: "P047", assignment, localBackup: backup, prolificId: "changed", consent, participantProfile });
+      await Promise.resolve();
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      finishUpload?.(new Response("{}", { status: 201 }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("contains rejected local metadata writes at bootstrap and pause without blocking the timeline", async () => {
+    const backup = createMemoryLocalBackupStore("rejected-metadata");
+    backup.saveSessionMetadata = async () => { throw new Error("IndexedDB denied"); };
+    const fetchImpl = vi.fn();
+    vi.stubGlobal("fetch", fetchImpl);
+    try {
+      const { timeline } = createRunnableExperiment(receiverExperimentConfig(), undefined, { participantId: "P047", localBackup: backup });
+      timeline.find((trial) => trial.type === LayoutTaskPlugin && !trial.tutorialMode)!.pause.requestPause();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(timeline.filter((trial) => trial.type === LayoutTaskPlugin)).toHaveLength(3);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("uses the provided display element for jsPsych content", () => {
     const root = {} as HTMLElement;
     const previousLocation = globalThis.location;
@@ -702,6 +785,68 @@ describe("trial classification", () => {
 });
 
 describe("saveExperimentFiles", () => {
+  it.each([201, 409])("retries pending metadata before final and preserves local backup on metadata status %s", async (metadataStatus) => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const config = receiverExperimentConfig().dataSave;
+    const assignment = { assignmentId: "assign-1", participantNumber: 1, sequenceId: "1", scheduleVersion: "v1", rotationIndex: 0 };
+    const service = new DataSaveService({ config: {
+      mode: "receiver", experiment_id: "layout_task_v1", participant_id: "P001", session_id: "S001",
+      endpoint: "https://data.example.com/submit", filename_prefix: "layout-task", payload_format: "json-envelope", save_encoded: true, save_result: false,
+      assignment: { assignment_id: "assign-1", participant_number: 1, sequence_id: "1", schedule_version: "v1", assignment_mode: "automatic", requested_sequence_id: null, replacement_attempt: 0, rotation_index: 0 },
+    }, localBackup: backup, fetchImpl: async () => new Response("{}", { status: 503 }) });
+    await service.saveSessionMetadata({ prolificId: "original", consent: createConsentRecord({ locale: "en-US", mode: "agreed", consentedAt: "2026-11-07T12:00:00.000Z" }), participantProfile: { participant_age: 31, requires_corrective_eyewear: true } });
+    const metadata = (await backup.listFiles())[0];
+    const requests: any[] = [];
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      requests.push(body);
+      return new Response("{}", { status: body.submission_kind === "metadata" ? metadataStatus : 202 });
+    };
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "unchanged\r\n" }];
+    const result = await saveExperimentFiles({ dataSave: config, participantId: "P001", sessionId: "S001", assignment, files, localBackup: backup, fetchImpl });
+    expect(result).toEqual({ ok: true, saved: 1 });
+    expect(requests.map((body) => body.submission_kind ?? body.schema)).toEqual(["metadata", "final", "layouttask.receiver.archive.v1"]);
+    expect(requests[0].files[0].data).toBe(metadata.data);
+    expect(requests[1].files).toEqual([{ filename: "results.csv", content_type: "text/csv", data: "unchanged\r\n" }]);
+    expect(await backup.listFiles()).toEqual(metadataStatus === 201 ? [] : [metadata, files[0]]);
+  });
+
+  it("replays an existing unacknowledged trial envelope byte for byte before final and archive", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const identity = { experiment_id: "layout_task_v1", participant_id: "P001", session_id: "S001", assignment_id: "assign-1", participant_number: 1, sequence_id: "1", schedule_version: "v1", assignment_mode: "automatic", requested_sequence_id: null, replacement_attempt: 0, rotation_index: 0 };
+    const trial = { filename: "layout-task_room_Q1_TRIAL.json", contentType: "application/json", data: JSON.stringify({ schema: "layouttask.backup.v2", saved_at: "2026-11-07T12:00:00.000Z", ...identity, trial_session_id: "TRIAL", trial_type: "formal", trial_index: 1, task_id: "room", qid: "Q1", presentation_id: "seq1-trial1", hash8: "HASH0001", encoding: "plain-json", encoded: "ENCODED", pause: { pause_used: false } }) };
+    await backup.saveFile(trial);
+    const requests: Array<{ url: string; body: any }> = [];
+    const fetchImpl: typeof fetch = async (url, init) => {
+      requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return new Response("{}", { status: 201 });
+    };
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
+    const result = await saveExperimentFiles({ dataSave: receiverExperimentConfig().dataSave, participantId: "P001", sessionId: "S001", assignment: { assignmentId: "assign-1", participantNumber: 1, sequenceId: "1", scheduleVersion: "v1", rotationIndex: 0 }, files, localBackup: backup, fetchImpl });
+    expect(result).toEqual({ ok: true, saved: 1 });
+    expect(requests.map(({ body }) => body.submission_kind ?? body.schema)).toEqual(["trial", "final", "layouttask.receiver.archive.v1"]);
+    expect(requests[0].body).toEqual({ schema: "layouttask.receiver.submission.v2", submission_kind: "trial", ...identity, trial_session_id: "TRIAL", trial_type: "formal", trial_index: 1, task_id: "room", qid: "Q1", presentation_id: "seq1-trial1", hash8: "HASH0001", encoding: "plain-json", encoded: "ENCODED", files: [{ filename: trial.filename, content_type: "application/json", data: trial.data }] });
+    expect(requests[1].body.files).toEqual([{ filename: "results.csv", content_type: "text/csv", data: "qid\nq1\n" }]);
+    expect(await backup.listFiles()).toEqual([]);
+  });
+
+  it("retains trial and final backups when the trial replay is still rejected", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const trial = { filename: "trial.json", contentType: "application/json", data: JSON.stringify({ schema: "layouttask.backup.v1", task_id: "room", qid: "Q1", session: "TRIAL", hash8: "HASH0001", encoding: "plain-json", encoded: "ENCODED" }) };
+    await backup.saveFile(trial);
+    const requests: any[] = [];
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      requests.push(body);
+      return new Response("{}", { status: body.files?.[0]?.filename === "trial.json" ? 503 : 201 });
+    };
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
+    const result = await saveExperimentFiles({ dataSave: receiverExperimentConfig().dataSave, participantId: "P001", sessionId: "S001", files, localBackup: backup, fetchImpl });
+    expect(result).toMatchObject({ ok: false, failedFilename: "trial.json", saved: 1, recoveryZip: expect.any(Blob) });
+    expect(requests.some((body) => body.schema === "layouttask.receiver.archive.v1")).toBe(false);
+    expect(await backup.listFiles()).toEqual([files[0], trial]);
+  });
+
   it("persists final files before receiver upload and clears them after archive success", async () => {
     const backup = createMemoryLocalBackupStore("P001:S001");
     const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;

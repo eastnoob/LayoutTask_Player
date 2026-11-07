@@ -1,7 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { createMemoryLocalBackupStore } from "./local-backup-store";
+import { createIndexedDbLocalBackupStore, createMemoryLocalBackupStore } from "./local-backup-store";
 
 describe("LocalBackupStore", () => {
+  it("persists receiver request acknowledgements separately from files and pause metadata", async () => {
+    const store = createMemoryLocalBackupStore("session-a");
+    const other = createMemoryLocalBackupStore("session-b");
+    const request = { filename: "metadata.json", body: '{"submission_kind":"metadata"}', acknowledged: false };
+    await store.saveReceiverSubmission?.(request);
+    await store.saveSessionMetadata?.({ pause: "paused" });
+    expect(await store.getReceiverSubmission?.("metadata.json")).toEqual(request);
+    expect(await other.getReceiverSubmission?.("metadata.json")).toBeUndefined();
+    expect(await store.listFiles()).toEqual([]);
+    await store.saveReceiverSubmission?.({ ...request, acknowledged: true });
+    expect(await store.getReceiverSubmission?.("metadata.json")).toEqual({ ...request, acknowledged: true });
+    expect(await store.getSessionMetadata?.()).toEqual({ pause: "paused" });
+    await store.clear();
+    expect(await store.getReceiverSubmission?.("metadata.json")).toBeUndefined();
+  });
+
+  it("handles an IndexedDB open rejection before the first asynchronous consumer", async () => {
+    const request = {} as IDBOpenDBRequest;
+    const factory = { open: () => request } as unknown as IDBFactory;
+    const store = createIndexedDbLocalBackupStore("blocked", factory);
+    request.onerror?.({} as Event);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await expect(store.listFiles()).rejects.toThrow("IndexedDB open failed");
+  });
+
   it("replaces a retry of the same filename and keeps files in one session", async () => {
     const store = createMemoryLocalBackupStore("session-a");
 

@@ -32,6 +32,7 @@ import { CompletionCodeGate } from "./core/completion-code-gate";
 import { summarizeExperimentRewards } from "./core/reward-calculator";
 import type { ExperimentRewardSummary } from "./types/reward";
 import type { ConsentRecord, ParticipantProfile } from "./core/experiment-consent";
+import { DataSaveService } from "./core/data-save-service";
 
 type ExperimentTimeline = Array<{ type: any } & Record<string, any>>;
 
@@ -432,6 +433,13 @@ export async function saveExperimentFiles(input: {
       headers["X-Submit-Token"] = dataSave.submitToken;
     }
 
+    const pending = await new DataSaveService({
+      config: toRuntimeTaskDataSave(dataSave, input.participantId, input.sessionId, input.developerMode ? undefined : assignmentMetadata(input.assignment)),
+      localBackup: input.localBackup,
+      fetchImpl,
+      timeoutMs,
+    }).retryReceiverSubmissions();
+
     let response: Response;
     try {
       response = await fetchWithTimeout(
@@ -483,6 +491,16 @@ export async function saveExperimentFiles(input: {
       };
     }
 
+    if (pending.failed) {
+      const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
+        participantId: input.participantId, prolificId: input.prolificId, sessionId: input.sessionId,
+        experimentId: dataSave.experimentId, completionCode: input.completionCode,
+        failedFilenames: [pending.failed.filename ?? "trial backup"], pauseSummary: input.pauseSummary,
+        participantProfile: input.participantProfile, assignment: assignmentMetadata(input.assignment),
+      });
+      return { ok: false, saved: input.files.length, failedFilename: pending.failed.filename, error: pending.failed.error, recoveryZip };
+    }
+
     const archiveEndpoint = deriveArchiveEndpoint(dataSave.endpoint);
     const archiveRequest = {
       schema: "layouttask.receiver.archive.v1" as const,
@@ -505,7 +523,7 @@ export async function saveExperimentFiles(input: {
           "receiver archive",
         );
         if (archiveResponse.ok) {
-          await input.localBackup?.clear();
+          if (!pending.metadataPending) await input.localBackup?.clear();
           return { ok: true, saved: input.files.length };
         }
         archiveError = `${archiveResponse.status} ${archiveResponse.statusText}${await readSaveError(archiveResponse)}`;
@@ -645,7 +663,13 @@ export function createRunnableExperiment(
     consent: options.consent,
     participant_profile: options.participantProfile,
     pause: session.pauseSnapshot,
-  });
+  }).catch(() => undefined);
+  void new DataSaveService({
+    config: toRuntimeTaskDataSave(config.dataSave, participantId, sessionId, options.developerMode ? undefined : assignmentMetadata(options.assignment)),
+    localBackup,
+  }).saveSessionMetadata(session.prolificId !== undefined && session.consent && session.participantProfile
+    ? { prolificId: session.prolificId, consent: session.consent, participantProfile: session.participantProfile }
+    : undefined);
   const pause = new ExperimentPauseController({
     mode: "formal",
     restore: session.pauseSnapshot,
@@ -658,7 +682,7 @@ export function createRunnableExperiment(
         consent: options.consent,
         participant_profile: options.participantProfile,
         pause: snapshot,
-      });
+      }).catch(() => undefined);
     },
   });
   const pauseUi = typeof document === "undefined"

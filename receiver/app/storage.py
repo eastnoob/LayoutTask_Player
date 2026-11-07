@@ -7,6 +7,7 @@ import csv
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
@@ -171,7 +172,7 @@ class ReceiverStorage:
             file_id = f"{submission_id}-f{index:03d}"
             archive_filename = f"f{index:03d}__{submitted_file.filename}"
             file_path = spool_path / archive_filename
-            file_path.write_bytes(submitted_file.data.encode("utf-8"))
+            _write_durable(file_path, submitted_file.data.encode("utf-8"))
             sha256 = hashlib.sha256(submitted_file.data.encode("utf-8")).hexdigest()
             files.append(
                 {
@@ -200,7 +201,10 @@ class ReceiverStorage:
         }
         if submission.submission_kind:
             manifest.update(self._v2_metadata(submission, content_sha256))
-        (spool_path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        _write_durable(spool_path / "manifest.json", json.dumps(manifest, indent=2).encode("utf-8"))
+        _sync_directory(spool_path)
+        _sync_directory(self.spool_dir)
+        _sync_directory(self.data_dir)
 
         target_results = [ArchiveTargetResult(target=name, ok=False) for name in self._archive_target_names()]
         with _process_lock(self.data_dir / ".publication-lock.sqlite"):
@@ -309,6 +313,38 @@ class ReceiverStorage:
                     raise ValidationError("identity_mismatch", f"backup {field} differs from submission")
             if backup.get("session") != submission.trial_session_id:
                 raise ValidationError("identity_mismatch", "backup result session differs from trial_session_id")
+        elif submission.submission_kind == "metadata":
+            if len(submission.files) != 1 or not submission.files[0].filename.endswith(".json"):
+                raise ValidationError("invalid_metadata_file", "metadata requires one JSON file")
+            try:
+                metadata = json.loads(submission.files[0].data)
+            except json.JSONDecodeError as error:
+                raise ValidationError("invalid_metadata_file", "metadata is not JSON") from error
+            if not isinstance(metadata, dict) or metadata.get("schema") != "layouttask.session-metadata.v1":
+                raise ValidationError("invalid_metadata_file", "unsupported session metadata schema")
+            for field, expected in identity.items():
+                if field not in metadata or metadata[field] != expected:
+                    raise ValidationError("identity_mismatch", f"metadata {field} differs from submission")
+            prolific_id = metadata.get("prolific_id")
+            if not isinstance(prolific_id, str) or not prolific_id.strip():
+                raise ValidationError("invalid_metadata_file", "prolific_id must be a non-empty string")
+            profile = metadata.get("participant_profile")
+            if (not isinstance(profile, dict)
+                    or type(profile.get("participant_age")) is not int
+                    or profile.get("participant_sex_assigned_at_birth") not in ("male", "female")
+                    or type(profile.get("requires_corrective_eyewear")) is not bool):
+                raise ValidationError("invalid_metadata_file", "participant_profile requires age, sex assigned at birth and eyewear fields")
+            consent = metadata.get("consent")
+            if (not isinstance(consent, dict)
+                    or consent.get("consent_version") not in ("informed-consent-2026-10-03-v1", "informed-consent-2026-10-13-v2")
+                    or consent.get("locale") not in ("en-US", "zh-CN")
+                    or not isinstance(consent.get("consented_at"), str) or not consent["consented_at"].strip()
+                    or consent.get("signature_method") != "checkbox_confirmation"
+                    or any(consent.get(field) is not True for field in (
+                        "voluntary_participation_confirmed", "questions_answered_confirmed",
+                        "prestudy_document_confirmed", "withdrawal_right_understood_confirmed"))
+                    or type(consent.get("developer_mode")) is not bool):
+                raise ValidationError("invalid_metadata_file", "consent must contain the required ConsentRecord fields")
         else:
             for kind in ("_session_", "_raw_results_"):
                 matches = [file for file in submission.files if kind in file.filename and file.filename.endswith(".csv")]
@@ -327,6 +363,21 @@ class ReceiverStorage:
                     for field, expected in identity.items():
                         if row.get(field) != ("" if expected is None else str(expected)):
                             raise ValidationError("identity_mismatch", f"{kind} CSV {field} differs from submission")
+
+    def queue_archive(self, experiment_id: str, participant_id: str, session_id: str) -> SessionArchiveResult:
+        # Accepted SQLite rows are the durable work queue; never take the network-held session lock here.
+        with closing(sqlite3.connect(self.sqlite_path, timeout=30)) as db:
+            rows = db.execute(
+                "SELECT archive_status FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                (experiment_id, participant_id, session_id),
+            ).fetchall()
+        if not rows:
+            return SessionArchiveResult(False, "missing", error="session has no accepted submissions")
+        if all(status == "archived" for (status,) in rows):
+            return SessionArchiveResult(True, "archived", archive_uri=self._session_archive_uri(experiment_id, participant_id, session_id), already_archived=True)
+        if self.archive_backend is None:
+            return SessionArchiveResult(False, "pending", error="archive backend is disabled")
+        return SessionArchiveResult(True, "queued")
 
     def archive_session(self, experiment_id: str, participant_id: str, session_id: str) -> SessionArchiveResult:
         """Archive each outstanding submission for each target in one session."""
@@ -416,6 +467,26 @@ class ReceiverStorage:
         return row[0].rsplit("/", 2)[0]
 
     def retry_pending(self) -> int:
+        # Only leftover spool can identify unfinished finalization; archived history stays untouched.
+        for spool_path in self.spool_dir.glob("*"):
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                session = db.execute(
+                    "SELECT experiment_id, participant_id, session_id FROM submissions WHERE id = ? AND archive_status = 'archived'",
+                    (spool_path.name,),
+                ).fetchone()
+            if session is None:
+                continue
+            with _process_lock(self._session_lock_path(*session)):
+                with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+                    if not spool_path.is_dir() or self._submission_status(spool_path.name) != "archived":
+                        continue
+                    target_results = self._archive_target_rows(spool_path.name)
+                    if _aggregate_archive_status(target_results) != "archived":
+                        continue
+                    self._update_jsonl_submission(spool_path.name, "archived", _first_archive_uri(target_results),
+                                                  _archive_error(target_results), target_results)
+                    if self.delete_local_after_success:
+                        shutil.rmtree(spool_path)
         if self.archive_backend is None:
             return 0
         with _process_lock(self.data_dir / ".publication-lock.sqlite"):
@@ -438,15 +509,20 @@ class ReceiverStorage:
                 ).fetchall()
 
         retried = 0
+        failed_targets: set[str] = set()
         for (submission_id,) in rows:
             spool_path = self.spool_dir / submission_id
+            target_names = self._ensure_archive_target_rows(submission_id)
             if not spool_path.exists():
+                for target_name in target_names:
+                    if not self._submission_target_archived(submission_id, target_name):
+                        self._record_target_result([submission_id], ArchiveTargetResult(
+                            target=target_name, ok=False, error=f"missing spool for submission {submission_id}"))
                 continue
             archive_key = f"{experiment_id}/{participant_id}/{session_id}/{submission_id}"
             before = self._submission_status(submission_id)
-            target_names = self._ensure_archive_target_rows(submission_id)
             for target_name in target_names:
-                if self._submission_target_archived(submission_id, target_name):
+                if target_name in failed_targets or self._submission_target_archived(submission_id, target_name):
                     continue
                 try:
                     result = self._archive_target(target_name, spool_path, archive_key)
@@ -461,6 +537,8 @@ class ReceiverStorage:
                         error=result.error,
                     ),
                 )
+                if not result.ok or not result.archive_uri:
+                    failed_targets.add(target_name)
 
             self._sync_submission_state(submission_id)
             after = self._submission_status(submission_id)
@@ -642,6 +720,7 @@ class ReceiverStorage:
                     db.execute(f"ALTER TABLE submissions ADD COLUMN {column} {sql_type}")
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS v2_trial_identity ON submissions(experiment_id, participant_id, session_id, trial_session_id) WHERE submission_kind = 'trial'")
             db.execute("CREATE UNIQUE INDEX IF NOT EXISTS v2_final_identity ON submissions(experiment_id, participant_id, session_id) WHERE submission_kind = 'final'")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS v2_metadata_identity ON submissions(experiment_id, participant_id, session_id) WHERE submission_kind = 'metadata'")
             db.execute(
                 """
                 CREATE TABLE IF NOT EXISTS submission_files(
@@ -742,6 +821,14 @@ class ReceiverStorage:
     ) -> None:
         with closing(sqlite3.connect(self.sqlite_path)) as db:
             if submission.submission_kind:
+                db.execute("BEGIN IMMEDIATE")
+                session_assignments = db.execute(
+                    f"SELECT DISTINCT {', '.join(ASSIGNMENT_FIELDS)} FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? AND submission_kind IS NOT NULL",
+                    (submission.experiment_id, submission.participant_id, submission.session_id),
+                ).fetchall()
+                assignment = tuple(getattr(submission, field) for field in ASSIGNMENT_FIELDS)
+                if any(existing != assignment for existing in session_assignments):
+                    raise ValidationError("submission_conflict", "session already has a different assignment")
                 cursor = db.execute(
                     "UPDATE assignments SET participant_id = ? WHERE assignment_id = ? AND (participant_id IS NULL OR participant_id = ?)",
                     (submission.participant_id, submission.assignment_id, submission.participant_id),
@@ -1025,7 +1112,8 @@ class ReceiverStorage:
                         if archive_status == "archived" and self.delete_local_after_success
                         else str(self.spool_dir / submission_id / file_info["archive_filename"])
                     )
-            updated.append(json.dumps(item, sort_keys=True))
+                line = json.dumps(item, sort_keys=True)
+            updated.append(line)
         self._replace_jsonl(updated)
 
     def _append_jsonl(self, item: dict[str, Any]) -> None:
@@ -1036,6 +1124,8 @@ class ReceiverStorage:
                     if handle.read(1) != b"\n":
                         handle.write(b"\n")
                 handle.write((json.dumps(item, sort_keys=True) + "\n").encode("utf-8"))
+                handle.flush()
+                os.fsync(handle.fileno())
 
     def _reconcile_jsonl(self, submission_id: str | None = None) -> None:
         """Restore committed SQLite rows missing from JSONL; caller holds publication lock."""
@@ -1100,8 +1190,9 @@ class ReceiverStorage:
     def _replace_jsonl(self, lines: list[str]) -> None:
         temporary = self.data_dir / f".submissions-{uuid.uuid4().hex}.tmp"
         try:
-            temporary.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+            _write_durable(temporary, ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8"))
             temporary.replace(self.jsonl_path)
+            _sync_directory(self.data_dir)
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -1147,6 +1238,22 @@ class ReceiverStorage:
         keep = max(0, keep_local)
         for path in archives[:-keep] if keep else archives:
             shutil.rmtree(path)
+
+
+def _write_durable(path: Path, data: bytes) -> None:
+    with path.open("wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _sync_directory(path: Path) -> None:
+    if os.name != "nt":
+        descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
 
 @contextmanager

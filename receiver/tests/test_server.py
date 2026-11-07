@@ -74,8 +74,11 @@ class ServerTests(unittest.TestCase):
             archive = {"schema": "layouttask.receiver.archive.v1", "experiment_id": "layout_task_v1",
                        "participant_id": "P47", "session_id": "S1"}
             first = self.post_in_process(server, "/archive", archive)
+            self.assertEqual((first[0], first[1]["archive_status"]), (202, "queued"))
+            self.assertFalse((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / final_body["submission_id"]).exists())
+            storage.retry_pending()
             repeat = self.post_in_process(server, "/archive", archive)
-            self.assertEqual((first[0], repeat[0]), (201, 200))
+            self.assertEqual(repeat[0], 200)
             self.assertTrue((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / trial_body["submission_id"]).exists())
             self.assertTrue((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / final_body["submission_id"]).exists())
 
@@ -90,6 +93,7 @@ class ServerTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         server._test_thread = thread
+        server._test_storage = storage
 
         def cleanup():
             server.shutdown()
@@ -250,9 +254,11 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(body["archive_status"], "pending")
 
             status, _headers, body = self.post_json(server, "/archive", self.archive_payload())
-            self.assertEqual(status, 201)
+            self.assertEqual(status, 202)
             self.assertTrue(body["ok"])
-            self.assertEqual(body["archive_status"], "archived")
+            self.assertEqual(body["archive_status"], "queued")
+
+            server._test_storage.retry_pending()
 
             status, _headers, body = self.post_json(server, "/archive", self.archive_payload())
             self.assertEqual(status, 200)

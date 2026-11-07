@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 from .archive import build_archive_backend
+from .archive_worker import ArchiveWorker
 from .config import ReceiverConfig, load_config_from_env
 from .models import ValidationError, safe_path_segment, validate_submission
 from .storage import ReceiverStorage
@@ -151,7 +152,7 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                     experiment_id = safe_path_segment(archive_payload.get("experiment_id"), "experiment_id")
                     participant_id = safe_path_segment(archive_payload.get("participant_id"), "participant_id")
                     session_id = safe_path_segment(archive_payload.get("session_id"), "session_id")
-                    result = storage.archive_session(experiment_id, participant_id, session_id)
+                    result = storage.queue_archive(experiment_id, participant_id, session_id)
                 except (json.JSONDecodeError, ValidationError) as error:
                     if isinstance(error, ValidationError):
                         json_response(self, 400, {"ok": False, "error": error.code, "message": error.message}, origin)
@@ -161,7 +162,7 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                 if not result.ok:
                     json_response(self, 503, {"ok": False, "error": "archive_failed", "message": result.error}, origin)
                     return
-                status = 200 if result.already_archived else 201
+                status = 200 if result.already_archived else 202
                 json_response(self, status, {"ok": True, "archive_status": result.archive_status, "archive_uri": result.archive_uri}, origin)
                 return
 
@@ -240,8 +241,14 @@ def main() -> None:
         archive_on_submit=False,
     )
     server = create_server(("", config.port), config, storage)
+    worker = ArchiveWorker(storage, config.archive_retry_interval_seconds)
+    worker.start()
     print(f"receiver listening on :{config.port}")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        worker.stop()
+        server.server_close()
 
 
 if __name__ == "__main__":
