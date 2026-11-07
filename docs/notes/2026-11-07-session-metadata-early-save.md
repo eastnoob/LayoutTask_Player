@@ -2,7 +2,7 @@
 
 日期：2026-11-07（Europe/Berlin）
 
-状态：用户已授权实施与源码提交，并重新生成、提交和发布中英文静态包；正在执行 receiver 与客户端回归验证。最终部署证据见 `docs/superpowers/verification/2026-11-07-reliable-data-pipe.md`。
+状态：修复已通过回归与复审，源码已提交推送，VPS receiver 已先行更新，中英文自包含静态包已发布，英文 GitHub Pages 已构建并核验。部署与测试证据见 `docs/superpowers/verification/2026-11-07-reliable-data-pipe.md`。
 
 ## 用户确认的修改点
 

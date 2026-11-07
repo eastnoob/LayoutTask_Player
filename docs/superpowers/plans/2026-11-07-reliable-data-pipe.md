@@ -102,10 +102,10 @@
 **Files:**
 - Modify only the files proven necessary by Tasks 1–5.
 
-- [ ] Review the diff for unrelated dirty-worktree changes and stage only this task.
-- [ ] Commit the source/receiver change on the current feature branch, preserving the existing working baseline.
-- [ ] Push the source branch after verification.
-- [ ] Deploy and verify the backwards-compatible receiver before publishing clients that submit metadata; preserve the mounted data and assignment counters.
-- [ ] Publish the fresh Chinese package to `web-release` `main` and the English package to `web-release` `en-US`, preserving the self-contained package root.
-- [ ] Verify remote refs and representative live assets/configs.
-- [ ] Record receiver and both static deployment refs, evidence and any remaining limitations.
+- [x] Review the diff for unrelated dirty-worktree changes and stage only this task.
+- [x] Commit the source/receiver change on the current feature branch, preserving the existing working baseline.
+- [x] Push the source branch after verification.
+- [x] Deploy and verify the backwards-compatible receiver before publishing clients that submit metadata; preserve the mounted data and assignment counters.
+- [x] Publish the fresh Chinese package to `web-release` `main` and the English package to `web-release` `en-US`, preserving the self-contained package root.
+- [x] Verify remote refs and representative live assets/configs.
+- [x] Record receiver and both static deployment refs, evidence and any remaining limitations.

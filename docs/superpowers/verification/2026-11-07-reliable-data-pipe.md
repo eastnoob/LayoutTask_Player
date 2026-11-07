@@ -37,9 +37,23 @@ The local receiver is isolated from production and its sequence slots. Windows n
 
 After separating the commit from preexisting worktree changes, its exported staged snapshot also passed 84 focused frontend tests and all 17 new receiver reliability tests. Preexisting Windows JSONL retry and unrelated Run41/reward/analysis edits remain in the working tree; they were not swept into this source commit.
 
-## Publication status
+## Publication and production acceptance
 
-Implementation, tests and review completed. Source commit, receiver deployment and bilingual static publication pending at this checkpoint; this section will be updated with verified refs and production preservation evidence.
+- Source implementation pushed: `4bce9bd54fa0b4745b1b0f07c44409888196d0b5`, branch `codex/run41-stimulus-migration`. Unrelated preexisting changes remain unstaged.
+- Receiver deployed before clients, retaining the exact previous dependency image. New image: `sha256:1d87c260c48c09307d438c17e91fa468f0422cfcaba99f747151b9a7caf0b1d4`.
+- All six changed receiver module hashes inside the running production container match the reviewed candidate/working artifact, including the earlier Windows JSONL fix already present on the deployed baseline.
+- Secure VPS rollback snapshot: `/srv/agent/layouttask-receiver/backups/reliable-data-pipe-20261107T132138Z/`, containing source/config tar, full stopped-data tar, and SQLite backup. Prior image remains tagged `layouttask-receiver:before-reliable-pipe-20261107`. No data volume reset or assignment allocation was used for production tests.
+- Production comparison against that SQLite snapshot preserves all 5 assignment rows, max participant number 5, all 156 original submission identities/content hashes, all 186 file identities/digests and all 80 previously archived submissions/target rows.
+- Production config verified: both `jianguoyun` and `sciebo` for submissions and metadata indexes, retry interval 30 seconds, experiment `run_41_persistent`, schedule `run41-williams-repeat-constrained-v1`, 46 sequence IDs. Public `/health` returns `{"ok":true}`.
+- Actual `/archive` request for an existing accepted session returned HTTP 202/queued in 6.41 ms while the worker copied backlog; later checks returned 5.87 ms and 4.05 ms. No cloud completion is claimed by that response.
+- Real production worker readback: one previously pending file archived by the new worker was downloaded independently from both clouds. Both SHA-256 values match the original database digest `f36bc5f9f81d4382ea39d706ab9673e522e961b364b53d9a066df8dede38b819`.
+- Chinese static `main`: `d86c19d60fe4e8358644efe13cd20b5fe52d15ae`.
+- English static `en-US`: `b54752a1f7e84b554eda401b187cd50170ceaafa`.
+- Exported each actual staged static tree excluding Git bookkeeping: all 156 files match the corresponding fresh package byte for byte; both recursive validators PASS with zero failures. Existing stimulus/tutorial/icon/CSS/config files have no changes in either static commit. Only the JS bundle, entry HTML and added explicit language config differ. Git checks account for the release repository's preserved CRLF (`core.whitespace=cr-at-eol`).
+- GitHub Pages source remains `en-US`, root `/`. Latest build is `built` at `b54752a1f7e84b554eda401b187cd50170ceaafa`, no build error. Live `/experiment/` references `experiment-DR1H2b_B.js`; downloaded SHA-256 equals the verified package hash above. Chinese remote raw bundle has the same hash. Chinese is published to its static branch, not a separate Pages hostname.
+- Live English WebKit consent page loads with zero console errors. Config, schedule and scoring reference requests return 200; public CSS, info/hand icons, manifest and representative stimulus JPG also return 200. Production browser used developer mode and did not consume an assignment slot.
+
+Background backlog progress observed after rollout: 87 → 110 → 125 → 146 → 156 archived submissions. Final check: all 76 originally outstanding submissions completed both clouds, zero outstanding rows; Jianguoyun has 156 archived target rows and Sciebo has 76. The 80 already archived historical submissions remain unchanged, with no newly imposed Sciebo obligation. Final existing-session `/archive` returns HTTP 200/archived in 5.39 ms. All original identities, digests and 5 assignment rows still match the predeployment snapshot.
 
 ## Limits
 
