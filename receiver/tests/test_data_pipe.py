@@ -8,6 +8,7 @@ import threading
 import time
 import unittest
 from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -17,7 +18,11 @@ from app.models import ASSIGNMENT_FIELDS, IDENTITY_FIELDS, ValidationError, vali
 from app.server import create_server
 from app.storage import ReceiverStorage
 import test_server
-from test_storage import submit_v2, v2_payload
+from test_storage import submit_v2, v2_payload, valid_submission
+
+
+def legacy_submission(session_id="S1", participant_id="P47"):
+    return replace(valid_submission(), session_id=session_id, participant_id=participant_id)
 
 
 def metadata_payload(assignment):
@@ -62,9 +67,9 @@ class ReliableDataPipeTests(unittest.TestCase):
                     backend = MultiArchiveBackend({name: LocalArchiveBackend(root / name) for name in target_names})
                     storage = ReceiverStorage(root / "receiver", archive_backend=backend, archive_on_submit=False)
                     assignment = storage.allocate_assignment("layout_task_v1", "first", "s1", ["1"])
-                    history = submit_v2(storage, v2_payload(assignment, session_id="old-session"))
+                    history = storage.save_submission(legacy_submission("old-session"), "127.0.0.1", "unit-test", "body-history")
                     self.assertEqual(storage.retry_pending(), 1)
-                    saved = submit_v2(storage, v2_payload(assignment))
+                    saved = storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")
                     expected_files = {path.name: path.read_bytes() for path in (storage.spool_dir / saved.id).iterdir()}
                     child = multiprocessing.get_context("spawn").Process(
                         target=crash_after_archived_commit, args=(root, target_names, after_jsonl))
@@ -285,7 +290,8 @@ class ReliableDataPipeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             targets = {name: LocalArchiveBackend(root / name) for name in ("jianguoyun", "sciebo")}
-            storage = ReceiverStorage(root / "receiver", archive_backend=MultiArchiveBackend(targets), archive_on_submit=False)
+            storage = ReceiverStorage(root / "receiver", archive_backend=MultiArchiveBackend(targets), archive_on_submit=False,
+                                      expected_formal_trial_count=24, require_tutorial=True, schedule_version="s1")
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1"])
             payloads = [metadata_payload(assignment)]
             for index in range(25):
@@ -300,9 +306,15 @@ class ReliableDataPipeTests(unittest.TestCase):
                 payload["files"][0]["data"] = json.dumps(backup)
                 payloads.append(payload)
             payloads.append(v2_payload(assignment, kind="final"))
+            final_files = payloads[-1]["files"]
+            raw_header = ",".join((*IDENTITY_FIELDS, "trial_index", "trial_type")) + "\n"
+            raw_identity = ",".join("" if payloads[-1][field] is None else str(payloads[-1][field]) for field in IDENTITY_FIELDS)
+            raw_rows = "".join(f"{raw_identity},{index},formal\n" for index in range(1, 25))
+            final_files[1]["data"] = raw_header + raw_rows
             expected = [(submit_v2(storage, payload).id, payload["files"]) for payload in payloads]
             started = time.monotonic()
-            self.assertEqual(storage.queue_archive("layout_task_v1", "P47", "S1").archive_status, "queued")
+            queued = storage.queue_archive("layout_task_v1", "P47", "S1")
+            self.assertEqual((queued.archive_status, queued.data_complete), ("pending", True))
             self.assertLess(time.monotonic() - started, 1)
             self.assertEqual(storage.retry_pending(), 27)
             self.assertEqual(list(storage.spool_dir.iterdir()), [])
@@ -318,7 +330,7 @@ class ReliableDataPipeTests(unittest.TestCase):
             root = Path(directory)
             storage = ReceiverStorage(root, archive_backend=MultiArchiveBackend({"jianguoyun": LocalArchiveBackend(root / "old-cloud")}), archive_on_submit=False)
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1", "2"])
-            saved = submit_v2(storage, v2_payload(assignment))
+            saved = storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")
             self.assertEqual(storage.retry_pending(), 1)
             old_jsonl = storage.jsonl_path.read_bytes()
             recovered = ReceiverStorage(root, archive_backend=MultiArchiveBackend({
@@ -398,7 +410,7 @@ class ReliableDataPipeTests(unittest.TestCase):
 
             storage = ReceiverStorage(Path(directory), archive_backend=BlockedArchive(), archive_on_submit=False)
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1"])
-            submit_v2(storage, v2_payload(assignment))
+            storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")
             thread = threading.Thread(target=storage.retry_pending)
             thread.start()
             self.assertTrue(entered.wait(2))
@@ -425,9 +437,9 @@ class ReliableDataPipeTests(unittest.TestCase):
             storage = ReceiverStorage(Path(directory), archive_backend=MultiArchiveBackend({
                 "jianguoyun": bad, "sciebo": good}), archive_on_submit=False)
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1"])
-            saved = [submit_v2(storage, v2_payload(assignment)), submit_v2(storage, v2_payload(assignment, kind="final"))]
+            saved = [storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")]
             self.assertEqual(storage.retry_pending(), 0)
-            self.assertEqual((bad.archive.call_count, good.archive.call_count), (1, 2))
+            self.assertEqual((bad.archive.call_count, good.archive.call_count), (1, 1))
             self.assertTrue(all((storage.spool_dir / item.id).exists() for item in saved))
 
     def test_missing_spool_is_recorded_as_failure_instead_of_left_pending(self):
@@ -436,7 +448,7 @@ class ReliableDataPipeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             storage = ReceiverStorage(Path(directory), archive_backend=LocalArchiveBackend(Path(directory) / "cloud"), archive_on_submit=False)
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1"])
-            saved = submit_v2(storage, v2_payload(assignment))
+            saved = storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")
             shutil.rmtree(storage.spool_dir / saved.id)
             storage.retry_pending()
             self.assertEqual(storage._submission_status(saved.id), "failed")
@@ -453,7 +465,7 @@ class ReliableDataPipeTests(unittest.TestCase):
             backend = MultiArchiveBackend({"jianguoyun": good, "sciebo": bad})
             storage = ReceiverStorage(Path(directory), archive_backend=backend, archive_on_submit=False)
             assignment = storage.allocate_assignment("layout_task_v1", "token", "s1", ["1"])
-            saved = submit_v2(storage, v2_payload(assignment))
+            saved = storage.save_submission(legacy_submission(), "127.0.0.1", "unit-test", "body-saved")
             storage.retry_pending()
             self.assertEqual(storage._submission_status(saved.id), "partial")
             self.assertTrue((storage.spool_dir / saved.id).exists())

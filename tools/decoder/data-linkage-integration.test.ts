@@ -9,11 +9,13 @@ import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
 import { DataSaveService } from "../../src/core/data-save-service";
 import { LayoutTaskEncoder } from "../../src/core/encoder";
+import { createConsentRecord } from "../../src/core/experiment-consent";
 import {
   createExperimentCsvFiles,
   type ExperimentAssignmentMetadata,
   type ExperimentTrialResultItem,
 } from "../../src/core/experiment-data";
+import { createMemoryLocalBackupStore } from "../../src/core/local-backup-store";
 import { saveExperimentFiles } from "../../src/experiment-runner";
 import type { CompletionPayload } from "../../src/core/completion-controller";
 import type { LayoutTaskResult } from "../../src/types/result";
@@ -30,7 +32,10 @@ const schedule = JSON.parse(readFileSync(schedulePath, "utf8")) as ExperimentSch
 const python = process.env.PYTHON ?? "python3";
 const experimentId = "layout_task_v1";
 type StoredSubmission = { id: string; file_count: number; archive_status: string; duplicate: boolean };
-type SessionArchiveResult = { ok: boolean; archive_status: string; archive_uri: string | null; error: string | null; already_archived: boolean };
+type SessionArchiveResult = {
+  ok: boolean; archive_status: string; archive_uri: string | null; error: string | null;
+  already_archived: boolean; data_complete: boolean | null; finalization_status: string | null;
+};
 
 // This subprocess uses the actual storage API; every response/error crosses stdout.
 const receiverScript = [
@@ -41,7 +46,7 @@ const receiverScript = [
   "from app.archive import LocalArchiveBackend",
   "from app.models import validate_submission",
   "from app.storage import ReceiverStorage",
-  "storage = ReceiverStorage(Path(sys.argv[2]), archive_backend=LocalArchiveBackend(Path(sys.argv[3])), archive_on_submit=False)",
+  "storage = ReceiverStorage(Path(sys.argv[2]), archive_backend=LocalArchiveBackend(Path(sys.argv[3])), archive_on_submit=False, expected_formal_trial_count=25, require_tutorial=True, schedule_version='integration-published-run12')",
   "for line in sys.stdin:",
   "    try:",
   "        req = json.loads(line)",
@@ -56,7 +61,7 @@ const receiverScript = [
   "        elif req['op'] == 'retry':",
   "            out = storage.retry_pending()",
   "        elif req['op'] == 'archive':",
-  "            out = asdict(storage.archive_session(req['payload']['experiment_id'], req['payload']['participant_id'], req['payload']['session_id']))",
+  "            out = asdict(storage.queue_archive(req['payload']['experiment_id'], req['payload']['participant_id'], req['payload']['session_id']))",
   "        else:",
   "            raise ValueError('unknown operation: ' + req['op'])",
   "        print(json.dumps({'ok': True, 'result': out}), flush=True)",
@@ -112,6 +117,11 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           rotation_index: record.rotation_index,
         };
         const participantId = "P" + record.participant_number;
+        const participantProfile = {
+          participant_age: 31,
+          participant_sex_assigned_at_birth: mode === "automatic" ? "male" as const : "female" as const,
+          requires_corrective_eyewear: true,
+        };
         const requests: Record<string, unknown>[] = [];
         const submissions: Array<{ request: Record<string, unknown>; reply: StoredSubmission; status: number }> = [];
         const archives: Array<{ request: Record<string, unknown>; reply: SessionArchiveResult; status: number }> = [];
@@ -129,12 +139,13 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           }
           if (path === "/archive") {
             const reply = await receiver({ op: "archive", payload: request }) as SessionArchiveResult;
-            const status = reply.ok ? (reply.already_archived ? 200 : 201) : 503;
+            const status = reply.ok ? (reply.already_archived ? 200 : 202)
+              : reply.finalization_status === "incomplete" || reply.finalization_status === "needs_recovery" ? 409 : 503;
             archives.push({ request, reply, status });
             if (!reply.ok) console.error("Python archive response: " + JSON.stringify(reply));
             return new Response(JSON.stringify(reply.ok
-              ? { ok: true, archive_status: reply.archive_status, archive_uri: reply.archive_uri }
-              : { ok: false, error: "archive_failed", message: reply.error }), { status });
+              ? { ok: true, data_complete: reply.data_complete === true, finalization_status: reply.finalization_status, archive_status: reply.archive_status, archive_uri: reply.archive_uri }
+              : { ok: false, data_complete: false, finalization_status: reply.finalization_status, archive_status: reply.archive_status, error: status === 409 ? "incomplete_data" : "archive_failed", message: reply.error }), { status });
           }
           throw new Error("Unexpected receiver endpoint: " + String(url));
         };
@@ -168,15 +179,33 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           return reply;
         }
 
-        async function saveFinal(sessionId: string, tutorial: CompletionPayload, trials: CompletionPayload[]) {
+        async function saveMetadata(sessionId: string) {
+          const before = submissions.length;
+          const result = await new DataSaveService({
+            config: {
+              mode: "receiver", experiment_id: experimentId, participant_id: participantId, session_id: sessionId,
+              endpoint: "https://receiver.invalid/submit", filename_prefix: "layout-task", payload_format: "json-envelope",
+              save_encoded: true, save_result: true, assignment,
+            },
+            localBackup: createMemoryLocalBackupStore(`${mode}:${sessionId}:metadata`),
+            fetchImpl,
+          }).saveSessionMetadata({
+            prolificId: "prolific-test",
+            participantProfile,
+            consent: createConsentRecord({ locale: "en-US", mode: "agreed", consentedAt: "2026-11-08T00:00:00.000Z" }),
+          });
+          expect(result, JSON.stringify(result)).toMatchObject({ ok: true, provider: "receiver" });
+          expect(submissions).toHaveLength(before + 1);
+          expect(submissions[before].request).toMatchObject({
+            schema: "layouttask.receiver.submission.v2", submission_kind: "metadata", ...assignment,
+            participant_id: participantId, session_id: sessionId,
+          });
+        }
+
+        async function saveFinal(sessionId: string, tutorial: CompletionPayload, trials: CompletionPayload[], expectComplete = true, expectArchived = false) {
           const requestCount = requests.length;
           const submissionCount = submissions.length;
           const archiveCount = archives.length;
-          const participantProfile = {
-            participant_age: 31,
-            participant_sex_assigned_at_birth: mode === "automatic" ? "male" as const : "female" as const,
-            requires_corrective_eyewear: true,
-          };
           const trialResults: ExperimentTrialResultItem[] = trials.map((payload) => ({
             trialType: "formal", taskId: payload.result.task_id, qid: payload.result.qid,
             encoded: payload.encoded.output, hash8: payload.encoded.hash8,
@@ -198,6 +227,13 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
               requestedSequenceId: record.requested_sequence_id, replacementAttempt: record.replacement_attempt, rotationIndex: record.rotation_index,
             },
           });
+          if (!expectComplete) {
+            expect(saved, JSON.stringify(saved)).toMatchObject({ ok: false, saved: files.length, failedFilename: "receiver archive" });
+            expect(submissions).toHaveLength(submissionCount + 1);
+            expect(archives).toHaveLength(archiveCount + 2);
+            expect(archives.slice(archiveCount).every(({ status }) => status === 409)).toBe(true);
+            return { submission: submissions[submissionCount].reply, archive: archives[archiveCount + 1].reply };
+          }
           expect(saved, JSON.stringify(saved)).toEqual({ ok: true, saved: files.length });
           expect(submissions).toHaveLength(submissionCount + 1);
           expect(archives).toHaveLength(archiveCount + 1);
@@ -215,8 +251,10 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
           expect(submitted.status).toBe(submitted.reply.duplicate ? 200 : 201);
           expect(archived.request).toMatchObject({ schema: "layouttask.receiver.archive.v1",
             ...assignment, experiment_id: experimentId, participant_id: participantId, session_id: sessionId });
-          expect(archived.reply, JSON.stringify(archived.reply)).toMatchObject({ ok: true, archive_status: "archived" });
-          expect(archived.status).toBe(archived.reply.already_archived ? 200 : 201);
+          expect(archived.reply, JSON.stringify(archived.reply)).toMatchObject({ ok: true, data_complete: true, finalization_status: "complete" });
+          expect(archived.reply.archive_status).toBe(expectArchived ? "archived" : "pending");
+          expect(archived.status).toBe(expectArchived ? 200 : 202);
+          expect(await receiver({ op: "retry" })).toBe(expectArchived ? 0 : trials.length + 3);
           const archivedDir = join(archive, experimentId, participantId, sessionId, submitted.reply.id);
           const sessionCsv = readdirSync(archivedDir).find((name) => name.includes("_session_") && name.endsWith(".csv"))!;
           const [demographics] = parse(readFileSync(join(archivedDir, sessionCsv), "utf8"), { columns: true });
@@ -240,48 +278,52 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
 
         const tutorialSession = mode + "-tutorial-only";
         const tutorial = await makePayload(mode + "-tutorial-trial");
+        await saveMetadata(tutorialSession);
         await saveTrial(tutorialSession, tutorial);
         expect(requests.at(-1)).not.toHaveProperty("presentation_id");
         expect(requests.at(-1)).not.toHaveProperty("trial_index");
-        await saveFinal(tutorialSession, tutorial, []);
+        await saveFinal(tutorialSession, tutorial, [], false);
         let audit = await auditLegacySubmissions(auditOptions);
         expect(audit.issues).toEqual([]);
         expect(audit.sessions.find((session) => session.session_id === tutorialSession)).toMatchObject({
-          ...assignment, status: "tutorial_only", formal_presentations: 0, final_present: true, archive_state: "archived",
+          ...assignment, status: "tutorial_only", formal_presentations: 0, final_present: true, archive_state: "pending",
         });
 
         const sessionId = mode + "-formal-experiment";
         const trials = await Promise.all(sequence.presentations.map((presentation) =>
           makePayload(mode + "-formal-trial-" + presentation.trialIndex, presentation)));
+        await saveMetadata(sessionId);
+        await saveTrial(sessionId, tutorial);
         const first = await saveTrial(sessionId, trials[0]);
         const duplicate = await saveTrial(sessionId, trials[0]);
         expect(duplicate).toMatchObject({ id: first.id, duplicate: true });
-        expect(await receiver({ op: "retry" })).toBe(1);
-        expect(existsSync(join(receiverData, "spool", first.id!))).toBe(false);
-        expect(existsSync(join(archive, experimentId, participantId, sessionId, first.id!))).toBe(true);
+        expect(await receiver({ op: "retry" })).toBe(0);
+        expect(existsSync(join(receiverData, "spool", first.id!))).toBe(true);
+        expect(existsSync(join(archive, experimentId, participantId, sessionId, first.id!))).toBe(false);
         audit = await auditLegacySubmissions(auditOptions);
         expect(audit.issues).toEqual([]);
         expect(audit.sessions.find((session) => session.session_id === sessionId)).toMatchObject({
-          ...assignment, status: "partial", formal_presentations: 1, final_present: false, archive_state: "archived",
+          ...assignment, status: "partial", formal_presentations: 1, final_present: false, archive_state: "pending",
         });
 
         for (const payload of trials.slice(1)) await saveTrial(sessionId, payload);
-        expect(await receiver({ op: "retry" })).toBe(24);
-        expect(readdirSync(join(receiverData, "spool"))).toEqual([]);
+        expect(await receiver({ op: "retry" })).toBe(0);
+        expect(readdirSync(join(receiverData, "spool")).length).toBeGreaterThan(0);
         audit = await auditLegacySubmissions(auditOptions);
         expect(audit.issues).toEqual([]);
         expect(audit.sessions.find((session) => session.session_id === sessionId)).toMatchObject({
-          ...assignment, status: "formal_25_final_missing", formal_presentations: 25, final_present: false, archive_state: "archived",
+          ...assignment, status: "formal_25_final_missing", formal_presentations: 25, final_present: false, archive_state: "pending",
         });
 
         const final = await saveFinal(sessionId, tutorial, trials);
         expect(final.submission.duplicate).toBe(false);
         expect(final.archive.already_archived).toBe(false);
-        const finalDuplicate = await saveFinal(sessionId, tutorial, trials);
+        const finalDuplicate = await saveFinal(sessionId, tutorial, trials, true, true);
         expect(finalDuplicate.submission).toMatchObject({ id: final.submission.id, duplicate: true });
         expect(finalDuplicate.archive).toMatchObject({ ok: true, already_archived: true });
         expect(await saveTrial(sessionId, trials[0])).toMatchObject({ id: first.id, duplicate: true });
-        expect(readdirSync(join(receiverData, "spool"))).toEqual([]);
+        expect(submissions.filter(({ request }) => request.session_id === sessionId)
+          .every(({ reply }) => !existsSync(join(receiverData, "spool", reply.id)))).toBe(true);
 
         const beforeAudit = snapshot(temp);
         audit = await auditLegacySubmissions(auditOptions);
@@ -289,7 +331,8 @@ describe("TS producers -> Python receiver -> read-only archive audit", () => {
         expect(audit.sessions.find((session) => session.session_id === sessionId)).toMatchObject({
           ...assignment, status: "complete", formal_presentations: 25, final_presentations: 25, final_present: true, archive_state: "archived",
         });
-        const auditedTrials = audit.trials.filter((trial) => trial.session_id === sessionId);
+        expect(audit.trials.some((trial) => trial.session_id === sessionId && trial.trial_type === "tutorial")).toBe(true);
+        const auditedTrials = audit.trials.filter((trial) => trial.session_id === sessionId && trial.trial_type === "formal");
         expect(auditedTrials).toHaveLength(25);
         for (const trial of auditedTrials) {
           expect(trial).toMatchObject({ participant_number: record.participant_number, sequence_id: record.sequence_id,

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import multiprocessing
+import os
 import sqlite3
 import tempfile
 import threading
@@ -8,6 +9,8 @@ import unittest
 from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from app.archive import ArchiveResult, LocalArchiveBackend, MultiArchiveBackend
 from app.models import ValidationError, validate_submission
@@ -92,6 +95,29 @@ def v2_payload(assignment, kind="trial", participant_id="P47", session_id="S1", 
         payload.update({key: trial[key] for key in ("trial_session_id", "trial_type", "trial_index", "task_id", "qid", "presentation_id", "hash8", "encoding", "encoded")})
         payload["files"] = [{"filename": "task_q_T1.json", "content_type": "application/json",
                              "data": json.dumps({"schema": "layouttask.backup.v2", "saved_at": "time-1", "session": "T1", **trial})}]
+    elif kind == "metadata":
+        metadata = {
+            "schema": "layouttask.session-metadata.v1",
+            **identity,
+            "prolific_id": "prolific-test",
+            "participant_profile": {
+                "participant_age": 30,
+                "participant_sex_assigned_at_birth": "female",
+                "requires_corrective_eyewear": False,
+            },
+            "consent": {
+                "consent_version": "informed-consent-2026-10-13-v2",
+                "locale": "en-US",
+                "consented_at": "2026-11-08T00:00:00Z",
+                "signature_method": "checkbox_confirmation",
+                "voluntary_participation_confirmed": True,
+                "questions_answered_confirmed": True,
+                "prestudy_document_confirmed": True,
+                "withdrawal_right_understood_confirmed": True,
+                "developer_mode": False,
+            },
+        }
+        payload["files"] = [{"filename": "layout_metadata_P47_S1.json", "content_type": "application/json", "data": json.dumps(metadata)}]
     else:
         headers = list(identity)
         values = ["" if identity[key] is None else str(identity[key]) for key in headers]
@@ -105,6 +131,20 @@ def v2_payload(assignment, kind="trial", participant_id="P47", session_id="S1", 
 
 def submit_v2(storage, payload):
     return storage.save_submission(validate_submission(payload, 8, 100000), "127.0.0.1", "unit-test", "body-sha")
+
+
+def developer_v2_payload(kind="trial"):
+    return v2_payload(SimpleNamespace(
+        experiment_id="run_41_debug",
+        assignment_id="developer-9999",
+        participant_number=9999,
+        sequence_id="developer",
+        schedule_version="run41-williams-repeat-constrained-v1",
+        assignment_mode="developer",
+        requested_sequence_id=None,
+        replacement_attempt=0,
+        rotation_index=None,
+    ), kind=kind, participant_id="9999", session_id="DEBUG_SESSION")
 
 
 def archive_race_worker(data_dir, operation, started, backend_entered, release, output,
@@ -225,6 +265,108 @@ def late_same_session_save_worker(data_dir, payload, started, done, output):
 
 
 class StorageTests(unittest.TestCase):
+    def test_new_v2_session_has_collecting_finalization_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
+            os.environ,
+            {
+                "ASSIGNMENT_SCHEDULE_VERSION": "s1",
+                "ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT": "24",
+                "ASSIGNMENT_REQUIRE_TUTORIAL": "true",
+            },
+            clear=True,
+        ):
+            storage = ReceiverStorage(Path(temp_dir), archive_on_submit=False)
+            assignment = storage.allocate_assignment("exp", "token", "s1", ["1"])
+            stored = submit_v2(storage, v2_payload(assignment))
+
+            with closing(sqlite3.connect(storage.sqlite_path)) as db:
+                row = db.execute(
+                    "SELECT experiment_id, participant_id, session_id, schedule_version, finalization_status, data_complete, archive_status, expected_formal_trial_count, tutorial_required, legacy_archive_eligible, final_submission_id, manifest_json FROM session_finalizations"
+                ).fetchone()
+
+            self.assertEqual(
+                row,
+                ("exp", "P47", "S1", "s1", "collecting", 0, "pending", 24, 1, 0, None, "{}"),
+            )
+            self.assertTrue((storage.spool_dir / stored.id).exists())
+
+    def test_finalization_state_survives_restart_and_completed_result_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
+            os.environ,
+            {
+                "ASSIGNMENT_SCHEDULE_VERSION": "s1",
+                "ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT": "24",
+                "ASSIGNMENT_REQUIRE_TUTORIAL": "true",
+            },
+            clear=True,
+        ):
+            data_dir = Path(temp_dir)
+            storage = ReceiverStorage(data_dir, archive_on_submit=False)
+            assignment = storage.allocate_assignment("exp", "token", "s1", ["1"])
+            submit_v2(storage, v2_payload(assignment))
+            with closing(sqlite3.connect(storage.sqlite_path)) as db:
+                db.execute(
+                    "UPDATE session_finalizations SET finalization_status = 'complete', data_complete = 1, archive_status = 'partial', final_submission_id = 'final-id', manifest_json = '{\"complete\":true}' WHERE experiment_id = 'exp' AND participant_id = 'P47' AND session_id = 'S1'"
+                )
+                db.commit()
+
+            restarted = ReceiverStorage(data_dir, archive_on_submit=False)
+            submit_v2(restarted, v2_payload(assignment, kind="metadata"))
+
+            with closing(sqlite3.connect(data_dir / "submissions.sqlite")) as db:
+                row = db.execute(
+                    "SELECT finalization_status, data_complete, archive_status, final_submission_id, manifest_json FROM session_finalizations"
+                ).fetchone()
+
+            self.assertEqual(row, ("complete", 1, "partial", "final-id", '{"complete":true}'))
+
+    def test_existing_pending_session_is_migrated_as_legacy_archive_eligible(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            storage = ReceiverStorage(data_dir, archive_on_submit=False)
+            storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-sha")
+
+            restarted = ReceiverStorage(data_dir, archive_on_submit=False)
+
+            with closing(sqlite3.connect(restarted.sqlite_path)) as db:
+                row = db.execute(
+                    "SELECT experiment_id, participant_id, session_id, finalization_status, data_complete, archive_status, legacy_archive_eligible FROM session_finalizations"
+                ).fetchone()
+
+            self.assertEqual(row, ("layout_task_v1", "P001", "S001", "collecting", 0, "pending", 1))
+            self.assertEqual(
+                (data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines(),
+                [json.dumps(json.loads((data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines()[0]), sort_keys=True)],
+            )
+
+    def test_collecting_v2_session_is_not_selected_for_background_archive(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
+            os.environ,
+            {"ASSIGNMENT_SCHEDULE_VERSION": "s1"},
+            clear=True,
+        ):
+            data_dir = Path(temp_dir)
+            backend = RecordingArchiveBackend()
+            storage = ReceiverStorage(data_dir, archive_backend=backend, archive_on_submit=False)
+            assignment = storage.allocate_assignment("exp", "token", "s1", ["1"])
+            submit_v2(storage, v2_payload(assignment))
+
+            self.assertEqual(storage.retry_pending(), 0)
+            self.assertEqual(backend.calls, [])
+
+    def test_developer_v2_submission_is_stored_without_creating_a_formal_assignment(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir), archive_on_submit=False)
+            result = submit_v2(storage, developer_v2_payload())
+
+            self.assertFalse(result.duplicate)
+            with closing(sqlite3.connect(storage.sqlite_path)) as db:
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM assignments").fetchone(), (0,))
+                self.assertEqual(
+                    db.execute("SELECT assignment_mode, participant_number FROM submissions").fetchone(),
+                    ("developer", 9999),
+                )
+
     def test_slow_archive_does_not_block_unrelated_session_submission(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir)
@@ -659,17 +801,14 @@ class StorageTests(unittest.TestCase):
             data_dir = Path(temp_dir)
             backend = LocalArchiveBackend(data_dir / "archive")
             storage = ReceiverStorage(data_dir, archive_backend=backend, archive_on_submit=False)
-            assignment = storage.allocate_assignment("exp", "automatic", "s1", ["1"])
-            trial = submit_v2(storage, v2_payload(assignment))
+            trial = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-trial")
             self.assertEqual(storage.retry_pending(), 1)
             self.assertFalse((storage.spool_dir / trial.id).exists())
-            final = submit_v2(storage, v2_payload(assignment, kind="final"))
-            first = storage.archive_session("exp", "P47", "S1")
-            second = storage.archive_session("exp", "P47", "S1")
+            first = storage.archive_session("layout_task_v1", "P001", "S001")
+            second = storage.archive_session("layout_task_v1", "P001", "S001")
             self.assertTrue(first.ok)
             self.assertTrue(second.ok)
-            self.assertTrue((data_dir / "archive" / "exp" / "P47" / "S1" / trial.id / "f001__task_q_T1.json").exists())
-            self.assertTrue((data_dir / "archive" / "exp" / "P47" / "S1" / final.id / "f001__layout_session_P47_S1.csv").exists())
+            self.assertTrue((data_dir / "archive" / "layout_task_v1" / "P001" / "S001" / trial.id / "f001__layout_session_P001_S001.csv").exists())
 
     def test_session_archive_skips_archived_trial_on_one_target_only(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -678,16 +817,15 @@ class StorageTests(unittest.TestCase):
             first_target.fail = False
             backend = MultiArchiveBackend({"first": first_target, "second": second_target})
             storage = ReceiverStorage(Path(temp_dir), archive_backend=backend, archive_on_submit=False)
-            assignment = storage.allocate_assignment("exp", "automatic", "s1", ["1"])
-            trial = submit_v2(storage, v2_payload(assignment))
-            self.assertEqual(storage.retry_pending(), 0)
+            trial = storage.save_submission(valid_submission(), "127.0.0.1", "unit-test", "body-trial")
+            first = storage.archive_session("layout_task_v1", "P001", "S001")
+            self.assertFalse(first.ok)
             self.assertEqual(len(first_target.calls), 1)
             second_target.fail = False
-            submit_v2(storage, v2_payload(assignment, kind="final"))
-            result = storage.archive_session("exp", "P47", "S1")
+            result = storage.archive_session("layout_task_v1", "P001", "S001")
             self.assertTrue(result.ok)
-            self.assertEqual(len(first_target.calls), 2)
-            self.assertEqual(len(second_target.calls), 3)
+            self.assertEqual(len(first_target.calls), 1)
+            self.assertEqual(len(second_target.calls), 2)
             self.assertFalse((storage.spool_dir / trial.id).exists())
     def test_partial_submission_archive_retries_only_failed_target(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1036,6 +1174,27 @@ class StorageTests(unittest.TestCase):
             lines = (data_dir / "submissions.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(lines), 2)
             self.assertEqual({json.loads(line)["id"] for line in lines}, {first.id, second.id})
+
+    @unittest.skipUnless(os.name == "nt", "Windows-only replacement behavior")
+    def test_jsonl_replace_retries_transient_windows_access_denied(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = ReceiverStorage(Path(temp_dir), archive_on_submit=False)
+            storage.jsonl_path.write_text('{"id":"old"}\n', encoding="utf-8")
+            real_replace = os.replace
+            attempts = 0
+
+            def replace_once_then_succeed(source, target):
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise PermissionError(5, "Access is denied")
+                return real_replace(source, target)
+
+            with patch("os.replace", side_effect=replace_once_then_succeed):
+                storage._replace_jsonl(['{"id":"new"}'])
+
+            self.assertEqual(attempts, 2)
+            self.assertEqual(storage.jsonl_path.read_text(encoding="utf-8"), '{"id":"new"}\n')
 
     def test_clear_data_removes_local_data_without_metadata_snapshot(self):
         with tempfile.TemporaryDirectory() as temp_dir:

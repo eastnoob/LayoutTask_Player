@@ -14,6 +14,8 @@ import {
   saveExperimentFiles,
   createRecoveryOutput,
   formatRewardSummary,
+  getExperimentStudyCopyOptions,
+  getFormalTrialOrder,
   shouldShowCompletionCodeGate,
   requestAssignment,
 } from "./experiment-runner";
@@ -77,6 +79,12 @@ function receiverExperimentConfig(): ExperimentConfig {
       submitToken: "public-study-token",
     },
   };
+}
+
+function receiverDataSave(): Extract<ExperimentConfig["dataSave"], { mode: "receiver" }> {
+  const dataSave = receiverExperimentConfig().dataSave;
+  if (dataSave.mode !== "receiver") throw new Error("test receiver config must use receiver mode");
+  return dataSave;
 }
 
 describe("buildExperimentTimeline", () => {
@@ -185,16 +193,26 @@ describe("buildExperimentTimeline", () => {
     }
   });
 
-  it("keeps developer trial saves on the unassigned v1 path", () => {
+  it("uses the same v2 trial identity for developer saves without a formal slot", () => {
     const timeline = buildExperimentTimeline(receiverExperimentConfig(), {
       developerMode: true,
       participantId: "DEBUG",
+      participantNumber: 47,
       sessionId: "DEBUG_SESSION",
-      assignment: { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "schedule-v1" },
     });
     const taskTrials = timeline.filter((trial) => trial.type === LayoutTaskPlugin);
     expect(taskTrials).toHaveLength(3);
-    expect(taskTrials.every((trial) => trial.dataSave.assignment === undefined)).toBe(true);
+    expect(taskTrials.every((trial) => trial.dataSave.participant_id === "9999" && trial.dataSave.assignment)).toBe(true);
+    expect(taskTrials[0].dataSave.assignment).toEqual({
+      assignment_id: "developer-9999",
+      participant_number: 9999,
+      sequence_id: "developer",
+      schedule_version: "developer",
+      assignment_mode: "developer",
+      requested_sequence_id: null,
+      replacement_attempt: 0,
+      rotation_index: null,
+    });
   });
 
   it("uses the assigned participant number to select the configured sequence", () => {
@@ -262,6 +280,30 @@ describe("buildExperimentTimeline", () => {
 
     expect(createSavingPageHtml("zh-CN")).toContain("正在保存数据");
     expect(createSavingPageHtml()).toContain("Saving your data");
+  });
+
+  it("shows the configured formal count and exact maximum reward", () => {
+    const config = experimentConfig();
+    config.trials = Array.from({ length: 23 }, (_, index) => ({ taskId: `scene_${index + 1}`, qid: `Q${index + 1}` }));
+    config.schedule = createPresentationSchedule(
+      generateWilliamsBaseSequences(config.trials.map((trial) => trial.taskId)),
+      ["scene_1"],
+      7,
+    );
+    config.reward = { enabled: true, baseRewardCents: 400, movementRewardCents: 4, rotationRewardCents: 4 };
+    config.rewardReference = Object.fromEntries(config.trials.map((trial) => [trial.taskId, {
+      qid: trial.qid!,
+      objects: Object.fromEntries(["a", "b", "c", "d"].map((suffix) => [
+        `${trial.taskId}-${suffix}`,
+        { role: "variable", target: { relative: { dx_steps: 0, dy_steps: 0, rotation_steps: 0 } } },
+      ])),
+    }]));
+
+    expect(getExperimentStudyCopyOptions(config)).toMatchObject({ formalTaskCount: 24, maximumRewardCents: 1168 });
+    const complete = String(buildExperimentTimeline(config)[2].pages[0]);
+    expect(complete).toContain("24 tasks; the tutorial is not included in this count.");
+    expect(complete).toContain("£11.68");
+    expect(complete).not.toContain("£12");
   });
 
   it("uses one concise bilingual opening task and body without duplicate headers", () => {
@@ -716,6 +758,16 @@ describe("formatRewardSummary", () => {
   });
 });
 
+describe("formal trial order", () => {
+  it("keeps repeated presentations in the exported order", () => {
+    expect(getFormalTrialOrder([
+      { trialType: "formal", taskId: "scene-a", presentation: undefined },
+      { trialType: "formal", taskId: "scene-b", presentation: undefined },
+      { trialType: "formal", taskId: "scene-a", presentation: undefined },
+    ])).toEqual(["scene-a", "scene-b", "scene-a"]);
+  });
+});
+
 describe("collectFormalTrialResults", () => {
   it("keeps encoded and result fields for formal trials only", () => {
     const results = collectFormalTrialResults([
@@ -797,10 +849,12 @@ describe("saveExperimentFiles", () => {
     await service.saveSessionMetadata({ prolificId: "original", consent: createConsentRecord({ locale: "en-US", mode: "agreed", consentedAt: "2026-11-07T12:00:00.000Z" }), participantProfile: { participant_age: 31, requires_corrective_eyewear: true } });
     const metadata = (await backup.listFiles())[0];
     const requests: any[] = [];
-    const fetchImpl: typeof fetch = async (_url, init) => {
+    const fetchImpl: typeof fetch = async (url, init) => {
       const body = JSON.parse(String(init?.body));
       requests.push(body);
-      return new Response("{}", { status: body.submission_kind === "metadata" ? metadataStatus : 202 });
+      return new Response(JSON.stringify(String(url).endsWith("/archive") ? { ok: true, data_complete: true } : {}), {
+        status: body.submission_kind === "metadata" ? metadataStatus : 202,
+      });
     };
     const files = [{ filename: "results.csv", contentType: "text/csv", data: "unchanged\r\n" }];
     const result = await saveExperimentFiles({ dataSave: config, participantId: "P001", sessionId: "S001", assignment, files, localBackup: backup, fetchImpl });
@@ -819,7 +873,7 @@ describe("saveExperimentFiles", () => {
     const requests: Array<{ url: string; body: any }> = [];
     const fetchImpl: typeof fetch = async (url, init) => {
       requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
-      return new Response("{}", { status: 201 });
+      return new Response(JSON.stringify(String(url).endsWith("/archive") ? { ok: true, data_complete: true } : {}), { status: 201 });
     };
     const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
     const result = await saveExperimentFiles({ dataSave: receiverExperimentConfig().dataSave, participantId: "P001", sessionId: "S001", assignment: { assignmentId: "assign-1", participantNumber: 1, sequenceId: "1", scheduleVersion: "v1", rotationIndex: 0 }, files, localBackup: backup, fetchImpl });
@@ -849,7 +903,9 @@ describe("saveExperimentFiles", () => {
 
   it("persists final files before receiver upload and clears them after archive success", async () => {
     const backup = createMemoryLocalBackupStore("P001:S001");
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith("/archive")
+      ? new Response(JSON.stringify({ ok: true, data_complete: true }), { status: 201 })
+      : ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
     const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
 
     const result = await saveExperimentFiles({
@@ -892,7 +948,9 @@ describe("saveExperimentFiles", () => {
   });
 
   it("posts one batch submission to the self-hosted receiver", async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith("/archive")
+      ? new Response(JSON.stringify({ ok: true, data_complete: true }), { status: 201 })
+      : ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
     const assignment = {
       assignmentId: "assign-1",
       participantNumber: 47,
@@ -971,23 +1029,52 @@ describe("saveExperimentFiles", () => {
     });
   });
 
-  it("keeps the final receiver request v1 in developer mode even when assignment is supplied", async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+  it("keeps the final receiver request in the same v2 format in developer mode", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith("/archive")
+      ? new Response(JSON.stringify({ ok: true, data_complete: true }), { status: 201 })
+      : ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
     const result = await saveExperimentFiles({
-      dataSave: receiverExperimentConfig().dataSave,
+      dataSave: { ...receiverDataSave(), experimentId: "layout_task_v1_debug" },
       files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
-      participantId: "DEBUG",
+      participantId: "9999",
       sessionId: "DEBUG_SESSION",
       developerMode: true,
-      assignment: { assignmentId: "assign-47", participantNumber: 47, sequenceId: "6", scheduleVersion: "schedule-v1" },
+      assignment: { assignmentId: "developer-9999", participantNumber: 9999, sequenceId: "developer", scheduleVersion: "developer", assignmentMode: "developer" },
       fetchImpl,
     });
 
     expect(result.ok).toBe(true);
     const body = JSON.parse(String((fetchImpl as never as { mock: { calls: Array<[string, { body: string }]> } }).mock.calls[0][1].body));
-    expect(body).toMatchObject({ schema: "layouttask.receiver.submission.v1", session_id: "DEBUG_SESSION" });
-    expect(body).not.toHaveProperty("submission_kind");
-    expect(body).not.toHaveProperty("assignment_id");
+    expect(body).toMatchObject({
+      schema: "layouttask.receiver.submission.v2",
+      submission_kind: "final",
+      experiment_id: "layout_task_v1_debug",
+      participant_id: "9999",
+      session_id: "DEBUG_SESSION",
+      assignment_id: "developer-9999",
+      participant_number: 9999,
+      sequence_id: "developer",
+      schedule_version: "developer",
+      assignment_mode: "developer",
+    });
+  });
+
+  it("refuses a developer receiver final save without an isolated developer assignment", async () => {
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => String(url).endsWith("/archive")
+      ? new Response(JSON.stringify({ ok: true, data_complete: true }), { status: 201 })
+      : ({ ok: true, status: 201, statusText: "Created" })) as unknown as typeof fetch;
+    const result = await saveExperimentFiles({
+      dataSave: { ...receiverDataSave(), experimentId: "layout_task_v1_debug" },
+      files: [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }],
+      participantId: "9999",
+      sessionId: "DEBUG_SESSION",
+      developerMode: true,
+      fetchImpl,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("isolated developer assignment");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("reports receiver JSON error details", async () => {
@@ -1068,7 +1155,7 @@ describe("saveExperimentFiles", () => {
     const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
     const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
       requests.push({ url: String(input), body: JSON.parse(String(init?.body)) as Record<string, unknown> });
-      return new Response(JSON.stringify({ ok: true, archive_status: "archived" }), { status: 201 });
+      return new Response(JSON.stringify({ ok: true, data_complete: true, archive_status: "archived" }), { status: 201 });
     };
 
     const result = await saveExperimentFiles({
@@ -1091,6 +1178,29 @@ describe("saveExperimentFiles", () => {
       participant_id: "P001",
       session_id: "S001",
     });
+  });
+
+  it("keeps recovery data when the receiver does not confirm complete local data", async () => {
+    const backup = createMemoryLocalBackupStore("P001:S001");
+    const fetchImpl = async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/archive")) {
+        return new Response(JSON.stringify({ ok: true, data_complete: false, finalization_status: "incomplete" }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 201 });
+    };
+
+    const files = [{ filename: "results.csv", contentType: "text/csv", data: "qid\nq1\n" }];
+    const result = await saveExperimentFiles({
+      dataSave: receiverExperimentConfig().dataSave,
+      files,
+      participantId: "P001",
+      sessionId: "S001",
+      fetchImpl,
+      localBackup: backup,
+    });
+
+    expect(result).toMatchObject({ ok: false, failedFilename: "receiver archive", recoveryZip: expect.any(Blob) });
+    expect(await backup.listFiles()).toEqual(files);
   });
 
   it("retries receiver archive once and returns recovery data after the second failure", async () => {

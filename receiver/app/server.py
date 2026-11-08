@@ -30,6 +30,8 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
     rate_state: dict[str, list[float]] = {}
 
     class ReceiverHandler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, format: str, *args: Any) -> None:
             return
 
@@ -160,10 +162,24 @@ def create_server(address, config: ReceiverConfig, storage: ReceiverStorage) -> 
                         json_response(self, 400, {"ok": False, "error": "invalid_json"}, origin)
                     return
                 if not result.ok:
-                    json_response(self, 503, {"ok": False, "error": "archive_failed", "message": result.error}, origin)
+                    status = 409 if result.finalization_status in {"incomplete", "needs_recovery"} else 503
+                    json_response(self, status, {
+                        "ok": False,
+                        "data_complete": result.data_complete is True,
+                        "finalization_status": result.finalization_status or "incomplete",
+                        "archive_status": result.archive_status,
+                        "error": "incomplete_data" if status == 409 else "archive_failed",
+                        "message": result.error,
+                    }, origin)
                     return
                 status = 200 if result.already_archived else 202
-                json_response(self, status, {"ok": True, "archive_status": result.archive_status, "archive_uri": result.archive_uri}, origin)
+                json_response(self, status, {
+                    "ok": True,
+                    "data_complete": result.data_complete is not False,
+                    "finalization_status": result.finalization_status or "collecting",
+                    "archive_status": result.archive_status,
+                    "archive_uri": result.archive_uri,
+                }, origin)
                 return
 
             if self.path == "/api/data/":
@@ -239,6 +255,9 @@ def main() -> None:
         archive_backend=backend,
         delete_local_after_success=config.archive_delete_local_after_success,
         archive_on_submit=False,
+        expected_formal_trial_count=config.expected_formal_trial_count,
+        require_tutorial=config.require_tutorial,
+        schedule_version=config.assignment_schedule_version,
     )
     server = create_server(("", config.port), config, storage)
     worker = ArchiveWorker(storage, config.archive_retry_interval_seconds)

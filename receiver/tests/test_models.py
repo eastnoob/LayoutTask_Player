@@ -81,6 +81,14 @@ class ModelTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValidationError):
                 validate_submission({**payload, field: "bad"}, 8, 4096)
 
+    def test_v2_accepts_developer_assignment_marker(self):
+        payload = {**self.valid_payload(), "schema": "layouttask.receiver.submission.v2",
+                   "submission_kind": "final", "assignment_id": "developer-9999", "participant_number": 9999,
+                   "sequence_id": "developer", "schedule_version": "developer", "assignment_mode": "developer",
+                   "requested_sequence_id": None, "replacement_attempt": 0, "rotation_index": None}
+        submission = validate_submission(payload, 8, 4096)
+        self.assertEqual(submission.assignment_mode, "developer")
+
 
 if __name__ == "__main__":
     unittest.main()

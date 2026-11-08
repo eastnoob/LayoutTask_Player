@@ -111,7 +111,7 @@ def validate_submission(payload: Any, max_files: int, max_file_bytes: int) -> Su
             require_text(payload[field], field)
         if type(payload["participant_number"]) is not int or payload["participant_number"] < 1:
             raise ValidationError("invalid_submission", "participant_number must be a positive integer")
-        if payload["assignment_mode"] not in ("automatic", "replacement"):
+        if payload["assignment_mode"] not in ("automatic", "replacement", "developer"):
             raise ValidationError("invalid_submission", "assignment_mode is invalid")
         if payload["requested_sequence_id"] is not None and not isinstance(payload["requested_sequence_id"], str):
             raise ValidationError("invalid_submission", "requested_sequence_id is invalid")

@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import shutil
 import sqlite3
+import time
 from typing import Any
 import uuid
 
@@ -48,6 +49,19 @@ class SessionArchiveResult:
     archive_uri: str | None = None
     error: str | None = None
     already_archived: bool = False
+    data_complete: bool | None = None
+    finalization_status: str | None = None
+
+
+@dataclass(frozen=True)
+class SessionFinalizationResult:
+    ok: bool
+    data_complete: bool
+    finalization_status: str
+    archive_status: str
+    error: str | None = None
+    final_submission_id: str | None = None
+    manifest_json: str = "{}"
 
 
 @dataclass(frozen=True)
@@ -66,6 +80,9 @@ class ReceiverStorage:
         metadata_archive_backend: Any = None,
         metadata_delete_local_after_upload: bool = True,
         archive_on_submit: bool = True,
+        expected_formal_trial_count: int | None = None,
+        require_tutorial: bool | None = None,
+        schedule_version: str | None = None,
     ):
         self.data_dir = Path(data_dir)
         self.archive_backend = archive_backend
@@ -73,6 +90,13 @@ class ReceiverStorage:
         self.metadata_archive_backend = metadata_archive_backend
         self.metadata_delete_local_after_upload = metadata_delete_local_after_upload
         self.archive_on_submit = archive_on_submit
+        self.expected_formal_trial_count = expected_formal_trial_count if expected_formal_trial_count is not None else _env_positive_int("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT")
+        self.require_tutorial = (
+            require_tutorial
+            if require_tutorial is not None
+            else os.environ.get("ASSIGNMENT_REQUIRE_TUTORIAL", "false").lower() == "true"
+        )
+        self.schedule_version = schedule_version or os.environ.get("ASSIGNMENT_SCHEDULE_VERSION")
         self.spool_dir = self.data_dir / "spool"
         self.jsonl_path = self.data_dir / "submissions.jsonl"
         self.sqlite_path = self.data_dir / "submissions.sqlite"
@@ -246,7 +270,7 @@ class ReceiverStorage:
             if submission.submission_kind:
                 index_item.update(self._v2_metadata(submission, content_sha256))
             self._append_jsonl(index_item)
-        if self.archive_backend is not None and self.archive_on_submit:
+        if self.archive_backend is not None and self.archive_on_submit and not submission.submission_kind:
             with _process_lock(self._session_lock_path(submission.experiment_id, submission.participant_id, submission.session_id)):
                 for target_name in self._archive_target_names():
                     if self._submission_target_archived(submission_id, target_name):
@@ -285,19 +309,28 @@ class ReceiverStorage:
         return StoredSubmission(*existing[:3], duplicate=True)
 
     def _validate_v2(self, submission: Submission) -> None:
-        with closing(sqlite3.connect(self.sqlite_path)) as db:
-            row = db.execute(
-                "SELECT experiment_id, participant_id, participant_number, sequence_id, schedule_version, assignment_mode, requested_sequence_id, replacement_attempt, rotation_index FROM assignments WHERE assignment_id = ?",
-                (submission.assignment_id,),
-            ).fetchone()
-        if row is None:
-            raise ValidationError("invalid_assignment", "assignment_id does not exist")
-        actual = dict(zip(("experiment_id", "participant_id", *ASSIGNMENT_FIELDS[1:]), row))
-        for field in ("experiment_id", *ASSIGNMENT_FIELDS[1:]):
-            if getattr(submission, field) != actual[field]:
-                raise ValidationError("invalid_assignment", f"{field} differs from assignment")
-        if actual["participant_id"] is not None and actual["participant_id"] != submission.participant_id:
-            raise ValidationError("assignment_conflict", "assignment is bound to another participant")
+        if submission.assignment_mode == "developer":
+            if (
+                not submission.experiment_id.endswith("_debug")
+                or submission.participant_id != "9999"
+                or submission.participant_number != 9999
+                or submission.assignment_id != "developer-9999"
+            ):
+                raise ValidationError("invalid_assignment", "developer submissions must use the isolated developer identity")
+        else:
+            with closing(sqlite3.connect(self.sqlite_path)) as db:
+                row = db.execute(
+                    "SELECT experiment_id, participant_id, participant_number, sequence_id, schedule_version, assignment_mode, requested_sequence_id, replacement_attempt, rotation_index FROM assignments WHERE assignment_id = ?",
+                    (submission.assignment_id,),
+                ).fetchone()
+            if row is None:
+                raise ValidationError("invalid_assignment", "assignment_id does not exist")
+            actual = dict(zip(("experiment_id", "participant_id", *ASSIGNMENT_FIELDS[1:]), row))
+            for field in ("experiment_id", *ASSIGNMENT_FIELDS[1:]):
+                if getattr(submission, field) != actual[field]:
+                    raise ValidationError("invalid_assignment", f"{field} differs from assignment")
+            if actual["participant_id"] is not None and actual["participant_id"] != submission.participant_id:
+                raise ValidationError("assignment_conflict", "assignment is bound to another participant")
         identity = {field: getattr(submission, field) for field in IDENTITY_FIELDS}
         if submission.submission_kind == "trial":
             if len(submission.files) != 1 or not submission.files[0].filename.endswith(".json"):
@@ -364,8 +397,153 @@ class ReceiverStorage:
                         if row.get(field) != ("" if expected is None else str(expected)):
                             raise ValidationError("identity_mismatch", f"{kind} CSV {field} differs from submission")
 
+    def finalize_session(self, experiment_id: str, participant_id: str, session_id: str) -> SessionFinalizationResult:
+        """Validate the durable local session without performing cloud I/O."""
+        with _process_lock(self._session_lock_path(experiment_id, participant_id, session_id)):
+            with _process_lock(self.data_dir / ".publication-lock.sqlite"):
+                with closing(sqlite3.connect(self.sqlite_path)) as db:
+                    db.row_factory = sqlite3.Row
+                    state = db.execute(
+                        "SELECT * FROM session_finalizations WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                        (experiment_id, participant_id, session_id),
+                    ).fetchone()
+                    submissions = db.execute(
+                        "SELECT * FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ? ORDER BY received_at, id",
+                        (experiment_id, participant_id, session_id),
+                    ).fetchall()
+                if state is None:
+                    return SessionFinalizationResult(False, False, "needs_recovery", "pending", error="session has no finalization state")
+                if state["finalization_status"] == "complete" and state["data_complete"] == 1:
+                    return SessionFinalizationResult(
+                        True, True, "complete", state["archive_status"],
+                        final_submission_id=state["final_submission_id"], manifest_json=state["manifest_json"],
+                    )
+
+                error = self._session_completeness_error(submissions, state)
+                complete = error is None
+                final_submission_id = next((row["id"] for row in submissions if row["submission_kind"] == "final"), None)
+                manifest = self._session_manifest(submissions, state) if complete else {}
+                status = "complete" if complete else "needs_recovery" if error and "missing" in error else "incomplete"
+                archive_status = state["archive_status"] or "pending"
+                manifest_json = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                with closing(sqlite3.connect(self.sqlite_path)) as db:
+                    db.execute(
+                        """
+                        UPDATE session_finalizations
+                        SET finalization_status = ?, data_complete = ?, archive_status = ?,
+                            final_submission_id = ?, manifest_json = ?, error = ?, updated_at = ?
+                        WHERE experiment_id = ? AND participant_id = ? AND session_id = ?
+                        """,
+                        (
+                            status, 1 if complete else 0, archive_status, final_submission_id,
+                            manifest_json, error, _utc_now(), experiment_id, participant_id, session_id,
+                        ),
+                    )
+                    db.commit()
+                return SessionFinalizationResult(
+                    complete, complete, status, archive_status, error=error,
+                    final_submission_id=final_submission_id, manifest_json=manifest_json,
+                )
+
+    def _session_completeness_error(self, submissions: list[sqlite3.Row], state: sqlite3.Row) -> str | None:
+        if state["expected_formal_trial_count"] is None:
+            return "missing expected formal trial count configuration"
+        if not submissions:
+            return "session has no accepted submissions"
+        metadata = [row for row in submissions if row["submission_kind"] == "metadata"]
+        finals = [row for row in submissions if row["submission_kind"] == "final"]
+        trials = [row for row in submissions if row["submission_kind"] == "trial"]
+        if len(metadata) != 1:
+            return "session requires exactly one metadata submission"
+        if len(finals) != 1:
+            return "session requires exactly one final submission"
+        if state["tutorial_required"] and not any(row["trial_type"] == "tutorial" for row in trials):
+            return "session is missing the required tutorial trial"
+        formal = [row for row in trials if row["trial_type"] == "formal"]
+        expected = int(state["expected_formal_trial_count"])
+        if len(formal) != expected:
+            return f"session has {len(formal)} formal trials; expected {expected}"
+        indices = [row["trial_index"] for row in formal]
+        if any(index is None for index in indices) or set(indices) != set(range(1, expected + 1)) or len(set(indices)) != expected:
+            return "formal trial indices are not exactly 1..N"
+        if any(not row["trial_session_id"] for row in formal) or len({row["trial_session_id"] for row in formal}) != expected:
+            return "formal trial session identities are missing or repeated"
+        if any(not row["presentation_id"] for row in formal) or len({row["presentation_id"] for row in formal}) != expected:
+            return "formal presentation identities are missing or repeated"
+        for row in (*metadata, *trials, *finals):
+            if not self._submission_bytes_available(row["id"]):
+                return f"missing local bytes for submission {row['id']}"
+        raw_rows = self._final_raw_result_rows(finals[0]["id"])
+        if raw_rows is None:
+            return "final raw-results CSV is missing or unreadable"
+        raw_indices = []
+        for raw_row in raw_rows:
+            if raw_row.get("trial_type") in (None, "", "formal"):
+                try:
+                    raw_indices.append(int(raw_row.get("trial_index", "")))
+                except (TypeError, ValueError):
+                    return "final raw-results CSV has invalid formal trial indices"
+        if set(raw_indices) != set(range(1, expected + 1)) or len(raw_indices) != expected:
+            return "final raw-results CSV does not match accepted formal trials"
+        return None
+
+    def _submission_bytes_available(self, submission_id: str) -> bool:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            rows = db.execute(
+                "SELECT local_path, archive_status, archive_uri FROM submission_files WHERE submission_id = ?",
+                (submission_id,),
+            ).fetchall()
+        return bool(rows) and all((path and Path(path).exists()) or (status == "archived" and uri) for path, status, uri in rows)
+
+    def _final_raw_result_rows(self, submission_id: str) -> list[dict[str, str]] | None:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            rows = db.execute(
+                "SELECT filename, local_path FROM submission_files WHERE submission_id = ? ORDER BY file_index",
+                (submission_id,),
+            ).fetchall()
+        raw = next(((filename, path) for filename, path in rows if "_raw_results_" in filename), None)
+        if raw is None or not raw[1] or not Path(raw[1]).exists():
+            return None
+        try:
+            with Path(raw[1]).open("r", encoding="utf-8", newline="") as handle:
+                return list(csv.DictReader(handle))
+        except (OSError, csv.Error):
+            return None
+
+    def _session_manifest(self, submissions: list[sqlite3.Row], state: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "experiment_id": submissions[0]["experiment_id"],
+            "participant_id": submissions[0]["participant_id"],
+            "session_id": submissions[0]["session_id"],
+            "schedule_version": state["schedule_version"],
+            "expected_formal_trial_count": state["expected_formal_trial_count"],
+            "trial_indices": sorted(row["trial_index"] for row in submissions if row["submission_kind"] == "trial" and row["trial_type"] == "formal"),
+            "presentation_ids": sorted(row["presentation_id"] for row in submissions if row["submission_kind"] == "trial" and row["trial_type"] == "formal"),
+            "submission_ids": [row["id"] for row in submissions],
+            "content_sha256": [row["content_sha256"] for row in submissions],
+            "validated_at": _utc_now(),
+        }
+
     def queue_archive(self, experiment_id: str, participant_id: str, session_id: str) -> SessionArchiveResult:
-        # Accepted SQLite rows are the durable work queue; never take the network-held session lock here.
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            state = db.execute(
+                "SELECT finalization_status, data_complete, archive_status, legacy_archive_eligible FROM session_finalizations WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                (experiment_id, participant_id, session_id),
+            ).fetchone()
+        if state and not state[3]:
+            finalization = self.finalize_session(experiment_id, participant_id, session_id)
+            if not finalization.data_complete:
+                return SessionArchiveResult(
+                    False, finalization.finalization_status, error=finalization.error,
+                    data_complete=False, finalization_status=finalization.finalization_status,
+                )
+            return SessionArchiveResult(
+                True, finalization.archive_status, archive_uri=self._session_archive_uri(experiment_id, participant_id, session_id),
+                already_archived=finalization.archive_status == "archived", data_complete=True,
+                finalization_status="complete",
+            )
+
+        # Legacy v1 rows keep the old queue contract and remain recoverable after migration.
         with closing(sqlite3.connect(self.sqlite_path, timeout=30)) as db:
             rows = db.execute(
                 "SELECT archive_status FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
@@ -492,7 +670,16 @@ class ReceiverStorage:
         with _process_lock(self.data_dir / ".publication-lock.sqlite"):
             with closing(sqlite3.connect(self.sqlite_path)) as db:
                 sessions = db.execute(
-                    "SELECT DISTINCT experiment_id, participant_id, session_id FROM submissions WHERE archive_status IN ('pending', 'failed', 'partial')"
+                    """
+                    SELECT DISTINCT s.experiment_id, s.participant_id, s.session_id
+                    FROM submissions AS s
+                    LEFT JOIN session_finalizations AS f
+                      ON f.experiment_id = s.experiment_id
+                     AND f.participant_id = s.participant_id
+                     AND f.session_id = s.session_id
+                    WHERE s.archive_status IN ('pending', 'failed', 'partial')
+                      AND (s.submission_kind IS NULL OR f.legacy_archive_eligible = 1 OR f.data_complete = 1)
+                    """
                 ).fetchall()
         retried = 0
         for experiment_id, participant_id, session_id in sessions:
@@ -541,6 +728,7 @@ class ReceiverStorage:
                     failed_targets.add(target_name)
 
             self._sync_submission_state(submission_id)
+            self._sync_finalization_archive_status(experiment_id, participant_id, session_id)
             after = self._submission_status(submission_id)
             if after == "archived":
                 if self.delete_local_after_success and spool_path.exists():
@@ -548,6 +736,33 @@ class ReceiverStorage:
                 if before != "archived":
                     retried += 1
         return retried
+
+    def _sync_finalization_archive_status(self, experiment_id: str, participant_id: str, session_id: str) -> None:
+        with closing(sqlite3.connect(self.sqlite_path)) as db:
+            rows = db.execute(
+                "SELECT archive_status FROM submissions WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                (experiment_id, participant_id, session_id),
+            ).fetchall()
+            state = db.execute(
+                "SELECT data_complete, archive_status FROM session_finalizations WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                (experiment_id, participant_id, session_id),
+            ).fetchone()
+            if not state or not rows:
+                return
+            statuses = [row[0] for row in rows]
+            if all(status == "archived" for status in statuses):
+                archive_status = "archived"
+            elif any(status in {"archived", "partial"} for status in statuses):
+                archive_status = "partial"
+            elif any(status == "failed" for status in statuses):
+                archive_status = "failed"
+            else:
+                archive_status = "pending"
+            db.execute(
+                "UPDATE session_finalizations SET archive_status = ?, updated_at = ? WHERE experiment_id = ? AND participant_id = ? AND session_id = ?",
+                (archive_status, _utc_now(), experiment_id, participant_id, session_id),
+            )
+            db.commit()
 
     def _session_lock_path(self, experiment_id: str, participant_id: str, session_id: str) -> Path:
         identity = json.dumps([experiment_id, participant_id, session_id], ensure_ascii=False, separators=(",", ":"))
@@ -802,6 +1017,48 @@ class ReceiverStorage:
                 ).fetchall()
                 for index, (assignment_id,) in enumerate(rows):
                     db.execute("UPDATE assignments SET rotation_index = ? WHERE assignment_id = ? AND rotation_index IS NULL", (index, assignment_id))
+            db.execute(
+                """
+                CREATE TABLE IF NOT EXISTS session_finalizations(
+                  experiment_id TEXT NOT NULL,
+                  participant_id TEXT NOT NULL,
+                  session_id TEXT NOT NULL,
+                  schedule_version TEXT,
+                  finalization_status TEXT NOT NULL,
+                  data_complete INTEGER NOT NULL,
+                  archive_status TEXT NOT NULL,
+                  expected_formal_trial_count INTEGER,
+                  tutorial_required INTEGER NOT NULL,
+                  legacy_archive_eligible INTEGER NOT NULL DEFAULT 0,
+                  final_submission_id TEXT,
+                  manifest_json TEXT NOT NULL,
+                  error TEXT,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  PRIMARY KEY(experiment_id, participant_id, session_id)
+                )
+                """,
+            )
+            db.execute(
+                "CREATE INDEX IF NOT EXISTS session_finalizations_archive_idx ON session_finalizations(data_complete, archive_status, legacy_archive_eligible)"
+            )
+            # Existing rows predate the finalization gate and remain recoverable through the explicit legacy path.
+            db.execute(
+                """
+                INSERT OR IGNORE INTO session_finalizations(
+                  experiment_id, participant_id, session_id, schedule_version,
+                  finalization_status, data_complete, archive_status,
+                  expected_formal_trial_count, tutorial_required,
+                  legacy_archive_eligible, final_submission_id, manifest_json,
+                  error, created_at, updated_at
+                )
+                SELECT experiment_id, participant_id, session_id, MAX(schedule_version),
+                       'collecting', 0, 'pending', NULL, 0, 1, NULL, '{}', NULL,
+                       MIN(received_at), MAX(received_at)
+                FROM submissions
+                GROUP BY experiment_id, participant_id, session_id
+                """,
+            )
             db.commit()
         self.jsonl_path.touch(exist_ok=True)
 
@@ -829,12 +1086,13 @@ class ReceiverStorage:
                 assignment = tuple(getattr(submission, field) for field in ASSIGNMENT_FIELDS)
                 if any(existing != assignment for existing in session_assignments):
                     raise ValidationError("submission_conflict", "session already has a different assignment")
-                cursor = db.execute(
-                    "UPDATE assignments SET participant_id = ? WHERE assignment_id = ? AND (participant_id IS NULL OR participant_id = ?)",
-                    (submission.participant_id, submission.assignment_id, submission.participant_id),
-                )
-                if cursor.rowcount != 1:
-                    raise ValidationError("assignment_conflict", "assignment is bound to another participant")
+                if submission.assignment_mode != "developer":
+                    cursor = db.execute(
+                        "UPDATE assignments SET participant_id = ? WHERE assignment_id = ? AND (participant_id IS NULL OR participant_id = ?)",
+                        (submission.participant_id, submission.assignment_id, submission.participant_id),
+                    )
+                    if cursor.rowcount != 1:
+                        raise ValidationError("assignment_conflict", "assignment is bound to another participant")
             db.execute(
                 """
                 INSERT INTO submissions(
@@ -918,6 +1176,31 @@ class ReceiverStorage:
                         target_result.archive_uri,
                         "archived" if target_result.ok else "pending" if target_result.error is None else "failed",
                         target_result.error,
+                        _utc_now(),
+                    ),
+                )
+            if submission.submission_kind:
+                db.execute(
+                    """
+                    INSERT INTO session_finalizations(
+                      experiment_id, participant_id, session_id, schedule_version,
+                      finalization_status, data_complete, archive_status,
+                      expected_formal_trial_count, tutorial_required,
+                      legacy_archive_eligible, final_submission_id, manifest_json,
+                      error, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, 'collecting', 0, 'pending', ?, ?, 0, NULL, '{}', NULL, ?, ?)
+                    ON CONFLICT(experiment_id, participant_id, session_id) DO UPDATE SET
+                      updated_at = excluded.updated_at
+                    """,
+                    (
+                        submission.experiment_id,
+                        submission.participant_id,
+                        submission.session_id,
+                        submission.schedule_version,
+                        self.expected_formal_trial_count,
+                        1 if self.require_tutorial else 0,
+                        _utc_now(),
                         _utc_now(),
                     ),
                 )
@@ -1191,8 +1474,16 @@ class ReceiverStorage:
         temporary = self.data_dir / f".submissions-{uuid.uuid4().hex}.tmp"
         try:
             _write_durable(temporary, ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8"))
-            temporary.replace(self.jsonl_path)
-            _sync_directory(self.data_dir)
+            # shortcut: 5 attempts cover transient Windows scanning locks, increase if longer locks are observed.
+            for attempt in range(5):
+                try:
+                    temporary.replace(self.jsonl_path)
+                    _sync_directory(self.data_dir)
+                    break
+                except PermissionError:
+                    if os.name != "nt" or attempt == 4:
+                        raise
+                    time.sleep(0.05 * (2**attempt))
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -1280,6 +1571,16 @@ def _metadata_archive_name(label: str | None) -> str:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _env_positive_int(name: str) -> int | None:
+    value = os.environ.get(name)
+    if not value:
+        return None
+    parsed = int(value)
+    if parsed <= 0:
+        raise ValueError(f"{name} must be positive")
+    return parsed
 
 
 def _aggregate_archive_status(results: list[ArchiveTargetResult]) -> str:

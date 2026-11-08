@@ -49,7 +49,7 @@ interface TrialReport {
   source: Evidence; valid: boolean; linkage: "unique" | "ambiguous" | "unmatched";
   rule: "v2_identity" | "unique_final_row" | null; candidates: Evidence[];
   participant_id: string | null; participant_number: number | null; sequence_id: string | null;
-  session_id: string | null; trial_session_id: string | null; task_id: string | null;
+  session_id: string | null; trial_session_id: string | null; trial_type: string | null; task_id: string | null;
   presentation_id: string | null; trial_index: number | null; hash8: string | null;
   session_status: Status | "session_unknown"; archive_state: ArchiveState; archive_evidence: ArchiveEvidence[];
 }
@@ -173,7 +173,13 @@ export async function auditLegacySubmissions(options: AuditOptions) {
   try { spoolFiles = await files(spool); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
   const paths = new Set(spoolFiles);
-  for (const dir of options.archives) for (const path of await files(resolve(dir))) paths.add(path);
+  for (const dir of options.archives) {
+    try {
+      for (const path of await files(resolve(dir))) paths.add(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
   const json = new Map<string, JsonObject>();
   const contexts = new Map<string, { manifest: JsonObject; file: JsonObject; source: Evidence }>();
   const manifestPaths = new Set([...paths].filter((path) => basename(path) === "manifest.json"));
@@ -423,7 +429,7 @@ export async function auditLegacySubmissions(options: AuditOptions) {
       candidates: candidates.map((candidate) => candidate.source), participant_id: observation.participant_id,
       participant_number: observation.identity?.participant_number ?? null, sequence_id: observation.sequence_id,
       session_id: observation.identity?.session_id ?? null, trial_session_id: observation.result?.session ?? null,
-      task_id: observation.result?.task_id ?? null, presentation_id: observation.presentation?.presentationId ?? null,
+      trial_type: observation.trial_type, task_id: observation.result?.task_id ?? null, presentation_id: observation.presentation?.presentationId ?? null,
       trial_index: observation.presentation?.trialIndex ?? null, hash8: observation.hash8,
       session_status: "session_unknown", archive_state: archiveState(observation.archive_evidence.map((evidence) => evidence.state)),
       archive_evidence: observation.archive_evidence });

@@ -25,11 +25,18 @@ class ReceiverConfig:
     archive_retry_interval_seconds: float = 30
     assignment_experiment_id: str | None = None
     assignment_schedule_version: str | None = None
+    expected_formal_trial_count: int | None = None
+    require_tutorial: bool = False
     assignment_sequence_ids: list[str] | None = None
 
 
 def load_config_from_env() -> ReceiverConfig:
     origins = [origin.strip() for origin in os.environ.get("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+    expected_formal_trial_count = os.environ.get("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT") or None
+    if expected_formal_trial_count is not None:
+        expected_formal_trial_count = int(expected_formal_trial_count)
+        if expected_formal_trial_count <= 0:
+            raise ValueError("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT must be positive")
     return ReceiverConfig(
         data_dir=Path(os.environ.get("DATA_DIR", "/app/data")),
         allowed_origins=origins,
@@ -50,5 +57,7 @@ def load_config_from_env() -> ReceiverConfig:
         archive_retry_interval_seconds=max(1, float(os.environ.get("ARCHIVE_RETRY_INTERVAL_SECONDS", "30"))),
         assignment_experiment_id=os.environ.get("ASSIGNMENT_EXPERIMENT_ID") or None,
         assignment_schedule_version=os.environ.get("ASSIGNMENT_SCHEDULE_VERSION") or None,
+        expected_formal_trial_count=expected_formal_trial_count,
+        require_tutorial=os.environ.get("ASSIGNMENT_REQUIRE_TUTORIAL", "false").lower() == "true",
         assignment_sequence_ids=[item for item in os.environ.get("ASSIGNMENT_SEQUENCE_IDS", "").split(",") if item],
     )

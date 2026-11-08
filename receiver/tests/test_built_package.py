@@ -27,7 +27,10 @@ class BuiltPackageIntegrationTests(unittest.TestCase):
 
     def start_static_server(self):
         dist = Path(__file__).parents[2] / "dist"
-        handler = lambda *args, **kwargs: http.server.SimpleHTTPRequestHandler(
+        class StaticHandler(http.server.SimpleHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+        handler = lambda *args, **kwargs: StaticHandler(
             *args, directory=str(dist), **kwargs
         )
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)

@@ -1,3 +1,4 @@
+import os
 import json
 import io
 import tempfile
@@ -5,15 +6,48 @@ import threading
 import unittest
 from http.client import HTTPConnection
 from pathlib import Path
+from unittest.mock import patch
 
 from app.archive import LocalArchiveBackend
-from app.config import ReceiverConfig
+from app.config import ReceiverConfig, load_config_from_env
 from app.server import create_server
 from app.storage import ReceiverStorage
 from test_storage import v2_payload
 
 
 class ServerTests(unittest.TestCase):
+    def test_loads_assignment_schedule_expectations_from_environment(self):
+        with patch.dict(
+            os.environ,
+            {
+                "ASSIGNMENT_SCHEDULE_VERSION": "run41-williams-v1",
+                "ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT": "24",
+                "ASSIGNMENT_REQUIRE_TUTORIAL": "true",
+            },
+            clear=True,
+        ):
+            config = load_config_from_env()
+
+        self.assertEqual(config.assignment_schedule_version, "run41-williams-v1")
+        self.assertEqual(config.expected_formal_trial_count, 24)
+        self.assertTrue(config.require_tutorial)
+
+    def test_missing_assignment_expected_count_remains_unresolved(self):
+        with patch.dict(os.environ, {}, clear=True):
+            config = load_config_from_env()
+
+        self.assertIsNone(config.expected_formal_trial_count)
+
+    def test_rejects_non_positive_assignment_expected_count(self):
+        for value in ("0", "-1"):
+            with self.subTest(value=value), patch.dict(
+                os.environ,
+                {"ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT": value},
+                clear=True,
+            ):
+                with self.assertRaisesRegex(ValueError, "positive"):
+                    load_config_from_env()
+
     def post_in_process(self, server, path, payload):
         body = json.dumps(payload).encode("utf-8")
         request = f"POST {path} HTTP/1.0\r\nContent-Type: application/json\r\nOrigin: https://pages.example\r\nContent-Length: {len(body)}\r\n\r\n".encode() + body
@@ -55,7 +89,7 @@ class ServerTests(unittest.TestCase):
             self.assertEqual(conflict[1]["error"], "submission_conflict")
             self.assertEqual(assignment_conflict[1]["error"], "submission_conflict")
 
-    def test_v2_archive_after_retry_removed_trial_spool_without_network_stack(self):
+    def test_v2_archive_waits_for_session_finalization_without_network_stack(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir)
             config = ReceiverConfig(data_dir=data_dir, archive_local_dir=data_dir / "archive",
@@ -67,20 +101,17 @@ class ServerTests(unittest.TestCase):
             self.addCleanup(server.server_close)
             trial_status, trial_body = self.post_in_process(server, "/submit", v2_payload(record))
             self.assertEqual(trial_status, 201)
-            self.assertEqual(storage.retry_pending(), 1)
-            self.assertFalse((storage.spool_dir / trial_body["submission_id"]).exists())
+            self.assertEqual(storage.retry_pending(), 0)
+            self.assertTrue((storage.spool_dir / trial_body["submission_id"]).exists())
             final_status, final_body = self.post_in_process(server, "/submit", v2_payload(record, kind="final"))
             self.assertEqual(final_status, 201)
             archive = {"schema": "layouttask.receiver.archive.v1", "experiment_id": "layout_task_v1",
                        "participant_id": "P47", "session_id": "S1"}
             first = self.post_in_process(server, "/archive", archive)
-            self.assertEqual((first[0], first[1]["archive_status"]), (202, "queued"))
-            self.assertFalse((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / final_body["submission_id"]).exists())
-            storage.retry_pending()
-            repeat = self.post_in_process(server, "/archive", archive)
-            self.assertEqual(repeat[0], 200)
-            self.assertTrue((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / trial_body["submission_id"]).exists())
-            self.assertTrue((config.archive_local_dir / "layout_task_v1" / "P47" / "S1" / final_body["submission_id"]).exists())
+            self.assertEqual((first[0], first[1]["ok"], first[1]["data_complete"]), (409, False, False))
+            self.assertEqual(storage.retry_pending(), 0)
+            self.assertTrue((storage.spool_dir / trial_body["submission_id"]).exists())
+            self.assertTrue((storage.spool_dir / final_body["submission_id"]).exists())
 
     def start_server(self, config):
         storage = ReceiverStorage(
@@ -88,6 +119,9 @@ class ServerTests(unittest.TestCase):
             archive_backend=LocalArchiveBackend(config.archive_local_dir),
             delete_local_after_success=config.archive_delete_local_after_success,
             archive_on_submit=False,
+            expected_formal_trial_count=config.expected_formal_trial_count,
+            require_tutorial=config.require_tutorial,
+            schedule_version=config.assignment_schedule_version,
         )
         server = create_server(("127.0.0.1", 0), config, storage)
         thread = threading.Thread(target=server.serve_forever, daemon=True)

@@ -13,6 +13,8 @@ ALLOWED_ORIGINS=https://your-github-pages-site.example
 SUBMIT_TOKEN=public-study-token
 ASSIGNMENT_EXPERIMENT_ID=layout-task-run12-core23
 ASSIGNMENT_SCHEDULE_VERSION=run12-williams-v1
+ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT=24
+ASSIGNMENT_REQUIRE_TUTORIAL=true
 ASSIGNMENT_SEQUENCE_IDS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46
 ARCHIVE_MODE=local
 ARCHIVE_DELETE_LOCAL_AFTER_SUCCESS=true
@@ -29,6 +31,18 @@ METADATA_ARCHIVE_RCLONE_REMOTES=jianguoyun=layouttask-webdav:experimentalDataPip
 METADATA_ARCHIVE_DELETE_LOCAL_AFTER_UPLOAD=true
 METADATA_ARCHIVE_LOCAL_KEEP=0
 ```
+
+For the current Run 41 release, bind the receiver to the published schedule with:
+
+```text
+ASSIGNMENT_EXPERIMENT_ID=run_41_persistent
+ASSIGNMENT_SCHEDULE_VERSION=run41-williams-repeat-constrained-v1
+ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT=24
+ASSIGNMENT_REQUIRE_TUTORIAL=true
+```
+
+The sequence IDs and order must be copied from the published Run 41 `schedule.json`.
+The receiver must reject finalization when the expected count or schedule binding is missing.
 
 `ARCHIVE_RCLONE_REMOTES` and `METADATA_ARCHIVE_RCLONE_REMOTES` use
 `name=rclone-remote:path;name=rclone-remote:path`. Each target is tracked
@@ -123,15 +137,20 @@ concurrent receiver and retry processes and should remain on the shared
 data volume while the service runs. Long archive copies lock only their
 experiment session; unrelated submissions can still be published.
 
-`/submit` acknowledges only after file/manifest sync and SQLite commit. `/archive`
-does no cloud I/O and does not acquire the session archive lock: it returns HTTP
-202 with `archive_status: queued` for accepted pending work, or HTTP 200 with
-`archive_status: archived` when every row is already archived. Queued means safe
-on the VPS, not yet copied to both clouds. An absent session or disabled archive
-backend is not a successful archive request.
+`/submit` acknowledges only after file/manifest sync and SQLite commit. Each v2
+session is tracked in the internal `session_finalizations` table. `/archive`
+does no cloud I/O and does not acquire a network-held archive lock: it first
+checks the configured formal-trial count, tutorial presence, exact formal indices,
+unique trial and presentation identities, final CSV consistency, and durable local
+bytes. It returns `data_complete: true` only after those checks pass. An
+incomplete session returns HTTP 409 with `data_complete: false`; it is never
+sent to the cloud worker. A complete session returns HTTP 202 with
+`finalization_status: complete` and `archive_status: pending` (or HTTP 200 once
+already archived). The participant-facing client may finish after this local
+confirmation; Nutstore and Sciebo publication continues asynchronously.
 
-One worker starts with `python -m app.server`, scans the persistent pending,
-failed and partial rows immediately, and scans again after
+One worker starts with `python -m app.server`, scans only complete v2 sessions
+(plus explicitly migrated legacy rows) and scans again after
 `ARCHIVE_RETRY_INTERVAL_SECONDS` (default 30). A restart resumes those rows.
 Late trials are picked up by a later scan. Each cloud's successes persist;
 only incomplete copies are retried. A failed target is attempted once per

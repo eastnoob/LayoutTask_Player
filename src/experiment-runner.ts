@@ -29,8 +29,9 @@ import { bootstrapExperimentSession } from "./core/experiment-session";
 import { createPauseSummary, ExperimentPauseController } from "./core/experiment-pause";
 import { createExperimentPauseUi } from "./core/experiment-pause-ui";
 import { CompletionCodeGate } from "./core/completion-code-gate";
-import { summarizeExperimentRewards } from "./core/reward-calculator";
+import { calculateMaximumExperimentRewardCents, summarizeExperimentRewards } from "./core/reward-calculator";
 import type { ExperimentRewardSummary } from "./types/reward";
+import { formatRewardCents } from "./core/experiment-consent";
 import type { ConsentRecord, ParticipantProfile } from "./core/experiment-consent";
 import { DataSaveService } from "./core/data-save-service";
 
@@ -41,7 +42,7 @@ export interface AssignmentRecord {
   participantNumber: number;
   sequenceId: string;
   scheduleVersion: string;
-  assignmentMode?: "automatic" | "replacement";
+  assignmentMode?: "automatic" | "replacement" | "developer";
   requestedSequenceId?: string | null;
   replacementAttempt?: number;
   rotationIndex?: number | null;
@@ -57,6 +58,32 @@ export interface AssignmentRequest {
   requestedSequenceId?: string;
 }
 
+const DEVELOPER_PARTICIPANT_ID = "9999";
+
+export function getExperimentStudyCopyOptions(config: ExperimentConfig): {
+  formalTaskCount?: number;
+  maximumRewardCents?: number;
+} {
+  if (!config.schedule) {
+    return {};
+  }
+  const presentations = config.schedule.sequences[0]?.presentations ?? [];
+  return {
+    formalTaskCount: config.schedule.presentationCount,
+    maximumRewardCents: config.reward
+      ? calculateMaximumExperimentRewardCents({
+        reward: config.reward,
+        presentations,
+        rewardReference: config.rewardReference,
+      })
+      : undefined,
+  };
+}
+
+export function getFormalTrialOrder(trialResults: ExperimentTrialResultItem[]): string[] {
+  return trialResults.map((trial) => trial.presentation?.taskId ?? trial.taskId);
+}
+
 function assignmentMetadata(assignment?: AssignmentRecord) {
   return toAssignmentMetadata(assignment && {
     assignment_id: assignment.assignmentId,
@@ -70,18 +97,41 @@ function assignmentMetadata(assignment?: AssignmentRecord) {
   });
 }
 
+function resolveAssignment(
+  config: ExperimentConfig,
+  options: { developerMode?: boolean; participantNumber?: number; assignment?: AssignmentRecord },
+): AssignmentRecord | undefined {
+  if (!options.developerMode) return options.assignment;
+  const participantNumber = 9999;
+  const sequenceId = config.schedule
+    ? String(selectSequence(config.schedule, participantNumber).sequenceId)
+    : "developer";
+  return {
+    assignmentId: `developer-${participantNumber}`,
+    participantNumber,
+    sequenceId,
+    scheduleVersion: config.scheduleVersion ?? "developer",
+    assignmentMode: "developer",
+    requestedSequenceId: null,
+    replacementAttempt: 0,
+    rotationIndex: null,
+  };
+}
+
 export function buildExperimentTimeline(
   config: ExperimentConfig,
   options: { developerMode?: boolean; participantId?: string; participantNumber?: number; sessionId?: string; assignment?: AssignmentRecord; requireAssignment?: boolean; localBackup?: LocalBackupStore; pause?: ExperimentPauseController; onTaskReady?: () => void } = {},
 ): ExperimentTimeline {
   const timeline: ExperimentTimeline = [];
+  const effectiveAssignment = resolveAssignment(config, options);
   const chinese = config.locale === "zh-CN";
+  const studyCopy = getExperimentStudyCopyOptions(config);
   const tutorialPause = config.tutorial.enabled && config.tutorial.taskId
     ? new ExperimentPauseController({ mode: "tutorial_practice" })
     : undefined;
   const taskDataSave = toRuntimeTaskDataSave(
-    config.dataSave, options.participantId, options.sessionId,
-    options.developerMode ? undefined : assignmentMetadata(options.assignment),
+    config.dataSave, options.developerMode ? DEVELOPER_PARTICIPANT_ID : options.participantId, options.sessionId,
+    assignmentMetadata(effectiveAssignment),
   );
 
   if (config.tutorial.enabled) {
@@ -183,7 +233,8 @@ export function buildExperimentTimeline(
                 <li><strong>${chinese ? "这不是考试，而是实验。" : "This is an experiment, not a test."}</strong> ${chinese ? "犯错和不确定是正常的；如果非常不确定，请报告很低的置信度。" : "Mistakes and uncertainty are normal. If you are very unsure, report very low confidence."}</li>
                 <li>${chinese ? "正式实验期间可暂停一次，最长15分钟。" : "During the formal experiment, you may pause once for up to 15 minutes."}</li>
                 <li>${chinese ? "如果实验让您感到任何不适，您可以随时关闭本页面并停止参与。我们可能会请您在 Prolific 上退回本次提交。退回提交不会对您的 Prolific 账户产生不良影响。如果有任何问题，请通过 Prolific 的消息系统联系研究者。" : "If the experiment causes you any discomfort, you may stop participating at any time by closing this page. We may ask you to return your submission on Prolific. Returning a submission will not negatively affect your Prolific account. If you have any questions, please contact the researcher through Prolific's messaging system."}</li>
-                <li>${chinese ? "本研究报酬为 £4 基础奖金，另加任务表现奖金。每个正确的位置或旋转答案均可获得额外 £0.04，因此参与者最多可获得 £12。" : "The compensation for this study is a £4 base payment plus task-performance bonuses. Each correctly reconstructed position or rotation earns an additional £0.04, so that the participant can earn maximum £12 in total."}</li>
+                <li>${chinese ? `本研究包含${studyCopy.formalTaskCount ?? 25}个正式任务，教程不计入正式任务数量。` : `The formal experiment contains ${studyCopy.formalTaskCount ?? 25} tasks; the tutorial is not included in this count.`}</li>
+                <li>${chinese ? `本研究报酬为 £4 基础奖金，另加任务表现奖金。每个正确的位置或旋转答案均可获得额外 £0.04，因此参与者最多可获得 £${formatRewardCents(studyCopy.maximumRewardCents ?? 1200)}。` : `The compensation for this study is a £4 base payment plus task-performance bonuses. Each correctly reconstructed position or rotation earns an additional £0.04, so that the participant can earn maximum £${formatRewardCents(studyCopy.maximumRewardCents ?? 1200)} in total.`}</li>
                 <li>${chinese ? "请如实回答并认真对待每道题。基于行为的注意力检测可能会拒绝不认真完成的回答。" : "Please respond truthfully and take every question seriously. Behavior-based attention checks may reject inattentive responses."}</li>
                 <li>${chinese ? "整个研究大约需要20-45分钟。" : "The complete study takes approximately 20-45 minutes."}</li>
               </ul>
@@ -201,8 +252,8 @@ export function buildExperimentTimeline(
     throw new Error("Formal assignment is required before starting the experiment");
   }
   const selectedSequence = config.schedule
-    ? options.assignment
-      ? selectSequenceById(config.schedule, options.assignment.sequenceId)
+    ? effectiveAssignment
+      ? selectSequenceById(config.schedule, effectiveAssignment.sequenceId)
       : selectSequence(config.schedule, options.participantNumber ?? 1)
     : undefined;
   const formalPresentations: ReferencePresentation[] = selectedSequence?.presentations
@@ -415,6 +466,33 @@ export async function saveExperimentFiles(input: {
     return { ok: true, saved: 0 };
   }
 
+  if (input.dataSave.mode === "receiver" && input.developerMode && (
+    !input.dataSave.experimentId.endsWith("_debug")
+    || input.participantId !== DEVELOPER_PARTICIPANT_ID
+    || input.assignment?.assignmentMode !== "developer"
+    || input.assignment.assignmentId !== "developer-9999"
+    || input.assignment.participantNumber !== 9999
+  )) {
+    const recoveryZip = await createCompleteRecoveryZip(await getRecoveryFiles(input), {
+      participantId: input.participantId ?? "unknown",
+      prolificId: input.prolificId,
+      sessionId: input.sessionId ?? "unknown",
+      experimentId: input.dataSave.experimentId,
+      completionCode: input.completionCode,
+      failedFilenames: ["receiver batch"],
+      pauseSummary: input.pauseSummary,
+      participantProfile: input.participantProfile,
+      assignment: assignmentMetadata(input.assignment),
+    });
+    return {
+      ok: false,
+      saved: 0,
+      failedFilename: "receiver batch",
+      error: "Developer receiver saves require the isolated developer assignment",
+      recoveryZip,
+    };
+  }
+
   if (input.dataSave.mode === "receiver") {
     const dataSave = input.dataSave;
     if (!input.participantId || !input.sessionId) {
@@ -427,17 +505,18 @@ export async function saveExperimentFiles(input: {
     }
 
     const fetchImpl = input.fetchImpl ?? globalThis.fetch.bind(globalThis);
-    const timeoutMs = input.timeoutMs ?? 30_000;
+    const replayTimeoutMs = 15_000;
+    const finalTimeoutMs = input.timeoutMs ?? 90_000;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (dataSave.submitToken) {
       headers["X-Submit-Token"] = dataSave.submitToken;
     }
 
     const pending = await new DataSaveService({
-      config: toRuntimeTaskDataSave(dataSave, input.participantId, input.sessionId, input.developerMode ? undefined : assignmentMetadata(input.assignment)),
+      config: toRuntimeTaskDataSave(dataSave, input.participantId, input.sessionId, assignmentMetadata(input.assignment)),
       localBackup: input.localBackup,
       fetchImpl,
-      timeoutMs,
+      timeoutMs: replayTimeoutMs,
     }).retryReceiverSubmissions();
 
     let response: Response;
@@ -454,11 +533,11 @@ export async function saveExperimentFiles(input: {
                 prolificId: input.prolificId,
                 sessionId: input.sessionId!,
                 files: input.files,
-                assignment: input.developerMode ? undefined : input.assignment,
+                assignment: input.assignment,
               }),
             ),
           }),
-        timeoutMs,
+        finalTimeoutMs,
         "receiver batch",
       );
     } catch (error) {
@@ -508,7 +587,7 @@ export async function saveExperimentFiles(input: {
       participant_id: input.participantId,
       session_id: input.sessionId,
       prolific_id: input.prolificId ?? "",
-      ...assignmentMetadata(input.developerMode ? undefined : input.assignment),
+      ...assignmentMetadata(input.assignment),
     };
     let archiveError = "archive failed";
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -519,14 +598,17 @@ export async function saveExperimentFiles(input: {
             headers,
             body: JSON.stringify(archiveRequest),
           }),
-          timeoutMs,
+          finalTimeoutMs,
           "receiver archive",
         );
-        if (archiveResponse.ok) {
+        const archiveBody = archiveResponse.ok ? await readSaveResponse(archiveResponse) : null;
+        if (archiveResponse.ok && archiveBody?.data_complete === true) {
           if (!pending.metadataPending) await input.localBackup?.clear();
           return { ok: true, saved: input.files.length };
         }
-        archiveError = `${archiveResponse.status} ${archiveResponse.statusText}${await readSaveError(archiveResponse)}`;
+        archiveError = archiveResponse.ok
+          ? "receiver archive response did not confirm complete local data"
+          : `${archiveResponse.status} ${archiveResponse.statusText}${await readSaveError(archiveResponse)}`;
       } catch (error) {
         archiveError = error instanceof Error ? error.message : String(error);
       }
@@ -645,12 +727,15 @@ export function createRunnableExperiment(
   displayElement?: HTMLElement,
   options: { participantId?: string; participantNumber?: number; assignment?: AssignmentRecord; requireAssignment?: boolean; developerMode?: boolean; localBackup?: LocalBackupStore; prolificId?: string; consent?: ConsentRecord; participantProfile?: ParticipantProfile } = {},
 ) {
-  const participantId = options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
+  const participantId = options.developerMode
+    ? DEVELOPER_PARTICIPANT_ID
+    : options.participantId ?? getParticipantId({ storage: globalThis.localStorage });
+  const effectiveAssignment = resolveAssignment(config, options);
   const session = bootstrapExperimentSession({
     experimentId: config.experimentId,
     participantId,
     prolificId: options.prolificId,
-    assignment: assignmentMetadata(options.assignment),
+    assignment: assignmentMetadata(effectiveAssignment),
     consent: options.consent,
     participantProfile: options.participantProfile,
   });
@@ -659,13 +744,13 @@ export function createRunnableExperiment(
   void localBackup?.saveSessionMetadata?.({
     session_id: sessionId,
     prolific_id: options.prolificId,
-    assignment: assignmentMetadata(options.assignment),
+    assignment: assignmentMetadata(effectiveAssignment),
     consent: options.consent,
     participant_profile: options.participantProfile,
     pause: session.pauseSnapshot,
   }).catch(() => undefined);
   void new DataSaveService({
-    config: toRuntimeTaskDataSave(config.dataSave, participantId, sessionId, options.developerMode ? undefined : assignmentMetadata(options.assignment)),
+    config: toRuntimeTaskDataSave(config.dataSave, participantId, sessionId, assignmentMetadata(effectiveAssignment)),
     localBackup,
   }).saveSessionMetadata(session.prolificId !== undefined && session.consent && session.participantProfile
     ? { prolificId: session.prolificId, consent: session.consent, participantProfile: session.participantProfile }
@@ -678,7 +763,7 @@ export function createRunnableExperiment(
       void localBackup?.saveSessionMetadata?.({
         session_id: sessionId,
         prolific_id: options.prolificId,
-        assignment: assignmentMetadata(options.assignment),
+        assignment: assignmentMetadata(effectiveAssignment),
         consent: options.consent,
         participant_profile: options.participantProfile,
         pause: snapshot,
@@ -733,7 +818,7 @@ export function createRunnableExperiment(
         endTime: Date.now(),
         tutorialCompleted: Boolean(tutorialRow),
         tutorialDurationMs: Number(tutorialRow?.rt ?? 0),
-        trialOrder: config.trials.map((trial) => trial.taskId),
+        trialOrder: getFormalTrialOrder(trialResults),
         trialResults,
         tutorialResult,
         tutorialPackageVersion: config.tutorial.packageVersion,
@@ -742,7 +827,7 @@ export function createRunnableExperiment(
         participantProfile: options.participantProfile,
         referenceMode: config.referenceMode,
         pauseSummary: createPauseSummary(pause.snapshot()),
-        assignment: assignmentMetadata(options.assignment),
+        assignment: assignmentMetadata(effectiveAssignment),
       });
       pauseUi.destroy();
       renderSavingPage(config.locale);
@@ -756,7 +841,7 @@ export function createRunnableExperiment(
         completionCode,
         pauseSummary: createPauseSummary(pause.snapshot()),
         participantProfile: options.participantProfile,
-        assignment: options.assignment,
+        assignment: effectiveAssignment,
         developerMode: options.developerMode,
       });
       if (saveResult.ok) {
@@ -773,7 +858,7 @@ export function createRunnableExperiment(
       participantId,
       sessionId,
       participantNumber: options.participantNumber,
-      assignment: options.assignment,
+      assignment: effectiveAssignment,
       requireAssignment: options.requireAssignment,
       localBackup,
       pause,
@@ -954,6 +1039,17 @@ async function readSaveError(response: Response): Promise<string> {
     return text ? ` (${text.slice(0, 240)})` : "";
   } catch {
     return "";
+  }
+}
+
+async function readSaveResponse(response: Response): Promise<{ data_complete?: boolean } | null> {
+  try {
+    const clone = typeof response.clone === "function" ? response.clone() : response;
+    if (typeof clone.json !== "function") return null;
+    const body = await clone.json();
+    return body && typeof body === "object" ? body as { data_complete?: boolean } : null;
+  } catch {
+    return null;
   }
 }
 
