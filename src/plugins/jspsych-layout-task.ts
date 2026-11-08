@@ -203,6 +203,7 @@ export class LayoutTaskPlugin implements JsPsychPlugin<Info> {
             // useful when a researcher wants to inspect/copy data before calling finishTrial manually.
             if (trial.autoFinishTrial) {
               finished = true;
+              player.releasePauseInputGuard();
               this.jsPsych.finishTrial(trialData);
               resolve();
             }

@@ -49,6 +49,7 @@ export interface LayoutTaskPlayerOptions {
 
 export interface LayoutTaskPlayer {
   start(): void;
+  releasePauseInputGuard(): void;
   destroy(): void;
   getState(): FinalState;
   isLocked(): boolean;
@@ -124,6 +125,10 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
   let unsubscribeTutorialPause: (() => void) | undefined;
   let destroyed = false;
   let unregisterPauseInputGuard: (() => void) | undefined;
+  const releasePauseInputGuard = () => {
+    unregisterPauseInputGuard?.();
+    unregisterPauseInputGuard = undefined;
+  };
   const magnifier = new MagnifierController({
     pauseIntervals: () => getPauseIntervals(options.pause?.snapshot()),
   });
@@ -421,14 +426,15 @@ export function createLayoutTaskPlayer(options: LayoutTaskPlayerOptions): Layout
       flow.start();
     },
 
+    releasePauseInputGuard,
+
     destroy() {
       // Teardown stays intentionally boring and explicit.
       // 这里只清理 binding 和 DOM，不偷偷改外部状态。
       destroyed = true;
       unsubscribeTutorialPause?.();
       unsubscribeTutorialPause = undefined;
-      unregisterPauseInputGuard?.();
-      unregisterPauseInputGuard = undefined;
+      releasePauseInputGuard();
       if (magnifier.isActive()) {
         magnifier.exit();
         tutorial?.handle("magnifier_exited", { exitReason: "destroy" });

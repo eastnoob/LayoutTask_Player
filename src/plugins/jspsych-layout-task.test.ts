@@ -104,6 +104,37 @@ describe("LayoutTaskPlugin", () => {
     await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
+  it("releases the completed player's Pause guard before advancing", async () => {
+    const order: string[] = [];
+    const finishTrial = vi.fn(() => order.push("finishTrial"));
+    const start = vi.fn(() => {
+      order.push("onComplete");
+      const options = vi.mocked(createLayoutTaskPlayer).mock.calls[0]?.[0];
+      options?.onComplete?.(createPayload());
+    });
+    const player = createPlayerStub(start);
+    player.releasePauseInputGuard = vi.fn(() => order.push("releaseGuard"));
+    vi.mocked(createLayoutTaskPlayer).mockReturnValue(player);
+
+    const plugin = new LayoutTaskPlugin({ finishTrial } as unknown as JsPsych);
+    await plugin.trial(createDisplayElement(), {
+      type: LayoutTaskPlugin,
+      config: createRuntimeConfig(),
+      baseUrl: "/layout-task/",
+      manifestPath: "manifest.json",
+      taskId: null,
+      qid: null,
+      autoFinishTrial: true,
+      writeEncodedToData: true,
+      writeResultToData: true,
+      writeHeaderToData: true,
+      title: "Layout Task",
+    });
+
+    expect(player.releasePauseInputGuard).toHaveBeenCalledOnce();
+    expect(order).toEqual(["onComplete", "releaseGuard", "finishTrial"]);
+  });
+
   it("renders an accessible loading state while the next trial is loading", () => {
     const root = createDisplayElement();
 
@@ -174,6 +205,7 @@ describe("LayoutTaskPlugin", () => {
 
     await flushPromises();
     expect(finishTrial).not.toHaveBeenCalled();
+    expect(vi.mocked(createLayoutTaskPlayer).mock.results[0]?.value.releasePauseInputGuard).not.toHaveBeenCalled();
     await expect(Promise.race([trialPromise, Promise.resolve("pending")])).resolves.toBe("pending");
   });
 
@@ -308,6 +340,7 @@ function createPlayerStub(start: () => void = vi.fn()): LayoutTaskPlayer {
   return {
     start,
     destroy: vi.fn(),
+    releasePauseInputGuard: vi.fn(),
     getState: vi.fn(),
     isLocked: vi.fn(),
   } as unknown as LayoutTaskPlayer;

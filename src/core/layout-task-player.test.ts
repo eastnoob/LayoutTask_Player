@@ -238,6 +238,12 @@ describe("createLayoutTaskPlayer", () => {
     expect(player.canStartMagnifier()).toBe(false);
     pause.cancelConfirmation();
     expect(rendererOptions.magnifier!.onEnter({ clientX: 0, clientY: 0 })).toBe(true);
+    rendererOptions.magnifier!.onExit("escape");
+    player.releasePauseInputGuard();
+    expect(rendererOptions.magnifier!.controller.isActive()).toBe(false);
+    pause.requestPause();
+    expect(pause.snapshot().status).toBe("confirming");
+    pause.cancelConfirmation();
     player.destroy();
     expect(rendererOptions.magnifier!.controller.isActive()).toBe(false);
     expect(player.getMagnifierSnapshot().use_count).toBe(2);
