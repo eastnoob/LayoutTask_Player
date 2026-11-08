@@ -6,6 +6,7 @@ import { validateRuntimePackage } from "./validate-runtime-package";
 
 export interface ValidateWebReleasePackageOptions {
   distDir: string;
+  entryConfig?: string;
 }
 
 export interface WebReleasePackageReport {
@@ -16,31 +17,51 @@ export interface WebReleasePackageReport {
 export async function validateWebReleasePackage(options: ValidateWebReleasePackageOptions): Promise<WebReleasePackageReport> {
   const distDir = path.resolve(options.distDir);
   const failures: string[] = [];
+  const entryConfig = path.resolve(options.entryConfig ?? path.join(distDir, "experiment", "experiment.json"));
+  const experimentDir = path.join(distDir, "experiment");
+  const configFiles = options.entryConfig
+    ? [entryConfig]
+    : (await exists(experimentDir)
+      ? (await readdir(experimentDir, { withFileTypes: true }))
+          .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+          .map((entry) => path.join(experimentDir, entry.name))
+      : []);
+  const formalRoots = await resolveFormalRoots(configFiles, distDir, failures);
   const allowedTopLevel = new Set([
     "assets",
     "experiment",
     "index.html",
-    "layout-task-run12-core23-persistent",
+    ...formalRoots.map((root) => path.basename(root)),
   ]);
   for (const entry of await readdir(distDir)) {
     if (!allowedTopLevel.has(entry)) failures.push(`unexpected top-level path: ${entry}`);
   }
+  const requiredConfigs = options.entryConfig
+    ? [`experiment/${path.basename(entryConfig)}`]
+    : [
+        "experiment/experiment.json",
+        "experiment/experiment-zh.json",
+        "experiment/experiment-en.json",
+        "experiment/experiment-debug-zh.json",
+        "experiment/experiment-debug-en.json",
+      ];
   const required = [
     "index.html",
     "experiment/index.html",
-    "experiment/experiment.json",
-    "experiment/experiment-zh.json",
-    "experiment/experiment-en.json",
-    "experiment/experiment-debug-zh.json",
-    "experiment/experiment-debug-en.json",
+    ...requiredConfigs,
     ...[
       "arrow-up.svg", "arrow-down.svg", "arrow-left.svg", "arrow-right.svg",
       "rotate-ccw.svg", "rotate-cw.svg", "move.svg", "info.svg", "hand.svg", "alert-circle.svg",
     ].map((icon) => `experiment/layout-task/assets/icons/${icon}`),
-    "layout-task-run12-core23-persistent/manifest.json",
-    "layout-task-run12-core23-persistent/scoring/scoring-reference.json",
-    "layout-task-run12-core23-persistent/tutorial/manifest.json",
-    "layout-task-run12-core23-persistent/tutorial/tutorial-package.lock.json",
+    ...formalRoots.flatMap((formalRoot) => {
+      const formalName = path.basename(formalRoot);
+      return [
+        `${formalName}/manifest.json`,
+        `${formalName}/scoring/scoring-reference.json`,
+        `${formalName}/tutorial/manifest.json`,
+        `${formalName}/tutorial/tutorial-package.lock.json`,
+      ];
+    }),
   ];
 
   for (const relativePath of required) {
@@ -55,28 +76,29 @@ export async function validateWebReleasePackage(options: ValidateWebReleasePacka
     failures.push("index.html must redirect to /experiment/");
   }
 
-  await validateAssetClosure(distDir, failures);
+  await validateAssetClosure(distDir, formalRoots, failures);
   // Closure runs first so the existing file loaders cannot follow escaping references.
   if (failures.length === 0) {
-    const formalRoot = path.join(distDir, "layout-task-run12-core23-persistent");
-    const tutorialRoot = path.join(formalRoot, "tutorial");
-    for (const baseDir of [formalRoot, tutorialRoot]) {
-      const report = await validateRuntimePackage({ baseDir, checkTargets: true });
-      for (const failure of report.failures) {
-        failures.push(`runtime ${path.relative(distDir, baseDir)}: ${JSON.stringify(failure)}`);
+    for (const formalRoot of formalRoots) {
+      const tutorialRoot = path.join(formalRoot, "tutorial");
+      for (const baseDir of [formalRoot, tutorialRoot]) {
+        const report = await validateRuntimePackage({ baseDir, checkTargets: true });
+        for (const failure of report.failures) {
+          failures.push(`runtime ${path.relative(distDir, baseDir)}: ${JSON.stringify(failure)}`);
+        }
       }
-    }
-    try {
-      verifyTutorialPackage(tutorialRoot, formalRoot);
-    } catch (error) {
-      failures.push(`tutorial: ${error instanceof Error ? error.message : String(error)}`);
+      try {
+        verifyTutorialPackage(tutorialRoot, formalRoot);
+      } catch (error) {
+        failures.push(`tutorial ${path.relative(distDir, tutorialRoot)}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
   }
 
   return { ok: failures.length === 0, failures: [...new Set(failures)] };
 }
 
-async function validateAssetClosure(distDir: string, failures: string[]): Promise<void> {
+async function validateAssetClosure(distDir: string, formalRoots: string[], failures: string[]): Promise<void> {
   const visited = new Set<string>();
   const referenceKeys = new Set([
     "src", "file", "asset_library", "background_library", "behavior_library", "scoring_reference",
@@ -149,11 +171,36 @@ async function validateAssetClosure(distDir: string, failures: string[]): Promis
       if (entry.endsWith(".json")) await visitFile(path.join(experimentDir, entry), experimentDir, distDir);
     }
   }
-  const formalRoot = path.join(distDir, "layout-task-run12-core23-persistent");
-  const tutorialRoot = path.join(formalRoot, "tutorial");
-  await visitFile(path.join(formalRoot, "manifest.json"), formalRoot, formalRoot);
-  await visitFile(path.join(tutorialRoot, "manifest.json"), tutorialRoot, tutorialRoot);
-  await visitFile(path.join(tutorialRoot, "tutorial-package.lock.json"), tutorialRoot, tutorialRoot);
+  for (const formalRoot of formalRoots) {
+    const tutorialRoot = path.join(formalRoot, "tutorial");
+    await visitFile(path.join(formalRoot, "manifest.json"), formalRoot, formalRoot);
+    await visitFile(path.join(tutorialRoot, "manifest.json"), tutorialRoot, tutorialRoot);
+    await visitFile(path.join(tutorialRoot, "tutorial-package.lock.json"), tutorialRoot, tutorialRoot);
+  }
+}
+
+async function resolveFormalRoots(configFiles: string[], distDir: string, failures: string[]): Promise<string[]> {
+  const formalRoots = new Set<string>();
+  for (const configFile of configFiles) {
+    try {
+      const config = JSON.parse(await readFile(configFile, "utf8")) as { baseUrl?: string };
+      if (!config.baseUrl) {
+        failures.push(`config has no baseUrl: ${path.relative(distDir, configFile)}`);
+        continue;
+      }
+      const formalRoot = path.resolve(path.dirname(configFile), config.baseUrl);
+      const relative = path.relative(distDir, formalRoot);
+      if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+        failures.push(`formal package outside release: ${config.baseUrl}`);
+        continue;
+      }
+      formalRoots.add(formalRoot);
+    } catch {
+      failures.push(`invalid JSON: ${path.relative(distDir, configFile)}`);
+    }
+  }
+  if (formalRoots.size === 0) formalRoots.add(path.join(distDir, "layout-task-run12-core23-persistent"));
+  return [...formalRoots];
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -183,12 +230,13 @@ async function readText(filePath: string): Promise<string | undefined> {
 
 async function main(): Promise<void> {
   const distDir = process.argv[2];
+  const entryConfig = process.argv[3];
   if (!distDir) {
-    console.error("Usage: tsx tools/generator/validate-web-release-package.ts <dist-dir>");
+    console.error("Usage: tsx tools/generator/validate-web-release-package.ts <dist-dir> [entry-config]");
     process.exitCode = 1;
     return;
   }
-  const report = await validateWebReleasePackage({ distDir });
+  const report = await validateWebReleasePackage({ distDir, entryConfig });
   console.log(JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;
 }

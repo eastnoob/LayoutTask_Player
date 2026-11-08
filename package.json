@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && tsx tools/generator/copy-web-release-assets.ts dist",
+    "build:run41": "tsc && vite build && tsx tools/generator/copy-web-release-assets.ts dist public/experiment/experiment-run41-zh.json",
     "preview": "vite preview",
     "validate:web-release": "tsx tools/generator/validate-web-release-package.ts dist",
+    "validate:web-release:run41": "tsx tools/generator/validate-web-release-package.ts dist dist/experiment/experiment-run41-zh.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },

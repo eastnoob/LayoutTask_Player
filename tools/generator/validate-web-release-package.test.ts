@@ -1,4 +1,4 @@
-import { cp, mkdir, mkdtemp, readFile, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createTutorialPackageLock } from "../../src/core/tutorial-package-lock";
 import { describe, expect, it } from "vitest";
@@ -62,6 +62,23 @@ async function packageFixture(): Promise<string> {
 describe("validateWebReleasePackage", () => {
   it("accepts a closed package using the existing runtime and tutorial validators", async () => {
     const report = await validateWebReleasePackage({ distDir: await packageFixture() });
+    expect(report).toEqual({ ok: true, failures: [] });
+  });
+
+  it("accepts the same closed package under the selected Run 37 package name", async () => {
+    const root = await packageFixture();
+    const oldName = "layout-task-run12-core23-persistent";
+    const newName = "layout-task-run37-native25-persistent";
+    await rename(join(root, oldName), join(root, newName));
+    for (const name of await readdir(join(root, "experiment"))) {
+      if (!name.endsWith(".json")) continue;
+      const file = join(root, "experiment", name);
+      const value = (await readFile(file, "utf8")).replaceAll(oldName, newName);
+      await writeFile(file, value);
+    }
+
+    const report = await validateWebReleasePackage({ distDir: root });
+
     expect(report).toEqual({ ok: true, failures: [] });
   });
 
