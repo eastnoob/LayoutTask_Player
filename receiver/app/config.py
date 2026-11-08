@@ -32,11 +32,14 @@ class ReceiverConfig:
 
 def load_config_from_env() -> ReceiverConfig:
     origins = [origin.strip() for origin in os.environ.get("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+    assignment_experiment_id = os.environ.get("ASSIGNMENT_EXPERIMENT_ID") or None
     expected_formal_trial_count = os.environ.get("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT") or None
     if expected_formal_trial_count is not None:
         expected_formal_trial_count = int(expected_formal_trial_count)
         if expected_formal_trial_count <= 0:
             raise ValueError("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT must be positive")
+    if assignment_experiment_id and expected_formal_trial_count is None:
+        raise ValueError("ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT is required when assignments are enabled")
     return ReceiverConfig(
         data_dir=Path(os.environ.get("DATA_DIR", "/app/data")),
         allowed_origins=origins,
@@ -55,7 +58,7 @@ def load_config_from_env() -> ReceiverConfig:
         rate_limit_window_ms=int(os.environ.get("RATE_LIMIT_WINDOW_MS", "60000")),
         rate_limit_max=int(os.environ.get("RATE_LIMIT_MAX", "60")),
         archive_retry_interval_seconds=max(1, float(os.environ.get("ARCHIVE_RETRY_INTERVAL_SECONDS", "30"))),
-        assignment_experiment_id=os.environ.get("ASSIGNMENT_EXPERIMENT_ID") or None,
+        assignment_experiment_id=assignment_experiment_id,
         assignment_schedule_version=os.environ.get("ASSIGNMENT_SCHEDULE_VERSION") or None,
         expected_formal_trial_count=expected_formal_trial_count,
         require_tutorial=os.environ.get("ASSIGNMENT_REQUIRE_TUTORIAL", "false").lower() == "true",

@@ -38,6 +38,25 @@ class ServerTests(unittest.TestCase):
 
         self.assertIsNone(config.expected_formal_trial_count)
 
+    def test_assigned_receiver_rejects_missing_expected_formal_trial_count(self):
+        with patch.dict(
+            os.environ,
+            {
+                "ASSIGNMENT_EXPERIMENT_ID": "run_41_persistent",
+                "ASSIGNMENT_SCHEDULE_VERSION": "run41-williams-repeat-constrained-v1",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT"):
+                load_config_from_env()
+
+    def test_compose_passes_finalization_expectations_into_receiver(self):
+        compose = Path(__file__).resolve().parents[1] / "docker-compose.yml"
+        content = compose.read_text(encoding="utf-8")
+
+        self.assertIn('ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT: "${ASSIGNMENT_EXPECTED_FORMAL_TRIAL_COUNT}"', content)
+        self.assertIn('ASSIGNMENT_REQUIRE_TUTORIAL: "${ASSIGNMENT_REQUIRE_TUTORIAL:-true}"', content)
+
     def test_rejects_non_positive_assignment_expected_count(self):
         for value in ("0", "-1"):
             with self.subTest(value=value), patch.dict(

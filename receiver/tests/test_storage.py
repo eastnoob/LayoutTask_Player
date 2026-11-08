@@ -290,6 +290,51 @@ class StorageTests(unittest.TestCase):
             )
             self.assertTrue((storage.spool_dir / stored.id).exists())
 
+    def test_restart_backfills_missing_expectations_for_formal_and_debug_sessions_only(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            data_dir = Path(temp_dir)
+            schedule_version = "run41-williams-repeat-constrained-v1"
+            storage = ReceiverStorage(data_dir, archive_on_submit=False, schedule_version=schedule_version)
+            with closing(sqlite3.connect(storage.sqlite_path)) as db:
+                db.executemany(
+                    """
+                    INSERT INTO session_finalizations(
+                      experiment_id, participant_id, session_id, schedule_version,
+                      finalization_status, data_complete, archive_status,
+                      expected_formal_trial_count, tutorial_required, legacy_archive_eligible,
+                      final_submission_id, manifest_json, error, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'needs_recovery', 0, 'pending', NULL, 0, ?, NULL, '{}', NULL, 'now', 'now')
+                    """,
+                    [
+                        ("run_41_persistent", "P1", "S1", schedule_version, 0),
+                        ("run_41_persistent_debug", "9999", "S2", schedule_version, 0),
+                        ("legacy", "P2", "S3", schedule_version, 1),
+                    ],
+                )
+                db.commit()
+
+            ReceiverStorage(
+                data_dir,
+                archive_on_submit=False,
+                expected_formal_trial_count=24,
+                require_tutorial=True,
+                schedule_version=schedule_version,
+            )
+
+            with closing(sqlite3.connect(storage.sqlite_path)) as db:
+                rows = db.execute(
+                    "SELECT experiment_id, expected_formal_trial_count, tutorial_required FROM session_finalizations ORDER BY experiment_id"
+                ).fetchall()
+
+            self.assertEqual(
+                rows,
+                [
+                    ("legacy", None, 0),
+                    ("run_41_persistent", 24, 1),
+                    ("run_41_persistent_debug", 24, 1),
+                ],
+            )
+
     def test_finalization_state_survives_restart_and_completed_result_is_not_overwritten(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
             os.environ,

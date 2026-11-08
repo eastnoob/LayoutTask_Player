@@ -1059,6 +1059,23 @@ class ReceiverStorage:
                 GROUP BY experiment_id, participant_id, session_id
                 """,
             )
+            if self.expected_formal_trial_count is not None and self.schedule_version:
+                db.execute(
+                    """
+                    UPDATE session_finalizations
+                    SET expected_formal_trial_count = ?, tutorial_required = ?, updated_at = ?
+                    WHERE legacy_archive_eligible = 0
+                      AND finalization_status != 'complete'
+                      AND expected_formal_trial_count IS NULL
+                      AND schedule_version = ?
+                    """,
+                    (
+                        self.expected_formal_trial_count,
+                        1 if self.require_tutorial else 0,
+                        _utc_now(),
+                        self.schedule_version,
+                    ),
+                )
             db.commit()
         self.jsonl_path.touch(exist_ok=True)
 
