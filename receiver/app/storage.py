@@ -1042,6 +1042,13 @@ class ReceiverStorage:
             db.execute(
                 "CREATE INDEX IF NOT EXISTS session_finalizations_archive_idx ON session_finalizations(data_complete, archive_status, legacy_archive_eligible)"
             )
+            finalization_columns = {row[1] for row in db.execute("PRAGMA table_info(session_finalizations)")}
+            for column, declaration in {
+                "final_wait_started_at": "TEXT",
+                "fallback_archive_ready": "INTEGER NOT NULL DEFAULT 0",
+            }.items():
+                if column not in finalization_columns:
+                    db.execute(f"ALTER TABLE session_finalizations ADD COLUMN {column} {declaration}")
             # Existing rows predate the finalization gate and remain recoverable through the explicit legacy path.
             db.execute(
                 """
@@ -1221,6 +1228,18 @@ class ReceiverStorage:
                         _utc_now(),
                     ),
                 )
+                if (submission.submission_kind == "trial" and submission.trial_type == "formal"
+                        and self.schedule_version and submission.schedule_version == self.schedule_version
+                        and self.expected_formal_trial_count is not None
+                        and submission.trial_index == self.expected_formal_trial_count):
+                    db.execute(
+                        """UPDATE session_finalizations
+                           SET final_wait_started_at = COALESCE(final_wait_started_at, ?)
+                           WHERE experiment_id = ? AND participant_id = ? AND session_id = ?
+                             AND schedule_version = ? AND expected_formal_trial_count = ?""",
+                        (_utc_now(), submission.experiment_id, submission.participant_id, submission.session_id,
+                         self.schedule_version, self.expected_formal_trial_count),
+                    )
             db.commit()
 
     def _archive_target_names(self) -> tuple[str, ...]:
