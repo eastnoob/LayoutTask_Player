@@ -81,7 +81,7 @@ Files: verification report; existing verified VPS `/srv/agent/layouttask-receive
 - [x] Stage reviewed receiver code/tests on VPS; use the existing dependency image for isolated Linux regression and migration on a consistent copy of production SQLite/spool. Compare old columns/rows, assignment allocation and file/content hashes. Historical NULL-t0 sessions stay unqualified.
 - [x] Save source/config/image and a consistent stopped-data backup, then switch only receiver source/image with the same environment and volume. If switch fails, restore code/image while preserving newer incoming data.
 - [x] Check health, source hashes, environment/config hashes, sequence counters and preserved identities/digests. Run a dedicated isolated test-store dual-cloud fixture, never allocate a real study slot or mix synthetic participant records into research data. Record cloud readback SHA-256 and cleanup only the fixture path.
-- [ ] Record final commit/deployment evidence and remaining limits. Push the feature branch as the existing source-delivery authorization permits; keep the dirty original checkout intact.
+- [x] Record final commit/deployment evidence and remaining limits. Push the feature branch as the existing source-delivery authorization permits; keep the dirty original checkout intact.
 
 ## Progress and execution decisions
 
@@ -95,3 +95,6 @@ findings were reproduced and fixed, then re-reviewed. Production-only receiver
 deployment and two-cloud original-byte readback passed. See
 `docs/superpowers/verification/2026-11-13-missing-final-fallback.md` for all 35
 acceptance mappings, data-preservation checks, hashes and rollback boundaries.
+Source and initial final evidence were pushed successfully through `9882d20` to
+`origin/codex/vps-missing-final-fallback`. The original checkout and this review
+worktree remain preserved.
