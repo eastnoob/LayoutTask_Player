@@ -335,7 +335,7 @@ class StorageTests(unittest.TestCase):
                 ],
             )
 
-    def test_finalization_state_survives_restart_and_completed_result_is_not_overwritten(self):
+    def test_finalization_proof_survives_restart_but_new_record_invalidates_complete_cache(self):
         with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
             os.environ,
             {
@@ -363,7 +363,7 @@ class StorageTests(unittest.TestCase):
                     "SELECT finalization_status, data_complete, archive_status, final_submission_id, manifest_json FROM session_finalizations"
                 ).fetchone()
 
-            self.assertEqual(row, ("complete", 1, "partial", "final-id", '{"complete":true}'))
+            self.assertEqual(row, ("collecting", 0, "pending", "final-id", '{"complete":true}'))
 
     def test_existing_pending_session_is_migrated_as_legacy_archive_eligible(self):
         with tempfile.TemporaryDirectory() as temp_dir:
