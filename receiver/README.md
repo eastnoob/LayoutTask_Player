@@ -143,16 +143,16 @@ does no cloud I/O and does not acquire a network-held archive lock: it first
 checks the configured formal-trial count, tutorial presence, exact formal indices,
 unique trial and presentation identities, final CSV consistency, and durable local
 bytes. It returns `data_complete: true` only after those checks pass. An
-incomplete session returns HTTP 409 with `data_complete: false`; it is never
-sent to the cloud worker. A complete session returns HTTP 202 with
+incomplete session returns HTTP 409 with `data_complete: false`. A complete session returns HTTP 202 with
 `finalization_status: complete` and `archive_status: pending` (or HTTP 200 once
 already archived). The participant-facing client may finish after this local
 confirmation; Nutstore and Sciebo publication continues asynchronously.
 
-One worker starts with `python -m app.server`, scans only complete v2 sessions
-(plus explicitly migrated legacy rows) and scans again after
+One worker starts with `python -m app.server`, checks accepted finals even when
+the browser never calls `/archive`, and scans again after
 `ARCHIVE_RETRY_INTERVAL_SECONDS` (default 30). A restart resumes those rows.
-Late trials are picked up by a later scan. Each cloud's successes persist;
+Late trials are picked up by a later scan. Local completion checks do not wait
+for cloud transfers, including a transfer for the same session. Each cloud's successes persist;
 only incomplete copies are retried. A failed target is attempted once per
 session per scan so it does not repeatedly delay the healthy target. Each
 rclone subprocess is limited to 90 seconds, and successful directory creation
@@ -161,6 +161,39 @@ is reused. Spool is deleted only after every configured target succeeds.
 Adding a target applies to pending work whose spool still exists. Already
 archived historical rows are not rewritten or given a new target obligation.
 The worker never invokes `archive_metadata` or clears assignment counters.
+
+### Missing client final
+
+For new sessions, accepting formal trial N after durable file writes records
+`final_wait_started_at` in the same SQLite transaction as the submission. N and
+the tutorial requirement must belong to the configured schedule version. The
+fixed wait is 300 seconds from that first acceptance, not from experiment start,
+the latest request or the first scan. Retries and restarts do not reset it.
+
+At or after the deadline, metadata, the required tutorial, exactly N formal
+indices and unique presentation/trial identities are checked again. If complete
+and no client final has arrived, the worker persists `fallback_archive_ready=1`
+with the exact accepted submission IDs/content hashes and copies only that set
+to both configured targets. This preserves received original files and paths;
+it does not generate a final CSV, infer answers or mark the session complete.
+`data_complete` remains false and `/archive` still returns HTTP 409. A scan,
+queued cloud work or a retryable outage may delay the actual backup beyond five minutes.
+
+A valid late final takes the normal path immediately, updates the validated set
+and clears the fallback flag. A late invalid final or validation exception does
+not erase a previously valid whitelist: its original data can continue to the
+other target, while unvalidated new files stay isolated. A genuinely new record
+invalidates the current complete cache; identical retries keep the original state.
+Per-session errors are recorded without ending unrelated sessions' scans.
+Worker and `app.retry_archive` use the same gate and persistent whitelist.
+
+Migration adds nullable `final_wait_started_at` and a default-zero fallback flag.
+Historical `received_at` was sampled before disk writes, so it is never used to
+guess a missing origin. Historical sessions without a trustworthy origin need
+explicit maintenance recovery; completed/legacy archives remain available.
+Keep the data volume, SQLite, JSONL and spool on deployment or rollback. Older
+code can resume normal work but does not process the new fallback eligibility;
+rolling back code must not restore an old database over newer submissions.
 
 ## Replacement Participants
 
